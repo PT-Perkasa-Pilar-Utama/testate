@@ -40,6 +40,8 @@ cp deploy/.env.example .env                          # TESTATE_ENV=development, 
 bun run dev                                          # API on :3000, Vite on :5173
 ```
 
+The first boot needs `TESTATE_ADMIN_PASSWORD`; the first login forces a change. Outside production, `POST /api/v1/admin/reset-state` (admin, body `{"confirm":"reset"}`) wipes the metadata, recreates the admin from the environment, and ends every session, yours included.
+
 | Command                  | Does                                                       |
 | ------------------------ | ---------------------------------------------------------- |
 | `bun run complete-check` | type-check, lint, format check, tests, build. The CI gate. |

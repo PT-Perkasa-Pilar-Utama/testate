@@ -9,5 +9,7 @@ declare module "hono" {
     requestId: string;
     actor: Actor | null;
     authKind: "session" | "bearer";
+    passwordChangeRequired: boolean;
+    projectScope: string[] | null;
   }
 }

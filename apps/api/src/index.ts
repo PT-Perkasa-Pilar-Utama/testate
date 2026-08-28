@@ -10,24 +10,26 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { Scalar } from "@scalar/hono-api-reference";
 import { Hono } from "hono";
-import { PASSWORD_MIN_LENGTH } from "@testate/shared";
 
-import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
+import { ConfigError, apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import type { Config } from "./lib/config/index.ts";
 import { migrate, openMetadataDb } from "./lib/db/index.ts";
 import { authenticate } from "./lib/http/auth.ts";
 import { errorResponse, notFound } from "./lib/http/index.ts";
 import { createLogger } from "./lib/logger/index.ts";
 import { mountOpenApi } from "./lib/openapi.ts";
-import { loadKeyRing } from "./lib/sealed/index.ts";
+import { createPasswordHasher } from "./lib/password/index.ts";
+import { SealedConfigError, loadKeyRing } from "./lib/sealed/index.ts";
 import { createAdaptersHandlers } from "./modules/adapters/adapters.handler.ts";
 import { createAdaptersService } from "./modules/adapters/adapters.service.ts";
 import { createAgentHandlers } from "./modules/agent/agent.handler.ts";
 import { createAgentService } from "./modules/agent/agent.service.ts";
 import { createAgentTools } from "./modules/agent/agent.tools.ts";
 import { createAuditHandlers } from "./modules/audit/audit.handler.ts";
+import { createAuditRepository } from "./modules/audit/audit.repository.ts";
 import { createAuditService } from "./modules/audit/audit.service.ts";
 import { createAuthHandlers } from "./modules/auth/auth.handler.ts";
+import { createAuthRepository } from "./modules/auth/auth.repository.ts";
 import { createAuthService } from "./modules/auth/auth.service.ts";
 import { createCheckoutsHandlers } from "./modules/checkouts/checkouts.handler.ts";
 import { createCheckoutsService } from "./modules/checkouts/checkouts.service.ts";
@@ -58,7 +60,9 @@ import { createStorageService } from "./modules/storage/storage.service.ts";
 import { createToolsHandlers } from "./modules/tools/tools.handler.ts";
 import { createToolsService } from "./modules/tools/tools.service.ts";
 import { createUsersHandlers } from "./modules/users/users.handler.ts";
+import { createUsersRepository } from "./modules/users/users.repository.ts";
 import { createUsersService } from "./modules/users/users.service.ts";
+import type { UsersService } from "./modules/users/users.service.ts";
 
 const VERSION = "0.1.0";
 
@@ -68,6 +72,25 @@ function ensureDirs(config: Config): void {
   for (const sub of ["blobs", "logs", "uploads", "imports", "run"]) {
     mkdirSync(join(config.TESTATE_DATA_DIR, sub), { recursive: true });
   }
+}
+
+type Bootstrap = { bootstrapped: boolean; bootstrap: (() => Promise<boolean>) | null };
+
+/** Step 7 of 22 §22.2: the first admin comes from the environment while `users` is empty. */
+async function bootstrapAdmin(
+  userCount: number,
+  users: UsersService,
+  config: Config
+): Promise<Bootstrap> {
+  const password = config.TESTATE_ADMIN_PASSWORD;
+  if (password === undefined) {
+    if (userCount > 0) return { bootstrapped: false, bootstrap: null };
+    throw new ConfigError([
+      { variable: "TESTATE_ADMIN_PASSWORD", message: "required while the users table is empty" },
+    ]);
+  }
+  const bootstrap = (): Promise<boolean> => users.bootstrap(config.TESTATE_ADMIN_USER, password);
+  return { bootstrapped: userCount === 0 ? await bootstrap() : false, bootstrap };
 }
 
 /** Runs the boot sequence and returns the Hono app. Throws a named error on any refusal. */
@@ -106,10 +129,20 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
           config.TESTATE_BASE_PATH
         );
 
-  const auth = createAuthService({
-    bootstrapUser: config.TESTATE_ADMIN_USER,
-    minPasswordLength: PASSWORD_MIN_LENGTH,
+  const now = (): Date => new Date();
+  const password = createPasswordHasher();
+  const audit = createAuditService({ repo: createAuditRepository(db), now });
+  const usersRepo = createUsersRepository(db);
+  const authRepo = createAuthRepository(db);
+  const auth = createAuthService({ users: usersRepo, repo: authRepo, audit, password, now });
+  const users = createUsersService({
+    repo: usersRepo,
+    sessions: { revokeAll: (id) => authRepo.deleteUserSessions(id) },
+    audit,
+    password,
+    now,
   });
+  const { bootstrapped, bootstrap } = await bootstrapAdmin(usersRepo.count(), users, config);
   const jobs = createJobsService();
   const data = createDataService();
   const states = createStatesService();
@@ -141,18 +174,20 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     resetState:
       config.TESTATE_ENV === "production"
         ? null
-        : createResetHandler(
+        : createResetHandler({
             db,
             migrationsDir,
-            config.TESTATE_RESET_SEED,
-            () => jobs.heartbeat().running > 0
-          ),
+            defaultSeed: config.TESTATE_RESET_SEED,
+            jobsRunning: () => jobs.heartbeat().running > 0,
+            bootstrap,
+          }),
     auth: createAuthHandlers(auth, {
       env: config.TESTATE_ENV,
       basePath: config.TESTATE_BASE_PATH,
       secureCookies: config.TESTATE_TRUST_PROXY,
+      trustProxy: config.TESTATE_TRUST_PROXY,
     }),
-    users: createUsersHandlers(createUsersService()),
+    users: createUsersHandlers(users, config.TESTATE_TRUST_PROXY),
     projects: createProjectsHandlers(projects, prefix),
     adapters: createAdaptersHandlers(adapters, prefix),
     data: createDataHandlers(data),
@@ -168,7 +203,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     rest: createRestHandlers(createRestService()),
     hooks: createHooksHandlers(createHooksService()),
     jobs: createJobsHandlers(jobs),
-    audit: createAuditHandlers(createAuditService()),
+    audit: createAuditHandlers(audit),
     settings: createSettingsHandlers(createSettingsService(), prefix),
     tools: createToolsHandlers(createToolsService()),
     agent: createAgentHandlers(
@@ -195,6 +230,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     migrations_applied: migration.applied,
     migrations_skipped: migration.skipped,
     reset_state_mounted: config.TESTATE_ENV !== "production",
+    bootstrap_admin_created: bootstrapped,
     web_files: web?.files ?? 0,
     web_rewritten: web?.rewritten ?? 0,
   });
@@ -211,8 +247,20 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   };
 }
 
+/** Boot refusals print a framed message and exit 78 (configuration error), per 22 §22.2. */
+async function bootOrRefuse(): Promise<App> {
+  try {
+    return await boot(Bun.env);
+  } catch (cause: unknown) {
+    if (!(cause instanceof ConfigError) && !(cause instanceof SealedConfigError)) throw cause;
+    const line = "=".repeat(72);
+    process.stderr.write(`${line}\nTestate refused to start\n${cause.message}\n${line}\n`);
+    process.exit(78);
+  }
+}
+
 if (import.meta.main) {
-  const app = await boot(Bun.env);
+  const app = await bootOrRefuse();
   const server = Bun.serve({ port: app.port, fetch: app.fetch });
   // SCAFFOLD: the jobs card adds the drain from 22 §22.4 (pause dispatcher, cancel runners, wait 30 s).
   const shutdown = (): void => {

@@ -8,17 +8,27 @@ import {
 } from "@testate/shared";
 import * as v from "valibot";
 
-import { requireRole } from "../../lib/http/auth.ts";
+import { requireCsrf, requireRole } from "../../lib/http/auth.ts";
 import { describe } from "../../lib/openapi.ts";
 import type { AuthHandlers } from "./auth.handler.ts";
 
+/**
+ * Session routes take `requireCsrf`, not `requireRole`: they must stay reachable while a
+ * password change is required (09 §9.2), and a session-less caller gets 401 from `currentActor`.
+ */
 export function createAuthRouter(h: AuthHandlers): Hono {
   const router = new Hono();
   router.post("/auth/login", describe("auth", "Log in", loginResponseSchema), h.login);
-  router.post("/auth/logout", describe("auth", "Log out", v.undefined(), 204), h.logout);
+  router.post(
+    "/auth/logout",
+    requireCsrf(),
+    describe("auth", "Log out", v.undefined(), 204),
+    h.logout
+  );
   router.get("/auth/me", describe("auth", "Current actor", meSchema), h.me);
   router.post(
     "/auth/password",
+    requireCsrf(),
     describe("auth", "Change own password", v.undefined(), 204),
     h.changePassword
   );
@@ -29,6 +39,7 @@ export function createAuthRouter(h: AuthHandlers): Hono {
   );
   router.delete(
     "/auth/sessions/:id",
+    requireCsrf(),
     describe("auth", "Revoke a session", v.undefined(), 204),
     h.revokeSession
   );

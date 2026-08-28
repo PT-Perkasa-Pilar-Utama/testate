@@ -57,7 +57,7 @@ export const apiTokenSchema = v.object({
   role: roleSchema,
   project_ids: v.nullable(v.array(idSchema)),
   prefix: v.string(),
-  created_by: idSchema,
+  created_by: v.nullable(idSchema),
   created_at: timestampSchema,
   last_used_at: v.nullable(timestampSchema),
   expires_at: v.nullable(timestampSchema),

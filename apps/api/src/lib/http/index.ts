@@ -84,3 +84,4 @@ export function parseParams<TSchema extends v.GenericSchema>(
 ): v.InferOutput<TSchema> {
   return parseAt(schema, c.req.param(), "params");
 }
+export { firstQuery } from "./query.ts";

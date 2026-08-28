@@ -16,9 +16,9 @@ Legend: `OK` implemented and tested · `WIP` in progress · `TODO` not started �
 
 | Resource | Operation | Status |
 | --- | --- | --- |
-| Authentication | `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `POST /auth/password`, `GET/DELETE /auth/sessions` | SCAFFOLD |
-| Tokens | `GET /tokens`, `POST /tokens`, `DELETE /tokens/{id}` | SCAFFOLD |
-| Users | `GET /users`, `POST /users`, `GET /users/{id}`, `PATCH /users/{id}`, `POST .../disable`, `POST .../enable`, `DELETE /users/{id}`, `POST .../reset-password` | SCAFFOLD |
+| Authentication | `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `POST /auth/password`, `GET/DELETE /auth/sessions` | OK |
+| Tokens | `GET /tokens`, `POST /tokens`, `DELETE /tokens/{id}` | OK |
+| Users | `GET /users`, `POST /users`, `GET /users/{id}`, `PATCH /users/{id}`, `POST .../disable`, `POST .../enable`, `DELETE /users/{id}`, `POST .../reset-password` | OK |
 | Projects | `GET /projects`, `POST /projects`, `GET /projects/{slug}`, `PATCH`, `GET .../head`, `GET .../quota`, `GET .../deletion-plan`, `POST .../deletion` | SCAFFOLD |
 | Adapters | `GET .../adapters`, `POST .../adapters/test`, `POST .../adapters`, `GET .../adapters/{id}`, `PATCH`, `POST .../mode`, `POST .../retest`, `GET .../deletion-plan`, `POST .../deletion` | SCAFFOLD |
 | Data | `GET .../schema`, `GET .../tables/{table}/rows`, `GET .../lookup`, `POST .../write-sessions`, `PATCH/DELETE .../write-sessions/{sid}`, `POST .../row-edits`, `POST .../query`, `POST .../query/export`, `GET .../queries`, `DELETE .../queries/{query_id}`, saved queries, `GET .../query-history`, policies, `POST .../fixture` | SCAFFOLD |
@@ -30,7 +30,7 @@ Legend: `OK` implemented and tested · `WIP` in progress · `TODO` not started �
 | REST requests | requests CRUD, `POST .../run`, `GET .../runs` | SCAFFOLD |
 | Hooks | `GET/POST .../hooks`, `PATCH/DELETE .../hooks/{id}`, `PUT .../hooks/order` | SCAFFOLD |
 | Jobs | `GET /jobs`, `GET /jobs/{id}`, `POST /jobs/{id}/cancel`, `GET /jobs/{id}/events` | SCAFFOLD |
-| Audit logs | `GET /audit-logs`, `GET /audit-logs/export` | SCAFFOLD |
+| Audit logs | `GET /audit-logs`, `GET /audit-logs/export` | OK |
 | Settings | `GET /settings`, `PATCH /settings`, `POST /settings/store-migration`, `POST /settings/backup`, `GET /settings/backups/{job_id}` | SCAFFOLD |
 | Tools | `POST /tools/hash`, `POST /tools/random`, `POST /tools/uuid` | OK |
 | Agent (MCP) | `POST /mcp`, `GET /mcp`: `initialize`, `tools/list`, `tools/call` (13 tools), `resources/list`, `resources/read`, `ping` | SCAFFOLD |

@@ -37,7 +37,7 @@ CREATE TABLE api_tokens (
   project_ids TEXT,
   token_hash TEXT NOT NULL UNIQUE,
   prefix TEXT NOT NULL,
-  created_by TEXT NOT NULL REFERENCES users (id),
+  created_by TEXT REFERENCES users (id) ON DELETE SET NULL,
   last_used_at TEXT,
   expires_at TEXT,
   revoked_at TEXT,

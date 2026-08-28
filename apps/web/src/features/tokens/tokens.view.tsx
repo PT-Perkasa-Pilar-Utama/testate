@@ -1,21 +1,125 @@
 import type { JSX } from "@solidjs/web";
-import { For, Loading } from "solid-js";
+import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
+import Banner from "@/components/banner.tsx";
+import Button from "@/components/button.tsx";
+import Dialog from "@/components/dialog.tsx";
+import Input from "@/components/input.tsx";
+import LayerCard from "@/components/layer-card.tsx";
+import Select from "@/components/select.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
-import { createTokensPresenter } from "./tokens.presenter.ts";
+import { KIND_OPTIONS, ROLE_OPTIONS, createTokensPresenter } from "./tokens.presenter.ts";
+import type { TokensPresenter } from "./tokens.presenter.ts";
+
+function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
+  const onSubmit = (event: SubmitEvent): void => {
+    event.preventDefault();
+    void props.presenter.create();
+  };
+  return (
+    <Dialog
+      open={props.presenter.creating()}
+      onClose={() => props.presenter.closeCreate()}
+      title="New API token"
+      description="Standard tokens act as their role on the REST API. Agent tokens are viewer-only and reach the MCP endpoint alone."
+    >
+      <form class="grid gap-4" onSubmit={onSubmit}>
+        <label class="grid gap-1.5 text-sm">
+          <span>Name</span>
+          <Input
+            required
+            maxlength="80"
+            value={props.presenter.draft().name}
+            onInput={(event) => props.presenter.setDraft({ name: event.currentTarget.value })}
+          />
+        </label>
+        <label class="grid gap-1.5 text-sm">
+          <span>Kind</span>
+          <Select
+            options={KIND_OPTIONS}
+            value={props.presenter.draft().kind}
+            onChange={(kind) => props.presenter.setDraft({ kind })}
+          />
+        </label>
+        <Show when={props.presenter.draft().kind === "standard"}>
+          <label class="grid gap-1.5 text-sm">
+            <span>Role</span>
+            <Select
+              options={ROLE_OPTIONS}
+              value={props.presenter.draft().role}
+              onChange={(role) => props.presenter.setDraft({ role })}
+            />
+          </label>
+        </Show>
+        <label class="grid gap-1.5 text-sm">
+          <span>
+            {props.presenter.draft().kind === "agent"
+              ? "Expires on (default 90 days, at most 365)"
+              : "Expires on (optional)"}
+          </span>
+          <Input
+            type="date"
+            value={props.presenter.draft().expires_on}
+            onInput={(event) => props.presenter.setDraft({ expires_on: event.currentTarget.value })}
+          />
+        </label>
+        <Show when={props.presenter.error()}>
+          {(message) => <Banner variant="error">{message()}</Banner>}
+        </Show>
+        <div class="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={() => props.presenter.closeCreate()}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary">
+            Create
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+function CreatedBanner(props: { presenter: TokensPresenter }): JSX.Element {
+  return (
+    <Show when={props.presenter.created()}>
+      {(token) => (
+        <LayerCard class="grid gap-3 px-5 py-4">
+          <Banner variant="alert">Copy the token now. Testate shows it once.</Banner>
+          <output class="block break-all rounded-md bg-kumo-tint px-3 py-2 font-mono text-sm">
+            {token()}
+          </output>
+          <div class="flex gap-2">
+            <Button size="sm" variant="primary" onClick={() => void props.presenter.copyCreated()}>
+              Copy
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => props.presenter.dismissCreated()}>
+              Done
+            </Button>
+          </div>
+        </LayerCard>
+      )}
+    </Show>
+  );
+}
 
 export default function TokensView(): JSX.Element {
   const presenter = createTokensPresenter();
   return (
     <section class="grid gap-6">
-      <div class="grid gap-1.5">
-        <h2 class="text-lg font-semibold">API tokens</h2>
-        <p class="text-kumo-subtle">
-          Personal tokens act as their role; agent tokens are viewer-only and reach the MCP endpoint
-          alone.
-        </p>
+      <div class="flex items-start justify-between gap-4">
+        <div class="grid gap-1.5">
+          <h2 class="text-lg font-semibold">API tokens</h2>
+          <p class="text-kumo-subtle">
+            Personal tokens act as their role; agent tokens are viewer-only and reach the MCP
+            endpoint alone.
+          </p>
+        </div>
+        <Button variant="primary" onClick={() => presenter.openCreate()}>
+          New token
+        </Button>
       </div>
+      <CreatedBanner presenter={presenter} />
       <Loading fallback={<p class="text-kumo-subtle">Loading tokens...</p>}>
         <Table>
           <thead>
@@ -26,6 +130,8 @@ export default function TokensView(): JSX.Element {
               <Head>Prefix</Head>
               <Head>Last used</Head>
               <Head>Expires</Head>
+              <Head>Status</Head>
+              <Head />
             </tr>
           </thead>
           <tbody>
@@ -44,12 +150,29 @@ export default function TokensView(): JSX.Element {
                   </Cell>
                   <Cell>{token.last_used_at ?? "never"}</Cell>
                   <Cell>{token.expires_at ?? "no expiry"}</Cell>
+                  <Cell>
+                    <Badge variant={token.revoked_at === null ? "success" : "secondary"}>
+                      {token.revoked_at === null ? "active" : "revoked"}
+                    </Badge>
+                  </Cell>
+                  <Cell>
+                    <Show when={token.revoked_at === null}>
+                      <Button
+                        size="xs"
+                        variant="destructive"
+                        onClick={() => void presenter.revoke(token)}
+                      >
+                        Revoke
+                      </Button>
+                    </Show>
+                  </Cell>
                 </Row>
               )}
             </For>
           </tbody>
         </Table>
       </Loading>
+      <CreateDialog presenter={presenter} />
     </section>
   );
 }

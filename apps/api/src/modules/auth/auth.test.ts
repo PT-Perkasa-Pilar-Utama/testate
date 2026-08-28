@@ -5,7 +5,9 @@ import {
   loginResponseSchema,
   meSchema,
 } from "@testate/shared";
+import * as v from "valibot";
 
+import { ADMIN_PASSWORD, TEST_META, createAccounts } from "../../../test/accounts.ts";
 import { expectContract } from "../../../test/contract.ts";
 import {
   CREATE_TOKEN_RESPONSE_MOCK,
@@ -13,7 +15,17 @@ import {
   ME_MOCK,
   TOKEN_MOCK,
 } from "./auth.mock.ts";
-import { createAuthService } from "./auth.service.ts";
+import { LOCKOUT_ATTEMPTS, LOCKOUT_MS, SESSION_IDLE_MS } from "./auth.service.ts";
+import type { AuthService } from "./auth.service.ts";
+
+const HOUR = 60 * 60 * 1000;
+const WRONG = "wrong-password-123";
+
+const login = (
+  auth: AuthService,
+  password = ADMIN_PASSWORD,
+  username = "admin"
+): ReturnType<AuthService["login"]> => auth.login({ username, password }, TEST_META);
 
 describe("auth mocks match the contract", () => {
   it("login response", () => {
@@ -38,36 +50,146 @@ describe("auth mocks match the contract", () => {
   });
 });
 
-describe("scaffold auth service", () => {
-  const service = createAuthService({ bootstrapUser: "admin", minPasswordLength: 12 });
-
-  it("logs the bootstrap admin in and resolves the session to an admin actor", async () => {
-    const { sessionToken } = await service.login({
-      username: "admin",
-      password: "correct-horse-battery",
-    });
-    const actor = await service.fromSession(sessionToken);
-    expect(actor?.role).toBe("admin");
+describe("login", () => {
+  it("logs in, resolves the cookie to the user, and flags the forced password change", async () => {
+    const { auth } = await createAccounts();
+    const { sessionToken, response } = await login(auth);
+    expect(response.user.username).toBe("admin");
+    expect(response.must_change_password).toBe(true);
+    const resolved = await auth.fromSession(sessionToken);
+    expect(resolved?.actor.role).toBe("admin");
+    expect(resolved?.mustChangePassword).toBe(true);
+    expect(resolved?.projectScope).toBeNull();
   });
 
-  it("refuses a short password", async () => {
-    await expect(service.login({ username: "admin", password: "short" })).rejects.toThrow(
-      "authentication required"
+  it("matches usernames case-insensitively", async () => {
+    const { auth } = await createAccounts();
+    await expect(login(auth, ADMIN_PASSWORD, "ADMIN")).resolves.toBeDefined();
+  });
+
+  it("answers a wrong password and an unknown user with the same 401", async () => {
+    const { auth } = await createAccounts();
+    await expect(login(auth, WRONG)).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(login(auth, ADMIN_PASSWORD, "nobody")).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+  });
+
+  it("locks after five failures, refuses the right password while locked, unlocks after 15 min", async () => {
+    const { auth, advance } = await createAccounts();
+    for (let attempt = 0; attempt < LOCKOUT_ATTEMPTS; attempt += 1) {
+      await expect(login(auth, WRONG)).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    }
+    await expect(login(auth)).rejects.toMatchObject({
+      code: "RATE_LIMITED",
+      details: { retry_after: 900 },
+    });
+    advance(LOCKOUT_MS + 1000);
+    await expect(login(auth)).resolves.toBeDefined();
+  });
+
+  it("resets the failure counter on success", async () => {
+    const { auth } = await createAccounts();
+    for (let attempt = 0; attempt < LOCKOUT_ATTEMPTS - 1; attempt += 1) {
+      await expect(login(auth, WRONG)).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    }
+    await login(auth);
+    await expect(login(auth, WRONG)).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(login(auth)).resolves.toBeDefined();
+  });
+
+  it("writes login, failure, and lock audit rows", async () => {
+    const { auth, audit } = await createAccounts();
+    await login(auth);
+    for (let attempt = 0; attempt < LOCKOUT_ATTEMPTS; attempt += 1) {
+      await expect(login(auth, WRONG)).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    }
+    const actions = (await audit.list({ limit: 20, action: "auth." })).rows.map(
+      (row) => row.action
     );
+    expect(actions[0]).toBe("auth.locked");
+    expect(actions.filter((action) => action === "auth.login_failed").length).toBe(
+      LOCKOUT_ATTEMPTS
+    );
+    expect(actions.at(-1)).toBe("auth.login");
+  });
+});
+
+describe("sessions", () => {
+  it("expires an idle session after 12 hours and touches an active one", async () => {
+    const { auth, advance } = await createAccounts();
+    const { sessionToken } = await login(auth);
+    advance(SESSION_IDLE_MS - HOUR);
+    expect(await auth.fromSession(sessionToken)).not.toBeNull();
+    advance(SESSION_IDLE_MS - HOUR);
+    expect(await auth.fromSession(sessionToken)).not.toBeNull();
+    advance(SESSION_IDLE_MS + 1000);
+    expect(await auth.fromSession(sessionToken)).toBeNull();
   });
 
-  it("marks agent bearer tokens as agents with the viewer role", async () => {
-    const actor = await service.fromBearer("tst_agent_example");
-    expect(actor?.agent).toBe(true);
-    expect(actor?.role).toBe("viewer");
+  it("expires a session seven days after creation however active it is", async () => {
+    const { auth, advance } = await createAccounts();
+    const { sessionToken } = await login(auth);
+    for (let hour = 0; hour < 7 * 24 - 1; hour += 1) {
+      advance(HOUR);
+      expect(await auth.fromSession(sessionToken)).not.toBeNull();
+    }
+    advance(2 * HOUR);
+    expect(await auth.fromSession(sessionToken)).toBeNull();
   });
 
-  it("logs out by forgetting the session", async () => {
-    const { sessionToken } = await service.login({
-      username: "admin",
-      password: "correct-horse-battery",
-    });
-    await service.logout(sessionToken);
-    expect(await service.fromSession(sessionToken)).toBeNull();
+  it("logs out by deleting the session and ignores a garbage cookie", async () => {
+    const { auth, admin } = await createAccounts();
+    const { sessionToken } = await login(auth);
+    await auth.logout(sessionToken, admin, TEST_META);
+    expect(await auth.fromSession(sessionToken)).toBeNull();
+    expect(await auth.fromSession("not-a-session")).toBeNull();
+  });
+
+  it("lists own sessions with the current flag and revokes one", async () => {
+    const { auth, admin } = await createAccounts();
+    const first = await login(auth);
+    const second = await login(auth);
+    const sessions = await auth.sessions(admin, first.sessionToken);
+    expect(sessions.length).toBe(2);
+    expect(sessions.filter((session) => session.current).length).toBe(1);
+    const other = v.parse(
+      v.object({ id: v.string() }),
+      sessions.find((session) => !session.current)
+    );
+    await auth.revokeSession(admin, other.id);
+    expect(await auth.fromSession(second.sessionToken)).toBeNull();
+    expect(await auth.fromSession(first.sessionToken)).not.toBeNull();
+    await expect(
+      auth.revokeSession(admin, "01991f00-0000-7000-8000-0000000000ff")
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("changes the password, clears the flag, and revokes every other session", async () => {
+    const { auth, admin } = await createAccounts();
+    const first = await login(auth);
+    const second = await login(auth);
+    await expect(
+      auth.changePassword(admin, WRONG, "a-new-password-123", first.sessionToken, TEST_META)
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await auth.changePassword(
+      admin,
+      ADMIN_PASSWORD,
+      "a-new-password-123",
+      first.sessionToken,
+      TEST_META
+    );
+    expect((await auth.fromSession(first.sessionToken))?.mustChangePassword).toBe(false);
+    expect(await auth.fromSession(second.sessionToken)).toBeNull();
+    await expect(login(auth, "a-new-password-123")).resolves.toBeDefined();
+  });
+
+  it("includes env for admins only in me()", async () => {
+    const { auth, admin } = await createAccounts();
+    const resolved = { actor: admin, mustChangePassword: false, projectScope: null };
+    expect(auth.me(resolved, "development").env).toBe("development");
+    expect(
+      auth.me({ ...resolved, actor: { ...admin, role: "qa" } }, "development").env
+    ).toBeUndefined();
   });
 });

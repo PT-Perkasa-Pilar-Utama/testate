@@ -1,10 +1,17 @@
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
-import { changePasswordSchema, createTokenSchema, loginSchema } from "@testate/shared";
+import {
+  changePasswordSchema,
+  createTokenSchema,
+  loginSchema,
+  tokenKindSchema,
+} from "@testate/shared";
+import * as v from "valibot";
 
-import { SESSION_COOKIE, currentActor } from "../../lib/http/auth.ts";
-import { ok, okPage, param, parseBody } from "../../lib/http/index.ts";
+import { SESSION_COOKIE, currentActor, requestMeta } from "../../lib/http/auth.ts";
+import { ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.ts";
 import type { Handler } from "../../lib/http/index.ts";
-import type { AuthService } from "./auth.service.ts";
+import type { TokensListQuery } from "./auth.repository.ts";
+import type { AuthService, CreateTokenInput } from "./auth.service.ts";
 
 export type AuthHandlers = {
   login: Handler;
@@ -18,17 +25,50 @@ export type AuthHandlers = {
   revokeToken: Handler;
 };
 
-export type AuthHandlerOptions = { env: string; basePath: string; secureCookies: boolean };
+export type AuthHandlerOptions = {
+  env: string;
+  basePath: string;
+  secureCookies: boolean;
+  trustProxy: boolean;
+};
+
+const tokensQuery = v.object({
+  kind: v.optional(v.array(tokenKindSchema)),
+  revoked: v.optional(v.array(v.picklist(["true", "false"]))),
+});
+
+function toTokensQuery(parsed: v.InferOutput<typeof tokensQuery>): TokensListQuery {
+  const query: TokensListQuery = {};
+  const kind = parsed.kind?.[0];
+  if (kind !== undefined) query.kind = kind;
+  const revoked = parsed.revoked?.[0];
+  if (revoked !== undefined) query.revoked = revoked === "true";
+  return query;
+}
+
+/** Drops undefined optional fields so the service input matches exactOptionalPropertyTypes. */
+function toCreateTokenInput(parsed: v.InferOutput<typeof createTokenSchema>): CreateTokenInput {
+  const input: CreateTokenInput = {
+    name: parsed.name,
+    kind: parsed.kind,
+    project_ids: parsed.project_ids,
+  };
+  if (parsed.role !== undefined) input.role = parsed.role;
+  if (parsed.expires_at !== undefined) input.expires_at = parsed.expires_at;
+  return input;
+}
 
 export function createAuthHandlers(
   service: AuthService,
   options: AuthHandlerOptions
 ): AuthHandlers {
   const cookiePath = options.basePath === "/" ? "/" : options.basePath;
+  const meta = (c: Parameters<Handler>[0]): ReturnType<typeof requestMeta> =>
+    requestMeta(c, options.trustProxy);
   return {
     login: async (c) => {
       const input = await parseBody(c, loginSchema);
-      const { sessionToken, response } = await service.login(input);
+      const { sessionToken, response } = await service.login(input, meta(c));
       setCookie(c, SESSION_COOKIE, sessionToken, {
         httpOnly: true,
         sameSite: "Strict",
@@ -45,28 +85,47 @@ export function createAuthHandlers(
     },
     logout: async (c) => {
       const token = getCookie(c, SESSION_COOKIE);
-      if (token !== undefined) await service.logout(token);
+      if (token !== undefined) await service.logout(token, c.get("actor"), meta(c));
       deleteCookie(c, SESSION_COOKIE, { path: cookiePath });
       return c.body(null, 204);
     },
-    me: async (c) => ok(c, service.me(currentActor(c), options.env)),
+    me: async (c) =>
+      ok(
+        c,
+        service.me(
+          {
+            actor: currentActor(c),
+            mustChangePassword: c.get("passwordChangeRequired"),
+            projectScope: c.get("projectScope"),
+          },
+          options.env
+        )
+      ),
     changePassword: async (c) => {
       const input = await parseBody(c, changePasswordSchema);
-      await service.changePassword(currentActor(c), input.current, input.next);
+      await service.changePassword(
+        currentActor(c),
+        input.current,
+        input.next,
+        getCookie(c, SESSION_COOKIE),
+        meta(c)
+      );
       return c.body(null, 204);
     },
-    sessions: async (c) => okPage(c, await service.sessions(currentActor(c)), null, 50),
+    sessions: async (c) =>
+      okPage(c, await service.sessions(currentActor(c), getCookie(c, SESSION_COOKIE)), null, 50),
     revokeSession: async (c) => {
       await service.revokeSession(currentActor(c), param(c, "id"));
       return c.body(null, 204);
     },
-    listTokens: async (c) => okPage(c, await service.listTokens(), null, 50),
+    listTokens: async (c) =>
+      okPage(c, await service.listTokens(toTokensQuery(parseQuery(c, tokensQuery))), null, 200),
     createToken: async (c) => {
-      await parseBody(c, createTokenSchema);
-      return ok(c, await service.createToken(), 201);
+      const input = toCreateTokenInput(await parseBody(c, createTokenSchema));
+      return ok(c, await service.createToken(currentActor(c), input, meta(c)), 201);
     },
     revokeToken: async (c) => {
-      await service.revokeToken(param(c, "id"));
+      await service.revokeToken(currentActor(c), param(c, "id"), meta(c));
       return c.body(null, 204);
     },
   };
