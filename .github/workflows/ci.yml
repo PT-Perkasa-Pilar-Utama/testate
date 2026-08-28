@@ -1,0 +1,74 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: type-check, lint, format, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.0"
+      - run: bun install --frozen-lockfile
+      - run: bun run complete-check
+
+  smoke:
+    name: boot and smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.0"
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: boot the built API
+        env:
+          TESTATE_ENV: test
+          TESTATE_DATA_DIR: ${{ runner.temp }}/testate-data
+          TESTATE_ADMIN_PASSWORD: change-me-on-first-login
+          TESTATE_LOG_STDOUT: "false"
+          TESTATE_LOG_RETENTION_DAYS: "1"
+        run: |
+          export TESTATE_SECRETS_ACTIVE_KEY="$(bun scripts/generate-key.ts)"
+          bun apps/api/dist/index.js &
+          echo $! > api.pid
+          for i in $(seq 1 30); do
+            if curl -fs -o /dev/null http://localhost:3000/api/v1/health/ready; then exit 0; fi
+            sleep 1
+          done
+          echo "API did not become ready" >&2
+          exit 1
+      - run: bun run smoke
+      - name: stop the API
+        if: always()
+        run: kill "$(cat api.pid)" || true
+
+  image:
+    name: docker build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile
+          push: false
+          tags: testate:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

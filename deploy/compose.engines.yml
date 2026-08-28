@@ -1,0 +1,75 @@
+# Target engines for development and the contract tests. Not for production.
+#   docker compose -f deploy/compose.engines.yml up -d
+# Ports are offset so they never collide with a local install.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: testate
+      POSTGRES_PASSWORD: testate
+      POSTGRES_DB: shop
+    ports:
+      - "54320:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testate -d shop"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: testate
+      MYSQL_DATABASE: shop
+      MYSQL_USER: testate
+      MYSQL_PASSWORD: testate
+    ports:
+      - "33060:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ptestate"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  mariadb:
+    image: mariadb:11.4
+    environment:
+      MARIADB_ROOT_PASSWORD: testate
+      MARIADB_DATABASE: shop
+      MARIADB_USER: testate
+      MARIADB_PASSWORD: testate
+    ports:
+      - "33070:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  mongo:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: testate
+      MONGO_INITDB_ROOT_PASSWORD: testate
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: testate
+      MINIO_ROOT_PASSWORD: testate-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 20

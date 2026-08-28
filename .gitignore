@@ -1,0 +1,30 @@
+# dependencies
+node_modules
+
+# build output
+dist
+apps/web/dist
+apps/api/dist
+
+# runtime data (metadata.db, blobs, logs, uploads, run/)
+data
+*.db
+*.db-shm
+*.db-wal
+
+# dotenv
+.env
+.env.*
+!deploy/.env.example
+
+# caches
+.cache
+*.tsbuildinfo
+
+# editors and OS
+.idea
+.vscode
+.DS_Store
+
+# smoke test output
+.smoke

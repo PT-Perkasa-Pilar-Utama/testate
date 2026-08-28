@@ -1,0 +1,80 @@
+import { describe, expect, it } from "bun:test";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import * as v from "valibot";
+import { healthAdminSchema } from "@testate/shared";
+
+import { migrate, openMetadataDb } from "../../lib/db/index.ts";
+import { health } from "./ops.service.ts";
+import type { HealthDeps } from "./ops.service.ts";
+
+function deps(overrides: Partial<HealthDeps> = {}): HealthDeps {
+  const dir = mkdtempSync(join(tmpdir(), "testate-ops-"));
+  const db = openMetadataDb(join(dir, "metadata.db"));
+  migrate(db);
+  return {
+    db,
+    dataDir: dir,
+    env: "test",
+    version: "0.1.0",
+    bootId: "01J-boot",
+    bootedAt: Date.now() - 5000,
+    storeDriver: "local",
+    activeKid: "9f3c1a2b",
+    extraKeys: 0,
+    sinkDegraded: () => false,
+    dispatcher: () => ({ alive: true, running: 0, queued: 0, lastTickAt: null }),
+    originShared: false,
+    ...overrides,
+  };
+}
+
+describe("health", () => {
+  it("reports ok with a migrated metadata database and a writable data dir", () => {
+    const report = health(deps());
+
+    expect(report.status).toBe("ok");
+    expect(report.checks.metadata_db.status).toBe("ok");
+    expect(report.checks.data_dir.free_bytes).toBeGreaterThan(0);
+    expect(v.safeParse(healthAdminSchema, report).success).toBe(true);
+  });
+
+  it("degrades when the dispatcher is not alive", () => {
+    const report = health(
+      deps({ dispatcher: () => ({ alive: false, running: 0, queued: 3, lastTickAt: null }) })
+    );
+
+    expect(report.status).toBe("degraded");
+    expect(report.checks.dispatcher.queued).toBe(3);
+  });
+
+  it("goes down when the data dir is not writable", () => {
+    const report = health(deps({ dataDir: "/nonexistent/testate" }));
+
+    expect(report.status).toBe("down");
+    expect(report.checks.data_dir.status).toBe("down");
+  });
+});
+
+describe("migrate", () => {
+  it("applies the initial migration once and skips it on the second run", () => {
+    const dir = mkdtempSync(join(tmpdir(), "testate-migrate-"));
+    const db = openMetadataDb(join(dir, "metadata.db"));
+
+    const first = migrate(db);
+    const second = migrate(db);
+
+    expect(first.applied).toStrictEqual(["0001_init.sql"]);
+    expect(second.applied).toStrictEqual([]);
+    expect(second.skipped).toBe(1);
+    const tables = db
+      .query<{ name: string }, []>(
+        "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"
+      )
+      .all()
+      .map((row) => row.name);
+    expect(tables).toContain("states");
+    expect(tables).toContain("audit_logs");
+  });
+});

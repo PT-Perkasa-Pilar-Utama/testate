@@ -1,0 +1,25 @@
+# Production compose. Copy this directory, fill .env from .env.example, then:
+#   docker compose up -d
+# The image writes only under /data (metadata.db, blobs, logs, uploads, run/).
+services:
+  testate:
+    image: ghcr.io/pt-perkasa-pilar-utama/testate:latest
+    env_file: .env
+    ports:
+      - "3000:3000"
+    volumes:
+      - testate-data:/data
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    # SIGTERM lets running jobs roll back; the API waits up to 30 s (spec 22 §22.4).
+    stop_grace_period: 35s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+volumes:
+  testate-data:

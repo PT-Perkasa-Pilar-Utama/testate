@@ -1,0 +1,17 @@
+.git
+.github
+.claude
+node_modules
+**/node_modules
+**/dist
+data
+docs
+tools
+deploy
+scripts
+.env
+.env.*
+*.db
+*.db-shm
+*.db-wal
+.smoke

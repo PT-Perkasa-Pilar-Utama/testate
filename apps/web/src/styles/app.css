@@ -1,0 +1,8 @@
+@import "tailwindcss";
+@import "@cloudflare/kumo/styles/tailwind";
+
+html,
+body,
+#root {
+  height: 100%;
+}

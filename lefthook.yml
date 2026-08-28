@@ -1,0 +1,44 @@
+# Git hooks. Installed by `bun install` via the prepare script, or by hand
+# with `bunx lefthook install`. Bypass a hook with `git commit --no-verify`;
+# CI runs the same checks and is the real gate.
+
+pre-commit:
+  parallel: true
+  commands:
+    # Formats only the staged files and restages the result, so a commit never
+    # sweeps in unrelated reformatting. tools/oxlint/anti-slop is vendored and
+    # kept byte-identical to upstream.
+    fmt:
+      glob: "*.{ts,tsx,js,mjs,json,css,md,yml,yaml}"
+      exclude:
+        - ".claude/**"
+        - "tools/**"
+        - "docs/**"
+      run: bunx oxfmt {staged_files}
+      stage_fixed: true
+
+    lint:
+      glob: "*.{ts,tsx}"
+      exclude:
+        - ".claude/**"
+        - "tools/**"
+      run: bunx oxlint {staged_files}
+
+    type-check:
+      glob: "*.{ts,tsx}"
+      run: bun run type-check
+
+commit-msg:
+  commands:
+    conventional:
+      run: |
+        subject=$(head -1 "{1}")
+        if ! echo "$subject" | grep -qE "^(feat|fix|chore|refactor|test|docs|perf|ci|style|build|revert)(\(.+\))?!?: .+$"; then
+          echo "Invalid commit format. Expected: type(scope): description" >&2
+          echo "Types: feat, fix, chore, refactor, test, docs, perf, ci, style, build, revert" >&2
+          exit 1
+        fi
+        if [ ${#subject} -gt 80 ]; then
+          echo "Commit subject is longer than 80 characters" >&2
+          exit 1
+        fi

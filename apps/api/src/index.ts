@@ -1,0 +1,225 @@
+/**
+ * Testate API composition root.
+ *
+ * AI AGENTS: boot order is fixed by docs/technical-specs/22-base-path-and-boot.md.
+ * Wire modules here; put no business logic in this file.
+ */
+import "./lib/http/context.ts";
+
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { Scalar } from "@scalar/hono-api-reference";
+import { Hono } from "hono";
+import { PASSWORD_MIN_LENGTH } from "@testate/shared";
+
+import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
+import type { Config } from "./lib/config/index.ts";
+import { migrate, openMetadataDb } from "./lib/db/index.ts";
+import { authenticate } from "./lib/http/auth.ts";
+import { errorResponse, notFound } from "./lib/http/index.ts";
+import { createLogger } from "./lib/logger/index.ts";
+import { mountOpenApi } from "./lib/openapi.ts";
+import { loadKeyRing } from "./lib/sealed/index.ts";
+import { createAdaptersHandlers } from "./modules/adapters/adapters.handler.ts";
+import { createAdaptersService } from "./modules/adapters/adapters.service.ts";
+import { createAgentHandlers } from "./modules/agent/agent.handler.ts";
+import { createAgentService } from "./modules/agent/agent.service.ts";
+import { createAgentTools } from "./modules/agent/agent.tools.ts";
+import { createAuditHandlers } from "./modules/audit/audit.handler.ts";
+import { createAuditService } from "./modules/audit/audit.service.ts";
+import { createAuthHandlers } from "./modules/auth/auth.handler.ts";
+import { createAuthService } from "./modules/auth/auth.service.ts";
+import { createCheckoutsHandlers } from "./modules/checkouts/checkouts.handler.ts";
+import { createCheckoutsService } from "./modules/checkouts/checkouts.service.ts";
+import { createDataHandlers } from "./modules/data/data.handler.ts";
+import { createDataService } from "./modules/data/data.service.ts";
+import { createDiffsHandlers } from "./modules/diffs/diffs.handler.ts";
+import { createDiffsService } from "./modules/diffs/diffs.service.ts";
+import { createHooksHandlers } from "./modules/hooks/hooks.handler.ts";
+import { createHooksService } from "./modules/hooks/hooks.service.ts";
+import { createImportsHandlers } from "./modules/imports/imports.handler.ts";
+import { createImportsService } from "./modules/imports/imports.service.ts";
+import { createV1 } from "./modules/index.ts";
+import { createJobsHandlers } from "./modules/jobs/jobs.handler.ts";
+import { createJobsService } from "./modules/jobs/jobs.service.ts";
+import { mountSpa, resolveWebSource, rewriteWebAssets } from "./modules/ops/ops.basepath.ts";
+import { createOpsHandlers } from "./modules/ops/ops.handler.ts";
+import { createResetHandler } from "./modules/ops/ops.reset.ts";
+import { createProjectsHandlers } from "./modules/projects/projects.handler.ts";
+import { createProjectsService } from "./modules/projects/projects.service.ts";
+import { createRestHandlers } from "./modules/rest/rest.handler.ts";
+import { createRestService } from "./modules/rest/rest.service.ts";
+import { createSettingsHandlers } from "./modules/settings/settings.handler.ts";
+import { createSettingsService } from "./modules/settings/settings.service.ts";
+import { createStatesHandlers } from "./modules/states/states.handler.ts";
+import { createStatesService } from "./modules/states/states.service.ts";
+import { createStorageHandlers } from "./modules/storage/storage.handler.ts";
+import { createStorageService } from "./modules/storage/storage.service.ts";
+import { createToolsHandlers } from "./modules/tools/tools.handler.ts";
+import { createToolsService } from "./modules/tools/tools.service.ts";
+import { createUsersHandlers } from "./modules/users/users.handler.ts";
+import { createUsersService } from "./modules/users/users.service.ts";
+
+const VERSION = "0.1.0";
+
+export type App = { fetch: Hono["fetch"]; port: number; close: () => void };
+
+function ensureDirs(config: Config): void {
+  for (const sub of ["blobs", "logs", "uploads", "imports", "run"]) {
+    mkdirSync(join(config.TESTATE_DATA_DIR, sub), { recursive: true });
+  }
+}
+
+/** Runs the boot sequence and returns the Hono app. Throws a named error on any refusal. */
+export async function boot(env: Readonly<Record<string, string | undefined>>): Promise<App> {
+  const config = loadConfig(env);
+  const bootId = Bun.randomUUIDv7();
+  const bootedAt = Date.now();
+  const ring = await loadKeyRing(config.TESTATE_SECRETS_ACTIVE_KEY);
+  ensureDirs(config);
+  const logger = createLogger({
+    dir: logDir(config),
+    retentionDays: config.TESTATE_LOG_RETENTION_DAYS,
+    stdout: config.TESTATE_LOG_STDOUT,
+    service: {
+      name: "testate",
+      version: VERSION,
+      boot_id: bootId,
+      base_path: config.TESTATE_BASE_PATH,
+    },
+    sampleRate: config.TESTATE_LOG_SAMPLE_RATE,
+    slowMs: config.TESTATE_LOG_SLOW_MS,
+    stacks: config.TESTATE_LOG_STACKS,
+  });
+  const db = openMetadataDb(join(config.TESTATE_DATA_DIR, "metadata.db"));
+  // Migrations live next to this entry in both layouts: src/db/migrations and dist/db/migrations.
+  const migrationsDir = join(import.meta.dir, "db", "migrations");
+  const migration = migrate(db, migrationsDir);
+  const prefix = apiPrefix(config);
+  const webSource = resolveWebSource(import.meta.dir);
+  const web =
+    webSource === null
+      ? null
+      : rewriteWebAssets(
+          webSource,
+          join(config.TESTATE_DATA_DIR, "run", "web"),
+          config.TESTATE_BASE_PATH
+        );
+
+  const auth = createAuthService({
+    bootstrapUser: config.TESTATE_ADMIN_USER,
+    minPasswordLength: PASSWORD_MIN_LENGTH,
+  });
+  const jobs = createJobsService();
+  const data = createDataService();
+  const states = createStatesService();
+  const diffs = createDiffsService();
+  const storage = createStorageService();
+  const adapters = createAdaptersService();
+  const projects = createProjectsService();
+  let ready = false;
+
+  const handlers = {
+    ops: createOpsHandlers(
+      {
+        db,
+        dataDir: config.TESTATE_DATA_DIR,
+        env: config.TESTATE_ENV,
+        version: VERSION,
+        bootId,
+        bootedAt,
+        storeDriver: config.TESTATE_STORE ?? "local",
+        activeKid: ring.activeKid,
+        extraKeys: ring.all.size - 1,
+        sinkDegraded: () => logger.sink.degraded,
+        dispatcher: () => jobs.heartbeat(),
+        originShared: false,
+      },
+      () => ready
+    ),
+    // The reset route exists only outside production: registration, not authorization, is the gate (07 §7.8).
+    resetState:
+      config.TESTATE_ENV === "production"
+        ? null
+        : createResetHandler(
+            db,
+            migrationsDir,
+            config.TESTATE_RESET_SEED,
+            () => jobs.heartbeat().running > 0
+          ),
+    auth: createAuthHandlers(auth, {
+      env: config.TESTATE_ENV,
+      basePath: config.TESTATE_BASE_PATH,
+      secureCookies: config.TESTATE_TRUST_PROXY,
+    }),
+    users: createUsersHandlers(createUsersService()),
+    projects: createProjectsHandlers(projects, prefix),
+    adapters: createAdaptersHandlers(adapters, prefix),
+    data: createDataHandlers(data),
+    imports: createImportsHandlers(
+      createImportsService(),
+      prefix,
+      config.TESTATE_MAX_UPLOAD_MB * 1024 * 1024
+    ),
+    states: createStatesHandlers(states, prefix),
+    checkouts: createCheckoutsHandlers(createCheckoutsService(), prefix),
+    diffs: createDiffsHandlers(diffs, prefix),
+    storage: createStorageHandlers(storage),
+    rest: createRestHandlers(createRestService()),
+    hooks: createHooksHandlers(createHooksService()),
+    jobs: createJobsHandlers(jobs),
+    audit: createAuditHandlers(createAuditService()),
+    settings: createSettingsHandlers(createSettingsService(), prefix),
+    tools: createToolsHandlers(createToolsService()),
+    agent: createAgentHandlers(
+      createAgentService(VERSION),
+      createAgentTools({ projects, adapters, data, states, diffs, storage })
+    ),
+  };
+
+  const app = new Hono();
+  app.use("*", logger.middleware());
+  app.use("*", authenticate(auth));
+  app.onError((cause, c) => errorResponse(c, cause, c.get("event"), config.TESTATE_LOG_STACKS));
+  app.notFound((c) => errorResponse(c, notFound("route"), c.get("event"), false));
+
+  const v1 = createV1(handlers);
+  mountOpenApi(v1, VERSION);
+  v1.get("/docs", Scalar({ url: `${prefix}/openapi.json` }));
+  app.route(prefix, v1);
+  if (web !== null) mountSpa(app, config.TESTATE_BASE_PATH, prefix, web.dir);
+
+  const bootEvent = logger.create("boot");
+  bootEvent.add("op", {
+    name: "boot",
+    migrations_applied: migration.applied,
+    migrations_skipped: migration.skipped,
+    reset_state_mounted: config.TESTATE_ENV !== "production",
+    web_files: web?.files ?? 0,
+    web_rewritten: web?.rewritten ?? 0,
+  });
+  bootEvent.emit();
+  ready = true;
+
+  return {
+    fetch: app.fetch,
+    port: config.PORT,
+    close: () => {
+      logger.sink.close();
+      db.close();
+    },
+  };
+}
+
+if (import.meta.main) {
+  const app = await boot(Bun.env);
+  const server = Bun.serve({ port: app.port, fetch: app.fetch });
+  // SCAFFOLD: the jobs card adds the drain from 22 §22.4 (pause dispatcher, cancel runners, wait 30 s).
+  const shutdown = (): void => {
+    server.stop();
+    app.close();
+    process.exit(0);
+  };
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
+}

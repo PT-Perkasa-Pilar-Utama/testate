@@ -1,0 +1,106 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import", "promise", "jest"],
+
+  // anti-slop is vendored from https://github.com/dmmulroy/anti-slop (MIT). It
+  // rejects low-evidence patterns an agent reaches for when unsure of a type.
+  // eslint-plugin-solid carries the Solid 2.0 reactivity and migration rules.
+  "jsPlugins": [
+    { "name": "anti-slop", "specifier": "./tools/oxlint/anti-slop/index.ts" },
+    "eslint-plugin-solid"
+  ],
+  "settings": { "solid": { "version": 2 } },
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "typescript/ban-ts-comment": [
+      "error",
+      {
+        "ts-expect-error": "allow-with-description",
+        "ts-ignore": true,
+        "ts-nocheck": true,
+        "ts-check": false
+      }
+    ],
+    "typescript/no-explicit-any": "error",
+    "typescript/explicit-module-boundary-types": "error",
+    "typescript/consistent-type-definitions": ["error", "type"],
+    "typescript/consistent-type-imports": [
+      "error",
+      { "prefer": "type-imports", "fixStyle": "separate-type-imports" }
+    ],
+    "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
+    "typescript/no-unsafe-type-assertion": "error",
+    "typescript/no-non-null-assertion": "error",
+    "typescript/use-unknown-in-catch-callback-variable": "error",
+
+    "promise/prefer-await-to-then": "error",
+    "promise/no-nesting": "error",
+
+    "no-nested-ternary": "error",
+    "prefer-const": "error",
+    "object-shorthand": "error",
+    "prefer-template": "error",
+    "no-console": "error",
+
+    // CODING_STANDARD §2: cyclomatic complexity gate.
+    "complexity": ["error", { "max": 10 }],
+
+    // CODING_STANDARD §1: tautological tests considered harmful.
+    "jest/expect-expect": "error",
+    "jest/no-conditional-expect": "error",
+    "jest/no-conditional-in-test": "error",
+    "jest/no-standalone-expect": "error",
+    "jest/valid-expect": "error",
+    "jest/no-identical-title": "error",
+    "jest/no-disabled-tests": "error",
+    "jest/no-focused-tests": "error",
+    "jest/prefer-strict-equal": "error",
+    "jest/require-to-throw-message": "error",
+
+    "anti-slop/no-chained-type-assertions": "error",
+    "anti-slop/no-conditional-empty-object-spread": "error",
+    "anti-slop/no-known-value-widening": "error",
+    "anti-slop/no-module-mocking": "error",
+    "anti-slop/no-object-parameters": "error",
+    "anti-slop/no-reflect-apply": "error",
+    "anti-slop/no-reflect-get": "error",
+    "anti-slop/no-runtime-typeof": "error",
+    "anti-slop/no-shape-in-symbol-names": "error",
+    "anti-slop/no-unknown-parameters": "error",
+    "anti-slop/no-unknown-returns": "error",
+    "anti-slop/no-unknown-type-aliases": "error",
+    "anti-slop/no-unsafe-dictionary-type": "error",
+    "anti-slop/no-widen-then-assert": "error",
+    "anti-slop/require-safety-comment-for-type-assertion": "error"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.ts", "**/*.tsx"],
+      "rules": {
+        "max-lines": ["error", { "max": 300, "skipBlankLines": true, "skipComments": true }]
+      }
+    },
+    {
+      // Solid 2.0 rules apply to the SPA only.
+      "files": ["apps/web/**/*.tsx", "apps/web/**/*.ts"],
+      "rules": {
+        "solid/removed-api": "error",
+        "solid/no-single-arg-create-effect": "error",
+        "solid/no-accessor-as-prop": "error",
+        "solid/no-destructure": "error",
+        "solid/reactivity": "error",
+        "solid/jsx-no-undef": "error",
+        "solid/prefer-structured-class": "warn"
+      }
+    },
+    {
+      // The wide-event logger is the one place that writes to stdout.
+      "files": ["apps/api/src/lib/logger/**/*.ts", "scripts/**/*.ts"],
+      "rules": { "no-console": "off" }
+    }
+  ],
+  "env": { "builtin": true, "browser": true },
+  "ignorePatterns": [".claude", "dist", "node_modules", "*.lock", "tools", "data", "docs", "deploy"]
+}

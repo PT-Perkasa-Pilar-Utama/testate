@@ -1,0 +1,47 @@
+{
+  "name": "testate",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Git for your test database. Reset the database, not the developer.",
+  "license": "MIT",
+  "author": "PT. Perkasa Pilar Utama",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PT-Perkasa-Pilar-Utama/testate.git"
+  },
+  "type": "module",
+  "workspaces": [
+    "apps/api",
+    "apps/web",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "dev:api": "bun run --cwd apps/api dev",
+    "dev:web": "bun run --cwd apps/web dev",
+    "build": "bun run build:web && bun run build:api",
+    "build:web": "bun run --cwd apps/web build",
+    "build:api": "bun run --cwd apps/api build",
+    "start": "bun apps/api/dist/index.js",
+    "type-check": "tsc --noEmit -p packages/shared/tsconfig.json && tsc --noEmit -p apps/api/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.node.json",
+    "lint": "oxlint apps packages scripts",
+    "lint:fix": "oxlint --fix apps packages scripts",
+    "fmt": "oxfmt --check",
+    "fmt:fix": "oxfmt .",
+    "test": "bun test",
+    "smoke": "bun scripts/smoke.ts",
+    "contract": "bun scripts/contract.ts",
+    "generate-key": "bun scripts/generate-key.ts",
+    "complete-check": "bun run type-check && bun run lint && bun run fmt && bun test && bun run build",
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "1.80.0",
+    "@types/bun": "1.4.0",
+    "eslint-plugin-solid": "0.16.1",
+    "lefthook": "2.1.10",
+    "oxfmt": "0.65.0",
+    "oxlint": "1.80.0",
+    "typescript": "7.0.2"
+  }
+}
