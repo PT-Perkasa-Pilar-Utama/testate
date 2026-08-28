@@ -77,7 +77,7 @@ Every choice below was confirmed in the architecture grill on 2026-08-28. Versio
 | Smoke | Playwright 1.62.1 driving the built app (`scripts/smoke.ts`) |
 | Lint and format | oxlint 1.80.0 + `@oxlint/plugins` 1.80.0 + vendored anti-slop + `eslint-plugin-solid` 0.16.1 (v2 rules) + `jest` plugin; oxfmt 0.65.0 (verified) |
 | Hooks | lefthook 2.1.10 (verified): format staged, lint staged, type-check on commit; conventional commit message check |
-| CI | GitHub Actions `ci.yml` on every push: fmt, lint, type-check, unit, API, contract matrix, build, OSV scan. `release.yml` on a `v*` tag: contract matrix, image build for amd64 and arm64, push to GHCR |
+| CI | GitHub Actions `ci.yml` on every push: fmt, lint, type-check, unit, API, contract matrix, build, OSV scan. `deploy-image.yml` on manual dispatch: skips a published `package.json` version, builds the fat image, profiles it with docker-slim while it boots and answers the health probes, pushes `<version>` and `latest` to GHCR |
 
 ## 4.7 Deployment
 

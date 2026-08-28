@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="112" viewBox="0 0 420 112" role="img" aria-label="Testate">
+  <rect x="8" y="8" width="96" height="96" rx="22" fill="#E6FFF7"/>
+  <g fill="none" stroke="#0F766E" stroke-width="6" stroke-linecap="round">
+    <line x1="41" y1="83" x2="41" y2="31"/>
+    <path d="M41 58 C41 44 71 54 71 40"/>
+  </g>
+  <circle cx="41" cy="83" r="7.5" fill="#0F766E"/>
+  <circle cx="71" cy="40" r="7.5" fill="#0F766E"/>
+  <circle cx="41" cy="31" r="10.5" fill="#10B981"/>
+  <circle cx="41" cy="31" r="4.5" fill="#E6FFF7"/>
+  <text x="122" y="76" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="58" font-weight="700" letter-spacing="-1.5">
+    <tspan fill="#F4FBF8">Test</tspan><tspan fill="#34D399">ate</tspan>
+  </text>
+</svg>

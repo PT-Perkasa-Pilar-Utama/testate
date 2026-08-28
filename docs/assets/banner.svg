@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="440" viewBox="0 0 1280 440" role="img" aria-label="Testate sits between the people and pipelines that test a system and the databases, file stores, and APIs of that system">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#7DD3C0"/>
+    </marker>
+    <marker id="arrowDim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5B7A85"/>
+    </marker>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#10B981" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#10B981" stop-opacity="0"/>
+    </radialGradient>
+    <style>
+      .t { font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+      .node { fill: #12303D; stroke: #24505F; stroke-width: 1.5; }
+      .label { fill: #DCEEF2; font-size: 17px; font-weight: 600; }
+      .sub { fill: #8FB2BC; font-size: 13px; }
+      .group { fill: #5B7A85; font-size: 12px; letter-spacing: 2px; font-weight: 600; }
+      .edge { fill: none; stroke: #7DD3C0; stroke-width: 2.5; }
+      .edgeDim { fill: none; stroke: #5B7A85; stroke-width: 2; stroke-dasharray: 6 6; }
+    </style>
+  </defs>
+
+  <rect width="1280" height="440" fill="#0B1F2A"/>
+
+  <!-- Left: who uses it -->
+  <text class="t group" x="70" y="80">WHO USES IT</text>
+  <g>
+    <rect class="node" x="70" y="100" width="220" height="64" rx="14"/>
+    <text class="t label" x="90" y="128">QA engineers</text>
+    <text class="t sub" x="90" y="150">dashboard, snapshots, restores</text>
+
+    <rect class="node" x="70" y="188" width="220" height="64" rx="14"/>
+    <text class="t label" x="90" y="216">CI pipelines</text>
+    <text class="t sub" x="90" y="238">REST API with a token</text>
+
+    <rect class="node" x="70" y="276" width="220" height="64" rx="14"/>
+    <text class="t label" x="90" y="304">AI agents</text>
+    <text class="t sub" x="90" y="326">MCP, read-only, masked</text>
+  </g>
+
+  <!-- Center: Testate, highlighted -->
+  <circle cx="640" cy="220" r="150" fill="url(#glow)"/>
+  <rect x="520" y="150" width="240" height="140" rx="24" fill="#0F2E3A" stroke="#10B981" stroke-width="3"/>
+  <g transform="translate(548 176)">
+    <rect width="56" height="56" rx="13" fill="#0B1F2A"/>
+    <g fill="none" stroke="#7DD3C0" stroke-width="3.5" stroke-linecap="round">
+      <line x1="19" y1="45" x2="19" y2="16"/>
+      <path d="M19 32 C19 24 39 29 39 21"/>
+    </g>
+    <circle cx="19" cy="45" r="4.5" fill="#7DD3C0"/>
+    <circle cx="39" cy="21" r="4.5" fill="#7DD3C0"/>
+    <circle cx="19" cy="16" r="6" fill="#10B981"/>
+    <circle cx="19" cy="16" r="2.5" fill="#0B1F2A"/>
+  </g>
+  <text class="t" x="618" y="210" font-size="30" font-weight="700" fill="#F4FBF8">Testate</text>
+  <text class="t sub" x="548" y="262" font-size="14">snapshot · checkout · diff · import</text>
+  <text class="t sub" x="548" y="280" font-size="14">one image, one volume, any sub-path</text>
+
+  <!-- Below center: snapshot store -->
+  <rect class="node" x="560" y="340" width="160" height="56" rx="14"/>
+  <text class="t label" x="580" y="364">Snapshot store</text>
+  <text class="t sub" x="580" y="384">volume or S3</text>
+
+  <!-- Right: the system under test -->
+  <text class="t group" x="990" y="80">SYSTEM UNDER TEST</text>
+  <g>
+    <rect class="node" x="990" y="100" width="220" height="64" rx="14"/>
+    <text class="t label" x="1010" y="128">PostgreSQL · MySQL · MariaDB</text>
+    <text class="t sub" x="1010" y="150">Tabular tier</text>
+
+    <rect class="node" x="990" y="188" width="220" height="64" rx="14"/>
+    <text class="t label" x="1010" y="216">MongoDB</text>
+    <text class="t sub" x="1010" y="238">Document tier</text>
+
+    <rect class="node" x="990" y="276" width="220" height="64" rx="14"/>
+    <text class="t label" x="1010" y="304">S3 · SFTP · FTP · REST</text>
+    <text class="t sub" x="1010" y="326">Files tier, hooks</text>
+  </g>
+
+  <!-- Edges: users -> Testate -->
+  <path class="edge" d="M290 132 C400 132 420 210 520 210" marker-end="url(#arrow)"/>
+  <path class="edge" d="M290 220 L520 220" marker-end="url(#arrow)"/>
+  <path class="edge" d="M290 308 C400 308 420 230 520 230" marker-end="url(#arrow)"/>
+
+  <!-- Edges: Testate <-> targets (snapshot and restore) -->
+  <path class="edge" d="M760 210 C860 210 880 132 990 132" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <path class="edge" d="M760 220 L990 220" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <path class="edge" d="M760 230 C860 230 880 308 990 308" marker-end="url(#arrow)"/>
+
+  <!-- Edge: Testate -> store -->
+  <path class="edgeDim" d="M640 290 L640 340" marker-end="url(#arrowDim)"/>
+</svg>

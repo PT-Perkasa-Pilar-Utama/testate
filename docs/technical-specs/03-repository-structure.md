@@ -79,7 +79,7 @@ testate/                                  # github.com/pt-perkasa-pilar-utama/te
 │   └── contract.ts                       # runs the engine contract suite against compose.engines.yml
 ├── tools/oxlint/anti-slop/               # vendored lint rules, never edited
 ├── .claude/skills/                       # solidjs-2, kumo-design, wide-event-logging, and the codebase-pattern skills
-├── .github/workflows/                    # ci.yml (quality + contract matrix), release.yml (image on tag)
+├── .github/workflows/                    # ci.yml (quality + contract matrix), deploy-image.yml (manual, version-gated, docker-slim)
 ├── Dockerfile                            # multi-stage: build web + bundle api, slim runtime, non-root, /data volume
 ├── lefthook.yml  .oxlintrc.json  .oxfmtrc.json  bunfig.toml
 ├── package.json                          # workspaces, root scripts (complete-check)

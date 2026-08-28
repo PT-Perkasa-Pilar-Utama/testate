@@ -1,7 +1,11 @@
-# syntax=docker/dockerfile:1.7
-# Build context is the repository root: docker build -f deploy/Dockerfile .
+# syntax=docker/dockerfile:1
+# Build from the REPO ROOT:
+#   docker build -f deploy/Dockerfile -t testate .
+# The deploy-image workflow builds this "fat" image, profiles it with docker-slim,
+# and publishes the slimmed result to ghcr.io.
 
-FROM oven/bun:1.4-alpine AS build
+# ---- build ----
+FROM oven/bun:1.4@sha256:5ff609364c049b54eb0ff560ec96319729a972078ef2c755d758f0c6ef89c2d6 AS build
 WORKDIR /src
 COPY package.json bun.lock bunfig.toml tsconfig.base.json ./
 COPY apps/api/package.json apps/api/
@@ -12,14 +16,22 @@ COPY apps apps
 COPY packages packages
 RUN bun run build
 
-# The API is one bundled file (bun build --target=bun), so the runtime image carries
-# no node_modules: dist/, the migrations next to it, and the built SPA under /app/web.
-FROM oven/bun:1.4-alpine
+# ---- runtime ----
+# The API is one bundled file (bun build --target=bun) and SQLite ships inside Bun,
+# so the runtime carries no node_modules: dist/, the migrations next to it, and the SPA.
+FROM oven/bun:1.4-slim@sha256:e0ee68d16ccb9927bf02aa7dd8fd4bf3369ee6d46da04faa72b05ce8bfd135f6 AS runtime
+WORKDIR /app
+
+LABEL org.opencontainers.image.title="testate" \
+      org.opencontainers.image.description="Git for your test database. Snapshot, checkout, diff, and import the databases behind a system under test." \
+      org.opencontainers.image.source="https://github.com/PT-Perkasa-Pilar-Utama/testate" \
+      org.opencontainers.image.licenses="MIT"
+
 ENV NODE_ENV=production \
     PORT=3000 \
     TESTATE_DATA_DIR=/data \
     TESTATE_BASE_PATH=/
-WORKDIR /app
+
 COPY --from=build /src/apps/api/dist ./dist
 COPY --from=build /src/apps/web/dist ./web
 RUN mkdir -p /data && chown -R bun:bun /data /app
@@ -27,6 +39,6 @@ USER bun
 VOLUME ["/data"]
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD sh -c 'wget -q --spider "http://127.0.0.1:${PORT}${TESTATE_BASE_PATH%/}/api/v1/health/live"'
+  CMD bun -e "const b=(Bun.env.TESTATE_BASE_PATH||'/').replace(/\/$/,'');fetch('http://127.0.0.1:'+(Bun.env.PORT||3000)+b+'/api/v1/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 STOPSIGNAL SIGTERM
 CMD ["bun", "dist/index.js"]

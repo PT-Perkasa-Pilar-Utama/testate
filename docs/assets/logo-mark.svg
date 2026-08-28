@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="Testate mark">
+  <!-- A commit line with a checkout branch: states along the trunk, the highlighted node is the state you return to. -->
+  <rect width="128" height="128" rx="28" fill="#0B1F2A"/>
+  <g fill="none" stroke="#7DD3C0" stroke-width="8" stroke-linecap="round">
+    <line x1="44" y1="100" x2="44" y2="30"/>
+    <path d="M44 66 C44 48 84 60 84 42"/>
+  </g>
+  <circle cx="44" cy="100" r="10" fill="#7DD3C0"/>
+  <circle cx="84" cy="42" r="10" fill="#7DD3C0"/>
+  <circle cx="44" cy="30" r="14" fill="#10B981"/>
+  <circle cx="44" cy="30" r="6" fill="#0B1F2A"/>
+</svg>

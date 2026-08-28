@@ -1,6 +1,13 @@
-# Testate
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
+    <img src="docs/assets/logo.svg" alt="Testate" width="360">
+  </picture>
+</p>
 
 **Git for your test database. Reset the database, not the developer.**
+
+![Where Testate sits: QA engineers, CI pipelines, and AI agents on one side; the databases, file stores, and APIs of the system under test on the other](docs/assets/banner.svg)
 
 Testate is a self-hosted tool for QA teams. It takes data-only snapshots ("states") of the databases behind a system under test, restores them on demand, diffs them, imports fixtures, and lets an AI agent inspect them read-only. One Docker image, one volume, any sub-path.
 
@@ -24,6 +31,8 @@ bun scripts/generate-key.ts        # paste into TESTATE_SECRETS_ACTIVE_KEY
 docker compose -f deploy/docker-compose.yml up -d
 open http://localhost:3000
 ```
+
+The image is `ghcr.io/pt-perkasa-pilar-utama/testate`, built from `deploy/Dockerfile` and slimmed with docker-slim by the manual **Deploy image** workflow (`.github/workflows/deploy-image.yml`): bump `version` in `package.json`, run the workflow, and it publishes `<version>` and `latest`. An already-published version is skipped.
 
 Sign in as `admin`. The first login forces a password change. Create users under **Users**; roles are `viewer` < `qa` < `admin`.
 

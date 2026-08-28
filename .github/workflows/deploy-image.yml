@@ -1,0 +1,105 @@
+name: Deploy image
+
+# Manually-triggered. Reads the version from package.json and skips entirely if
+# that version is already published - bump the version to release.
+on:
+  workflow_dispatch:
+
+# Least-privilege default; the build job opts into the `packages: write` it needs
+# to push to ghcr.io.
+permissions:
+  contents: read
+
+jobs:
+  build-and-push:
+    name: Build, slim, and push to ghcr.io
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Resolve image name + version
+        id: img
+        run: |
+          repo=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          version=$(jq -r .version package.json)
+          echo "image=ghcr.io/${repo}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Resolved ghcr.io/${repo}:${version}"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Skip if this version is already published
+        id: published
+        run: |
+          if docker manifest inspect "${{ steps.img.outputs.image }}:${{ steps.img.outputs.version }}" > /dev/null 2>&1; then
+            echo "::notice::${{ steps.img.outputs.image }}:${{ steps.img.outputs.version }} already exists - skipping build."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build fat image
+        if: steps.published.outputs.skip != 'true'
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: deploy/Dockerfile
+          load: true
+          tags: testate:fat
+
+      # Boot refuses without a sealed-values key and a bootstrap password, so the
+      # profiling run gets throwaway values through an env file. Nothing from this
+      # run ends up in the image: docker-slim only records which files were touched.
+      - name: Write profiling env
+        if: steps.published.outputs.skip != 'true'
+        run: |
+          {
+            echo "TESTATE_ENV=test"
+            echo "TESTATE_SECRETS_ACTIVE_KEY=$(openssl rand -base64 32)"
+            echo "TESTATE_ADMIN_PASSWORD=profiling-only-password"
+            echo "TESTATE_LOG_STDOUT=false"
+          } > profile.env
+
+      # The container boots, migrates SQLite, rewrites the SPA assets, and answers
+      # the probes, so docker-slim sees every file the runtime actually uses.
+      # /app is force-kept so migrations and web assets survive whatever the probes miss.
+      - name: Slim the image
+        if: steps.published.outputs.skip != 'true'
+        uses: kitabisa/docker-slim-action@6a9a64eaf0c08b1251c148514dd70be1495bff12 # v1.2.0
+        env:
+          DSLIM_HTTP_PROBE: true
+          DSLIM_HTTP_PROBE_CMD: "/api/v1/health/live,/api/v1/health/ready,/api/v1/health,/api/v1/openapi.json,/,/login"
+          DSLIM_CONTINUE_AFTER: 20
+          DSLIM_INCLUDE_PATH: /app
+          DSLIM_ENV_FILE: profile.env
+        with:
+          target: testate:fat
+          tag: "slim"
+
+      # docker-slim-action does its own docker login and clobbers the
+      # credential store, so re-authenticate before pushing.
+      - name: Re-login to GitHub Container Registry
+        if: steps.published.outputs.skip != 'true'
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push (version + latest)
+        if: steps.published.outputs.skip != 'true'
+        run: |
+          for tag in "${{ steps.img.outputs.version }}" latest; do
+            docker tag testate:slim "${{ steps.img.outputs.image }}:${tag}"
+            docker push "${{ steps.img.outputs.image }}:${tag}"
+          done
