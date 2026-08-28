@@ -7,7 +7,7 @@
 
 **Git for your test database. Reset the database, not the developer.**
 
-![Where Testate sits: QA engineers, CI pipelines, and AI agents on one side; the databases, file stores, and APIs of the system under test on the other](docs/assets/banner.svg)
+![Testate runs in Docker on the DEV, SIT, or UAT server next to the main service and its database; a reverse proxy exposes it to admins, viewers, testers, CI/CD, and AI agents](docs/assets/banner.svg)
 
 Testate is a self-hosted tool for QA teams. It takes data-only snapshots ("states") of the databases behind a system under test, restores them on demand, diffs them, imports fixtures, and lets an AI agent inspect them read-only. One Docker image, one volume, any sub-path.
 
