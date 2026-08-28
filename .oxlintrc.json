@@ -102,5 +102,14 @@
     }
   ],
   "env": { "builtin": true, "browser": true },
-  "ignorePatterns": [".claude", "dist", "node_modules", "*.lock", "tools", "data", "docs", "deploy"]
+  "ignorePatterns": [
+    ".claude",
+    "dist",
+    "node_modules",
+    "*.lock",
+    "tools",
+    "/data",
+    "docs",
+    "deploy"
+  ]
 }

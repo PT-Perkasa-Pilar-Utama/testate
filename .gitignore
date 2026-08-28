@@ -7,7 +7,7 @@ apps/web/dist
 apps/api/dist
 
 # runtime data (metadata.db, blobs, logs, uploads, run/)
-data
+/data/
 *.db
 *.db-shm
 *.db-wal
