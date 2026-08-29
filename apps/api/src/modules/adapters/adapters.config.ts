@@ -55,7 +55,7 @@ const databaseConfigSchema = v.union([
   v.object({ connection_string_set: v.literal(true) }),
 ]);
 
-const s3ConfigSchema = v.object({
+export const s3ConfigSchema = v.object({
   bucket: text,
   prefix: v.optional(v.string(), ""),
   region: text,
@@ -63,7 +63,7 @@ const s3ConfigSchema = v.object({
   virtual_hosted: v.optional(v.boolean(), false),
 });
 
-const fileHostConfigSchema = v.object({
+export const fileHostConfigSchema = v.object({
   host: text,
   port: v.optional(port),
   user: text,

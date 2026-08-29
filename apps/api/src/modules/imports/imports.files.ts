@@ -1,5 +1,5 @@
-import { mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, rmSync } from "node:fs";
+import { dirname, join } from "node:path";
 import type { Mapping, Preview, Project, TableSchema, Upload } from "@testate/shared";
 import type { previewRequestSchema } from "@testate/shared";
 import type * as v from "valibot";
@@ -7,6 +7,7 @@ import type * as v from "valibot";
 import { AppError } from "../../lib/http/index.ts";
 import type { AdapterRecord } from "../adapters/adapters.repository.ts";
 import { readCsv } from "./imports.csv.ts";
+import { isFetchedSource } from "./imports.job.ts";
 import type { ReadOptions } from "./imports.csv.ts";
 import type { ImportsRepository, UploadRecord } from "./imports.repository.ts";
 import { sampleCsv } from "./imports.sample.ts";
@@ -19,7 +20,7 @@ export type FileDeps = {
   dataDir: string;
   maxUploadBytes: number;
   now: () => Date;
-  sourcePath: (project: Project, source: PreviewRequest["source"]) => SourceFile;
+  sourcePath: (project: Project, source: PreviewRequest["source"]) => Promise<SourceFile>;
   tableOf: (adapter: AdapterRecord, target: string) => Promise<TableSchema>;
 };
 
@@ -86,11 +87,14 @@ export function createFileOps(deps: FileDeps): FileOps {
       return toPublic(record);
     },
     async preview(project, request) {
-      const { path } = deps.sourcePath(project, request.source);
+      const { path, uploadId } = await deps.sourcePath(project, request.source);
+      const text = await Bun.file(path).text();
+      if (uploadId === null && isFetchedSource(path))
+        rmSync(dirname(path), { recursive: true, force: true });
       const options: ReadOptions = {};
       if (request.options?.delimiter !== undefined) options.delimiter = request.options.delimiter;
       if (request.options?.header_row !== undefined) options.headerRow = request.options.header_row;
-      const parsed = readCsv(await Bun.file(path).text(), options);
+      const parsed = readCsv(text, options);
       return {
         columns: parsed.columns,
         rows: parsed.rows.slice(0, PREVIEW_ROWS),

@@ -207,9 +207,14 @@ function cleanup(
   jobId: string
 ): void {
   deps.states.releasePins(jobId);
-  if (payload.source_upload_id === null) return;
-  deps.imports.removeUpload(payload.source_upload_id);
-  rmSync(dirname(payload.source_path), { recursive: true, force: true });
+  if (payload.source_upload_id !== null) deps.imports.removeUpload(payload.source_upload_id);
+  if (payload.source_upload_id !== null || isFetchedSource(payload.source_path))
+    rmSync(dirname(payload.source_path), { recursive: true, force: true });
+}
+
+/** Storage-adapter sources are copied under `imports/sources/<id>/` and deleted with the run. */
+export function isFetchedSource(path: string): boolean {
+  return /[/\\]imports[/\\]sources[/\\]/.test(path);
 }
 
 /** The `import` job (19 §19.3): stash, policy check, parse and transform, batches, report, hooks, cleanup. */

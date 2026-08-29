@@ -22,18 +22,18 @@ Legend: `OK` implemented and tested · `WIP` in progress · `TODO` not started �
 | Projects | `GET /projects`, `POST /projects`, `GET /projects/{slug}`, `PATCH`, `GET .../head`, `GET .../quota`, `GET .../deletion-plan`, `POST .../deletion` | OK |
 | Adapters | `GET .../adapters`, `POST .../adapters/test`, `POST .../adapters`, `GET .../adapters/{id}`, `PATCH`, `POST .../mode`, `POST .../retest`, `GET .../deletion-plan`, `POST .../deletion` | OK (probe SCAFFOLD) |
 | Data | `GET .../schema`, `GET .../tables/{table}/rows`, `GET .../lookup`, `POST .../write-sessions`, `PATCH/DELETE .../write-sessions/{sid}`, `POST .../row-edits`, `POST .../query`, `POST .../query/export`, `GET .../queries`, `DELETE .../queries/{query_id}`, saved queries, `GET .../query-history`, policies, `POST .../fixture` | OK except query export streaming and mongo dialect (SCAFFOLD) |
-| Imports | `POST .../uploads`, `POST .../imports/preview`, mappings, `POST .../imports`, `GET .../imports`, `GET .../imports/{run_id}`, `GET .../rejected`, `GET .../tables/{table}/sample` | OK for CSV uploads; xlsx and storage sources SCAFFOLD |
+| Imports | `POST .../uploads`, `POST .../imports/preview`, mappings, `POST .../imports`, `GET .../imports`, `GET .../imports/{run_id}`, `GET .../rejected`, `GET .../tables/{table}/sample` | OK for CSV uploads and CSV storage-adapter sources; xlsx SCAFFOLD (reader dependency pending) |
 | States | `GET .../states`, `GET .../states/tree`, `POST .../states`, `GET .../states/{id}`, `PATCH`, `DELETE`, `GET .../archive`, `GET .../uploads/{upload_id}/archive-manifest`, `POST .../states/import` | OK (archive import maps to existing adapters only) |
 | Checkouts | `POST .../checkouts/preflight`, `POST .../checkouts`, `GET .../checkouts`, `GET .../checkouts/{id}`, `POST .../retry`, `POST .../terminate-blockers`, `GET .../counters`, `POST .../repair-counters` | OK except terminate-blockers (SCAFFOLD) |
 | Diffs | `POST .../diffs`, `GET .../diffs`, `GET .../diffs/{id}`, `GET .../rows`, `GET .../export`, `DELETE` | OK |
-| Storage | `GET .../entries`, `GET .../entries/stat`, `GET .../entries/preview`, `GET .../entries/download`, `POST .../host-key/accept` | SCAFFOLD |
+| Storage | `GET .../entries`, `GET .../entries/stat`, `GET .../entries/preview`, `GET .../entries/download`, `POST .../host-key/accept` | Real (S3 via `Bun.S3Client`, SFTP via ssh2, FTP via basic-ftp; host-key TOFU and accept; 5 MB preview cap) |
 | REST requests | requests CRUD, `POST .../run`, `GET .../runs` | SCAFFOLD |
 | Hooks | `GET/POST .../hooks`, `PATCH/DELETE .../hooks/{id}`, `PUT .../hooks/order` | SCAFFOLD |
 | Jobs | `GET /jobs`, `GET /jobs/{id}`, `POST /jobs/{id}/cancel`, `GET /jobs/{id}/events` | OK |
 | Audit logs | `GET /audit-logs`, `GET /audit-logs/export` | OK |
 | Settings | `GET /settings`, `PATCH /settings`, `POST /settings/store-migration`, `POST /settings/backup`, `GET /settings/backups/{job_id}` | OK except store-migration, backup, backup download (SCAFFOLD) |
 | Tools | `POST /tools/hash`, `POST /tools/random`, `POST /tools/uuid` | OK |
-| Agent (MCP) | `POST /mcp`, `GET /mcp`: `initialize`, `tools/list`, `tools/call` (13 tools), `resources/list`, `resources/read`, `ping` | Real (per-token rate limit, scope, masks; `list_files`/`preview_file` wait on the storage card) |
+| Agent (MCP) | `POST /mcp`, `GET /mcp`: `initialize`, `tools/list`, `tools/call` (13 tools), `resources/list`, `resources/read`, `ping` | Real (per-token rate limit, scope, masks, storage tools) |
 | System | `GET /health`, `GET /health/live`, `GET /health/ready`, `POST /admin/reset-state` (non-production), `GET /openapi.json`, `GET /docs` | OK |
 
 ## Files in This Directory

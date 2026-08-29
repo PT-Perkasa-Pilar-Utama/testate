@@ -2,6 +2,12 @@ import type { Actor, Adapter, AdapterDraft } from "@testate/shared";
 import * as v from "valibot";
 
 import { createMemoryBlobStore } from "../src/lib/blobstore/index.ts";
+import type { MemoryTree } from "../src/lib/files/index.ts";
+import { memoryOpen } from "./files.ts";
+import { createFilesResolver } from "../src/modules/adapters/adapters.files.ts";
+import type { FilesResolver } from "../src/modules/adapters/adapters.files.ts";
+import { createHostKeysRepository } from "../src/modules/adapters/adapters.hostkeys.ts";
+import type { HostKeysRepository } from "../src/modules/adapters/adapters.hostkeys.ts";
 import type { BlobStore } from "../src/lib/blobstore/index.ts";
 import { createFakeEngine } from "../src/lib/engines/fake/engine.ts";
 import type { FakeDatabase, FakeEngineOptions } from "../src/lib/engines/fake/engine.ts";
@@ -107,6 +113,12 @@ export type AdaptersHarness = {
   projectsRepo: AccountsHarness["projectsRepo"];
   db: AccountsHarness["db"];
   now: () => Date;
+  hostKeys: HostKeysRepository;
+  files: FilesResolver;
+  /** In-memory file trees by S3 bucket or SFTP/FTP host; storage adapters in tests browse these. */
+  trees: Map<string, MemoryTree>;
+  /** The host key the fake SFTP server presents; change it to simulate a rotated key. */
+  sftpKey: { current: string };
 };
 
 /** A registry with one fake postgres engine; other engines are absent, as in the real build. */
@@ -245,6 +257,17 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     projects: accounts.projectsRepo,
   });
   runtime.dispatcher.start();
+  const trees = new Map<string, MemoryTree>();
+  const sftpKey = { current: "SHA256:fake-host-key-1" };
+  const hostKeys = createHostKeysRepository(accounts.db);
+  const files = createFilesResolver({
+    repo,
+    hostKeys,
+    ring,
+    netguard: stubNetguard(blocked),
+    open: memoryOpen(trees, sftpKey),
+    now: accounts.now,
+  });
   const adapters = createAdaptersService({
     repo,
     projects: accounts.projectsRepo,
@@ -288,5 +311,9 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     projectsRepo: accounts.projectsRepo,
     db: accounts.db,
     now: accounts.now,
+    hostKeys,
+    files,
+    trees,
+    sftpKey,
   };
 }

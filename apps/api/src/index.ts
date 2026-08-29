@@ -166,7 +166,13 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   // Steps 8 and 9 of 22 §22.2: recover interrupted jobs, then sweep old ones.
   const recovery = await jobs.recover();
   const core = createStateServices(wiring, projectsRepo, jobs, audit, settings, config, now);
-  const storage = createStorageService();
+  const storage = createStorageService({
+    projects: projectsRepo,
+    files: wiring.files,
+    hostKeys: wiring.hostKeys,
+    audit,
+    now,
+  });
   const adapters = createAdaptersService({
     repo: wiring.adapters,
     projects: projectsRepo,
@@ -232,7 +238,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     states: createStatesHandlers(core.states, prefix, config.TESTATE_TRUST_PROXY),
     checkouts: createCheckoutsHandlers(core.checkouts, prefix, config.TESTATE_TRUST_PROXY, jobs),
     diffs: createDiffsHandlers(core.diffs, prefix, config.TESTATE_TRUST_PROXY),
-    storage: createStorageHandlers(storage),
+    storage: createStorageHandlers(storage, config.TESTATE_TRUST_PROXY),
     rest: createRestHandlers(rest),
     hooks: createHooksHandlers(hooks, config.TESTATE_TRUST_PROXY),
     jobs: createJobsHandlers(jobs),

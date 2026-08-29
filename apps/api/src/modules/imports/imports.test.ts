@@ -37,6 +37,7 @@ async function createHarness(): Promise<Harness> {
     projects: harness.projectsRepo,
     engines: harness.engines,
     ring: harness.ring,
+    files: harness.files,
     jobs: harness.runtime.jobs,
     audit: harness.audit,
     dataDir: harness.dataDir,

@@ -23,6 +23,8 @@ import type { EngineRegistry } from "../../lib/engines/index.ts";
 import { AppError, conflict, notFound } from "../../lib/http/index.ts";
 import type { RequestMeta } from "../../lib/http/auth.ts";
 import type { KeyRing } from "../../lib/sealed/index.ts";
+import type { FilesResolver } from "../adapters/adapters.files.ts";
+import { fetchStorageSource } from "./imports.source.ts";
 import type { AdapterRecord, AdaptersRepository } from "../adapters/adapters.repository.ts";
 import { CONFIG_COLUMN, openSecrets } from "../adapters/adapters.secrets.ts";
 import type { AuditService } from "../audit/audit.service.ts";
@@ -71,6 +73,7 @@ export type ImportsDeps = {
   projects: Pick<ProjectsRepository, "bySlug">;
   engines: EngineRegistry;
   ring: KeyRing;
+  files: FilesResolver;
   jobs: Pick<JobsService, "enqueue">;
   audit: AuditService;
   dataDir: string;
@@ -131,8 +134,11 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
     if (Date.parse(upload.expires_at) <= deps.now().getTime()) throw notFound("upload");
     return upload;
   };
-  /** SCAFFOLD: storage-adapter sources arrive with the storage card; XLSX needs a reader dependency (decision pending). */
-  const sourcePath = (project: Project, source: ImportRunRequest["source"]): SourceFile => {
+  /** SCAFFOLD: XLSX needs a reader dependency (decision pending). */
+  const sourcePath = async (
+    project: Project,
+    source: ImportRunRequest["source"]
+  ): Promise<SourceFile> => {
     if ("upload_id" in source) {
       const upload = liveUpload(project, source.upload_id);
       if (upload.type !== "csv")
@@ -146,9 +152,7 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
       if (run === null || run.rejected_path === null) throw notFound("rejected rows");
       return { path: run.rejected_path, uploadId: null };
     }
-    throw new AppError("ENGINE_UNSUPPORTED", "storage sources are not available in this build", {
-      reason: "source",
-    });
+    return fetchStorageSource(deps, project, source.adapter_id, source.path);
   };
   const files = createFileOps({ ...deps, sourcePath, tableOf });
   const toReport = (run: RunRecord): ImportReport => ({
@@ -227,7 +231,7 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
         });
       }
       const mode = request.mode ?? mapping.mode;
-      const source = sourcePath(project, request.source);
+      const source = await sourcePath(project, request.source);
       const runId = Bun.randomUUIDv7();
       repo.insertRun({
         id: runId,

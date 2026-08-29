@@ -77,7 +77,13 @@ async function createHarness(): Promise<Harness> {
     data,
     states,
     diffs,
-    storage: createStorageService(),
+    storage: createStorageService({
+      projects: harness.projectsRepo,
+      files: harness.files,
+      hostKeys: harness.hostKeys,
+      audit: harness.audit,
+      now: harness.now,
+    }),
     audit: harness.audit,
   });
   void createCheckoutsService;

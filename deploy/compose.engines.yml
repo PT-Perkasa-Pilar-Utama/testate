@@ -73,3 +73,31 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 testate testate-minio &&
+      mc mb --ignore-existing local/exports &&
+      echo ready"
+
+  sftp:
+    image: atmoz/sftp:alpine
+    command: testate:testate:1001::upload
+    ports:
+      - "22220:22"
+
+  ftp:
+    image: delfer/alpine-ftp-server
+    environment:
+      USERS: "testate|testate|/ftp/testate|1001"
+      ADDRESS: 127.0.0.1
+      MIN_PORT: 21100
+      MAX_PORT: 21110
+    ports:
+      - "21210:21"
+      - "21100-21110:21100-21110"

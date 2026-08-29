@@ -274,21 +274,32 @@ export function tools(deps: AgentToolDeps): ReadonlyMap<string, Tool> {
       },
       diff_summary: async (args, _ctx, scope) =>
         json(await deps.diffs.get(scope.project(text(args, "project")).slug, text(args, "diff"))),
-      list_files: async (args, _ctx, scope) =>
-        json(
-          await deps.storage.list(
-            scope.adapter(scope.project(text(args, "project")), text(args, "adapter")).id,
-            undefined,
-            undefined
-          )
-        ),
-      preview_file: async (args, _ctx, scope) =>
-        json(
-          await deps.storage.preview(
-            scope.adapter(scope.project(text(args, "project")), text(args, "adapter")).id,
-            text(args, "path")
-          )
-        ),
+      list_files: async (args, ctx, scope) => {
+        const project = scope.project(text(args, "project"));
+        const adapter = scope.adapter(project, text(args, "adapter"));
+        const query: Parameters<StorageService["list"]>[3] = { limit: AGENT_CAPS.rowsDefault };
+        const path = optional(args, "path", v.string());
+        const cursor = optional(args, "cursor", v.string());
+        if (path !== undefined) query.path = path;
+        if (cursor !== undefined) query.cursor = cursor;
+        const page = await deps.storage.list(ctx.actor, project.slug, adapter.id, query);
+        return json({ entries: page.data, next_cursor: page.next_cursor });
+      },
+      preview_file: async (args, ctx, scope) => {
+        const project = scope.project(text(args, "project"));
+        const adapter = scope.adapter(project, text(args, "adapter"));
+        const result = await deps.storage.preview(
+          ctx.actor,
+          project.slug,
+          adapter.id,
+          text(args, "path")
+        );
+        if (result.kind === "binary")
+          throw new AppError("VALIDATION_ERROR", "binary files have no text preview", {
+            content_type: result.contentType,
+          });
+        return json(result.payload);
+      },
     })
   );
 }

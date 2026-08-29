@@ -15,7 +15,12 @@ import {
   createScaffoldFileProbe,
   createScaffoldProbe,
 } from "./modules/adapters/adapters.probe.ts";
+import { createFileProbe, createFilesResolver } from "./modules/adapters/adapters.files.ts";
+import type { FilesResolver } from "./modules/adapters/adapters.files.ts";
+import { createHostKeysRepository } from "./modules/adapters/adapters.hostkeys.ts";
+import type { HostKeysRepository } from "./modules/adapters/adapters.hostkeys.ts";
 import type { FileProbeFn, ProbeFn } from "./modules/adapters/adapters.probe.ts";
+import { openFileSource } from "./lib/files/open.ts";
 import { createAdaptersRepository } from "./modules/adapters/adapters.repository.ts";
 import type { ProjectsRepository } from "./modules/projects/projects.repository.ts";
 import { createCheckoutsRepository } from "./modules/checkouts/checkouts.repository.ts";
@@ -60,6 +65,8 @@ export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now" | "hooks"> & 
   dataDir: string;
   probe: ProbeFn;
   fileProbe: FileProbeFn;
+  hostKeys: HostKeysRepository;
+  files: FilesResolver;
 };
 
 /** The engine registry, blob store, and repositories the job runners share with the services (12 §12.9, 15 §15.2). */
@@ -71,13 +78,25 @@ export function createEngineWiring(
   projects: ProjectsRepository
 ): EngineWiring {
   const engines = createEngineRegistry(netguard);
+  const adapters = createAdaptersRepository(db);
+  const hostKeys = createHostKeysRepository(db);
+  const now = (): Date => new Date();
   return {
     engines,
     probe: createEngineProbe(engines, createScaffoldProbe()),
-    fileProbe: createHttpProbe(createScaffoldFileProbe()),
+    fileProbe: createFileProbe(openFileSource, createHttpProbe(createScaffoldFileProbe())),
+    hostKeys,
+    files: createFilesResolver({
+      repo: adapters,
+      hostKeys,
+      ring,
+      netguard,
+      open: openFileSource,
+      now,
+    }),
     blobs: createLocalBlobStore(join(config.TESTATE_DATA_DIR, "blobs")),
     ring,
-    adapters: createAdaptersRepository(db),
+    adapters,
     states: createStatesRepository(db),
     checkouts: createCheckoutsRepository(db),
     requests: createRestRepository(db),

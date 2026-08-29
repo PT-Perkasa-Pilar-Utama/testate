@@ -1,57 +1,169 @@
-import type { Entry, PreviewPayload } from "@testate/shared";
+import type { Actor, Entry, Project } from "@testate/shared";
 
+import type { FileSource, ListPage } from "../../lib/files/index.ts";
+import { nameOf, normalizePath } from "../../lib/files/index.ts";
+import type { RequestMeta } from "../../lib/http/auth.ts";
 import { AppError, notFound } from "../../lib/http/index.ts";
-import { STORAGE_ADAPTER_ID } from "../../lib/mock/fixtures.ts";
-import { ENTRIES_MOCK, PREVIEW_CSV_MOCK } from "./storage.mock.ts";
+import type { FilesResolver, ResolvedFiles } from "../adapters/adapters.files.ts";
+import type { HostKeysRepository } from "../adapters/adapters.hostkeys.ts";
+import type { AuditService } from "../audit/audit.service.ts";
+import type { ProjectsRepository } from "../projects/projects.repository.ts";
+import { collectCapped, renderPreview, tooLarge, PREVIEW_CAP_BYTES } from "./storage.preview.ts";
+import type { PreviewResult } from "./storage.preview.ts";
 
-export type StorageService = {
-  list(adapterId: string, path: string | undefined, q: string | undefined): Promise<Entry[]>;
-  stat(adapterId: string, path: string): Promise<Entry>;
-  preview(adapterId: string, path: string): Promise<PreviewPayload>;
-  download(adapterId: string, path: string): Promise<{ body: string; contentType: string }>;
-  acceptHostKey(adapterId: string, fingerprint: string): Promise<void>;
+export type StorageDeps = {
+  projects: Pick<ProjectsRepository, "bySlug">;
+  files: FilesResolver;
+  hostKeys: HostKeysRepository;
+  audit: AuditService;
+  now: () => Date;
 };
 
-function requireFiles(adapterId: string): void {
-  if (adapterId !== STORAGE_ADAPTER_ID) {
-    throw new AppError("ENGINE_UNSUPPORTED", "browsing needs a Files adapter", { reason: "tier" });
-  }
+export type EntriesQuery = { path?: string; cursor?: string; limit?: number; q?: string };
+export type Download = {
+  stream: ReadableStream<Uint8Array>;
+  name: string;
+  size: number | null;
+};
+
+export type StorageService = {
+  list(actor: Actor, slug: string, adapterId: string, query: EntriesQuery): Promise<ListPage>;
+  stat(actor: Actor, slug: string, adapterId: string, path: string): Promise<Entry>;
+  preview(actor: Actor, slug: string, adapterId: string, path: string): Promise<PreviewResult>;
+  download(actor: Actor, slug: string, adapterId: string, path: string): Promise<Download>;
+  acceptHostKey(
+    actor: Actor,
+    slug: string,
+    adapterId: string,
+    fingerprint: string,
+    meta: RequestMeta
+  ): Promise<void>;
+};
+
+const LIMIT_DEFAULT = 200;
+const LIMIT_MAX = 1000;
+
+/** Closes the source once the stream ends or is cancelled. */
+function closing(
+  stream: ReadableStream<Uint8Array>,
+  close: () => Promise<void>
+): ReadableStream<Uint8Array> {
+  const reader = stream.getReader();
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      const { done, value } = await reader.read();
+      if (done) {
+        controller.close();
+        await close();
+        return;
+      }
+      controller.enqueue(value);
+    },
+    async cancel(reason) {
+      await reader.cancel(reason);
+      await close();
+    },
+  });
 }
 
-/** SCAFFOLD: one bucket with one export. The storage card wires lib/files (S3, SFTP, FTP). */
-export function createStorageService(): StorageService {
-  const find = (adapterId: string, path: string): Entry => {
-    requireFiles(adapterId);
-    const entry = ENTRIES_MOCK.find((item) => item.path === path);
-    if (entry === undefined) throw notFound("entry");
-    return entry;
+async function requireFile(source: FileSource, path: string): Promise<Entry> {
+  const entry = await source.stat(path);
+  if (entry.kind !== "file") throw new AppError("VALIDATION_ERROR", "directories have no preview");
+  return entry;
+}
+
+/** Read-only browsing over `resolveFiles` (05 §5.11); no write and no delete exist here. */
+export function createStorageService(deps: StorageDeps): StorageService {
+  const projectOf = (slug: string): Project => {
+    const project = deps.projects.bySlug(slug);
+    if (project === null) throw notFound("project");
+    return project;
+  };
+  const trustAs = (actor: Actor): string | null => (actor.kind === "user" ? actor.id : null);
+  const open = (actor: Actor, slug: string, adapterId: string): Promise<ResolvedFiles> =>
+    deps.files.resolve(projectOf(slug).id, adapterId, trustAs(actor));
+  const withSource = async <T>(
+    actor: Actor,
+    slug: string,
+    adapterId: string,
+    run: (source: FileSource) => Promise<T>
+  ): Promise<T> => {
+    const { source } = await open(actor, slug, adapterId);
+    try {
+      return await run(source);
+    } finally {
+      await source.close();
+    }
   };
   return {
-    async list(adapterId, path, q) {
-      requireFiles(adapterId);
-      const inDir =
-        path === undefined || path === ""
-          ? ENTRIES_MOCK
-          : ENTRIES_MOCK.filter((entry) => entry.path.startsWith(`${path}/`));
-      return q === undefined ? inDir : inDir.filter((entry) => entry.name.includes(q));
+    list: (actor, slug, adapterId, query) =>
+      withSource(actor, slug, adapterId, (source) => {
+        const page = { limit: Math.min(query.limit ?? LIMIT_DEFAULT, LIMIT_MAX) };
+        const listQuery = query.q === undefined ? page : { ...page, q: query.q };
+        return source.list(
+          normalizePath(query.path),
+          query.cursor === undefined ? listQuery : { ...listQuery, cursor: query.cursor }
+        );
+      }),
+    stat: (actor, slug, adapterId, path) =>
+      withSource(actor, slug, adapterId, (source) => source.stat(normalizePath(path))),
+    preview: (actor, slug, adapterId, path) =>
+      withSource(actor, slug, adapterId, async (source) => {
+        const clean = normalizePath(path);
+        const entry = await requireFile(source, clean);
+        if (entry.size_bytes !== null && entry.size_bytes > PREVIEW_CAP_BYTES)
+          throw tooLarge(entry.size_bytes);
+        return renderPreview(entry.name, await collectCapped(await source.read(clean)));
+      }),
+    async download(actor, slug, adapterId, path) {
+      const { source } = await open(actor, slug, adapterId);
+      try {
+        const clean = normalizePath(path);
+        const entry = await requireFile(source, clean);
+        return {
+          stream: closing(await source.read(clean), () => source.close()),
+          name: nameOf(clean),
+          size: entry.size_bytes,
+        };
+      } catch (cause: unknown) {
+        await source.close();
+        throw cause;
+      }
     },
-    async stat(adapterId, path) {
-      return find(adapterId, path);
-    },
-    async preview(adapterId, path) {
-      const entry = find(adapterId, path);
-      if (entry.kind !== "file")
-        throw new AppError("VALIDATION_ERROR", "directories have no preview");
-      return PREVIEW_CSV_MOCK;
-    },
-    async download(adapterId, path) {
-      find(adapterId, path);
-      return { body: "order_id,status\n88213,paid\n", contentType: "text/csv; charset=utf-8" };
-    },
-    async acceptHostKey(adapterId, fingerprint) {
-      requireFiles(adapterId);
-      if (fingerprint.length < 8)
-        throw new AppError("VALIDATION_ERROR", "fingerprint does not match the server's key");
+    async acceptHostKey(actor, slug, adapterId, fingerprint, meta) {
+      const project = projectOf(slug);
+      const resolved = await deps.files.resolve(project.id, adapterId, null);
+      if (resolved.adapter.engine !== "sftp")
+        throw new AppError("VALIDATION_ERROR", "only SFTP adapters have a host key");
+      try {
+        await resolved.source.list("", { limit: 1 }).catch((cause: unknown) => {
+          if (!(cause instanceof AppError && cause.code === "CONFLICT")) throw cause;
+        });
+      } finally {
+        await resolved.source.close();
+      }
+      const live = resolved.presented();
+      if (live === null || live.fingerprint !== fingerprint)
+        throw new AppError("VALIDATION_ERROR", "fingerprint does not match the server's key", {
+          presented: live?.fingerprint ?? null,
+        });
+      deps.hostKeys.replace(adapterId, {
+        key_type: live.type,
+        fingerprint: live.fingerprint,
+        accepted_by: actor.id,
+        accepted_at: deps.now().toISOString(),
+      });
+      deps.audit.record({
+        actor,
+        action: "host_key.accepted",
+        target_type: "adapter",
+        target_id: adapterId,
+        project: { id: project.id, slug: project.slug },
+        adapter: { id: adapterId, name: resolved.adapter.name },
+        details: { fingerprint: live.fingerprint, key_type: live.type },
+        outcome: "succeeded",
+        meta,
+      });
     },
   };
 }
