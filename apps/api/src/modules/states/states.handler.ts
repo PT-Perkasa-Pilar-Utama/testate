@@ -98,20 +98,24 @@ export function createStatesHandlers(
         await service.remove(currentActor(c), param(c, "slug"), param(c, "id"), meta(c)),
         apiPrefix
       ),
-    // SCAFFOLD: the archive card streams the PAX tar (15 §15.5); today the download is empty.
     archive: async (c) => {
-      const state = await service.get(param(c, "slug"), param(c, "id"));
+      const { state, body } = await service.archive(param(c, "slug"), param(c, "id"));
       c.header("Content-Type", "application/x-tar");
       c.header(
         "Content-Disposition",
         `attachment; filename="testate-state-${param(c, "slug")}-${state.name}.tar"`
       );
-      return c.body("", 200);
+      return c.body(body, 200);
     },
-    archiveManifest: async (c) => ok(c, await service.archiveManifest(param(c, "upload_id"))),
+    archiveManifest: async (c) =>
+      ok(c, await service.archiveManifest(param(c, "slug"), param(c, "upload_id"))),
     importArchive: async (c) => {
       const input = await parseBody(c, importArchiveSchema);
-      return accepted(c, await service.importArchive(param(c, "slug"), input.name), apiPrefix);
+      return accepted(
+        c,
+        await service.importArchive(currentActor(c), param(c, "slug"), input, meta(c)),
+        apiPrefix
+      );
     },
   };
 }

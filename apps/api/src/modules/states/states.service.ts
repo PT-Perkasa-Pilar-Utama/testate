@@ -1,5 +1,6 @@
 import type {
   Actor,
+  ArchiveManifest,
   CreateStateInput,
   Job,
   Project,
@@ -16,8 +17,9 @@ import type { AdaptersRepository } from "../adapters/adapters.repository.ts";
 import type { AuditService } from "../audit/audit.service.ts";
 import type { EnqueueInput, JobsService } from "../jobs/jobs.service.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
-import { PROJECT_JOB_MOCK } from "../projects/projects.mock.ts";
-import { ARCHIVE_MANIFEST_MOCK } from "./states.mock.ts";
+import type { ImportsRepository } from "../imports/imports.repository.ts";
+import { createArchiveOps } from "./states.archives.ts";
+import type { ImportArchiveInput } from "./states.archives.ts";
 import type { StatePatch, StatesFilter, StatesRepository } from "./states.repository.ts";
 
 export type StatesService = {
@@ -40,8 +42,18 @@ export type StatesService = {
   remove(actor: Actor, slug: string, id: string, meta: RequestMeta): Promise<Job>;
   /** Deletes a state and its orphan blobs at once; the retention sweep uses it for stashes (15 §15.4). */
   removeNow(id: string): Promise<void>;
-  archiveManifest(uploadId: string): Promise<typeof ARCHIVE_MANIFEST_MOCK>;
-  importArchive(slug: string, name: string): Promise<Job>;
+  /** The tar of a ready state, streamed (08 §8.7). */
+  archive(
+    slug: string,
+    idOrName: string
+  ): Promise<{ state: State; body: ReadableStream<Uint8Array> }>;
+  archiveManifest(slug: string, uploadId: string): Promise<ArchiveManifest>;
+  importArchive(
+    actor: Actor,
+    slug: string,
+    input: ImportArchiveInput,
+    meta: RequestMeta
+  ): Promise<Job>;
 };
 
 export type StatesDeps = {
@@ -50,9 +62,12 @@ export type StatesDeps = {
   adapters: Pick<AdaptersRepository, "list" | "byId">;
   jobs: Pick<JobsService, "enqueue">;
   blobs: BlobStore;
+  uploads: Pick<ImportsRepository, "upload">;
   audit: AuditService;
   now: () => Date;
 };
+
+export type { ImportArchiveInput } from "./states.archives.ts";
 
 const DEFAULT_FILTER: StatesFilter = {
   limit: 1000,
@@ -158,6 +173,8 @@ export function createStatesService(deps: StatesDeps): StatesService {
     return requested;
   };
 
+  const archives = createArchiveOps({ ...deps, find, assertNameFree, record });
+
   return {
     async list(slug, filter) {
       return repo.list(projectOf(slug).id, filter);
@@ -257,19 +274,9 @@ export function createStatesService(deps: StatesDeps): StatesService {
       for (const hash of orphans) await deps.blobs.delete(hash);
       repo.forgetBlobs(orphans);
     },
-    // SCAFFOLD: archives (PAX tar, upload manifest, import) belong to the archive card (15 §15.5).
-    async archiveManifest() {
-      return ARCHIVE_MANIFEST_MOCK;
-    },
-    async importArchive(slug) {
-      projectOf(slug);
-      return {
-        ...PROJECT_JOB_MOCK,
-        kind: "archive_import",
-        status: "queued",
-        finished_at: null,
-        result: null,
-      };
-    },
+    archive: (slug, idOrName) => archives.archive(projectOf(slug), idOrName),
+    archiveManifest: (slug, uploadId) => archives.manifest(projectOf(slug), uploadId),
+    importArchive: (actor, slug, input, meta) =>
+      archives.importArchive(actor, projectOf(slug), input, meta),
   };
 }

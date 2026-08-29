@@ -107,6 +107,7 @@ export function statesDeps(
     blobs: wiring.blobs,
     audit,
     now,
+    uploads: wiring.imports,
   };
 }
 

@@ -1,0 +1,140 @@
+import type { Actor, ArchiveManifest, Job, Project, State } from "@testate/shared";
+import type { importArchiveSchema } from "@testate/shared";
+import type * as v from "valibot";
+
+import type { BlobStore } from "../../lib/blobstore/index.ts";
+import { AppError, conflict, notFound } from "../../lib/http/index.ts";
+import type { RequestMeta } from "../../lib/http/auth.ts";
+import type { AdaptersRepository } from "../adapters/adapters.repository.ts";
+import type { ImportsRepository } from "../imports/imports.repository.ts";
+import type { JobsService } from "../jobs/jobs.service.ts";
+import type { ProjectsRepository } from "../projects/projects.repository.ts";
+import { readArchive, writeArchive } from "./states.archive.ts";
+import type { StatesRepository } from "./states.repository.ts";
+
+export type ImportArchiveInput = v.InferOutput<typeof importArchiveSchema>;
+
+export type ArchiveDeps = {
+  repo: StatesRepository;
+  projects: Pick<ProjectsRepository, "usedBytes">;
+  adapters: Pick<AdaptersRepository, "byId">;
+  jobs: Pick<JobsService, "enqueue">;
+  blobs: BlobStore;
+  uploads: Pick<ImportsRepository, "upload">;
+  now: () => Date;
+  find: (project: Project, idOrName: string) => State;
+  assertNameFree: (project: Project, name: string) => void;
+  record: (
+    actor: Actor,
+    action: string,
+    project: Project,
+    state: State,
+    meta: RequestMeta,
+    details?: Record<string, string | number | boolean | null>
+  ) => void;
+};
+
+export type ArchiveOps = {
+  archive(
+    project: Project,
+    idOrName: string
+  ): Promise<{ state: State; body: ReadableStream<Uint8Array> }>;
+  manifest(project: Project, uploadId: string): Promise<ArchiveManifest>;
+  importArchive(
+    actor: Actor,
+    project: Project,
+    input: ImportArchiveInput,
+    meta: RequestMeta
+  ): Promise<Job>;
+};
+
+type Mapped = { archive_adapter_id: string; adapter_id: string };
+
+/** Download, upload manifest, and import of state archives (08 §8.7-8.9, 15 §15.5). */
+export function createArchiveOps(deps: ArchiveDeps): ArchiveOps {
+  const nowIso = (): string => deps.now().toISOString();
+  const manifestOf = async (project: Project, uploadId: string): Promise<ArchiveManifest> => {
+    const upload = deps.uploads.upload(uploadId);
+    if (upload === null || upload.project_id !== project.id) throw notFound("upload");
+    if (upload.type !== "tar")
+      throw new AppError("VALIDATION_ERROR", "the upload is not a tar archive");
+    return readArchive(new Uint8Array(await Bun.file(upload.path).arrayBuffer())).manifest;
+  };
+  /** SCAFFOLD: `target.create` (new adapters from an archive) arrives with a later card; existing ones only. */
+  const mapOne = (
+    project: Project,
+    archive: ArchiveManifest,
+    item: ImportArchiveInput["adapter_mapping"][number]
+  ): Mapped => {
+    if ("create" in item.target) {
+      throw new AppError("ENGINE_UNSUPPORTED", "map the archive adapter to an existing adapter", {
+        reason: "create",
+      });
+    }
+    const source = archive.adapters.find(
+      (entry) => entry.archive_adapter_id === item.archive_adapter_id
+    );
+    const adapter = deps.adapters.byId(item.target.adapter_id);
+    if (source === undefined || adapter === null || adapter.project_id !== project.id)
+      throw notFound("adapter");
+    if (adapter.engine !== source.engine) {
+      throw new AppError(
+        "VALIDATION_ERROR",
+        `${adapter.name} is ${adapter.engine}, the archive adapter is ${source.engine}`
+      );
+    }
+    return { archive_adapter_id: item.archive_adapter_id, adapter_id: adapter.id };
+  };
+  return {
+    async archive(project, idOrName) {
+      const state = deps.find(project, idOrName);
+      if (state.status !== "ready") throw conflict("state is not ready", { status: state.status });
+      return { state, body: writeArchive(state, deps.repo.manifestsOf(state.id), deps.blobs) };
+    },
+    manifest: manifestOf,
+    async importArchive(actor, project, input, meta) {
+      deps.assertNameFree(project, input.name);
+      if (
+        project.quota_bytes !== null &&
+        deps.projects.usedBytes(project.id) >= project.quota_bytes
+      ) {
+        throw new AppError("QUOTA_EXCEEDED", "the project is at its storage quota");
+      }
+      const archive = await manifestOf(project, input.upload_id);
+      const mapping = input.adapter_mapping.map((item) => mapOne(project, archive, item));
+      if (mapping.length === 0) throw new AppError("VALIDATION_ERROR", "adapter_mapping is empty");
+      const stateId = Bun.randomUUIDv7();
+      deps.repo.insert({
+        id: stateId,
+        project_id: project.id,
+        name: input.name,
+        kind: "manual",
+        protected: false,
+        parent_state_id: null,
+        job_id: "",
+        actor,
+        created_at: nowIso(),
+      });
+      deps.repo.update(stateId, { notes: archive.state.notes, tags: archive.state.tags }, nowIso());
+      let job: Job;
+      try {
+        job = await deps.jobs.enqueue({
+          kind: "archive_import",
+          projectId: project.id,
+          adapterIds: [],
+          payload: { state_id: stateId, upload_id: input.upload_id, mapping },
+          actor,
+          parentRequestId: meta.request_id,
+        });
+      } catch (cause: unknown) {
+        deps.repo.remove(stateId);
+        throw cause;
+      }
+      deps.repo.update(stateId, { job_id: job.id }, nowIso());
+      deps.record(actor, "state.import_requested", project, deps.find(project, stateId), meta, {
+        upload_id: input.upload_id,
+      });
+      return job;
+    },
+  };
+}

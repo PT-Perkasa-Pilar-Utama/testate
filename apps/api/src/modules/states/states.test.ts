@@ -20,6 +20,7 @@ async function createStatesHarness(): Promise<{ harness: AdaptersHarness; states
     adapters: harness.repo,
     jobs: harness.runtime.jobs,
     blobs: harness.blobs,
+    uploads: harness.imports,
     audit: harness.audit,
     now: harness.now,
   });
@@ -144,5 +145,81 @@ describe("states", () => {
     await expect(h.states.get("shop", changed)).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect((await h.states.get("shop", shared)).status).toBe("ready");
     expect(h.harness.states.latestInit(adapter.id)).not.toBeNull();
+  });
+});
+
+describe("state archives", () => {
+  it("downloads a state as a PAX tar and imports it back as a new manual state", async () => {
+    const h = await createStatesHarness();
+    const adapter = await createSettled(h.harness, PG);
+    const id = await snapshotSettled(h, "golden", ["release"]);
+    const { state, body } = await h.states.archive("shop", id);
+    expect(state.name).toBe("golden");
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of body) chunks.push(chunk);
+    const tar = Buffer.concat(chunks);
+    expect(tar.byteLength % 512).toBe(0);
+    const upload = await h.harness.imports.insertUpload({
+      upload_id: "01991f00-0000-7000-8000-0000000000aa",
+      project_id: adapter.project_id,
+      file_name: "golden.tar",
+      path: `${h.harness.dataDir}/golden.tar`,
+      size_bytes: tar.byteLength,
+      type: "tar",
+      purpose: "archive",
+      expires_at: "2999-01-01T00:00:00.000Z",
+      created_at: "2026-08-29T00:00:00.000Z",
+    });
+    await Bun.write(`${h.harness.dataDir}/golden.tar`, tar);
+    const manifest = await h.states.archiveManifest("shop", "01991f00-0000-7000-8000-0000000000aa");
+    expect(manifest.state).toMatchObject({ name: "golden", tags: ["release"] });
+    expect(manifest.adapters[0]).toMatchObject({
+      archive_adapter_id: adapter.id,
+      engine: "postgres",
+      tables: 2,
+    });
+    const job = await h.states.importArchive(
+      h.harness.qa,
+      "shop",
+      {
+        upload_id: "01991f00-0000-7000-8000-0000000000aa",
+        name: "golden-copy",
+        adapter_mapping: [{ archive_adapter_id: adapter.id, target: { adapter_id: adapter.id } }],
+      },
+      TEST_META
+    );
+    const done = await h.harness.runtime.jobs.wait(null, job.id, 5);
+    expect(done.error).toBeNull();
+    const copy = await h.states.get("shop", "golden-copy");
+    expect(copy).toMatchObject({
+      kind: "manual",
+      status: "ready",
+      parent_state_id: null,
+      tags: ["release"],
+    });
+    expect(copy.adapters[0]?.tables.map((table) => table.blob_hash)).toEqual(
+      (await h.states.get("shop", id)).adapters[0]?.tables.map((table) => table.blob_hash)
+    );
+    expect(upload).toBeUndefined();
+  });
+
+  it("refuses an upload that is not a Testate archive", async () => {
+    const h = await createStatesHarness();
+    const adapter = await createSettled(h.harness, PG);
+    await Bun.write(`${h.harness.dataDir}/junk.tar`, new Uint8Array(1024));
+    h.harness.imports.insertUpload({
+      upload_id: "01991f00-0000-7000-8000-0000000000ab",
+      project_id: adapter.project_id,
+      file_name: "junk.tar",
+      path: `${h.harness.dataDir}/junk.tar`,
+      size_bytes: 1024,
+      type: "tar",
+      purpose: "archive",
+      expires_at: "2999-01-01T00:00:00.000Z",
+      created_at: "2026-08-29T00:00:00.000Z",
+    });
+    await expect(
+      h.states.archiveManifest("shop", "01991f00-0000-7000-8000-0000000000ab")
+    ).rejects.toThrow("not a Testate archive");
   });
 });

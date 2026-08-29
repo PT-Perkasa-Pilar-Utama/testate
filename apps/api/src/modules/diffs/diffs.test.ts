@@ -53,6 +53,7 @@ async function manualState(h: Harness, name: string): Promise<string> {
     adapters: h.harness.repo,
     jobs: h.harness.runtime.jobs,
     blobs: h.harness.blobs,
+    uploads: h.harness.imports,
     audit: h.harness.audit,
     now: h.harness.now,
   });

@@ -15,6 +15,7 @@ import type { ImportsRepository } from "../imports/imports.repository.ts";
 import type { PoliciesRepository } from "../data/data.policies.ts";
 import type { DiffsRepository } from "../diffs/diffs.repository.ts";
 import { createStateDeleteRunner } from "../states/states.delete.ts";
+import { createArchiveImportRunner } from "../states/states.import.ts";
 import { createSnapshotRunner } from "../states/states.snapshot.ts";
 import type { Dispatcher, JobRunner, JobRunnerContext } from "./jobs.dispatcher.ts";
 
@@ -137,4 +138,8 @@ export function registerRunners(dispatcher: Dispatcher, deps: RunnerDeps): void 
   dispatcher.registerKind("checkout", createCheckoutRunner(deps));
   dispatcher.registerKind("diff", createDiffRunner(deps));
   dispatcher.registerKind("import", createImportRunner(deps));
+  dispatcher.registerKind(
+    "archive_import",
+    createArchiveImportRunner({ ...deps, uploads: deps.imports })
+  );
 }
