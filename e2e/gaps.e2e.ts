@@ -248,4 +248,24 @@ test.describe("qa gap stories", () => {
     await page.keyboard.press("Escape");
     expect(issues).toStrictEqual([]);
   });
+  test("@story-140 the grid lists foreign keys and an FK cell links to the referenced row", async ({
+    page,
+  }) => {
+    const issues: Issue[] = [];
+    watch(page, issues);
+    const postgres = await demoAdapter({ engine: "postgres" });
+    const orders = await tableNamed(postgres.id, "orders");
+    await page.goto(`/projects/demo/adapters/${postgres.id}/tables/${encodeURIComponent(orders)}`);
+    await settle(page);
+    await expect(page.getByText(/customer_id → .*customers\.id/)).toBeVisible();
+    const link = page.locator("main tbody a").first();
+    const value = await link.innerText();
+    await link.click();
+    await settle(page);
+    await expect(page).toHaveURL(/customers.*filter=id%3Aeq%3A/);
+    await expect(page.getByText(`id eq ${value}`)).toBeVisible();
+    await expect(page.locator("main tbody tr")).toHaveCount(1);
+    await expect(page.getByText(/← .*orders\.customer_id/)).toBeVisible();
+    expect(issues).toStrictEqual([]);
+  });
 });

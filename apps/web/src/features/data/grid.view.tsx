@@ -11,8 +11,9 @@ import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import Switch from "@/components/switch.tsx";
 import FixtureDialog from "./fixture.view.tsx";
-import { FILTER_OPS, PAGE_SIZES, cellText, createGridPresenter } from "./grid.presenter.ts";
+import { FILTER_OPS, PAGE_SIZES, createGridPresenter } from "./grid.presenter.ts";
 import type { FilterOp, GridPresenter } from "./grid.presenter.ts";
+import { FkCell, ForeignKeys } from "./grid-cells.view.tsx";
 import RowForm from "./row-form.view.tsx";
 
 const OP_OPTIONS = FILTER_OPS.map((op) => ({ value: op, label: op }));
@@ -217,6 +218,7 @@ export default function GridView(props: { slug: string; id: string; table: strin
           </a>{" "}
           / <code>{props.table}</code>
         </h2>
+        <ForeignKeys presenter={presenter} />
       </div>
       <Loading fallback={<p class="text-kumo-subtle">Loading rows...</p>}>
         <FilterBar
@@ -260,9 +262,11 @@ export default function GridView(props: { slug: string; id: string; table: strin
                     <For each={presenter.page.value().columns}>
                       {(column) => (
                         <Cell>
-                          <span class={{ "text-kumo-subtle": row[column.name] === null }}>
-                            {cellText(row[column.name])}
-                          </span>
+                          <FkCell
+                            presenter={presenter}
+                            column={column.name}
+                            value={row[column.name]}
+                          />
                         </Cell>
                       )}
                     </For>

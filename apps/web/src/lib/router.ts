@@ -29,7 +29,8 @@ export function navigate(path: string, replace = false): void {
   const url = `${BASE}${path}`;
   if (replace) window.history.replaceState(null, "", url);
   else window.history.pushState(null, "", url);
-  setLocation(path);
+  // Routes match on the pathname; a `?query` rides along in history for the screen to read.
+  setLocation(path.split("?")[0] ?? path);
 }
 
 /** Builds an href for anchors so middle-click and copy work. */

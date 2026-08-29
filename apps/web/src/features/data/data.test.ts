@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { TableSchema } from "@testate/shared";
 
-import { cellText, filterText } from "./grid.presenter.ts";
+import { cellText, filterText, filtersFromSearch, parseFilterText } from "./grid.presenter.ts";
 import { pkOf, toFormValue, valuesOf } from "./editing.presenter.ts";
 import { NONE, policyBody } from "./policies.presenter.ts";
 import { buildRequest } from "./query.presenter.ts";
@@ -18,6 +18,12 @@ const MONGO = {
 describe("data feature", () => {
   test("filters serialize as column:op:value and cells render null and JSON", () => {
     expect(filterText({ column: "status", op: "like", value: "pa%" })).toBe("status:like:pa%");
+    expect(parseFilterText("id:eq:1")).toStrictEqual({ column: "id", op: "eq", value: "1" });
+    expect(parseFilterText("t:like:a:b")).toStrictEqual({ column: "t", op: "like", value: "a:b" });
+    expect(parseFilterText("id:nope:1")).toBeNull();
+    expect(filtersFromSearch("?filter=id%3Aeq%3A1&filter=bad")).toStrictEqual([
+      { column: "id", op: "eq", value: "1" },
+    ]);
     expect(cellText(null)).toBe("NULL");
     expect(cellText("x")).toBe("x");
     expect(cellText({ a: 1 })).toBe('{"a":1}');

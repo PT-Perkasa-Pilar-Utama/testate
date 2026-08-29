@@ -1,4 +1,4 @@
-import { createMemo, createSignal } from "solid-js";
+import { createEffect, createMemo, createSignal } from "solid-js";
 import type { Adapter, JsonValue, RowsPage, TableSchema } from "@testate/shared";
 import * as v from "valibot";
 
@@ -50,6 +50,8 @@ export type GridPresenter = {
   next: () => void;
   previous: () => void;
   first: () => void;
+  /** The linked grid for an FK cell, or null for a plain cell (story 140). */
+  linkFor: (column: string, value: JsonValue) => string | null;
 };
 
 /** `<column>:<op>:<value>` as 06 §6.2 reads it; the value may hold colons. */
@@ -67,6 +69,39 @@ export function qualifiedName(table: { schema: string | null; name: string }): s
   return table.schema === null ? table.name : `${table.schema}.${table.name}`;
 }
 
+/** `<column>:<op>:<value>` back into a filter; null when the operator is unknown. */
+export function parseFilterText(text: string): Filter | null {
+  const [column, op, ...rest] = text.split(":");
+  const found = FILTER_OPS.find((candidate) => candidate === op);
+  if (column === undefined || column === "" || found === undefined) return null;
+  return { column, op: found, value: rest.join(":") };
+}
+
+/** Filters carried in the URL (`?filter=col:op:value`), as an FK link sets them (story 140). */
+export function filtersFromSearch(search: string): Filter[] {
+  return new URLSearchParams(search)
+    .getAll("filter")
+    .map(parseFilterText)
+    .filter((filter): filter is Filter => filter !== null);
+}
+
+/** The grid path of the table an FK column points at, filtered to the referenced row. */
+export function fkLink(
+  slug: string,
+  id: string,
+  table: TableSchema | null,
+  column: string,
+  value: JsonValue
+): string | null {
+  const fk = table?.foreign_keys_out.find(
+    (item) => item.columns.length === 1 && item.columns[0] === column
+  );
+  const refColumn = fk?.ref_columns[0];
+  if (fk === undefined || refColumn === undefined || value === null) return null;
+  const filter = filterText({ column: refColumn, op: "eq", value: cellText(value) });
+  return `/projects/${encodeURIComponent(slug)}/adapters/${encodeURIComponent(id)}/tables/${encodeURIComponent(qualifiedName(fk.ref))}?filter=${encodeURIComponent(filter)}`;
+}
+
 export function createGridPresenter(
   slug: () => string,
   id: () => string,
@@ -74,7 +109,7 @@ export function createGridPresenter(
 ): GridPresenter {
   const [sort, setSort] = createSignal<string | undefined>(undefined);
   const [order, setOrder] = createSignal<"asc" | "desc">("asc");
-  const [filters, setFilters] = createSignal<Filter[]>([]);
+  const [filters, setFilters] = createSignal<Filter[]>(filtersFromSearch(window.location.search));
   const [limit, setLimitSignal] = createSignal<PageSize>("100");
   const [cursors, setCursors] = createSignal<string[]>([]);
   const page = createRefreshable(() => {
@@ -92,6 +127,16 @@ export function createGridPresenter(
   const reset = (): void => {
     setCursors([]);
   };
+  // The view survives a link to another table, so the table change re-reads the URL filters.
+  createEffect(
+    () => table_(),
+    (name, previous) => {
+      if (previous === undefined || previous === name) return;
+      setFilters(filtersFromSearch(window.location.search));
+      setSort(undefined);
+      reset();
+    }
+  );
   const adapter = createRefreshable(() => adaptersModel.get(slug(), id()));
   const schema = createRefreshable(() => adapterModel.schema(slug(), id()));
   const table = createMemo((): TableSchema | null => {
@@ -122,6 +167,7 @@ export function createGridPresenter(
       }
       reset();
     },
+    linkFor: (column, value) => fkLink(slug(), id(), table(), column, value),
     filters,
     addFilter: (filter) => {
       setFilters((current) => [...current, filter]);
