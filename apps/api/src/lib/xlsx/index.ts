@@ -88,17 +88,67 @@ export function resolveSheet(selector: string | undefined, names: string[]): str
   return Number.isInteger(index) && index >= 1 ? names[index - 1] : undefined;
 }
 
-function cellValue(cell: string, strings: string[]): string {
+/** Built-in number formats that mean a date or a time (ECMA-376 18.8.30). */
+const BUILT_IN_DATES = new Set([14, 15, 16, 17, 18, 19, 20, 21, 22, 45, 46, 47]);
+const EXCEL_EPOCH_MS = Date.UTC(1899, 11, 30);
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function isDateFormat(id: number, code: string | undefined): boolean {
+  if (BUILT_IN_DATES.has(id)) return true;
+  if (code === undefined) return false;
+  // Literals and colour or condition brackets carry no format letters.
+  const bare = code.replace(/"[^"]*"/g, "").replace(/\[[^\]]*\]/g, "");
+  return /[ymdhs]/i.test(bare);
+}
+
+function numberFormats(xml: string): Map<number, string> {
+  const formats = new Map<number, string>();
+  for (const match of xml.matchAll(/<numFmt\b[^>]*>/g)) {
+    const id = Number(/numFmtId="(\d+)"/.exec(match[0])?.[1] ?? "-1");
+    const code = /formatCode="([^"]*)"/.exec(match[0])?.[1];
+    if (id >= 0 && code !== undefined) formats.set(id, unescapeXml(code));
+  }
+  return formats;
+}
+
+/** The `cellXfs` indexes whose number format is a date; a cell's `s` attribute points into these. */
+function dateStyles(entries: Map<string, Uint8Array>): Set<number> {
+  const xml = decoder.decode(entries.get("xl/styles.xml") ?? new Uint8Array());
+  const formats = numberFormats(xml);
+  const body = /<cellXfs\b[^>]*>([\s\S]*?)<\/cellXfs>/.exec(xml)?.[1] ?? "";
+  const styles = new Set<number>();
+  for (const [index, xf] of [...body.matchAll(/<xf\b[^>]*>/g)].entries()) {
+    const id = Number(/numFmtId="(\d+)"/.exec(xf[0])?.[1] ?? "0");
+    if (isDateFormat(id, formats.get(id))) styles.add(index);
+  }
+  return styles;
+}
+
+/** Excel serials count days from 1899-12-30; a whole number is a date, a fraction carries a time. */
+function fromSerial(serial: number): string {
+  const iso = new Date(EXCEL_EPOCH_MS + Math.round(serial * DAY_MS)).toISOString();
+  return Number.isInteger(serial) ? (iso.slice(0, 10) ?? iso) : iso.replace(".000Z", "Z");
+}
+
+/** A number cell under a date format reads as a date; every other number stays as it is. */
+function typedNumber(text: string, cell: string, dates: Set<number>): string {
+  const style = Number(/\ss="(\d+)"/.exec(cell)?.[1] ?? "-1");
+  if (text === "" || !dates.has(style)) return text;
+  const serial = Number(text);
+  return Number.isFinite(serial) ? fromSerial(serial) : text;
+}
+
+/** A cell reads as its typed value: a shared or inline string, a boolean, a date, or its number. */
+function cellValue(cell: string, strings: string[], dates: Set<number>): string {
   const type = /\st="([^"]+)"/.exec(cell)?.[1];
   if (type === "inlineStr") return textOf(cell);
   const value = /<v>([\s\S]*?)<\/v>/.exec(cell)?.[1] ?? "";
   if (type === "s") return strings[Number(value)] ?? "";
   if (type === "b") return value === "1" ? "true" : "false";
-  // ponytail: dates stay as Excel serial numbers — style parsing needs the styles part; add when a mapping asks.
-  return unescapeXml(value);
+  return typedNumber(unescapeXml(value), cell, dates);
 }
 
-function sheetRows(xml: string, strings: string[]): string[][] {
+function sheetRows(xml: string, strings: string[], dates: Set<number>): string[][] {
   const rows: string[][] = [];
   for (const row of xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)) {
     const cells: string[] = [];
@@ -106,7 +156,7 @@ function sheetRows(xml: string, strings: string[]): string[][] {
       const reference = /\sr="([A-Z]+)\d+"/.exec(cell[1] ?? "")?.[1];
       const index = reference === undefined ? cells.length : columnIndex(reference);
       while (cells.length < index) cells.push("");
-      cells[index] = cellValue(cell[0], strings);
+      cells[index] = cellValue(cell[0], strings, dates);
     }
     rows.push(cells);
   }
@@ -124,7 +174,11 @@ export function readXlsx(bytes: Uint8Array, selector?: string): Workbook {
     throw new Error(`xlsx: no sheet ${selector ?? ""} (have ${names.join(", ") || "none"})`);
   const xml = entries.get(ref.path);
   if (xml === undefined) throw new Error(`xlsx: sheet part ${ref.path} is missing`);
-  return { sheets: names, sheet, rows: sheetRows(decoder.decode(xml), sharedStrings(entries)) };
+  return {
+    sheets: names,
+    sheet,
+    rows: sheetRows(decoder.decode(xml), sharedStrings(entries), dateStyles(entries)),
+  };
 }
 
 function columnName(index: number): string {
