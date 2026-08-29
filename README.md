@@ -1,4 +1,4 @@
-![Testate: git for your test database. Runs in Docker on the DEV, SIT, or UAT server next to your main service and database; a reverse proxy exposes it to admins, viewers, testers, CI/CD, and AI agents](docs/assets/hero-banner.svg)
+![Testate: git for your test database. Runs in Docker on the DEV, SIT, or UAT server next to your main service and database; a reverse proxy exposes it to admins, viewers, testers, CI/CD, and AI agents](docs/assets/hero-square.svg)
 
 **Git for your test database. Reset the database, not the developer.**
 
