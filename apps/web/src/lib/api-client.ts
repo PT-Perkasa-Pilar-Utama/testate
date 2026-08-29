@@ -2,7 +2,8 @@ import * as v from "valibot";
 import type { ErrorCode, JsonObject } from "@testate/shared";
 import { apiErrorSchema } from "@testate/shared";
 
-const API = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/v1`;
+/** Vite fills `BASE_URL`; under `bun test` there is no env, so the root serves as the base. */
+const API = `${(import.meta.env?.BASE_URL ?? "/").replace(/\/$/, "")}/api/v1`;
 
 export class ApiError extends Error {
   readonly code: ErrorCode;
@@ -74,7 +75,36 @@ async function request<TSchema extends v.GenericSchema>(
   return envelope.output.data;
 }
 
+/** Reads the whole body when the response is a page envelope (`{ data, page, ... }`). */
+async function envelope<TSchema extends v.GenericSchema>(
+  path: string,
+  options: RequestOptions<TSchema>
+): Promise<v.InferOutput<TSchema>> {
+  const response = await fetch(
+    `${API}${path}${toQuery(options.query)}`,
+    buildInit("GET", undefined)
+  );
+  if (!response.ok) throw await parseError(response);
+  const parsed = v.safeParse(options.schema, await response.json());
+  if (!parsed.success)
+    throw new ApiError("INTERNAL", response.status, "response did not match its contract");
+  return parsed.output;
+}
+
+export type Download = { blob: Blob; filename: string };
+
+/** A streamed file from a POST; the name comes from `Content-Disposition`. */
+async function download(path: string, body: JsonObject, fallback: string): Promise<Download> {
+  const response = await fetch(`${API}${path}`, buildInit("POST", body));
+  if (!response.ok) throw await parseError(response);
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? fallback;
+  return { blob: await response.blob(), filename };
+}
+
 export const apiClient = {
+  envelope,
+  download,
   get: <TSchema extends v.GenericSchema>(
     path: string,
     options: RequestOptions<TSchema>

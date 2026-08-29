@@ -7,11 +7,17 @@ import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { createAdapterPresenter } from "./adapter.presenter.ts";
 import type { AdapterPresenter } from "./adapter.presenter.ts";
 
-function TablesView(props: { schema: Introspection }): JSX.Element {
+function TablesView(props: { schema: Introspection; base: string }): JSX.Element {
+  const tablePath = (name: string): string => `${props.base}/tables/${encodeURIComponent(name)}`;
+  const open = (event: MouseEvent, name: string): void => {
+    event.preventDefault();
+    navigate(tablePath(name));
+  };
   return (
     <Table>
       <thead>
@@ -27,7 +33,13 @@ function TablesView(props: { schema: Introspection }): JSX.Element {
           {(table) => (
             <Row>
               <Cell>
-                <code>{table.schema === null ? table.name : `${table.schema}.${table.name}`}</code>
+                <a
+                  class="hover:underline"
+                  href={href(tablePath(qualified(table)))}
+                  onClick={(event) => open(event, qualified(table))}
+                >
+                  <code>{qualified(table)}</code>
+                </a>
               </Cell>
               <Cell>{table.row_estimate}</Cell>
               <Cell>{table.columns.length}</Cell>
@@ -100,7 +112,11 @@ function RequestsView(props: { requests: RestRequest[] }): JSX.Element {
 
 const STATUS_VARIANT = { ok: "success", error: "error", disabled: "secondary" } as const;
 
-function Actions(props: { presenter: AdapterPresenter }): JSX.Element {
+function qualified(table: { schema: string | null; name: string }): string {
+  return table.schema === null ? table.name : `${table.schema}.${table.name}`;
+}
+
+function Actions(props: { presenter: AdapterPresenter; base: string }): JSX.Element {
   const adapter = (): Adapter => props.presenter.adapter.value();
   const fingerprint = (): string => {
     const credential = adapter().credential;
@@ -115,6 +131,11 @@ function Actions(props: { presenter: AdapterPresenter }): JSX.Element {
       </Badge>
       <Show when={adapter().credential.set}>
         <Badge variant="outline">sealed · {fingerprint()}</Badge>
+      </Show>
+      <Show when={adapter().kind === "database"}>
+        <Button size="sm" variant="secondary" onClick={() => navigate(`${props.base}/query`)}>
+          Query console
+        </Button>
       </Show>
       <Show when={hasRole("qa")}>
         <Button size="sm" variant="secondary" onClick={() => void props.presenter.retest()}>
@@ -189,6 +210,7 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
     () => props.slug,
     () => props.id
   );
+  const base = (): string => `/projects/${props.slug}/adapters/${props.id}`;
   return (
     <section class="grid gap-6">
       <Loading fallback={<p class="text-kumo-subtle">Loading adapter...</p>}>
@@ -203,10 +225,12 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
               · {presenter.adapter.value().tier} tier · {presenter.adapter.value().mode}
             </p>
           </div>
-          <Actions presenter={presenter} />
+          <Actions presenter={presenter} base={base()} />
         </div>
         <Switch>
-          <Match when={presenter.tables()}>{(schema) => <TablesView schema={schema()} />}</Match>
+          <Match when={presenter.tables()}>
+            {(schema) => <TablesView schema={schema()} base={base()} />}
+          </Match>
           <Match when={presenter.entries()}>{(entries) => <FilesView entries={entries()} />}</Match>
           <Match when={presenter.requests()}>
             {(requests) => <RequestsView requests={requests()} />}
