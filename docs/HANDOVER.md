@@ -21,7 +21,8 @@ E2E: ~120 Playwright tests, ~3 min, coverage **150/150 stories covered**. `NON_U
   glues them together otherwise and `git log --oneline` shows the whole paragraph.
 - No new dependencies for what Bun, the standard library, or an installed package does.
 - Roles admin/qa/viewer are cumulative; agent tokens reach `/mcp` only. Secrets are `Sealed`.
-- Keep the gate green: `bun run complete-check` then `bun run e2e`.
+- Keep the gate green: `bun run complete-check` then `bun run e2e`. A `pre-push` hook runs
+  `complete-check` for you, so nothing reaches CI with a formatting or lint slip.
 - Talk like a colleague at a whiteboard: answer first, short sentences, no process narration.
 
 ## 3. The working loop that works
@@ -137,9 +138,13 @@ b9131cd test(e2e): cover the contract and agent stories over the API
 
 **In flight:** nothing. The tree was clean when this was written; `git status` should agree.
 
-**Worth knowing:** the `e2e` job in `.github/workflows/ci.yml` runs the whole suite after `check`,
-starting the compose engines by name. A new container has to be added to that list as well as to
-`deploy/compose.engines.yml` — `postgres-old` (story 20) is there now.
+**Worth knowing:** `.github/workflows/ci.yml` runs the fast gate (`complete-check`, then a boot and
+smoke) on every push. The browser suite and the image build are gated to pull requests, a `v*` tag,
+and `workflow_dispatch`, so a push to main does not pay for them. Two things the e2e job needs: a
+new compose container has to be named in its `up --wait` list as well as in
+`deploy/compose.engines.yml` (`postgres-old` is, for story 20), and one-shot containers must stay
+out of that list — `--wait` fails on a container that exits, even with code 0, which is why
+`minio-init` runs as its own `compose run --rm` step.
 
 **Remaining ponytails, in order:** the deferrable-constraint check per constraint
 (`postgres/write.ts`); backup file naming in the content-addressed store; `readTable` snapshotting
@@ -164,6 +169,11 @@ Type system: `exactOptionalPropertyTypes` is on — never assign `undefined` to 
 transpiles JSX with the React runtime; a stray `~/node_modules/react` on this machine made that
 resolve locally and fail in CI. `apps/web/test/graph.test.ts` now fails if any web test reaches a
 `.tsx`. When CI disagrees with a green local gate, suspect resolution before logic.
+
+The image build installs with `--ignore-scripts`, so nothing a lifecycle script would produce
+exists inside it. The API bundle keeps native addons out with `--external "*.node"`; ssh2 then falls
+back to its pure-JS crypto, which `lib/files/sftp.ts` says it must do anyway. Anything the bundle
+requires has to be in the tree, not built at install time.
 
 Editing with scripts: `bun run fmt:fix` reflows code, so an anchor written from memory often no
 longer matches. Always `grep` the anchor or the new symbol after the edit, and check `git diff`.

@@ -42,3 +42,11 @@ commit-msg:
           echo "Commit subject is longer than 80 characters" >&2
           exit 1
         fi
+
+# The gate CI runs, before the push rather than after it: type-check, lint, format,
+# `bun test`, and the build. About a minute, and it is the difference between a red CI
+# run over a formatting slip and a clean one. Skip it with `--no-verify`.
+pre-push:
+  commands:
+    complete-check:
+      run: bun run complete-check
