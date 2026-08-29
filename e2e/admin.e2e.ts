@@ -149,7 +149,9 @@ test.describe("admin gap stories", () => {
     await dialog.getByRole("switch", { name: /Virtual-hosted/ }).click();
     await dialog.getByRole("button", { name: "Start migration" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
-    await expect(page.getByText("Store migration succeeded")).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByText("Store migration succeeded").first()).toBeVisible({
+      timeout: 120_000,
+    });
     await expect(page.locator("main").getByText("s3", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Migrate store" }).click();
     await page
@@ -157,7 +159,10 @@ test.describe("admin gap stories", () => {
       .getByRole("combobox", { name: "Target" })
       .selectOption("local");
     await page.locator("dialog[open]").getByRole("button", { name: "Start migration" }).click();
-    await expect(page.getByText("Store migration succeeded")).toBeVisible({ timeout: 120_000 });
+    // The first toast may still be on screen; the second migration adds one of its own.
+    await expect(page.getByText("Store migration succeeded").nth(1)).toBeVisible({
+      timeout: 120_000,
+    });
     await expect(page.locator("main").getByText("local", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Run backup" }).click();
     const download = page.getByRole("link", { name: "Download backup" });

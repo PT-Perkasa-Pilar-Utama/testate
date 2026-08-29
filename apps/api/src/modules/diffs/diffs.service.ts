@@ -11,6 +11,7 @@ import type { EnqueueInput, JobsService } from "../jobs/jobs.service.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import type { StatesRepository } from "../states/states.repository.ts";
 import type { DiffAdapterSummary, DiffsRepository } from "./diffs.repository.ts";
+import { createRowsCache } from "../../lib/cache/rows-cache.ts";
 import { collectPage, maskDiffRows, tableKeyOf } from "./diffs.rows.ts";
 import type { MaskedDiffRows } from "./diffs.rows.ts";
 
@@ -69,6 +70,10 @@ export type DiffsDeps = {
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** ponytail: decoded diff rows cached up to this many across tables — above it a blob streams from the start per page; add a chunk index when a diff table passes it. */
+const CACHED_ROWS = 200_000;
+const rowsCache = createRowsCache<DiffRow>(CACHED_ROWS);
 
 export function createDiffsService(deps: DiffsDeps): DiffsService {
   const { repo } = deps;
@@ -142,7 +147,17 @@ export function createDiffsService(deps: DiffsDeps): DiffsService {
     if (entry === undefined) throw notFound("table");
     const hash = repo.tableBlob(diff.id, adapterId, entry.name, entry.schema);
     if (hash === null) return;
-    yield* decodeDiffRows(deps.blobs.get(hash));
+    const cached = rowsCache.get(hash);
+    if (cached !== undefined) {
+      yield* cached;
+      return;
+    }
+    const decoded: DiffRow[] = [];
+    for await (const row of decodeDiffRows(deps.blobs.get(hash))) {
+      decoded.push(row);
+      yield row;
+    }
+    rowsCache.put(hash, decoded);
   };
   const mask = (actor: Actor, adapterId: string, table: string, rows: DiffRow[]): MaskedDiffRows =>
     maskDiffRows(actor, deps.policies.list(adapterId, table), rows);
@@ -221,7 +236,7 @@ export function createDiffsService(deps: DiffsDeps): DiffsService {
       if (!Number.isInteger(offset) || offset < 0) {
         throw new AppError("VALIDATION_ERROR", "invalid cursor");
       }
-      // ponytail: no chunk index — the blob is read from the start on every page; fine below ~100k rows.
+      // Pages re-read a table once: decoded rows stay cached up to CACHED_ROWS in total (see rowsCache).
       const rows = tableRows(diff, query.adapter_id, query.table);
       const { page, more } = await collectPage(rows, query.op, offset, query.limit);
       const masked = mask(actor, query.adapter_id, query.table, page);
