@@ -5,7 +5,10 @@ export type Story = { id: number; section: string; actor: string; title: string 
 
 const ROOT = join(import.meta.dirname, "..", "..");
 
-/** Stories the dashboard cannot show: CI, developer, operator, and agent stories live in API and boot tests. */
+/**
+ * Stories no screen shows. The E2E suite still covers many of them through the API (`api.e2e.ts`,
+ * `agent.e2e.ts`); what stays here needs an injected failure, a second boot, or a clock.
+ */
 const NON_UI: [number, number][] = [
   // 15, 78, 85, 107 need a failing restore, real schema drift, a held lock, or a restart: the
   // API and job tests inject those; a dashboard cannot. (85: the engines name blockers and the
@@ -14,14 +17,13 @@ const NON_UI: [number, number][] = [
   [78, 78],
   [85, 85],
   [107, 107],
-  // Sessions, engine minimums, the deny list, sealing, snapshot progress, host keys, and audit
-  // retention have no control of their own on a screen; API and boot tests hold them.
-  [8, 9],
+  // Session expiry, engine minimums, the deny list, snapshot progress, and host keys need a clock,
+  // an old engine, a second adapter host, or an SFTP server; API and boot tests hold them.
+  [8, 8],
   [20, 20],
-  [32, 34],
+  [32, 33],
   [74, 74],
   [97, 97],
-  [109, 109],
   // 50: XLSX typed cells are engine-tested; Playwright runs on Node without the Bun writer.
   [50, 50],
   [63, 63],
@@ -29,9 +31,8 @@ const NON_UI: [number, number][] = [
   [72, 73],
   [83, 83],
   [86, 86],
-  [113, 117],
+  [113, 115],
   [122, 130],
-  [134, 139],
 ];
 
 /**

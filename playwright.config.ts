@@ -35,6 +35,8 @@ export default defineConfig({
   projects: [
     { name: "coverage", testMatch: /coverage\.e2e\.ts/ },
     { name: "routes", testMatch: /routes\.e2e\.ts/ },
+    // Contract and agent stories talk to the API only; nothing they touch is shared state.
+    { name: "api", testMatch: /(api|agent)\.e2e\.ts/ },
     {
       name: "flows",
       testMatch: /(flows|stories|hooks|gaps|admin)\.e2e\.ts/,

@@ -1,4 +1,5 @@
 import { request } from "@playwright/test";
+import type { APIRequestContext } from "@playwright/test";
 
 import { API_PORT } from "../../playwright.config.ts";
 import { PASSWORDS, USERNAMES } from "./roles.ts";
@@ -76,4 +77,61 @@ export async function adapterScreens(adapter: AdapterRow): Promise<string[]> {
   const [table] = await demoTables(adapter.id);
   if (table !== undefined) paths.push(`${base}/tables/${encodeURIComponent(table)}`);
   return paths;
+}
+
+/** An API context signed in as a role, ready for mutations (the CSRF header is set). */
+export async function apiContext(role: Role = "admin"): Promise<APIRequestContext> {
+  const context = await request.newContext({
+    baseURL: `http://localhost:${API_PORT}/api/v1/`,
+    extraHTTPHeaders: { "X-Testate-Request": "1" },
+  });
+  const response = await context.post("auth/login", {
+    data: { username: USERNAMES[role], password: PASSWORDS[role] },
+  });
+  if (!response.ok()) throw new Error(`login as ${role}: ${response.status()}`);
+  return context;
+}
+
+/** An API context that authenticates with a bearer token instead of a session cookie. */
+export async function bearerContext(token: string): Promise<APIRequestContext> {
+  return request.newContext({
+    baseURL: `http://localhost:${API_PORT}/api/v1/`,
+    extraHTTPHeaders: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export type CreatedToken = {
+  token: string;
+  record: { id: string; kind: string; project_ids: string[] | null; expires_at: string | null };
+};
+
+/** The `POST /tokens` body (09 §9.3): agent tokens take no role, standard ones require it. */
+export type TokenDraft = {
+  name: string;
+  kind?: "standard" | "agent";
+  role?: Role;
+  project_ids?: string[] | null;
+  expires_at?: string;
+};
+
+/** Creates an API token and returns the plaintext with its record; the caller revokes it. */
+export async function createToken(
+  admin: APIRequestContext,
+  body: TokenDraft
+): Promise<CreatedToken> {
+  const response = await admin.post("tokens", { data: body });
+  if (response.status() !== 201)
+    throw new Error(`token: ${response.status()} ${await response.text()}`);
+  const payload: { data: CreatedToken } = await response.json();
+  return payload.data;
+}
+
+/** The demo project's id; every agent token is scoped to it. */
+export async function demoProjectId(admin: APIRequestContext): Promise<string> {
+  const body: { data: { id: string; slug: string }[] } = await (
+    await admin.get("projects?limit=50")
+  ).json();
+  const demo = body.data.find((project) => project.slug === "demo");
+  if (demo === undefined) throw new Error("the demo project is missing from the seed");
+  return demo.id;
 }
