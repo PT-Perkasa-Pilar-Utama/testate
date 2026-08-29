@@ -1,5 +1,5 @@
-import { mkdirSync, rmSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { rmSync } from "node:fs";
+import { dirname } from "node:path";
 import type { Actor, JsonObject, Mapping, TableSchema } from "@testate/shared";
 import { importModeSchema, parseOptionsSchema } from "@testate/shared";
 import * as v from "valibot";
@@ -16,10 +16,10 @@ import type { HookRunResult, HookRunner } from "../hooks/hooks.service.ts";
 import type { JobRunner } from "../jobs/jobs.dispatcher.ts";
 import type { SnapshotDeps } from "../states/states.snapshot.ts";
 import { takeStash } from "../states/states.stash.ts";
-import { csvLine } from "./imports.csv.ts";
 import { readTable } from "./imports.table.ts";
+import { createRejectedSink } from "./imports.rejected.ts";
+import type { RejectedPreview, RejectedSink } from "./imports.rejected.ts";
 import { classify, readOptionsOf, toValues } from "./imports.rowmap.ts";
-import type { Rejected } from "./imports.rowmap.ts";
 import type { ImportsRepository, RunCounts } from "./imports.repository.ts";
 import { validateMapping } from "./imports.validate.ts";
 
@@ -44,7 +44,6 @@ export const importPayloadSchema = v.object({
 });
 
 const BATCH_ROWS = 1000;
-const ERRORS_PREVIEW = 100;
 
 type Prepared = {
   adapter: AdapterRecord;
@@ -81,24 +80,6 @@ async function prepare(
   return { adapter, mapping, table, keyColumns: mapping.key_columns };
 }
 
-function writeRejected(
-  deps: ImportJobDeps,
-  runId: string,
-  columns: string[],
-  rejected: Rejected[]
-): string | null {
-  if (rejected.length === 0) return null;
-  const path = join(deps.dataDir, "imports", runId, "rejected.csv");
-  mkdirSync(dirname(path), { recursive: true });
-  const lines = [
-    csvLine([...columns, "row_number", "reason"]),
-    ...rejected.map((item) => csvLine([...item.source, item.row_number, item.reason])),
-  ];
-  // ponytail: written at the end in one go — stream per batch when a run rejects millions of rows.
-  void Bun.write(path, `${lines.join("\n")}\n`);
-  return path;
-}
-
 type Batch = { rows: RowValues[]; numbers: number[]; sources: string[][] };
 
 async function flush(
@@ -108,7 +89,7 @@ async function flush(
   batch: Batch,
   first: boolean,
   counts: RunCounts,
-  rejected: Rejected[]
+  sink: RejectedSink
 ): Promise<void> {
   if (batch.rows.length === 0) return;
   const secrets = await openSecrets(
@@ -136,13 +117,15 @@ async function flush(
   counts.updated += result.updated;
   counts.failed += result.failures.length;
   for (const failure of result.failures) {
-    rejected.push({
+    sink.add({
       row_number: batch.numbers[failure.index] ?? 0,
       reason: failure.message,
       source: batch.sources[failure.index] ?? [],
     });
   }
 }
+
+type Processed = { counts: RunCounts; preview: RejectedPreview[]; rejectedPath: string | null };
 
 /** Parses, transforms, validates, and writes in batches; a dry run stops before any write. */
 async function process(
@@ -151,36 +134,47 @@ async function process(
   payload: v.InferOutput<typeof importPayloadSchema>,
   bytes: Uint8Array,
   progress: (value: JsonObject) => void
-): Promise<{ counts: RunCounts; rejected: Rejected[]; columns: string[] }> {
+): Promise<Processed> {
   const parsed = readTable(bytes, readOptionsOf(payload.options, prepared.mapping.options));
   const counts: RunCounts = { inserted: 0, updated: 0, skipped: 0, failed: 0, duration_ms: 0 };
-  const rejected: Rejected[] = [];
+  const sink = createRejectedSink({
+    dataDir: deps.dataDir,
+    runId: payload.run_id,
+    columns: parsed.columns,
+    fileBacked: !payload.dry_run,
+  });
   let batch: Batch = { rows: [], numbers: [], sources: [] };
   let first = true;
-  for (const [index, source] of parsed.rows.entries()) {
-    const rowNumber = parsed.headerRow + index + 1;
-    const outcome = await classify(prepared, parsed.columns, source, rowNumber);
-    if ("rejected" in outcome) {
-      counts.failed += 1;
-      rejected.push(outcome.rejected);
-      continue;
+  try {
+    for (const [index, source] of parsed.rows.entries()) {
+      const rowNumber = parsed.headerRow + index + 1;
+      const outcome = await classify(prepared, parsed.columns, source, rowNumber);
+      if ("rejected" in outcome) {
+        counts.failed += 1;
+        sink.add(outcome.rejected);
+        continue;
+      }
+      if (payload.dry_run) {
+        counts.skipped += 1;
+        continue;
+      }
+      batch.rows.push(toValues(outcome.row));
+      batch.numbers.push(rowNumber);
+      batch.sources.push(source);
+      if (batch.rows.length >= BATCH_ROWS) {
+        await flush(deps, prepared, payload, batch, first, counts, sink);
+        first = false;
+        batch = { rows: [], numbers: [], sources: [] };
+        progress({ phase: "write", rows: index + 1, total: parsed.rows.length });
+      }
     }
-    if (payload.dry_run) {
-      counts.skipped += 1;
-      continue;
-    }
-    batch.rows.push(toValues(outcome.row));
-    batch.numbers.push(rowNumber);
-    batch.sources.push(source);
-    if (batch.rows.length >= BATCH_ROWS) {
-      await flush(deps, prepared, payload, batch, first, counts, rejected);
-      first = false;
-      batch = { rows: [], numbers: [], sources: [] };
-      progress({ phase: "write", rows: index + 1, total: parsed.rows.length });
-    }
+    await flush(deps, prepared, payload, batch, first, counts, sink);
+  } catch (cause: unknown) {
+    // A failed run leaves no half-written rejected.csv: nothing records its path, so nothing sweeps it.
+    await sink.discard();
+    throw cause;
   }
-  await flush(deps, prepared, payload, batch, first, counts, rejected);
-  return { counts, rejected, columns: parsed.columns };
+  return { counts, preview: sink.preview, rejectedPath: await sink.close() };
 }
 
 type AfterImport = { hooks: HookRunResult[]; aborted: boolean };
@@ -241,11 +235,14 @@ export function createImportRunner(deps: ImportJobDeps): JobRunner {
         deps.imports.setStash(payload.run_id, stashId);
       }
       const bytes = new Uint8Array(await Bun.file(payload.source_path).arrayBuffer());
-      const { counts, rejected, columns } = await process(deps, prepared, payload, bytes, progress);
+      const { counts, preview, rejectedPath } = await process(
+        deps,
+        prepared,
+        payload,
+        bytes,
+        progress
+      );
       counts.duration_ms = Date.now() - startedAt;
-      const rejectedPath = payload.dry_run
-        ? null
-        : writeRejected(deps, payload.run_id, columns, rejected);
       deps.imports.finishRun(payload.run_id, counts, rejectedPath, deps.now().toISOString());
       const { hooks, aborted } = payload.dry_run
         ? { hooks: [], aborted: false }
@@ -256,9 +253,7 @@ export function createImportRunner(deps: ImportJobDeps): JobRunner {
           run_id: payload.run_id,
           dry_run: payload.dry_run,
           ...counts,
-          errors_preview: rejected
-            .slice(0, ERRORS_PREVIEW)
-            .map((item) => ({ row_number: item.row_number, reason: item.reason })),
+          errors_preview: preview,
           rejected_available: rejectedPath !== null,
           stash_state_id: deps.imports.run(projectId, payload.run_id)?.stash_state_id ?? null,
           hooks: hookResultsJson(hooks),

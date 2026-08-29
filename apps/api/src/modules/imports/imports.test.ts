@@ -227,6 +227,22 @@ describe("imports", () => {
     expect(v.parse(importReportSchema, done.result).skipped).toBe(1);
   });
 
+  it("a dry run previews rejects and writes no rejected file", async () => {
+    const h = await createImportsHarness();
+    const mapping = await h.imports.createMapping(h.harness.qa, h.adapterId, {
+      ...MAPPING,
+      columns: [{ source: "Email", target: "email", transforms: [{ kind: "number" }] }],
+    });
+    const report = await runToReport(h, mapping, await uploadCsv(h, "Email\nnot-a-number\n"), {
+      dry_run: true,
+    });
+    expect(report).toMatchObject({ failed: 1, skipped: 0, rejected_available: false });
+    expect(report.errors_preview).toEqual([{ row_number: 2, reason: "email: not a number" }]);
+    await expect(h.imports.rejectedRows("shop", report.run_id)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+  });
+
   it("replace stashes first, empties the table, and refuses real runs on read-only adapters", async () => {
     const h = await createImportsHarness();
     const mapping = await h.imports.createMapping(h.harness.qa, h.adapterId, {
