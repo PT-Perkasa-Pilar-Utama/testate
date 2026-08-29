@@ -17,6 +17,9 @@ export const IDLE_SETTINGS_DEPS: Pick<SettingsDeps, "ring" | "jobs" | "netguard"
       throw new Error("no jobs in this harness");
     },
     heartbeat: () => ({ alive: true, running: 0, queued: 0, lastTickAt: null }),
+    get: async () => {
+      throw new Error("no jobs in this harness");
+    },
   },
   netguard: { check: async () => ({ allowed: true, addresses: ["10.0.0.9"] }) },
 };
@@ -34,7 +37,11 @@ export function createTestSettings(
     audit,
     ...extra,
     recheckDenyList: async () => [],
-    retention: { db, removeState: async () => undefined },
+    retention: {
+      db,
+      removeState: async () => undefined,
+      dataDir: `${process.cwd()}/.scratch-settings`,
+    },
     now,
   });
 }

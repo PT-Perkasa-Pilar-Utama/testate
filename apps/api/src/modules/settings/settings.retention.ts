@@ -4,18 +4,22 @@ import type { Settings } from "@testate/shared";
 import * as v from "valibot";
 
 import type { MetadataDb } from "../../lib/db/index.ts";
+import { pruneBackups } from "./settings.backup.ts";
 
 export type RetentionReport = {
   stashes: number;
   query_history: number;
   audit_logs: number;
   import_runs: number;
+  backups: number;
 };
 
 export type RetentionDeps = {
   db: MetadataDb;
   /** Deletes one state with its blob refcounts; the states repository owns the recipe (15 §15.4). */
   removeState: (id: string) => Promise<void>;
+  /** Download backups under `run/backups` expire after 24 hours (16 §16.4). */
+  dataDir: string;
   now: () => Date;
 };
 
@@ -82,5 +86,6 @@ export async function runRetention(
     .query("DELETE FROM audit_logs WHERE created_at < ?")
     .run(cutoff(now, retention.audit_days)).changes;
   const import_runs = pruneImportRuns(deps, cutoff(now, retention.import_run_days));
-  return { stashes, query_history, audit_logs, import_runs };
+  const backups = pruneBackups(deps.dataDir, now);
+  return { stashes, query_history, audit_logs, import_runs, backups };
 }

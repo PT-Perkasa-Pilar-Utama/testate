@@ -1,23 +1,28 @@
 import type { Actor, Job, JsonObject, JsonValue, Settings } from "@testate/shared";
 import { jsonObjectSchema, settingsSchema } from "@testate/shared";
-import type { storeMigrationSchema, updateSettingsSchema } from "@testate/shared";
+import type {
+  backupRequestSchema,
+  storeMigrationSchema,
+  updateSettingsSchema,
+} from "@testate/shared";
 import * as v from "valibot";
 
 import type { Config } from "../../lib/config/index.ts";
-import { AppError, conflict } from "../../lib/http/index.ts";
+import { AppError, conflict, notFound } from "../../lib/http/index.ts";
 import type { RequestMeta } from "../../lib/http/auth.ts";
 import type { Check, Verdict } from "../../lib/netguard/index.ts";
 import type { KeyRing } from "../../lib/sealed/index.ts";
 import type { AuditService } from "../audit/audit.service.ts";
 import type { JobsService } from "../jobs/jobs.service.ts";
-import { PROJECT_JOB_MOCK } from "../projects/projects.mock.ts";
 import type { SettingsRepository } from "./settings.repository.ts";
+import { BACKUP_TTL_MS, backupPath } from "./settings.backup.ts";
 import { publicStore, writeS3Settings } from "./settings.store.ts";
 import { runRetention } from "./settings.retention.ts";
 import type { RetentionDeps, RetentionReport } from "./settings.retention.ts";
 
 export type SettingsPatch = v.InferOutput<typeof updateSettingsSchema>;
 export type MigrationTarget = v.InferOutput<typeof storeMigrationSchema>["target"];
+export type BackupRequest = v.InferOutput<typeof backupRequestSchema>;
 
 export type SettingsService = {
   get(): Promise<Settings>;
@@ -27,7 +32,9 @@ export type SettingsService = {
     meta: RequestMeta
   ): Promise<Settings & { disabled_adapters?: string[] }>;
   migrateStore(actor: Actor, target: MigrationTarget, meta: RequestMeta): Promise<Job>;
-  backup(): Promise<Job>;
+  backup(actor: Actor, request: BackupRequest, meta: RequestMeta): Promise<Job>;
+  /** The finished download backup of a job: NOT_FOUND once expired or when it went to the store. */
+  backupFile(jobId: string): Promise<{ stream: ReadableStream<Uint8Array>; size: number }>;
   runRetention(): Promise<RetentionReport>;
 };
 
@@ -36,7 +43,7 @@ export type SettingsDeps = {
   config: Pick<Config, "TESTATE_MAX_UPLOAD_MB" | "TESTATE_JOB_CONCURRENCY" | "TESTATE_STORE">;
   audit: AuditService;
   ring: KeyRing;
-  jobs: Pick<JobsService, "enqueue" | "heartbeat">;
+  jobs: Pick<JobsService, "enqueue" | "heartbeat" | "get">;
   netguard: { check(input: Check): Promise<Verdict> };
   /** Re-applies the deny list to every adapter and REST target; returns the ids disabled (16 §16.2). */
   recheckDenyList: (deny: string[]) => Promise<string[]>;
@@ -230,17 +237,39 @@ export function createSettingsService(deps: SettingsDeps): SettingsService {
         parentRequestId: meta.request_id ?? null,
       });
     },
-    // SCAFFOLD: the backup job belongs to the ops card (22 §22.5).
-    async backup() {
-      return {
-        ...PROJECT_JOB_MOCK,
+    async backup(actor, request, meta) {
+      const busy = v.parse(
+        v.object({ n: v.number() }),
+        deps.retention.db
+          .query(
+            "SELECT COUNT(*) AS n FROM jobs WHERE kind IN ('backup', 'storage_migration') AND status IN ('queued', 'running')"
+          )
+          .get()
+      );
+      if (busy.n > 0)
+        throw new AppError("JOB_IN_PROGRESS", "another backup or store migration is running", {
+          running: busy.n,
+        });
+      return deps.jobs.enqueue({
         kind: "backup",
-        status: "queued",
-        project_id: null,
-        adapter_ids: [],
-        finished_at: null,
-        result: null,
-      };
+        projectId: null,
+        adapterIds: [],
+        payload: { include_blobs: request.include_blobs, destination: request.destination },
+        actor,
+        parentRequestId: meta.request_id ?? null,
+      });
+    },
+    async backupFile(jobId) {
+      const job = await deps.jobs.get(null, jobId);
+      if (job.kind !== "backup") throw notFound("backup");
+      if (job.status !== "succeeded")
+        throw conflict("the backup has not finished", { status: job.status });
+      const path = backupPath(deps.retention.dataDir, jobId);
+      const file = Bun.file(path);
+      const finishedAt = Date.parse(job.finished_at ?? "");
+      if (!(await file.exists()) || deps.now().getTime() - finishedAt > BACKUP_TTL_MS)
+        throw notFound("backup");
+      return { stream: file.stream(), size: file.size };
     },
     async runRetention() {
       return runRetention({ ...deps.retention, now: deps.now }, read().retention);

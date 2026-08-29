@@ -34,16 +34,19 @@ export function createSettingsHandlers(
       return accepted(c, job, apiPrefix);
     },
     backup: async (c) => {
-      await parseBody(c, backupRequestSchema);
-      return accepted(c, await service.backup(), apiPrefix);
+      const body = await parseBody(c, backupRequestSchema);
+      const job = await service.backup(currentActor(c), body, requestMeta(c, trustProxy));
+      return accepted(c, job, apiPrefix);
     },
     downloadBackup: async (c) => {
+      const file = await service.backupFile(param(c, "job_id"));
       c.header("Content-Type", "application/x-tar");
+      c.header("Content-Length", String(file.size));
       c.header(
         "Content-Disposition",
         `attachment; filename="testate-backup-${param(c, "job_id")}.tar"`
       );
-      return c.body("", 200);
+      return c.body(file.stream, 200);
     },
   };
 }

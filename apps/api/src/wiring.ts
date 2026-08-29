@@ -49,16 +49,11 @@ import { createRestRepository } from "./modules/rest/rest.repository.ts";
 import type { RestRepository } from "./modules/rest/rest.repository.ts";
 import { createRestService } from "./modules/rest/rest.service.ts";
 import type { RestDeps, RestService } from "./modules/rest/rest.service.ts";
-import type { Dispatcher } from "./modules/jobs/jobs.dispatcher.ts";
-import { createStoreMigrationRunner } from "./modules/settings/settings.migration.ts";
 import { createSettingsRepository } from "./modules/settings/settings.repository.ts";
-import { bootStoreTarget, createStoreFactory } from "./modules/settings/settings.store.ts";
-import type { StoreTarget } from "./modules/settings/settings.store.ts";
 import type { SettingsDeps } from "./modules/settings/settings.service.ts";
 import { createStatesRepository } from "./modules/states/states.repository.ts";
 import { createStatesService } from "./modules/states/states.service.ts";
 import type { StatesDeps, StatesService } from "./modules/states/states.service.ts";
-import type { StorageDeps } from "./modules/storage/storage.service.ts";
 import type { JobsService } from "./modules/jobs/jobs.service.ts";
 
 export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now" | "hooks" | "blobs"> & {
@@ -267,47 +262,7 @@ export function settingsDeps(
       hooks.setDeny(deny);
       return hooks.recheck();
     },
-    retention: { db, removeState: hooks.removeState },
+    retention: { db, removeState: hooks.removeState, dataDir: config.TESTATE_DATA_DIR },
     now,
   };
-}
-
-/**
- * Picks the snapshot store for this boot (environment first, then the stored driver), swaps it
- * behind the live handle, and registers the `storage_migration` job (15 §15.6, §15.7).
- */
-export async function bootStore(
-  config: Config,
-  db: MetadataDb,
-  ring: KeyRing,
-  wiring: EngineWiring,
-  dispatcher: Dispatcher,
-  audit: AuditService,
-  now: () => Date
-): Promise<StoreTarget> {
-  const stores = createStoreFactory(config);
-  const target = await bootStoreTarget(config, db, ring);
-  if (target.driver === "s3") wiring.blobs.swap(stores(target));
-  dispatcher.registerKind(
-    "storage_migration",
-    createStoreMigrationRunner({
-      repo: createSettingsRepository(db),
-      ring,
-      live: wiring.blobs,
-      stores,
-      referencedBlobs: () => wiring.states.referencedBlobs(),
-      audit,
-      now,
-    })
-  );
-  return target;
-}
-
-export function storageDeps(
-  wiring: EngineWiring,
-  projects: ProjectsRepository,
-  audit: AuditService,
-  now: () => Date
-): StorageDeps {
-  return { projects, files: wiring.files, hostKeys: wiring.hostKeys, audit, now };
 }

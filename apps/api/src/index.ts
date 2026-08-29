@@ -21,13 +21,12 @@ import {
   sweepSealed,
 } from "./boot.ts";
 import {
-  bootStore,
   createEngineWiring,
   createIntegrations,
   createStateServices,
   settingsDeps,
-  storageDeps,
 } from "./wiring.ts";
+import { bootStore, lazyJobs, storageDeps } from "./wiring.store.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import type { Config } from "./lib/config/index.ts";
 import { migrate, openMetadataDb } from "./lib/db/index.ts";
@@ -157,7 +156,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
       setDeny: (deny) => netguard.setDeny(deny),
       recheck: () => adapters.recheckDenyList(),
       removeState: (id) => core.states.removeNow(id),
-      jobs: { enqueue: (input) => jobs.enqueue(input), heartbeat: () => jobs.heartbeat() },
+      jobs: lazyJobs(() => jobs),
       ring,
       netguard,
     })
@@ -168,7 +167,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     ...wiring,
     hooks,
   });
-  const storeTarget = await bootStore(config, db, ring, wiring, dispatcher, audit, now);
+  const storeTarget = await bootStore(config, db, ring, wiring, dispatcher, audit, now, VERSION);
   // Steps 8 and 9 of 22 §22.2: recover interrupted jobs, then sweep old ones.
   const recovery = await jobs.recover();
   const core = createStateServices(wiring, projectsRepo, jobs, audit, settings, config, now);
