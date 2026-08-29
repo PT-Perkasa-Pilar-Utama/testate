@@ -7,23 +7,21 @@ Read this first, then `CLAUDE.md`, then `docs/E2E.md`. Memory notes live in
 
 "Git for your test database". Bun 1.4 monorepo: `apps/api` (Hono), `apps/web` (SolidJS 2 RC),
 `packages/shared` (valibot contract). Every PRD card is built and committed on `main`. Nothing is
-pushed; the user pushes. There is no open feature work — only ceilings marked `// ponytail:` (13
-left; `grep -rn "ponytail:" apps packages e2e`).
+pushed; the user pushes. There is no open feature work — only ceilings marked `// ponytail:` (12
+left; `grep -rn "ponytail:" apps packages e2e scripts`).
 
-E2E: 77 Playwright tests, ~2 min, coverage **110/150 stories covered, 0 uncovered UI, 0 without a
-screen, 40 API-held** (`.e2e/coverage.md` after a run; classification in `e2e/lib/stories.ts`).
+E2E: ~120 Playwright tests, ~3 min, coverage **150/150 stories covered**. `NON_UI` in
+`e2e/lib/stories.ts` is empty: what no screen shows, an API or boot test covers.
 
 ## 2. Standing rules from the user (do not relitigate)
 
 - Never add `Co-Authored-By: Claude` or "Generated with Claude Code" to commits or PRs.
 - Commit finished, gate-green work on your own. Never push (a global hook blocks it anyway).
-- Commit subject ≤ 80 characters — the lefthook `commit-msg` hook rejects longer ones (it bit us
-  five times). Conventional Commits; cite the spec section in the body.
+- Commit subject ≤ 80 characters, and leave a blank line before the body — the heredoc form
+  glues them together otherwise and `git log --oneline` shows the whole paragraph.
 - No new dependencies for what Bun, the standard library, or an installed package does.
 - Roles admin/qa/viewer are cumulative; agent tokens reach `/mcp` only. Secrets are `Sealed`.
-- `// ponytail: <what> — <ceiling>; <upgrade path>` marks deliberate shortcuts. `// SCAFFOLD:` none left.
-- Keep the gate green: `bun run complete-check` (type-check, lint, fmt, bun test, build) then
-  `bun run e2e`. A change that adds a lint error or a failing test is not done.
+- Keep the gate green: `bun run complete-check` then `bun run e2e`.
 - Talk like a colleague at a whiteboard: answer first, short sentences, no process narration.
 
 ## 3. The working loop that works
@@ -38,13 +36,17 @@ git add -A && git commit -q -F - <<'EOF' ... EOF
 
 Run it with `run_in_background: true` and act on the completion notification. Do **not** write
 `until pgrep -f "playwright test"; do sleep; done` — `pgrep -f` matches its own shell and loops
-forever (this produced the "long running shells" the user complained about).
+forever.
 
-Two rules while a chain runs: never edit `apps/web` (Vite hot-reloads into the crawl), and remember
-`git add -A` at the end sweeps every edit into that commit — wait before starting the next card.
+While iterating on one spec, `bunx playwright test --project=<name> --no-deps` skips the whole
+dependency chain: the `boot` project alone runs in ten seconds instead of two minutes.
 
-On failure read `.e2e/run.log` (`grep -n "^\s*> [0-9]* |"` shows the failing line) and the
-snapshot under `.e2e/results/<test>/error-context.md`. Reproduce API bugs directly:
+Two rules while a chain runs: never edit `apps/web` (Vite hot-reloads into the crawl), and
+remember `git add -A` at the end sweeps every edit into that commit — park unrelated new files
+outside the repo until it lands.
+
+On failure read `.e2e/run.log` and the snapshot under `.e2e/results/<test>/error-context.md`.
+Reproduce API bugs directly:
 
 ```
 PORT=3001 TESTATE_ENV=development TESTATE_DATA_DIR=.e2e/data \
@@ -57,114 +59,115 @@ sqlite3 .e2e/data/metadata.db   # jobs, states, checkouts, import_runs ...
 
 ## 4. E2E layout and gotchas (all learned the hard way)
 
-Projects run `coverage → routes → flows (+stories, hooks, gaps, admin) → states → adapter → crawl`.
-`states` and `adapter` run alone and serial because checkouts, snapshots, and adapter deletion
-restore the shared demo databases; anything editing `customers` in parallel with them flakes.
+Projects: `coverage`, `routes`, `api` run first; then `flows → states → state-api → adapter →
+crawl → boot`. The chain after `flows` is serial because checkouts, snapshots, and adapter
+deletion restore the shared demo databases.
 
+- `api.e2e.ts` / `agent.e2e.ts` — contract and MCP stories over `request` (no browser).
+- `state-api.e2e.ts` — state, job, and checkout stories that hold the demo adapters.
+- `boot.e2e.ts`, `engine.e2e.ts`, `types.e2e.ts`, `session.e2e.ts`, `storage.e2e.ts` — each
+  spawns its own API instance (`e2e/lib/boot.ts`, ports 3101-3113) on its own data dir, and
+  drives it through `e2e/lib/instance.ts`. They run **last**: spawning API processes beside the
+  browser projects starved the crawl and took a two-minute run to sixteen minutes.
+- Spawned instances must stop in `test.afterAll`, not at the end of the test: a failure otherwise
+  leaves the port bound, and the next run wipes that instance's data dir under it.
+- `e2e/lib/sql.ts` runs SQL on a private Postgres database per test (`scripts/e2e-sql.ts`, Bun,
+  because Playwright runs under Node) and on an instance's `metadata.db`
+  (`scripts/e2e-sqlite.ts`). Nothing in those specs touches the shared `shop` database.
 - Tag every test title with `@story-N`; `coverage.e2e.ts` fails on a tag that names no story.
-- Lint applies jest rules to `e2e/`: no conditionals in tests — put logic in `e2e/lib`.
+- Lint applies jest rules to `e2e/`: no conditionals in tests — no `?.`, no `??`, no ternary.
+  Put the logic in `e2e/lib` and return a value the test can assert on.
 - Crawler (`buttons.e2e.ts`) clicks every visible control; mutators go in `SKIP` in
-  `e2e/lib/crawl.ts` and get a story test instead. Dialog titles matching `DESTRUCTIVE` are cancelled.
-- Demo tables live in schema `contract` (not `public`). `demoAdapter({engine:"postgres"})` returns
-  the first postgres adapter, which may be `pg-<stamp>` from the adapters story (same database).
-- `getByLabel("X")` on a `<label><span>X</span><select>` matches the option text too — use
-  `getByRole("combobox", { name })` or `exact: true` on text inputs. Dialogs have a ✕ `Close` and
-  a footer `Close`: use `getByText("Close", { exact: true })` or `Escape`.
-- Toasts stack: wait for `.first()`/`.nth(1)` of a repeated message.
-- Count only your own rows (`hasText` on a unique stamp), never `main tbody tr` totals.
-- Never wipe data in `playwright.config.ts`; it runs in every worker. Vite proxy targets
-  `127.0.0.1` (Node resolves `localhost` to `::1`). Cookies are saved against `localhost`.
-- `bun test` roots exclude `.e2e.ts`; web `*.test.ts` files are outside the DOM tsconfig.
+  `e2e/lib/crawl.ts` and get a story test instead.
+- Demo tables live in schema `contract` (not `public`). `getByLabel("X")` also matches option
+  text — use `getByRole("combobox", { name })`. Count only your own rows.
+- Never wipe data in `playwright.config.ts`; it runs in every worker.
 
-## 5. Contract bugs this suite found (pattern to expect on new screens)
+## 5. Contract and product bugs this suite found
 
-`""` where the contract said id (`state.job_id`, live-diff `snapshot_state_id`) → made nullable;
-diff export was `text/plain`; dry-run validator ignored `numeric(24,4)`; report hard-coded
-`errors_preview: []`; the import job deleted the upload after a dry run; storage-source preview hung
-on `Bun.write(path, new Response(stream))` (use a file writer loop — this stalls every time).
+The pattern to expect: the contract says one thing, a path does another.
+
+- `GET /settings` answered 500 while another request saved the S3 credentials — the sealed key
+  landed before its `set_at`. Fixed with `setMany` in one transaction.
+- The log sink wrote from offset zero, so every restart overwrote the day's earlier events.
+- A forced checkout wrote NULL into a live-only NOT NULL column instead of leaving it to its
+  default, though the plan already called it `defaulted`.
+- The pre-migration copy (story 122, spec 22 §22.2) was never implemented.
+- Postgres introspection never named an unsupported column type (story 73).
+- XLSX date cells read as their serial number (story 50).
+- Earlier: `""` where the contract said id, a `text/plain` diff export, a dry run that deleted its
+  upload, `Bun.write(path, new Response(stream))` stalling on a pull stream.
 
 ## 6. Commits of this session (newest first)
 
 ```
-d546d59 feat(imports): the date transform applies its timezone through Intl
-697cdc6 feat(states): snapshots honour the instance default quota and ceiling
-f20dd5b perf(diffs): cache decoded diff rows so pages stop re-reading the blob
-6bad029 feat(jobs): snapshot and checkout adapters run in lanes under the job cap
-09397e5 feat: keyset cursors on the project, user, token, state, and checkout lists
-a970ab7 test(e2e): a new host retargets the adapter and takes a fresh init state
-6536dee feat: lock timeouts name their blocking sessions; details offer Terminate
-8cf3413 feat(api): preflight names the adapters a partial state leaves untouched
-ea04b1b feat(web): edit an adapter — rename, exclusions, schemas, credentials
-d206a11 feat(web): editable settings, store migration, and backup on the admin screen
-393e384 feat(web): grid links FK cells to the referenced row and lists FKs
-e085000 feat(web): import wizard reads a file from a storage adapter
-02f540f test(e2e): cover login, delete plan, quota, grid, history, lock, lookup
-2b45c20 feat(web): imports tab — upload, preview, map, dry run, run, re-import
-a1a049e feat(web): hooks tab — attach requests to triggers, policy, order, remove
-3629412 feat(web): diffs tab — compare states or live, drill into rows, export
-561e0a7 feat(web): checkouts tab — per-adapter results, retry, counters repair
-71c679d feat(web): states tab actions — take, edit, protect, delete, checkout preflight
-0b1d291 test(e2e): story-tagged Playwright suite, coverage report, faster crawl
+662c3fb test(e2e): the last five stories, and the story list needs no exceptions
+792e266 feat(imports): XLSX date cells read as dates, not as their serial number
+b5d691f test(e2e): snapshot consistency, forced drift, atomic restore, locks, types
+e8b655e feat(engines): postgres names the large-object columns it cannot snapshot
+269e0e6 fix(checkouts): a forced restore lets a live-only column take its default
+150c294 test(e2e): the deny list, the fixed block list, and restart recovery
+0e5de57 test(e2e): boot, key rotation, and backup stories run their own instances
+ddbe7d5 feat(boot): copy the metadata database before migrations run
+5892123 fix(logger): the daily file is appended, not rewritten from the start
+1b3e209 test(e2e): cover the state, job, and checkout stories the screens omit
+b9131cd test(e2e): cover the contract and agent stories over the API
+0946fba fix(settings): the S3 keys and their set_at land in one transaction
+05bffe4 fix(web): toast state moves to lib so no test imports a .tsx
+445f926 perf(imports): rejected rows stream to the run file as they arrive
 ```
 
 ## 7. Code patterns to reuse
 
 - Job follow-up in the SPA: `followJob(job, onDone)` in `apps/web/src/lib/sse.ts`; lists that grow:
   `createPaged` in `lib/async.ts` + `components/load-more.tsx`; page envelopes: `apiClient.page`.
-- Keyset cursors: `apps/api/src/lib/db/keyset.ts` (`keysetCondition`, `nextCursor`).
-- Bounded parallelism by lane: `apps/api/src/lib/async/lanes.ts` (`runLanes`, lane = `target_hash`).
+- Keyset cursors: `apps/api/src/lib/db/keyset.ts`. Bounded parallelism: `lib/async/lanes.ts`.
 - Content-addressed row cache: `apps/api/src/lib/cache/rows-cache.ts`.
-- Test harness knobs: `harness.fakeOptions.failCheckout`, `harness.quota.current` (test/adapters.ts).
-- Dialog forms: model → presenter (signals, `attempt`/`showToast`, `static*` captures to satisfy
-  `solid/reactivity`) → `*.dialogs.view.tsx`; files ≤ 300 lines, complexity ≤ 10 per function.
+- Streaming sinks: `imports.rejected.ts` (lazy open, `close()` before the run is recorded,
+  `discard()` on a throw).
+- Test harness knobs: `harness.fakeOptions.failCheckout`, `harness.quota.current`.
 
 ## 8. In flight and next
 
-**In flight:** nothing. The tree was clean at `d546d59` when this was written; `git status` should
-agree. If it does not, run `bun run complete-check`, read `.e2e/run.log`, fix, rerun, commit.
+**In flight:** nothing. The tree was clean when this was written; `git status` should agree.
 
-**Next (designed, not started):** stream rejected import rows per batch instead of one write at the
-end (`imports.job.ts` `writeRejected`/`flush`/`process`): a per-run sink that lazily opens
-`Bun.file(path).writer()`, writes the header then one CSV line per reject, keeps the first 100 for
-`errors_preview`, and `end()`s before `finishRun`; dry runs get a preview-only sink.
+**Worth knowing:** CI runs `complete-check` and the smoke boot only — Playwright never runs there,
+because the engines live in `deploy/compose.engines.yml`. The 150-story suite is a local gate. A CI
+job would need those services (and now a `postgres-old` container for story 20).
 
-Remaining ponytails worth lifting, in order: rejected streaming (above); XLSX date cells via the
-styles part; the deferrable-constraint check per constraint (`postgres/write.ts`); backup file naming
-in the content-addressed store; `readTable` snapshotting every table. Leave alone: FK `_display`
-join (needs a live introspection per page — FK links and lookups cover it), S3 `q` in-page filter,
-MongoDB index exclusion, `authSource` field, the ssh2 note, the in-house router.
-
-Open PRD items no dashboard can prove: stories 15, 78, 107 (failure injection; unit-tested).
+**Remaining ponytails, in order:** the deferrable-constraint check per constraint
+(`postgres/write.ts`); backup file naming in the content-addressed store; `readTable` snapshotting
+every table. Leave alone: FK `_display` join, S3 `q` in-page filter, MongoDB index exclusion,
+`authSource`, the ssh2 note, the in-house router, the diff row cache ceiling.
 
 ## 9. Recurring pitfalls (each of these cost at least two chain runs)
 
-Lint rules that fire on almost every new file — write to them up front, do not dodge them:
-
 | Rule | What trips it | Do this instead |
 |---|---|---|
-| `max-lines` 300 | any view with 3+ dialogs, any harness | split into `*.dialogs.view.tsx` / helper files early; counts code lines only |
-| `complexity` 10 | patch builders, validators | extract `xPatch()`, `assertUnder()` helpers |
-| `anti-slop/no-conditional-empty-object-spread` | `...(x === undefined ? {} : { x })` | build the object, then `if (x !== undefined) obj.x = x` |
-| `anti-slop/no-runtime-typeof` | `typeof v === "string"` | `v.safeParse(v.union([...]), value)` or `Array.isArray` |
-| `anti-slop/no-known-value-widening` | `const q: { a: string } = …`, anonymous return types | name the type (`type QuotaKnob = …`) or use `satisfies` |
-| `anti-slop/require-safety-comment-for-type-assertion` | `as never`, `as number \| null` | change the signature instead of asserting |
-| `solid/reactivity` | reading a signal at setup and using it in a returned async fn | capture as `const staticX = x()` before `attempt(...)` |
-| `jest/no-conditional-in-test` | `??`, `?.`, ternaries, `if` inside `test()` and even inside `describe()` | move logic into `e2e/lib` or a module-level helper |
+| `max-lines` 300 | any spec or lib that grows a few tests | split early: `lib/boot.ts` (spawn) vs `lib/instance.ts` (requests) |
+| `complexity` 10 | parsers, `??` chains | extract a named helper; `??` counts |
+| `anti-slop/no-unsafe-dictionary-type` | `Record<string, unknown>`, `{[k: string]: unknown}` | name the payload type at the call site (`call<{ data: … }>`) |
+| `anti-slop/no-known-value-widening` | an explicit open-dictionary return type | name the contract (`BootEnv`) or drop the annotation |
+| `anti-slop/no-object-parameters` | `body: object` | a named `RequestBody` union |
+| `jest/no-conditional-in-test` | `?.`, `??`, ternaries inside `test()` | move it into `e2e/lib` and assert the returned value |
 | `no-unused-vars` | leftover imports after a refactor | grep the symbol before committing |
 
 Type system: `exactOptionalPropertyTypes` is on — never assign `undefined` to an optional key.
-Test fixtures for `TableSchema` need `unique`, `unsupported`, `excluded`, `display_column` too.
 
-Editing with scripts: `bun run fmt:fix` reflows code, so a python/sed anchor written from memory
-often no longer matches. Edits then silently do nothing (the script prints no error when it is
-followed by `|| exit`). Always `grep` the anchor or the new symbol after the edit; check `git diff`.
+**The local gate can lie.** `bun test` runs from the repo root, which has no `tsconfig.json`, so it
+transpiles JSX with the React runtime; a stray `~/node_modules/react` on this machine made that
+resolve locally and fail in CI. `apps/web/test/graph.test.ts` now fails if any web test reaches a
+`.tsx`. When CI disagrees with a green local gate, suspect resolution before logic.
 
-Tests encode old behaviour: when a rule changes (dry run keeps its upload, preflight lists
-untouched adapters) expect an existing unit test to fail and update it, don't weaken the rule.
+Editing with scripts: `bun run fmt:fix` reflows code, so an anchor written from memory often no
+longer matches. Always `grep` the anchor or the new symbol after the edit, and check `git diff`.
+Never write `cat > file` without a heredoc — it blocks on stdin and takes the whole shell with it.
 
-Before "fixing" the product from an E2E failure, look at the API first: `sqlite3 .e2e/data/metadata.db`
-and a direct request against a standalone boot (§3). Half of the E2E failures were my wrong
-assumption about a label, a schema name, or a toast, not a bug.
+Tests encode old behaviour: when a rule changes, expect an existing unit test to fail and update
+it, don't weaken the rule.
+
+Before "fixing" the product from an E2E failure, look at the API first. Half of the E2E failures
+were a wrong assumption about a label, a schema name, or a response shape, not a bug.
 
 Shell on this Mac: no `timeout`; `grep --include=*.ts` and bare `=====` echo trip zsh globbing
-(`setopt` is off — quote them); `ls` is aliased (use `command ls` in scripts).
+(quote them); `ls` is aliased (use `command ls` in scripts).

@@ -1,27 +1,44 @@
 # Browser end-to-end tests
 
 `bun run e2e` runs Playwright against a fresh API (`.e2e/data`) and the Vite dev server. Compose
-engines must be up (`docker compose up --wait`).
+engines must be up (`docker compose -f deploy/compose.engines.yml up --wait`).
 
 ## Layout
 
-| Project    | Spec                                  | What it proves                                                     |
-| ---------- | ------------------------------------- | ------------------------------------------------------------------ |
-| `coverage` | `e2e/coverage.e2e.ts`                 | Every `@story-N` tag names a PRD story; writes `.e2e/coverage.md`  |
-| `routes`   | `e2e/routes.e2e.ts`                   | Each screen renders or refuses per role; sidebar matches the role  |
-| `flows`    | `e2e/flows.e2e.ts`, `stories.e2e.ts`  | One test per user story that the dashboard can act on              |
-| `states`   | `e2e/states.e2e.ts`                   | Snapshot, checkout, and diff stories; serial, alone, after flows  |
-| `adapter`  | `e2e/adapter.e2e.ts`                  | Adapter settings and deletion (init snapshot, restore); after states |
-| `crawl`    | `e2e/buttons.e2e.ts`                  | Clicks every visible control per role; no 5xx, no console error    |
+| Project     | Spec                                                            | What it proves                                                       |
+| ----------- | --------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `coverage`  | `e2e/coverage.e2e.ts`                                            | Every `@story-N` tag names a PRD story; writes `.e2e/coverage.md`     |
+| `routes`    | `e2e/routes.e2e.ts`                                              | Each screen renders or refuses per role; sidebar matches the role     |
+| `api`       | `e2e/api.e2e.ts`, `agent.e2e.ts`                                 | Contract, token, and MCP stories over `request`; no browser           |
+| `flows`     | `e2e/flows.e2e.ts`, `stories.e2e.ts`, `hooks`, `gaps`, `admin`   | One test per user story the dashboard can act on                      |
+| `states`    | `e2e/states.e2e.ts`                                              | Snapshot, checkout, and diff stories; serial, alone, after flows      |
+| `state-api` | `e2e/state-api.e2e.ts`                                           | State and job stories with no control of their own; holds the adapters |
+| `adapter`   | `e2e/adapter.e2e.ts`                                             | Adapter settings and deletion (init snapshot, restore)                |
+| `crawl`     | `e2e/buttons.e2e.ts`                                             | Clicks every visible control per role; no 5xx, no console error       |
+| `boot`      | `e2e/boot.e2e.ts`, `engine`, `types`, `session`, `storage`       | Stories that need their own instance, engine, or clock                |
 
 Projects run in that order (`dependencies`), tests inside a project run on 3 workers.
 `e2e/setup.ts` seeds `dev` once and saves one storage state per role under `.e2e/state`.
 
+## Instances of their own
+
+The `boot` project spawns API processes (`e2e/lib/boot.ts`, ports 3101-3113), each on its own data
+dir, and drives them through `e2e/lib/instance.ts`. It runs last on purpose: those processes beside
+the browser projects starve the crawl. Rules that keep it honest:
+
+- Stop the instance in `test.afterAll`, never only at the end of the test. A failure otherwise
+  leaves the port bound, and the next run wipes that instance's data dir under it.
+- Give each spec its own port and its own `bootDir` name.
+- Reach for a private database (`e2e/lib/sql.ts`) rather than the shared `shop` one. `createDatabase`
+  and `dropDatabase` bracket every test that writes DDL, holds a lock, or breaks a restore.
+- `scripts/e2e-sql.ts` and `scripts/e2e-sqlite.ts` run the statements under Bun, because Playwright
+  runs under Node and has no driver. `scripts/e2e-xlsx.ts` writes a workbook with real styles.
+
 ## Story tags
 
 Put `@story-N` in the test title. `.e2e/coverage.md` lists each PRD story as `covered`,
-`no-screen` (the SPA has no action for it yet; see `NO_SCREEN` in `e2e/lib/stories.ts`),
-`api` (CI, operator, agent stories live in `bun test`), or `uncovered`.
+`no-screen`, `api`, or `uncovered`. All 150 are `covered`, and both exception lists in
+`e2e/lib/stories.ts` are empty — add an id back only when a story truly cannot be exercised.
 
 ## Rules
 
@@ -29,3 +46,6 @@ Put `@story-N` in the test title. `.e2e/coverage.md` lists each PRD story as `co
 - The Vite proxy targets `127.0.0.1`; Node resolves `localhost` to `::1`.
 - The crawler skips `Sign out`, `Disable`, `Revoke`, `Delete`, and other destructive labels
   (`SKIP` in `e2e/lib/crawl.ts`); story tests cover those on purpose.
+- Lint applies jest rules here: no conditionals in a test, `?.` and `??` included. Put the logic in
+  `e2e/lib` and assert on what it returns.
+- Iterate with `bunx playwright test --project=<name> --no-deps`; the full chain is for the gate.
