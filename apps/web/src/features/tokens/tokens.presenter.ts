@@ -2,7 +2,7 @@ import { createSignal } from "solid-js";
 import type { ApiToken, JsonObject, Role, TokenKind } from "@testate/shared";
 import { ROLES, TOKEN_KINDS } from "@testate/shared";
 
-import { attempt, showToast } from "@/components/toast.tsx";
+import { attempt, showToast } from "@/lib/toast.ts";
 import { createPaged } from "@/lib/async.ts";
 import type { Paged } from "@/lib/async.ts";
 import { tokensModel } from "./tokens.model.ts";

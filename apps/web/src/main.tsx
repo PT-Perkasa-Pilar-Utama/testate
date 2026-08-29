@@ -1,6 +1,6 @@
 import { render } from "@solidjs/web";
 
-import { reportError } from "@/components/toast.tsx";
+import { reportError } from "@/lib/toast.ts";
 import { loadSession } from "@/lib/session.ts";
 import App from "./app.tsx";
 import "./styles/app.css";

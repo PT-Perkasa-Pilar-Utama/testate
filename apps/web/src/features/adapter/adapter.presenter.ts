@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 import type { Adapter, Entry, Introspection, RestRequest } from "@testate/shared";
 
-import { attempt, showToast } from "@/components/toast.tsx";
+import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { navigate } from "@/lib/router.ts";

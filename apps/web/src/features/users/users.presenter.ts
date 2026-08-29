@@ -2,7 +2,7 @@ import { createSignal } from "solid-js";
 import type { Role, User } from "@testate/shared";
 import { PASSWORD_MIN_LENGTH, ROLES } from "@testate/shared";
 
-import { attempt, showToast } from "@/components/toast.tsx";
+import { attempt, showToast } from "@/lib/toast.ts";
 import { createPaged } from "@/lib/async.ts";
 import type { Paged } from "@/lib/async.ts";
 import { actor } from "@/lib/session.ts";

@@ -2,7 +2,7 @@ import { createSignal } from "solid-js";
 import type { HttpMethod, JsonObject, RestRequest, RestRun, RestRunSummary } from "@testate/shared";
 import { httpMethodSchema } from "@testate/shared";
 
-import { attempt, showToast } from "@/components/toast.tsx";
+import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { restModel } from "./rest.model.ts";

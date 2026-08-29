@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 import type { Preflight, SchemaDrift, State } from "@testate/shared";
 
-import { showToast } from "@/components/toast.tsx";
+import { showToast } from "@/lib/toast.ts";
 import { followJob } from "@/lib/sse.ts";
 import { checkoutsModel } from "./checkouts.model.ts";
 

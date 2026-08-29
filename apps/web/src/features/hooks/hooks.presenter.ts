@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 import type { Adapter, Hook, JsonObject, RestRequest } from "@testate/shared";
 
-import { attempt } from "@/components/toast.tsx";
+import { attempt } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { adapterModel } from "../adapter/adapter.model.ts";

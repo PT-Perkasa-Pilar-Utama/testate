@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 import type { ImportReport, ImportRun } from "@testate/shared";
 
-import { attempt } from "@/components/toast.tsx";
+import { attempt } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { importsModel } from "./imports.model.ts";

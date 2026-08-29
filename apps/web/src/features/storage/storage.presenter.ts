@@ -2,7 +2,7 @@ import { createSignal } from "solid-js";
 import type { Entry, PreviewPayload } from "@testate/shared";
 import * as v from "valibot";
 
-import { attempt, showToast } from "@/components/toast.tsx";
+import { attempt, showToast } from "@/lib/toast.ts";
 import { ApiError } from "@/lib/api-client.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";

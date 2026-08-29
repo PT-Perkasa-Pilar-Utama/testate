@@ -3,7 +3,7 @@ import type { Job, JsonObject } from "@testate/shared";
 import { TERMINAL_JOB_STATUSES } from "@testate/shared";
 import * as v from "valibot";
 
-import { attempt } from "@/components/toast.tsx";
+import { attempt } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { subscribeJob } from "@/lib/sse.ts";

@@ -3,7 +3,7 @@ import type { ColumnPolicy, Introspection, JsonObject } from "@testate/shared";
 import { maskSchema } from "@testate/shared";
 import type * as v from "valibot";
 
-import { attempt, showToast } from "@/components/toast.tsx";
+import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { adapterModel } from "../adapter/adapter.model.ts";

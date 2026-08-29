@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 import type { Adapter, Engine } from "@testate/shared";
 
-import { showToast } from "@/components/toast.tsx";
+import { showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { ENGINE_FORMS, toDraftBody } from "./adapters.fields.ts";

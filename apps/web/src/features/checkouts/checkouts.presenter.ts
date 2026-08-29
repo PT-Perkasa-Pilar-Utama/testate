@@ -2,7 +2,7 @@ import { createSignal } from "solid-js";
 import * as v from "valibot";
 import type { Checkout, Counters } from "@testate/shared";
 
-import { attempt, showToast } from "@/components/toast.tsx";
+import { attempt, showToast } from "@/lib/toast.ts";
 import { createPaged } from "@/lib/async.ts";
 import type { Paged } from "@/lib/async.ts";
 import { followJob } from "@/lib/sse.ts";

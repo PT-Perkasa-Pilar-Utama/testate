@@ -3,7 +3,7 @@ import type { Adapter, JsonObject, JsonValue, QueryRequest, QueryResult } from "
 import { jsonObjectSchema, mongoOperationSchema } from "@testate/shared";
 import * as v from "valibot";
 
-import { attempt, showToast } from "@/components/toast.tsx";
+import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { adaptersModel } from "../adapters/adapters.model.ts";

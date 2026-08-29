@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 import type { JsonObject } from "@testate/shared";
 
-import { attempt } from "@/components/toast.tsx";
+import { attempt } from "@/lib/toast.ts";
 import { toolsModel } from "./tools.model.ts";
 
 export const ALGORITHMS = ["argon2id", "bcrypt", "sha256", "sha512", "hmac_sha256"] as const;

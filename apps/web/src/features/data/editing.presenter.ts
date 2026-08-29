@@ -4,7 +4,7 @@ import { functionNameSchema, jsonValueSchema } from "@testate/shared";
 import type { formValueSchema } from "@testate/shared";
 import * as v from "valibot";
 
-import { attempt, showToast } from "@/components/toast.tsx";
+import { attempt, showToast } from "@/lib/toast.ts";
 import { editingModel } from "./editing.model.ts";
 import { policiesModel } from "./policies.model.ts";
 import type { LookupRow } from "./policies.model.ts";
