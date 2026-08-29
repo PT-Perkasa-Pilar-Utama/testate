@@ -1,0 +1,88 @@
+import { expect, test } from "@playwright/test";
+
+import { adapterScreens, demoAdapter, demoAdapters, firstTable } from "./lib/api.ts";
+import { settle, watch } from "./lib/crawl.ts";
+import type { Issue } from "./lib/crawl.ts";
+import { ROLES, SCREENS, allows, hiddenNavFor, navFor, outcomeOf, statePath } from "./lib/roles.ts";
+
+const FORBIDDEN = "Your role cannot open this page.";
+
+/** Every role opens every top-level screen: allowed ones render, admin ones refuse below admin. */
+for (const role of ROLES) {
+  test.describe(`${role}: top-level screens`, () => {
+    test.use({ storageState: statePath(role) });
+
+    for (const screen of SCREENS) {
+      test(`${screen.path} ${outcomeOf(role, screen.role)}`, async ({ page }) => {
+        const issues: Issue[] = [];
+        watch(page, issues);
+        await page.goto(screen.path);
+        await settle(page);
+        const refused = await page.getByText(FORBIDDEN).isVisible();
+        expect(refused).toBe(!allows(role, screen.role));
+        expect(issues).toStrictEqual([]);
+      });
+    }
+
+    test("@story-6 @story-7 the sidebar lists only the screens the role may open", async ({
+      page,
+    }) => {
+      await page.goto("/projects");
+      await settle(page);
+      const labels = await page.locator("nav a").allTextContents();
+      const expected = navFor(role);
+      expect(labels.map((l) => l.trim()).filter((l) => expected.includes(l))).toStrictEqual(
+        expected
+      );
+      const hidden = hiddenNavFor(role);
+      expect(labels.filter((l) => hidden.includes(l.trim()))).toStrictEqual([]);
+    });
+  });
+}
+
+/** Adapter sub-screens per role: the page renders and the role-gated controls match the role. */
+for (const role of ROLES) {
+  test.describe(`${role}: adapter screens`, () => {
+    test.use({ storageState: statePath(role) });
+
+    test("@story-12 @story-35 @story-94 @story-100 @story-106 adapter, query, policies, grid, files, and requests screens render", async ({
+      page,
+    }) => {
+      const issues: Issue[] = [];
+      watch(page, issues);
+      const adapters = await demoAdapters();
+      expect(adapters.length).toBeGreaterThan(0);
+      for (const adapter of adapters) {
+        const base = `/projects/demo/adapters/${adapter.id}`;
+        await page.goto(base);
+        await settle(page);
+        await expect(page.getByRole("heading", { name: adapter.name })).toBeVisible();
+        for (const path of await adapterScreens(adapter)) {
+          await page.goto(path);
+          await settle(page);
+          await expect(page.getByText("adapter", { exact: true }).first()).toBeVisible();
+        }
+      }
+      expect(issues).toStrictEqual([]);
+    });
+
+    test("@story-22 @story-40 write and delete controls follow the role", async ({ page }) => {
+      const postgres = await demoAdapter({ engine: "postgres" });
+      const base = `/projects/demo/adapters/${postgres.id}`;
+      await page.goto(base);
+      await settle(page);
+      await expect(page.getByRole("button", { name: "Delete" })).toBeVisible({
+        visible: allows(role, "qa"),
+      });
+      const table = await firstTable(postgres.id);
+      await page.goto(`${base}/tables/${encodeURIComponent(table)}`);
+      await settle(page);
+      await expect(page.getByText("Write mode")).toBeVisible({ visible: allows(role, "qa") });
+      await page.goto("/projects/demo");
+      await settle(page);
+      await expect(page.getByRole("button", { name: "New adapter" })).toBeVisible({
+        visible: allows(role, "qa"),
+      });
+    });
+  });
+}

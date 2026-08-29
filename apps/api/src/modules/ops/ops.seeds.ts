@@ -88,9 +88,10 @@ export function devAdapters(): AdapterDraft[] {
 
 async function devSeed(deps: SeedDeps, admin: Actor): Promise<SeedCounts> {
   const counts: SeedCounts = { users: 1, projects: 0, adapters: 0, states: 0, warnings: [] };
+  // Usernames follow the shared contract (3+ characters): the service does not re-check the handler's schema.
   for (const [username, role, password] of [
-    ["qa", "qa", DEV_PASSWORDS.qa],
-    ["viewer", "viewer", DEV_PASSWORDS.viewer],
+    ["qa-user", "qa", DEV_PASSWORDS.qa],
+    ["viewer-user", "viewer", DEV_PASSWORDS.viewer],
   ] as const) {
     await deps.users.create(
       admin,

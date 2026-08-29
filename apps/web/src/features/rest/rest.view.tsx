@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { For, Loading, Show } from "solid-js";
-import type { RestRun } from "@testate/shared";
+import type { RestRun, RestRunSummary } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
@@ -15,7 +15,7 @@ import { hasRole } from "@/lib/session.ts";
 import { METHOD_OPTIONS, createRestPresenter } from "./rest.presenter.ts";
 import type { RestPresenter } from "./rest.presenter.ts";
 
-function statusVariant(run: RestRun): "success" | "error" | "warning" {
+function statusVariant(run: RestRun | RestRunSummary): "success" | "error" | "warning" {
   if (run.error !== null || run.status_code === null) return "error";
   return run.matched_expected === false ? "warning" : "success";
 }

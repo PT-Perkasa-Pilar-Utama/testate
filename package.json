@@ -23,9 +23,9 @@
     "build:web": "bun run --cwd apps/web build",
     "build:api": "bun run --cwd apps/api build",
     "start": "bun apps/api/dist/index.js",
-    "type-check": "tsc --noEmit -p packages/shared/tsconfig.json && tsc --noEmit -p apps/api/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.node.json",
-    "lint": "oxlint apps packages scripts",
-    "lint:fix": "oxlint --fix apps packages scripts",
+    "type-check": "tsc --noEmit -p packages/shared/tsconfig.json && tsc --noEmit -p apps/api/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.json && tsc --noEmit -p apps/web/tsconfig.node.json && tsc --noEmit -p e2e/tsconfig.json",
+    "lint": "oxlint apps packages scripts e2e playwright.config.ts",
+    "lint:fix": "oxlint --fix apps packages scripts e2e playwright.config.ts",
     "fmt": "oxfmt --check",
     "fmt:fix": "oxfmt .",
     "test": "bun test",
@@ -34,11 +34,13 @@
     "generate-key": "bun scripts/generate-key.ts",
     "complete-check": "bun run type-check && bun run lint && bun run fmt && bun test && bun run build",
     "prepare": "lefthook install",
-    "click-through": "bun apps/api/scripts/click-through.ts"
+    "e2e": "playwright test"
   },
   "devDependencies": {
     "@oxlint/plugins": "1.80.0",
+    "@playwright/test": "1.58.2",
     "@types/bun": "1.4.0",
+    "@types/node": "25.2.3",
     "eslint-plugin-solid": "0.16.1",
     "lefthook": "2.1.10",
     "oxfmt": "0.65.0",

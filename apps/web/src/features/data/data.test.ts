@@ -38,6 +38,9 @@ describe("data feature", () => {
     expect(() => buildRequest(true, "", { ...MONGO, filter: "{oops" }, "50")).toThrow(
       "filter is not valid JSON"
     );
+    expect(() => buildRequest(true, "", { ...MONGO, collection: "" }, "50")).toThrow(
+      "Invalid length"
+    );
   });
 
   test("form fields become typed FormValues and updates carry only changed columns", () => {

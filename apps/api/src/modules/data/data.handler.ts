@@ -80,7 +80,10 @@ export function parseFilter(text: string): RowFilter {
     throw new AppError("VALIDATION_ERROR", `invalid filter ${text}`, { filter: text });
   }
   const filterOp: FilterOp = parsedOp.output;
-  return { column, op: filterOp, value: rest.join(":") };
+  const value = rest.join(":");
+  if (value === "" && filterOp !== "null" && filterOp !== "notnull")
+    throw new AppError("VALIDATION_ERROR", `filter ${text} needs a value`, { filter: text });
+  return { column, op: filterOp, value };
 }
 
 function toPageQuery(parsed: v.InferOutput<typeof rowsQuery>): Partial<PageQuery> {

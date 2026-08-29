@@ -94,7 +94,9 @@ export function buildRequest(
     const parsed = parseJson(key, text);
     if (parsed !== undefined) operation[key] = parsed;
   }
-  return { ...base, mongo: v.parse(mongoOperationSchema, operation) };
+  const parsed = v.safeParse(mongoOperationSchema, operation);
+  if (!parsed.success) throw new Error(parsed.issues.map((issue) => issue.message).join("; "));
+  return { ...base, mongo: parsed.output };
 }
 
 type Draft = { sql: string; mongo: MongoDraft };
@@ -183,7 +185,13 @@ export function createQueryPresenter(slug: () => string, id: () => string): Quer
     exportAs: (format) => {
       const staticSlug = slug();
       const staticId = id();
-      const staticBody = request();
+      let staticBody: QueryRequest;
+      try {
+        staticBody = request();
+      } catch (cause: unknown) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+        return Promise.resolve();
+      }
       return attempt(async () => {
         saveBlob(await dataModel.exportQuery(staticSlug, staticId, staticBody, format));
       });
@@ -195,7 +203,13 @@ export function createQueryPresenter(slug: () => string, id: () => string): Quer
       const staticSlug = slug();
       const staticId = id();
       const staticName = saveName();
-      const staticBody = v.parse(v.record(v.string(), v.any()), request());
+      let staticBody: JsonObject;
+      try {
+        staticBody = v.parse(v.record(v.string(), v.any()), request());
+      } catch (cause: unknown) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+        return Promise.resolve();
+      }
       delete staticBody["row_cap"];
       return attempt(async () => {
         await dataModel.saveQuery(staticSlug, staticId, staticName, staticBody);

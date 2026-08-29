@@ -54,6 +54,14 @@ export const restRunSchema = v.object({
 });
 export type RestRun = v.InferOutput<typeof restRunSchema>;
 
+/** One row of `GET .../runs` (12 §12.3): the bodies stay behind `GET .../runs/{run_id}`. */
+export const restRunSummarySchema = v.object({
+  ...v.omit(restRunSchema, ["response_headers", "response_body"]).entries,
+  job_id: v.nullable(idSchema),
+  hook_run_id: v.nullable(idSchema),
+});
+export type RestRunSummary = v.InferOutput<typeof restRunSummarySchema>;
+
 export const hookSchema = v.object({
   id: idSchema,
   trigger: hookTriggerSchema,

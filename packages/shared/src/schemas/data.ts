@@ -153,7 +153,7 @@ export const rowEditsResultSchema = v.object({
 
 export const mongoOperationSchema = v.object({
   op: v.picklist(["find", "aggregate"]),
-  collection: v.string(),
+  collection: v.pipe(v.string(), v.minLength(1)),
   filter: v.optional(jsonObjectSchema),
   projection: v.optional(jsonObjectSchema),
   sort: v.optional(jsonObjectSchema),

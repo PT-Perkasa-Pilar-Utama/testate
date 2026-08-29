@@ -72,3 +72,31 @@ jobs:
           tags: testate:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  e2e:
+    name: browser end-to-end
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.0"
+      - run: bun install --frozen-lockfile
+      - name: start the compose engines
+        run: |
+          docker compose -f deploy/compose.engines.yml up -d --wait postgres mysql mariadb mongo minio minio-init sftp ftp
+      - run: bun run e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-report
+          path: |
+            .e2e/report
+            .e2e/results
+            .e2e/crawl
+          if-no-files-found: ignore
+      - name: stop the compose engines
+        if: always()
+        run: docker compose -f deploy/compose.engines.yml down -v

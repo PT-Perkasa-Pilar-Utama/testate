@@ -28,3 +28,4 @@ apps/api/dist
 
 # smoke test output
 .smoke
+.e2e

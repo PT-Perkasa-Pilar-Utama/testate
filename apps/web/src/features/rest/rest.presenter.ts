@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import type { HttpMethod, JsonObject, RestRequest, RestRun } from "@testate/shared";
+import type { HttpMethod, JsonObject, RestRequest, RestRun, RestRunSummary } from "@testate/shared";
 import { httpMethodSchema } from "@testate/shared";
 
 import { attempt, showToast } from "@/components/toast.tsx";
@@ -46,7 +46,7 @@ export type RestPresenter = {
   remove: (request: RestRequest) => Promise<void>;
   selected: () => RestRequest | null;
   select: (request: RestRequest | null) => void;
-  runs: Refreshable<RestRun[]>;
+  runs: Refreshable<RestRunSummary[]>;
   lastRun: () => RestRun | null;
   run: (request: RestRequest) => Promise<void>;
 };

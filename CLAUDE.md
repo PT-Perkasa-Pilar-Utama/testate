@@ -4,13 +4,14 @@ Git for your test database. Bun 1.4 monorepo: `apps/api` (Hono), `apps/web` (Sol
 
 ## Commands
 
-| Task                                  | Command                                               |
-| ------------------------------------- | ----------------------------------------------------- |
-| Full gate (run before every hand-off) | `bun run complete-check`                              |
-| Tests                                 | `bun test` or `bun test apps/api/src/modules/states`  |
-| Lint and format                       | `bun run lint`, `bun run fmt:fix`                     |
-| Dev servers                           | `bun run dev` (API :3000, Vite :5173 proxying `/api`) |
-| Smoke a running API                   | `bun run smoke`                                       |
+| Task                                  | Command                                                                 |
+| ------------------------------------- | ----------------------------------------------------------------------- |
+| Full gate (run before every hand-off) | `bun run complete-check`                                                |
+| Tests                                 | `bun test` or `bun test apps/api/src/modules/states`                    |
+| Lint and format                       | `bun run lint`, `bun run fmt:fix`                                       |
+| Dev servers                           | `bun run dev` (API :3000, Vite :5173 proxying `/api`)                   |
+| Smoke a running API                   | `bun run smoke`                                                         |
+| Browser end-to-end (Playwright)       | `bun run e2e` (see `docs/E2E.md`; story coverage in `.e2e/coverage.md`) |
 
 The gate is green today. Keep it green: a change that adds a lint error or a failing test is not done.
 

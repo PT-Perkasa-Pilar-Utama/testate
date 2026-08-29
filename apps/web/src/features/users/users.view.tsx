@@ -29,7 +29,7 @@ function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element {
           <span>Username</span>
           <Input
             required
-            pattern="[a-z0-9._-]{3,64}"
+            pattern={"[a-z0-9._\\-]{3,64}"}
             autocomplete="off"
             value={props.presenter.draft().username}
             onInput={(event) => props.presenter.setDraft({ username: event.currentTarget.value })}

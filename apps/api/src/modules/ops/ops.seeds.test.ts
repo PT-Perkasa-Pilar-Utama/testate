@@ -72,7 +72,7 @@ describe("reset seeds", () => {
     const calls: Calls = { users: [], projects: [], adapters: [], states: [], waits: [] };
     const seed = createSeeds(stubDeps(calls, "shop-mongo"));
     const counts = await seed("dev");
-    expect(calls.users).toEqual(["qa", "viewer"]);
+    expect(calls.users).toEqual(["qa-user", "viewer-user"]);
     expect(calls.projects).toEqual(["demo"]);
     expect(calls.adapters).toEqual([
       "shop-postgres",

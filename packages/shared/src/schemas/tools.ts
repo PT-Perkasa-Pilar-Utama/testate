@@ -3,7 +3,7 @@ import * as v from "valibot";
 export const hashRequestSchema = v.pipe(
   v.object({
     algorithm: v.picklist(["argon2id", "bcrypt", "sha256", "sha512", "hmac_sha256"]),
-    value: v.pipe(v.string(), v.maxLength(4096)),
+    value: v.pipe(v.string(), v.minLength(1), v.maxLength(4096)),
     secret: v.optional(v.pipe(v.string(), v.maxLength(4096))),
     salt: v.optional(v.pipe(v.string(), v.maxLength(256))),
     cost: v.optional(v.pipe(v.number(), v.integer(), v.minValue(4), v.maxValue(14))),

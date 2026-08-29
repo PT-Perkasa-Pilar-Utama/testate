@@ -48,6 +48,10 @@ const CODE_OF_KIND = new Map<EngineErrorKind, ErrorCode>([
   ["unsupported", "ENGINE_UNSUPPORTED"],
   ["version_too_old", "ENGINE_UNSUPPORTED"],
   ["privilege_missing", "ENGINE_UNSUPPORTED"],
+  // A statement the engine rejected (syntax, cast, constraint) or cancelled is the adapter's answer, never a 500 (06 §6.7).
+  ["batch_failed", "ADAPTER_UNREACHABLE"],
+  ["cancelled", "ADAPTER_UNREACHABLE"],
+  ["document_too_large", "VALIDATION_ERROR"],
 ]);
 
 /** Engine failures become the API's error codes; the message never carries the config (12 §12.8). */

@@ -59,6 +59,8 @@ function budgetsOf(request: QueryRequest, limits: Settings["limits"]): Budgets {
 /** `mongo` carries an operation to a MongoDB adapter; `sql` goes to the SQL engines (06 §6.7). */
 function assertDialect(adapter: AdapterRecord, request: QueryRequest): void {
   const wantsMongo = request.dialect === "mongo";
+  if (!wantsMongo && (request.text ?? "").trim() === "")
+    throw new AppError("VALIDATION_ERROR", "text is required", { field: "text" });
   if (
     wantsMongo !== (adapter.engine === "mongodb") ||
     (wantsMongo && request.mongo === undefined)

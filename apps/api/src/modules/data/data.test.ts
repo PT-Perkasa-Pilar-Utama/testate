@@ -83,7 +83,7 @@ describe("data", () => {
     expect(result.columns.map((column) => column.name)).toEqual(["id", "customer_id", "total"]);
     await expect(
       h.data.query(h.viewer, h.adapterId, { dialect: "sql", text: "DELETE FROM x", mode: "read" })
-    ).rejects.toMatchObject({ code: "INTERNAL" });
+    ).rejects.toMatchObject({ code: "ADAPTER_UNREACHABLE" });
     await expect(
       h.data.query(h.viewer, h.adapterId, { dialect: "sql", text: "DELETE FROM x", mode: "write" })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });

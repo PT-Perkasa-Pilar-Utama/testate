@@ -1,3 +1,4 @@
+import { Agent } from "node:http";
 import { fileURLToPath } from "node:url";
 import solidPlugin from "@solidjs/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
@@ -12,7 +13,20 @@ export default defineConfig(({ command }) => ({
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   server: {
     port: 5173,
-    proxy: { "/api": "http://localhost:3000" },
+    // No keep-alive: Bun closes idle sockets and the proxy would answer the next request with a 502.
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:3000",
+        agent: new Agent({ keepAlive: false }),
+        configure: (proxy) => {
+          proxy.on("error", (error, req) => {
+            process.stderr.write(
+              `[proxy] ${req.method ?? ""} ${req.url ?? ""}: ${error.message}\n`
+            );
+          });
+        },
+      },
+    },
   },
   build: { outDir: "dist", sourcemap: true },
 }));

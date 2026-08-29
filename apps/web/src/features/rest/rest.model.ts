@@ -1,6 +1,6 @@
 import * as v from "valibot";
-import type { JsonObject, RestRequest, RestRun } from "@testate/shared";
-import { restRequestSchema, restRunSchema } from "@testate/shared";
+import type { JsonObject, RestRequest, RestRun, RestRunSummary } from "@testate/shared";
+import { restRequestSchema, restRunSchema, restRunSummarySchema } from "@testate/shared";
 
 import { apiClient } from "@/lib/api-client.ts";
 
@@ -21,8 +21,8 @@ export const restModel = {
       schema: restRunSchema,
       body: {},
     }),
-  runs: (slug: string, id: string, requestId: string): Promise<RestRun[]> =>
+  runs: (slug: string, id: string, requestId: string): Promise<RestRunSummary[]> =>
     apiClient.get(`${base(slug, id)}/${encodeURIComponent(requestId)}/runs`, {
-      schema: v.array(restRunSchema),
+      schema: v.array(restRunSummarySchema),
     }),
 };

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { restRequestSchema, restRunSchema } from "@testate/shared";
+import { restRequestSchema, restRunSchema, restRunSummarySchema } from "@testate/shared";
 import * as v from "valibot";
 
 import { requireRole } from "../../lib/http/auth.ts";
@@ -49,7 +49,7 @@ export function createRestRouter(h: RestHandlers): Hono {
   router.get(
     `${P}/:rid/runs`,
     requireRole("viewer"),
-    describe("rest", "Recent runs", v.array(restRunSchema)),
+    describe("rest", "Recent runs", v.array(restRunSummarySchema)),
     h.runs
   );
   router.get(

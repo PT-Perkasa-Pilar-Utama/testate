@@ -98,7 +98,8 @@ function fieldFor(column: TableSchema["columns"][number], row: JsonObject | null
   const required = column.policy.required_function;
   if (required !== null)
     return { ...EMPTY_FIELD, mode: row === null ? "function" : "default", fn: required.name };
-  if (row === null) return { ...EMPTY_FIELD, mode: column.has_default ? "default" : "value" };
+  if (row === null)
+    return { ...EMPTY_FIELD, mode: column.has_default || column.identity ? "default" : "value" };
   const current = row[column.name];
   if (current === null || current === undefined) return { ...EMPTY_FIELD, mode: "null" };
   return { ...EMPTY_FIELD, text: v.is(v.string(), current) ? current : JSON.stringify(current) };
