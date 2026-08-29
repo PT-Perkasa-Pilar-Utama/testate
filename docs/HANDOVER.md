@@ -95,6 +95,8 @@ The pattern to expect: the contract says one thing, a path does another.
 - The pre-migration copy (story 122, spec 22 §22.2) was never implemented.
 - Postgres introspection never named an unsupported column type (story 73).
 - XLSX date cells read as their serial number (story 50).
+- A retried `POST /states` was refused as a duplicate name and a retried `POST /checkouts` made a
+  second row: only adapter deletion honoured `Idempotency-Key`.
 - Earlier: `""` where the contract said id, a `text/plain` diff export, a dry run that deleted its
   upload, `Bun.write(path, new Response(stream))` stalling on a pull stream.
 
@@ -125,6 +127,10 @@ b9131cd test(e2e): cover the contract and agent stories over the API
 - Content-addressed row cache: `apps/api/src/lib/cache/rows-cache.ts`.
 - Streaming sinks: `imports.rejected.ts` (lazy open, `close()` before the run is recorded,
   `discard()` on a throw).
+- Idempotency: `jobs/jobs.idempotency.ts`. Build the request from what the **client** sent, never
+  from the payload — a payload mints ids, so a retry would never match itself. Call `replayWith`
+  before the service writes anything, and hand the same request to `enqueue`. A different body
+  under a live key still conflicts, which is the point of the key.
 - Test harness knobs: `harness.fakeOptions.failCheckout`, `harness.quota.current`.
 
 ## 8. In flight and next
