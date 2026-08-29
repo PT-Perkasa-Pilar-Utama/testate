@@ -97,15 +97,15 @@ test.describe("qa stories", () => {
     await row.getByRole("button", { name: "Fixture" }).click();
     await expect(page.locator("dialog[open]").getByText(/INSERT INTO/)).toBeVisible();
     await page.locator("dialog[open]").getByText("Close", { exact: true }).click();
-    for (const _copy of [1, 2]) {
+    // Wait for each delete to land before clicking the next: the grid reloads between them.
+    for (const remaining of [before + 1, before]) {
       await page
         .locator("main tbody tr", { hasText: uuidV7 })
         .first()
         .getByRole("button", { name: "Delete" })
         .click();
-      await settle(page);
+      await expect(mine).toHaveCount(remaining);
     }
-    await expect(mine).toHaveCount(before);
     await page.getByRole("switch", { name: "Write mode" }).click();
     expect(issues).toStrictEqual([]);
   });
