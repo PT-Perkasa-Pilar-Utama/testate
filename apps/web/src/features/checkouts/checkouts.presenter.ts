@@ -3,12 +3,12 @@ import * as v from "valibot";
 import type { Checkout, Counters } from "@testate/shared";
 
 import { attempt, showToast } from "@/components/toast.tsx";
-import { createRefreshable } from "@/lib/async.ts";
-import type { Refreshable } from "@/lib/async.ts";
+import { createPaged } from "@/lib/async.ts";
+import type { Paged } from "@/lib/async.ts";
 import { followJob } from "@/lib/sse.ts";
 import { checkoutsModel } from "./checkouts.model.ts";
 
-export type CheckoutsPresenter = Refreshable<Checkout[]> & {
+export type CheckoutsPresenter = Paged<Checkout> & {
   detail: () => Checkout | null;
   counters: () => { checkout: Checkout; result: Counters } | null;
   openDetail: (checkout: Checkout) => void;
@@ -61,7 +61,7 @@ export function createCheckoutsPresenter(
   slug: () => string,
   onChanged: () => void = () => undefined
 ): CheckoutsPresenter {
-  const checkouts = createRefreshable(() => checkoutsModel.list(slug()));
+  const checkouts = createPaged((cursor) => checkoutsModel.page(slug(), cursor));
   const [detail, setDetail] = createSignal<Checkout | null>(null);
   const [counters, setCounters] = createSignal<{ checkout: Checkout; result: Counters } | null>(
     null

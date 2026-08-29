@@ -6,6 +6,7 @@ import {
   tokenKindSchema,
 } from "@testate/shared";
 import * as v from "valibot";
+import { nextCursor } from "../../lib/db/keyset.ts";
 
 import { SESSION_COOKIE, currentActor, requestMeta } from "../../lib/http/auth.ts";
 import { ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.ts";
@@ -35,6 +36,10 @@ export type AuthHandlerOptions = {
 const tokensQuery = v.object({
   kind: v.optional(v.array(tokenKindSchema)),
   revoked: v.optional(v.array(v.picklist(["true", "false"]))),
+  limit: v.optional(
+    v.array(v.pipe(v.string(), v.transform(Number), v.integer(), v.minValue(1), v.maxValue(200)))
+  ),
+  cursor: v.optional(v.array(v.string())),
 });
 
 function toTokensQuery(parsed: v.InferOutput<typeof tokensQuery>): TokensListQuery {
@@ -43,6 +48,9 @@ function toTokensQuery(parsed: v.InferOutput<typeof tokensQuery>): TokensListQue
   if (kind !== undefined) query.kind = kind;
   const revoked = parsed.revoked?.[0];
   if (revoked !== undefined) query.revoked = revoked === "true";
+  query.limit = parsed.limit?.[0] ?? 50;
+  const cursor = parsed.cursor?.[0];
+  if (cursor !== undefined) query.cursor = cursor;
   return query;
 }
 
@@ -118,8 +126,17 @@ export function createAuthHandlers(
       await service.revokeSession(currentActor(c), param(c, "id"));
       return c.body(null, 204);
     },
-    listTokens: async (c) =>
-      okPage(c, await service.listTokens(toTokensQuery(parseQuery(c, tokensQuery))), null, 200),
+    listTokens: async (c) => {
+      const query = toTokensQuery(parseQuery(c, tokensQuery));
+      const rows = await service.listTokens(query);
+      const limit = query.limit ?? 50;
+      return okPage(
+        c,
+        rows,
+        nextCursor(rows, limit, (row) => [row.created_at, row.id]),
+        limit
+      );
+    },
     createToken: async (c) => {
       const input = toCreateTokenInput(await parseBody(c, createTokenSchema));
       return ok(c, await service.createToken(currentActor(c), input, meta(c)), 201);

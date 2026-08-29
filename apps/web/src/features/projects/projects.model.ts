@@ -26,6 +26,8 @@ export type Job = v.InferOutput<typeof jobSchema>;
 
 export const projectsModel = {
   list: (): Promise<Project[]> => apiClient.get("/projects", { schema: v.array(projectSchema) }),
+  page: (cursor?: string): Promise<{ data: Project[]; next: string | null }> =>
+    apiClient.page("/projects", projectSchema, cursor === undefined ? undefined : { cursor }),
   get: async (slug: string): Promise<Project> => {
     const overview = await apiClient.get(path(slug), {
       schema: v.object({ project: projectSchema }),

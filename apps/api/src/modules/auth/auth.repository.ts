@@ -1,6 +1,7 @@
 import type { ApiToken, Role } from "@testate/shared";
 import { idSchema, roleSchema, tokenKindSchema } from "@testate/shared";
 import * as v from "valibot";
+import { keysetCondition } from "../../lib/db/keyset.ts";
 
 import type { MetadataDb } from "../../lib/db/index.ts";
 
@@ -59,7 +60,12 @@ export type NewToken = {
   created_at: string;
 };
 
-export type TokensListQuery = { kind?: ApiToken["kind"]; revoked?: boolean };
+export type TokensListQuery = {
+  kind?: ApiToken["kind"];
+  revoked?: boolean;
+  limit?: number;
+  cursor?: string;
+};
 
 export type AuthRepository = {
   insertSession(session: NewSession): void;
@@ -170,16 +176,20 @@ export function createAuthRepository(db: MetadataDb): AuthRepository {
     tokenByHash: (hash) => oneToken("SELECT * FROM api_tokens WHERE token_hash = ?", hash),
     tokenById: (id) => oneToken("SELECT * FROM api_tokens WHERE id = ?", id),
     listTokens(query) {
-      const found: { sql: string; params: string[] }[] = [];
+      const found: { sql: string; params: (string | number)[] }[] = [];
       if (query.kind !== undefined) found.push({ sql: "kind = ?", params: [query.kind] });
       if (query.revoked === true) found.push({ sql: "revoked_at IS NOT NULL", params: [] });
       if (query.revoked === false) found.push({ sql: "revoked_at IS NULL", params: [] });
+      const after = keysetCondition(
+        { column: "created_at", id: "id", order: "desc", idOrder: "desc" },
+        query.cursor
+      );
+      if (after !== null) found.push(after);
       const where =
         found.length === 0 ? "" : ` WHERE ${found.map((item) => item.sql).join(" AND ")}`;
-      // ponytail: no cursor — ceiling ~200 tokens per instance; add a keyset when one passes it.
       const rows = db
-        .query(`SELECT * FROM api_tokens${where} ORDER BY created_at DESC, id DESC LIMIT 200`)
-        .all(...found.flatMap((item) => item.params));
+        .query(`SELECT * FROM api_tokens${where} ORDER BY created_at DESC, id DESC LIMIT ?`)
+        .all(...found.flatMap((item) => item.params), query.limit ?? 200);
       return v.parse(v.array(tokenRecordSchema), rows).map(toToken);
     },
     touchToken(id, at) {

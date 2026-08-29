@@ -8,6 +8,8 @@ export type CreatedToken = v.InferOutput<typeof createTokenResponseSchema>;
 
 export const tokensModel = {
   list: (): Promise<ApiToken[]> => apiClient.get("/tokens", { schema: v.array(apiTokenSchema) }),
+  page: (cursor?: string): Promise<{ data: ApiToken[]; next: string | null }> =>
+    apiClient.page("/tokens", apiTokenSchema, cursor === undefined ? undefined : { cursor }),
   create: (body: JsonObject): Promise<CreatedToken> =>
     apiClient.post("/tokens", { schema: createTokenResponseSchema, body }),
   revoke: (id: string): Promise<undefined> =>

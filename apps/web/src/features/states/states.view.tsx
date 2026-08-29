@@ -4,6 +4,7 @@ import type { State, StateTreeNode } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
+import LoadMore from "@/components/load-more.tsx";
 import Switch from "@/components/switch.tsx";
 import Tabs from "@/components/tabs.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
@@ -189,6 +190,7 @@ export default function StatesView(props: { slug: string; onChanged?: () => void
               </For>
             </tbody>
           </Table>
+          <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
         </Show>
       </Loading>
       <TakeDialog presenter={presenter} />

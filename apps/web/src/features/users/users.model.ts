@@ -8,6 +8,8 @@ const path = (id: string): string => `/users/${encodeURIComponent(id)}`;
 
 export const usersModel = {
   list: (): Promise<User[]> => apiClient.get("/users", { schema: v.array(userSchema) }),
+  page: (cursor?: string): Promise<{ data: User[]; next: string | null }> =>
+    apiClient.page("/users", userSchema, cursor === undefined ? undefined : { cursor }),
   create: (body: JsonObject): Promise<User> =>
     apiClient.post("/users", { schema: userSchema, body }),
   disable: (id: string): Promise<User> =>

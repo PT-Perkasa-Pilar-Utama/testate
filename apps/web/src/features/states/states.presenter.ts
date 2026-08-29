@@ -2,8 +2,8 @@ import { createSignal } from "solid-js";
 import type { Adapter, JsonObject, State, StateDetail, StateTreeNode } from "@testate/shared";
 
 import { attempt, showToast } from "@/components/toast.tsx";
-import { createRefreshable } from "@/lib/async.ts";
-import type { Refreshable } from "@/lib/async.ts";
+import { createPaged, createRefreshable } from "@/lib/async.ts";
+import type { Paged, Refreshable } from "@/lib/async.ts";
 import { followJob } from "@/lib/sse.ts";
 import { adaptersModel } from "../adapters/adapters.model.ts";
 import { statesModel } from "./states.model.ts";
@@ -11,7 +11,7 @@ import { statesModel } from "./states.model.ts";
 export type StateDraft = { name: string; notes: string; tags: string; adapter_ids: string[] };
 export type StatesView = "list" | "tree";
 
-export type StatesPresenter = Refreshable<State[]> & {
+export type StatesPresenter = Paged<State> & {
   tree: Refreshable<StateTreeNode[]>;
   databases: Refreshable<Adapter[]>;
   view: () => StatesView;
@@ -78,7 +78,7 @@ export function createStatesPresenter(
   onChanged: () => void = () => undefined
 ): StatesPresenter {
   const [showStashes, setShowStashes] = createSignal(false);
-  const states = createRefreshable(() => statesModel.list(slug(), showStashes()));
+  const states = createPaged((cursor) => statesModel.page(slug(), showStashes(), cursor));
   const tree = createRefreshable(() => statesModel.tree(slug()));
   const databases = createRefreshable(async () =>
     (await adaptersModel.list(slug())).filter((adapter) => adapter.kind === "database")

@@ -5,6 +5,7 @@ import {
   updateStateSchema,
 } from "@testate/shared";
 import * as v from "valibot";
+import { nextCursor } from "../../lib/db/keyset.ts";
 
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
 import { accepted, ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.ts";
@@ -36,6 +37,7 @@ const listQuerySchema = v.object({
   tag: v.optional(v.array(v.string())),
   name: v.optional(v.array(v.string())),
   include_stash: v.optional(flag),
+  cursor: v.optional(v.array(v.string())),
   protected: v.optional(flag),
 });
 
@@ -46,6 +48,8 @@ function toFilter(parsed: v.InferOutput<typeof listQuerySchema>): StatesFilter {
     order: firstQuery(parsed.order) ?? "desc",
     includeStash: firstQuery(parsed.include_stash) === "true",
   };
+  const cursor = firstQuery(parsed.cursor);
+  if (cursor !== undefined) filter.cursor = cursor;
   const kind = firstQuery(parsed.kind);
   if (kind !== undefined) filter.kind = kind;
   const tag = firstQuery(parsed.tag);
@@ -67,7 +71,9 @@ export function createStatesHandlers(
   return {
     list: async (c) => {
       const filter = toFilter(parseQuery(c, listQuerySchema));
-      return okPage(c, await service.list(param(c, "slug"), filter), null, filter.limit);
+      const rows = await service.list(param(c, "slug"), filter);
+      const next = nextCursor(rows, filter.limit, (row) => [row[filter.sort], row.id]);
+      return okPage(c, rows, next, filter.limit);
     },
     tree: async (c) => {
       const filter = toFilter(parseQuery(c, listQuerySchema));

@@ -11,6 +11,8 @@ const withJob = v.object({ checkout: checkoutSchema, job: jobSchema });
 export const checkoutsModel = {
   list: (slug: string): Promise<Checkout[]> =>
     apiClient.get(base(slug), { schema: v.array(checkoutSchema) }),
+  page: (slug: string, cursor?: string): Promise<{ data: Checkout[]; next: string | null }> =>
+    apiClient.page(base(slug), checkoutSchema, cursor === undefined ? undefined : { cursor }),
   preflight: (slug: string, body: JsonObject): Promise<Preflight> =>
     apiClient.post(`${base(slug)}/preflight`, { schema: preflightSchema, body }),
   create: (slug: string, body: JsonObject): Promise<{ checkout: Checkout; job: Job }> =>

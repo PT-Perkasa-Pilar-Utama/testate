@@ -19,7 +19,7 @@ export type StashInput = {
 /**
  * A stash is a state of kind `stash` taken inside the caller's job before any destructive step
  * (05 §5.8). Parented on HEAD; HEAD does not move. Returns the state id.
- * ponytail: stashes are never pruned — `pruneStashes` waits for the settings card's keep count.
+ * The retention sweep prunes stashes beyond `retention.stash_keep` (settings.retention.ts).
  */
 export async function takeStash(deps: SnapshotDeps, input: StashInput): Promise<string> {
   const at = deps.now();

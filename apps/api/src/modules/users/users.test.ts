@@ -1,4 +1,6 @@
 import { describe, expect, it } from "bun:test";
+
+import { encodeCursor } from "../../lib/db/keyset.ts";
 import { userSchema } from "@testate/shared";
 
 import { TEST_META, actorOf, createAccounts } from "../../../test/accounts.ts";
@@ -18,6 +20,25 @@ describe("users", () => {
     expectContract(userSchema, USER_MOCK, (clone) => {
       clone["username"] = "Has Spaces";
     });
+  });
+
+  it("pages through accounts with a keyset cursor (no ceiling on the list)", async () => {
+    const { users, admin } = await createAccounts();
+    await users.create(
+      admin,
+      {
+        username: "zed",
+        display_name: "Zed",
+        role: "viewer",
+        temporary_password: "zed-temporary-1234",
+      },
+      TEST_META
+    );
+    const [first] = await users.list({ ...BASE, limit: 1 });
+    expect(first).toMatchObject({ username: "admin" });
+    const cursor = encodeCursor(["admin", String(first?.id)]);
+    const second = await users.list({ ...BASE, limit: 1, cursor });
+    expect(second.map((user) => user.username)).toStrictEqual(["zed"]);
   });
 
   it("bootstraps one admin that must change its password, and only once", async () => {

@@ -2,6 +2,7 @@ import type { Project } from "@testate/shared";
 import { headStatusSchema } from "@testate/shared";
 import type { HeadStatus } from "@testate/shared";
 import * as v from "valibot";
+import { keysetCondition } from "../../lib/db/keyset.ts";
 
 import type { MetadataDb } from "../../lib/db/index.ts";
 
@@ -26,6 +27,8 @@ export type ProjectsListQuery = {
   sort: "name" | "created_at";
   order: "asc" | "desc";
   q?: string;
+  /** Continues after a `next_cursor` from the page before. */
+  cursor?: string;
   /** Null means every project; a list restricts to a token's scope (09 §9.5). */
   ids: string[] | null;
 };
@@ -85,7 +88,7 @@ function toProject(row: ProjectRecord): Project {
   };
 }
 
-type Condition = { sql: string; params: string[] };
+type Condition = { sql: string; params: (string | number)[] };
 
 function conditions(query: ProjectsListQuery): Condition[] {
   const found: Condition[] = [];
@@ -111,10 +114,14 @@ export function createProjectsRepository(db: MetadataDb): ProjectsRepository {
   return {
     list(query) {
       const found = conditions(query);
+      const after = keysetCondition(
+        { column: SORT_COLUMNS[query.sort], id: "p.id", order: query.order, idOrder: "asc" },
+        query.cursor
+      );
+      if (after !== null) found.push(after);
       const where =
         found.length === 0 ? "" : ` WHERE ${found.map((item) => item.sql).join(" AND ")}`;
       const order = `${SORT_COLUMNS[query.sort]} ${query.order === "desc" ? "DESC" : "ASC"}, p.id ASC`;
-      // ponytail: no cursor — ceiling ~200 projects per instance; add a keyset when one passes it.
       const rows = db
         .query(`${SELECT}${where} ORDER BY ${order} LIMIT ?`)
         .all(...found.flatMap((item) => item.params), query.limit);

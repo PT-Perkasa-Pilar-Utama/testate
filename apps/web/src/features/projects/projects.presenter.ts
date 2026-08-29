@@ -1,11 +1,11 @@
 import { createSignal } from "solid-js";
 import type { Project } from "@testate/shared";
 
-import { createRefreshable } from "@/lib/async.ts";
-import type { Refreshable } from "@/lib/async.ts";
+import { createPaged } from "@/lib/async.ts";
+import type { Paged } from "@/lib/async.ts";
 import { projectsModel } from "./projects.model.ts";
 
-export type ProjectsPresenter = Refreshable<Project[]> & {
+export type ProjectsPresenter = Paged<Project> & {
   creating: () => boolean;
   name: () => string;
   slug: () => string;
@@ -27,7 +27,7 @@ export function slugify(name: string): string {
 }
 
 export function createProjectsPresenter(): ProjectsPresenter {
-  const projects = createRefreshable(() => projectsModel.list());
+  const projects = createPaged((cursor) => projectsModel.page(cursor));
   const [creating, setCreating] = createSignal(false);
   const [name, setName] = createSignal("");
   const [slug, setSlug] = createSignal("");

@@ -4,6 +4,7 @@ import { For, Loading, Show } from "solid-js";
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
+import LoadMore from "@/components/load-more.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
@@ -113,6 +114,7 @@ export default function ProjectsView(): JSX.Element {
             </For>
           </tbody>
         </Table>
+        <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
       </Loading>
       <CreateDialog presenter={presenter} />
     </section>

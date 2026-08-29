@@ -3,8 +3,8 @@ import type { ApiToken, JsonObject, Role, TokenKind } from "@testate/shared";
 import { ROLES, TOKEN_KINDS } from "@testate/shared";
 
 import { attempt, showToast } from "@/components/toast.tsx";
-import { createRefreshable } from "@/lib/async.ts";
-import type { Refreshable } from "@/lib/async.ts";
+import { createPaged } from "@/lib/async.ts";
+import type { Paged } from "@/lib/async.ts";
 import { tokensModel } from "./tokens.model.ts";
 
 export const KIND_OPTIONS = TOKEN_KINDS.map((kind) => ({ value: kind, label: kind }));
@@ -14,7 +14,7 @@ export type TokenDraft = { name: string; kind: TokenKind; role: Role; expires_on
 
 const EMPTY_DRAFT: TokenDraft = { name: "", kind: "standard", role: "qa", expires_on: "" };
 
-export type TokensPresenter = Refreshable<ApiToken[]> & {
+export type TokensPresenter = Paged<ApiToken> & {
   creating: () => boolean;
   draft: () => TokenDraft;
   error: () => string | null;
@@ -38,7 +38,7 @@ export function toCreateBody(draft: TokenDraft): JsonObject {
 }
 
 export function createTokensPresenter(): TokensPresenter {
-  const tokens = createRefreshable(() => tokensModel.list());
+  const tokens = createPaged((cursor) => tokensModel.page(cursor));
   const [creating, setCreating] = createSignal(false);
   const [draft, setDraftSignal] = createSignal<TokenDraft>(EMPTY_DRAFT);
   const [error, setError] = createSignal<string | null>(null);

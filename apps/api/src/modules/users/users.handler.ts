@@ -5,6 +5,7 @@ import {
   updateUserSchema,
 } from "@testate/shared";
 import * as v from "valibot";
+import { nextCursor } from "../../lib/db/keyset.ts";
 
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
 import { firstQuery } from "../../lib/http/query.ts";
@@ -31,6 +32,7 @@ const listQuery = v.object({
   sort: v.optional(v.array(v.picklist(["username", "created_at", "last_login_at"]))),
   order: v.optional(v.array(v.picklist(["asc", "desc"]))),
   role: v.optional(v.array(roleSchema)),
+  cursor: v.optional(v.array(v.string())),
   disabled: v.optional(v.array(v.picklist(["true", "false"]))),
   q: v.optional(v.array(v.string())),
 });
@@ -41,6 +43,8 @@ export function toListQuery(parsed: v.InferOutput<typeof listQuery>): UsersListQ
     sort: firstQuery(parsed.sort) ?? "username",
     order: firstQuery(parsed.order) ?? "asc",
   };
+  const cursor = firstQuery(parsed.cursor);
+  if (cursor !== undefined) query.cursor = cursor;
   const role = firstQuery(parsed.role);
   if (role !== undefined) query.role = role;
   const disabled = firstQuery(parsed.disabled);
@@ -62,7 +66,9 @@ export function createUsersHandlers(service: UsersService, trustProxy: boolean):
   return {
     list: async (c) => {
       const query = toListQuery(parseQuery(c, listQuery));
-      return okPage(c, await service.list(query), null, query.limit);
+      const rows = await service.list(query);
+      const next = nextCursor(rows, query.limit, (row) => [row[query.sort], row.id]);
+      return okPage(c, rows, next, query.limit);
     },
     create: async (c) => {
       const input = await parseBody(c, createUserSchema);

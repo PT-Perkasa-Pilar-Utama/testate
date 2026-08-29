@@ -5,6 +5,7 @@ import { TERMINAL_JOB_STATUSES } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
+import LoadMore from "@/components/load-more.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { subscribeJob } from "@/lib/sse.ts";
@@ -113,6 +114,7 @@ export default function CheckoutsView(props: {
           </For>
         </tbody>
       </Table>
+      <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
       <DetailDialog presenter={presenter} />
       <CountersDialog presenter={presenter} />
     </Loading>

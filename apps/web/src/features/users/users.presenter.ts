@@ -3,8 +3,8 @@ import type { Role, User } from "@testate/shared";
 import { PASSWORD_MIN_LENGTH, ROLES } from "@testate/shared";
 
 import { attempt, showToast } from "@/components/toast.tsx";
-import { createRefreshable } from "@/lib/async.ts";
-import type { Refreshable } from "@/lib/async.ts";
+import { createPaged } from "@/lib/async.ts";
+import type { Paged } from "@/lib/async.ts";
 import { actor } from "@/lib/session.ts";
 import { usersModel } from "./users.model.ts";
 
@@ -24,7 +24,7 @@ const EMPTY_DRAFT: UserDraft = {
   temporary_password: "",
 };
 
-export type UsersPresenter = Refreshable<User[]> & {
+export type UsersPresenter = Paged<User> & {
   creating: () => boolean;
   draft: () => UserDraft;
   error: () => string | null;
@@ -48,7 +48,7 @@ function messageOf(cause: unknown, fallback: string): string {
 }
 
 export function createUsersPresenter(): UsersPresenter {
-  const users = createRefreshable(() => usersModel.list());
+  const users = createPaged((cursor) => usersModel.page(cursor));
   const [creating, setCreating] = createSignal(false);
   const [draft, setDraftSignal] = createSignal<UserDraft>(EMPTY_DRAFT);
   const [error, setError] = createSignal<string | null>(null);

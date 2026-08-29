@@ -1,5 +1,6 @@
 import type { Actor, State, StateDetail, StateKind, StateStatus } from "@testate/shared";
 import * as v from "valibot";
+import { keysetCondition } from "../../lib/db/keyset.ts";
 
 import type { MetadataDb } from "../../lib/db/index.ts";
 import { createManifestStore } from "./states.manifests.ts";
@@ -22,6 +23,7 @@ export type StatesFilter = {
   name?: string;
   protected?: boolean;
   includeStash: boolean;
+  cursor?: string;
 };
 
 export type StatePatch = {
@@ -54,7 +56,7 @@ export type NewState = {
 
 export type StateRows = {
   insert(state: NewState): void;
-  /** `diff` states never list (08 §8); stashes only on request. ponytail: no cursor, ceiling ~1000 states per project. */
+  /** `diff` states never list (08 §8); stashes only on request. */
   list(projectId: string, filter: StatesFilter): State[];
   byIdOrName(projectId: string, idOrName: string): State | null;
   detail(projectId: string, idOrName: string): StateDetail | null;
@@ -126,6 +128,11 @@ function createStateRows(db: MetadataDb): StateRows {
     list(projectId, filter) {
       const found = conditions(projectId, filter);
       const order = `${SORT_COLUMNS[filter.sort]} ${filter.order === "desc" ? "DESC" : "ASC"}, s.id ASC`;
+      const after = keysetCondition(
+        { column: SORT_COLUMNS[filter.sort], id: "s.id", order: filter.order, idOrder: "asc" },
+        filter.cursor
+      );
+      if (after !== null) found.push(after);
       const rows = v.parse(
         v.array(stateRowSchema),
         db

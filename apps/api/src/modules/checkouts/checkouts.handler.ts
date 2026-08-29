@@ -4,6 +4,7 @@ import {
   terminateBlockersSchema,
 } from "@testate/shared";
 import * as v from "valibot";
+import { nextCursor } from "../../lib/db/keyset.ts";
 
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
 import { ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.ts";
@@ -25,6 +26,7 @@ export type CheckoutsHandlers = {
 };
 
 const listQuery = v.object({
+  cursor: v.optional(v.array(v.string())),
   limit: v.optional(
     v.array(v.pipe(v.string(), v.transform(Number), v.integer(), v.minValue(1), v.maxValue(200)))
   ),
@@ -42,6 +44,8 @@ const waitQuery = v.object({
 
 function toFilter(parsed: v.InferOutput<typeof listQuery>): CheckoutsFilter {
   const filter: CheckoutsFilter = { limit: firstQuery(parsed.limit) ?? 50 };
+  const cursor = firstQuery(parsed.cursor);
+  if (cursor !== undefined) filter.cursor = cursor;
   const status = firstQuery(parsed.status);
   if (status !== undefined) filter.status = status;
   const stateId = firstQuery(parsed.state_id);
@@ -77,7 +81,9 @@ export function createCheckoutsHandlers(
     },
     list: async (c) => {
       const filter = toFilter(parseQuery(c, listQuery));
-      return okPage(c, await service.list(param(c, "slug"), filter), null, filter.limit);
+      const rows = await service.list(param(c, "slug"), filter);
+      const next = nextCursor(rows, filter.limit, (row) => [row.created_at, row.id]);
+      return okPage(c, rows, next, filter.limit);
     },
     get: async (c) => ok(c, await service.get(param(c, "slug"), param(c, "id"))),
     retry: async (c) =>

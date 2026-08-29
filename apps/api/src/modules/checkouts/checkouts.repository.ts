@@ -7,6 +7,7 @@ import {
   tableRefSchema,
 } from "@testate/shared";
 import * as v from "valibot";
+import { keysetCondition } from "../../lib/db/keyset.ts";
 
 import type { CounterResult } from "../../lib/engines/index.ts";
 import type { MetadataDb } from "../../lib/db/index.ts";
@@ -29,6 +30,7 @@ export type CheckoutsFilter = {
   status?: Checkout["status"];
   state_id?: string;
   purpose?: Checkout["purpose"];
+  cursor?: string;
 };
 
 export type AdapterCounters = { adapter_id: string; counters: CounterResult[] };
@@ -36,7 +38,6 @@ export type AdapterCounters = { adapter_id: string; counters: CounterResult[] };
 export type CheckoutsRepository = {
   insert(checkout: NewCheckout): void;
   byId(projectId: string, id: string): Checkout | null;
-  /** ponytail: no cursor — ceiling ~1000 checkouts per project. */
   list(projectId: string, filter: CheckoutsFilter): Checkout[];
   setStash(id: string, stashStateId: string): void;
   /** The job id lands after `enqueue`; the row itself exists before it (09 §9.2). */
@@ -223,6 +224,14 @@ export function createCheckoutsRepository(db: MetadataDb): CheckoutsRepository {
       if (filter.purpose !== undefined) {
         where.push("c.purpose = ?");
         params.push(filter.purpose);
+      }
+      const after = keysetCondition(
+        { column: "c.created_at", id: "c.id", order: "desc", idOrder: "desc" },
+        filter.cursor
+      );
+      if (after !== null) {
+        where.push(after.sql);
+        params.push(...after.params);
       }
       const rows = v.parse(
         v.array(checkoutRow),

@@ -3,9 +3,16 @@ import type { Job, JsonObject, State, StateDetail, StateTreeNode } from "@testat
 import { jobSchema, stateDetailSchema, stateSchema, stateTreeNodeSchema } from "@testate/shared";
 
 import { apiClient } from "@/lib/api-client.ts";
+import type { Query } from "@/lib/api-client.ts";
 
 const base = (slug: string): string => `/projects/${encodeURIComponent(slug)}/states`;
 const one = (slug: string, id: string): string => `${base(slug)}/${encodeURIComponent(id)}`;
+
+function pageQuery(includeStash: boolean, cursor: string | undefined): Query {
+  const query: Query = { include_stash: includeStash ? "true" : "false" };
+  if (cursor !== undefined) query["cursor"] = cursor;
+  return query;
+}
 
 export const statesModel = {
   list: (slug: string, includeStash: boolean): Promise<State[]> =>
@@ -13,6 +20,12 @@ export const statesModel = {
       schema: v.array(stateSchema),
       query: { include_stash: includeStash ? "true" : "false" },
     }),
+  page: (
+    slug: string,
+    includeStash: boolean,
+    cursor?: string
+  ): Promise<{ data: State[]; next: string | null }> =>
+    apiClient.page(base(slug), stateSchema, pageQuery(includeStash, cursor)),
   tree: (slug: string): Promise<StateTreeNode[]> =>
     apiClient.get(`${base(slug)}/tree`, { schema: v.array(stateTreeNodeSchema) }),
   get: (slug: string, id: string): Promise<StateDetail> =>

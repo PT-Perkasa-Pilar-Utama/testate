@@ -1,5 +1,6 @@
 import { createProjectSchema, idSchema, updateProjectSchema } from "@testate/shared";
 import * as v from "valibot";
+import { nextCursor } from "../../lib/db/keyset.ts";
 
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
 import { ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.ts";
@@ -28,6 +29,7 @@ const listQuery = v.object({
   sort: v.optional(v.array(v.picklist(["name", "created_at"]))),
   order: v.optional(v.array(v.picklist(["asc", "desc"]))),
   q: v.optional(v.array(v.string())),
+  cursor: v.optional(v.array(v.string())),
 });
 
 const deletionSchema = v.object({
@@ -46,6 +48,8 @@ export function toListQuery(
     sort: firstQuery(parsed.sort) ?? "name",
     order: firstQuery(parsed.order) ?? "asc",
   };
+  const cursor = firstQuery(parsed.cursor);
+  if (cursor !== undefined) query.cursor = cursor;
   const q = firstQuery(parsed.q);
   if (q !== undefined) query.q = q;
   return query;
@@ -77,7 +81,9 @@ export function createProjectsHandlers(
   return {
     list: async (c) => {
       const query = toListQuery(parseQuery(c, listQuery));
-      return okPage(c, await service.list(c.get("projectScope"), query), null, query.limit);
+      const rows = await service.list(c.get("projectScope"), query);
+      const next = nextCursor(rows, query.limit, (row) => [row[query.sort], row.id]);
+      return okPage(c, rows, next, query.limit);
     },
     create: async (c) => {
       const input = toCreateInput(await parseBody(c, createProjectSchema));

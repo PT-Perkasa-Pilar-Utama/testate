@@ -130,8 +130,25 @@ function url(path: string, query?: Query): string {
   return `${API}${path}${toQuery(query)}`;
 }
 
+/** A page of `schema` items with the cursor of the page after it, from a `{ data, page }` envelope. */
+async function page<TSchema extends v.GenericSchema>(
+  path: string,
+  schema: TSchema,
+  query?: Query
+): Promise<{ data: v.InferOutput<TSchema>[]; next: string | null }> {
+  const pageSchema = v.object({
+    data: v.array(schema),
+    page: v.object({ next_cursor: v.nullable(v.string()) }),
+  });
+  const options: RequestOptions<typeof pageSchema> = { schema: pageSchema };
+  if (query !== undefined) options.query = query;
+  const parsed = await envelope(path, options);
+  return { data: parsed.data, next: parsed.page.next_cursor };
+}
+
 export const apiClient = {
   envelope,
+  page,
   upload,
   download,
   url,
