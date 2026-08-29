@@ -35,7 +35,7 @@ export default defineConfig({
   projects: [
     { name: "coverage", testMatch: /coverage\.e2e\.ts/ },
     { name: "routes", testMatch: /routes\.e2e\.ts/ },
-    { name: "flows", testMatch: /(flows|stories|hooks)\.e2e\.ts/, dependencies: ["routes"] },
+    { name: "flows", testMatch: /(flows|stories|hooks|gaps)\.e2e\.ts/, dependencies: ["routes"] },
     // Checkouts restore the demo databases; nothing else may edit them meanwhile.
     { name: "states", testMatch: /states\.e2e\.ts/, dependencies: ["flows"] },
     { name: "crawl", testMatch: /buttons\.e2e\.ts/, dependencies: ["states"] },

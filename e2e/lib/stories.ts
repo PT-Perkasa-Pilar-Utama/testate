@@ -7,6 +7,14 @@ const ROOT = join(import.meta.dirname, "..", "..");
 
 /** Stories the dashboard cannot show: CI, developer, operator, and agent stories live in API and boot tests. */
 const NON_UI: [number, number][] = [
+  // Sessions, engine minimums, the deny list, sealing, snapshot progress, host keys, and audit
+  // retention have no control of their own on a screen; API and boot tests hold them.
+  [8, 9],
+  [20, 20],
+  [32, 34],
+  [74, 74],
+  [97, 97],
+  [109, 109],
   // 50: XLSX typed cells are engine-tested; Playwright runs on Node without the Bun writer.
   [50, 50],
   [63, 63],
@@ -24,6 +32,11 @@ const NON_UI: [number, number][] = [
  * diffs, imports, and hooks but offer no actions). E2E cannot cover them until those cards land.
  */
 const NO_SCREEN: [number, number][] = [
+  // 15: needs a failing restore; 51: no storage-source picker in the wizard; 140: grid cells do
+  // not link foreign keys yet.
+  [15, 15],
+  [51, 51],
+  [140, 140],
   [23, 31],
   [78, 79],
   // 85: no engine reports blocking session ids yet, so the SPA has nothing to terminate.

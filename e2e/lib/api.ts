@@ -34,6 +34,15 @@ export async function demoAdapter(match: { engine?: string; kind?: string }): Pr
   return found;
 }
 
+/** Awaits a request whose failure is expected (a cancelled query) without an unhandled rejection. */
+export async function swallow(pending: Promise<unknown>): Promise<void> {
+  try {
+    await pending;
+  } catch {
+    // expected
+  }
+}
+
 export async function firstTable(adapterId: string): Promise<string> {
   const [table] = await demoTables(adapterId);
   if (table === undefined) throw new Error(`adapter ${adapterId} has no tables`);

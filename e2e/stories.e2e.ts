@@ -53,7 +53,7 @@ test.describe("qa stories", () => {
     expect(issues).toStrictEqual([]);
   });
 
-  test("@story-43 @story-44 runs a MongoDB find from the JSON form and sees no write controls", async ({
+  test("@story-39 @story-43 @story-44 runs a MongoDB find from the JSON form and sees no write controls", async ({
     page,
   }) => {
     const issues: Issue[] = [];
