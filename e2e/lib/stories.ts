@@ -18,8 +18,6 @@ const NON_UI: [number, number][] = [
   // retention have no control of their own on a screen; API and boot tests hold them.
   [8, 9],
   [20, 20],
-  // 28: a retarget needs a second reachable host; the compose engines offer one address each.
-  [28, 28],
   [32, 34],
   [74, 74],
   [97, 97],
