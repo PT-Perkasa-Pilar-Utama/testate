@@ -34,6 +34,8 @@ export type DataHandlers = {
   policies: Handler;
   upsertPolicy: Handler;
   removePolicy: Handler;
+  lockPolicy: Handler;
+  unlockPolicy: Handler;
   fixture: Handler;
 };
 
@@ -47,9 +49,14 @@ const rowsQuery = v.object({
   order: v.optional(v.array(v.picklist(["asc", "desc"]))),
   filter: v.optional(v.array(v.string())),
 });
-const lookupQuerySchema = v.object({ column: v.array(v.string()), q: v.optional(v.array(v.string())) });
+const lookupQuerySchema = v.object({
+  column: v.array(v.string()),
+  q: v.optional(v.array(v.string())),
+  limit: v.optional(v.array(v.pipe(v.string(), v.transform(Number), v.integer(), v.minValue(1), v.maxValue(50)))),
+});
 const sessionBodySchema = v.object({ foreign_key_checks: v.optional(v.boolean(), true) });
 const savedQueryBody = v.object({ name: v.pipe(v.string(), v.minLength(1), v.maxLength(80)), body: jsonObjectSchema });
+const tableQuery = v.object({ table: v.optional(v.array(v.string())) });
 const historyQuery = v.object({
   limit: v.optional(v.array(v.pipe(v.string(), v.transform(Number), v.integer(), v.minValue(1), v.maxValue(200)))),
   mode: v.optional(v.array(v.picklist(["read", "write"]))),
@@ -84,12 +91,13 @@ export function createDataHandlers(service: DataService, trustProxy: boolean): D
   return {
     schema: async (c) => ok(c, await service.schema(param(c, "id"))),
     rows: async (c) => {
-      const page = await service.rows(param(c, "id"), param(c, "table"), toPageQuery(parseQuery(c, rowsQuery)));
+      const page = await service.rows(currentActor(c), param(c, "id"), param(c, "table"), toPageQuery(parseQuery(c, rowsQuery)));
       return c.json(page, { status: 200 });
     },
     lookup: async (c) => {
       const query = parseQuery(c, lookupQuerySchema);
-      return ok(c, await service.lookup(param(c, "id"), param(c, "table"), query.column[0] ?? ""));
+      const rows = await service.lookup(param(c, "id"), param(c, "table"), query.column[0] ?? "", firstQuery(query.q) ?? "", firstQuery(query.limit) ?? 20);
+      return ok(c, rows);
     },
     startWriteSession: async (c) => {
       const body = await parseBody(c, sessionBodySchema);
@@ -105,7 +113,7 @@ export function createDataHandlers(service: DataService, trustProxy: boolean): D
     },
     rowEdits: async (c) => {
       const body = await parseBody(c, rowEditsSchema);
-      return ok(c, await service.rowEdits(param(c, "id"), param(c, "table"), body.write_session_id, body.edits.length));
+      return ok(c, await service.rowEdits(currentActor(c), param(c, "id"), param(c, "table"), body.write_session_id, body.edits, meta(c)));
     },
     query: async (c) => {
       const body = await parseBody(c, queryRequestSchema);
@@ -145,18 +153,22 @@ export function createDataHandlers(service: DataService, trustProxy: boolean): D
       const limit = firstQuery(query.limit) ?? 50;
       return okPage(c, await service.history(currentActor(c), param(c, "id"), limit, firstQuery(query.mode)), null, limit);
     },
-    policies: async (c) => okPage(c, await service.policies(param(c, "id")), null, 200),
+    policies: async (c) => okPage(c, await service.policies(param(c, "id"), firstQuery(parseQuery(c, tableQuery).table)), null, 200),
     upsertPolicy: async (c) => {
-      await parseBody(c, upsertColumnPolicySchema);
-      return ok(c, await service.upsertPolicy(currentActor(c), param(c, "id"), param(c, "table"), param(c, "column")));
+      const body = await parseBody(c, upsertColumnPolicySchema);
+      return ok(c, await service.upsertPolicy(currentActor(c), param(c, "id"), param(c, "table"), param(c, "column"), body, meta(c)));
     },
     removePolicy: async (c) => {
-      await service.removePolicy(currentActor(c), param(c, "id"), param(c, "table"), param(c, "column"));
+      await service.removePolicy(currentActor(c), param(c, "id"), param(c, "table"), param(c, "column"), meta(c));
       return c.body(null, 204);
     },
+    lockPolicy: async (c) =>
+      ok(c, await service.setPolicyLock(currentActor(c), param(c, "id"), param(c, "table"), param(c, "column"), true, meta(c))),
+    unlockPolicy: async (c) =>
+      ok(c, await service.setPolicyLock(currentActor(c), param(c, "id"), param(c, "table"), param(c, "column"), false, meta(c))),
     fixture: async (c) => {
       const body = await parseBody(c, fixtureRequestSchema);
-      return ok(c, await service.fixture(currentActor(c), param(c, "id"), body.table));
+      return ok(c, await service.fixture(currentActor(c), param(c, "id"), body, meta(c)));
     },
   };
 }

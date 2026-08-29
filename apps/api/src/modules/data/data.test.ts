@@ -7,7 +7,7 @@ import {
   rowsPageSchema,
   writeSessionSchema,
 } from "@testate/shared";
-import type { Actor } from "@testate/shared";
+import type { Actor, JsonObject } from "@testate/shared";
 import * as v from "valibot";
 
 import { TEST_META } from "../../../test/accounts.ts";
@@ -24,6 +24,7 @@ import {
   ROWS_PAGE_MOCK,
   WRITE_SESSION_MOCK,
 } from "./data.mock.ts";
+import { createPoliciesRepository } from "./data.policies.ts";
 import { createDataRepository } from "./data.repository.ts";
 import { createDataService } from "./data.service.ts";
 import type { DataService } from "./data.service.ts";
@@ -40,6 +41,7 @@ async function createHarness(): Promise<Harness> {
     adapters: harness.repo,
     states: harness.states,
     repo: createDataRepository(harness.db),
+    policies: createPoliciesRepository(harness.db),
     projects: harness.projectsRepo,
     jobs: harness.runtime.jobs,
     settings: createSettingsService(),
@@ -81,17 +83,17 @@ describe("data", () => {
     const h = await createHarness();
     const schema = await h.data.schema(h.adapterId);
     expect(schema.tables.map((table) => table.name)).toEqual(["customers", "orders"]);
-    const first = await h.data.rows(h.adapterId, "public.customers", { limit: 1, order: "desc" });
+    const first = await h.data.rows(h.viewer, h.adapterId, "public.customers", { limit: 1, order: "desc" });
     expect(first.data).toEqual([{ id: 2, email: "b@x.io" }]);
     expect(first.page).toMatchObject({ kind: "offset", limit: 1 });
-    const second = await h.data.rows(h.adapterId, "public.customers", {
+    const second = await h.data.rows(h.viewer, h.adapterId, "public.customers", {
       limit: 1,
       order: "desc",
       cursor: cursorOf(first),
     });
     expect(second.data).toEqual([{ id: 1, email: "a@x.io" }]);
     expect(second.page.next_cursor).toBeNull();
-    const filtered = await h.data.rows(h.adapterId, "public.customers", {
+    const filtered = await h.data.rows(h.viewer, h.adapterId, "public.customers", {
       filters: [{ column: "email", op: "eq", value: "a@x.io" }],
     });
     expect(filtered.data.length).toBe(1);
@@ -143,6 +145,73 @@ describe("data", () => {
     await expect(h.data.schema("01991f00-0000-7000-8000-000000000999")).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
+  it("edits rows in one transaction with server-side functions and enforces column policies", async () => {
+    const h = await createHarness();
+    const session = await h.data.startWriteSession(h.harness.qa, h.adapterId, true, TEST_META);
+    await h.data.upsertPolicy(
+      h.harness.qa,
+      h.adapterId,
+      "public.customers",
+      "email",
+      { required_function: { name: "hash_sha256" }, mask: "partial", display: false },
+      TEST_META
+    );
+    await expect(
+      h.data.rowEdits(h.harness.qa, h.adapterId, "public.customers", session.id, [
+        { kind: "insert", values: { email: { kind: "value", value: "raw@x.io" } } },
+      ], TEST_META)
+    ).rejects.toThrow("email requires the hash_sha256 function");
+    const result = await h.data.rowEdits(h.harness.qa, h.adapterId, "public.customers", session.id, [
+      { kind: "insert", values: { email: { kind: "function", name: "hash_sha256", input: "c@x.io" } } },
+      { kind: "update", pk: { id: 1 }, values: { email: { kind: "function", name: "hash_sha256", input: "a2@x.io" } } },
+      { kind: "delete", pk: { id: 2 } },
+    ], TEST_META);
+    expect(result.results.map((item) => item.kind)).toEqual(["insert", "update", "delete"]);
+    expect(result.stash_state_id).not.toBeNull();
+    const rows = customersOf(h.harness);
+    expect(rows.map((row) => row["id"])).toEqual([1, 3]);
+    expect(String(rows[0]?.["email"])).toHaveLength(64);
+    await expect(
+      h.data.rowEdits(h.harness.qa, h.adapterId, "public.customers", session.id, [{ kind: "delete", pk: { id: 99 } }], TEST_META)
+    ).rejects.toMatchObject({ details: { failed_index: 0 } });
+  });
+
+  it("masks policed columns for viewers in the grid and queries, never for qa", async () => {
+    const h = await createHarness();
+    await h.data.upsertPolicy(h.harness.qa, h.adapterId, "public.customers", "email", { required_function: null, mask: "redact", display: false }, TEST_META);
+    const grid = await h.data.rows(h.viewer, h.adapterId, "public.customers");
+    expect(grid.data[0]?.["email"]).toBe("***");
+    expect(grid.masked_columns).toEqual(["email"]);
+    expect((await h.data.rows(h.harness.qa, h.adapterId, "public.customers")).data[0]?.["email"]).toBe("a@x.io");
+    const query = await h.data.query(h.viewer, h.adapterId, { dialect: "sql", text: "SELECT * FROM public.customers", mode: "read" });
+    expect(query.rows[0]?.["email"]).toBe("***");
+    const schema = await h.data.schema(h.adapterId);
+    expect(schema.tables[0]?.columns.find((column) => column.name === "email")?.policy.mask).toBe("redact");
+  });
+
+  it("locks policies for admin only and looks up foreign keys by display column", async () => {
+    const h = await createHarness();
+    await h.data.upsertPolicy(h.harness.qa, h.adapterId, "public.customers", "email", { required_function: null, mask: null, display: true }, TEST_META);
+    await h.data.setPolicyLock(h.harness.admin, h.adapterId, "public.customers", "email", true, TEST_META);
+    await expect(
+      h.data.removePolicy(h.harness.qa, h.adapterId, "public.customers", "email", TEST_META)
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(h.data.lookup(h.adapterId, "public.orders", "total", "", 20)).rejects.toThrow("not a foreign key column");
+    await expect(h.data.lookup(h.adapterId, "public.orders", "customer_id", "", 20)).rejects.toThrow("not a foreign key column");
+  });
+
+  it("extracts a fixture with parents in dependency order, masked for viewers", async () => {
+    const h = await createHarness();
+    await h.data.upsertPolicy(h.harness.qa, h.adapterId, "public.customers", "email", { required_function: null, mask: "redact", display: false }, TEST_META);
+    const request = { table: "public.orders", pk: { id: 1 }, depth: 2, direction: "parents" as const, format: "sql" as const };
+    const fixture = await h.data.fixture(h.viewer, h.adapterId, request, TEST_META);
+    expect(fixture).toMatchObject({ rows: 1, tables: ["public.orders"], truncated: false, masked_columns: [] });
+    expect(fixture.content).toContain('INSERT INTO "public"."orders"');
+    const json = await h.data.fixture(h.harness.qa, h.adapterId, { ...request, format: "json" }, TEST_META);
+    expect(JSON.parse(json.content).tables[0].rows).toEqual([{ id: 1, customer_id: 1, total: "10.00" }]);
+    await expect(h.data.fixture(h.viewer, h.adapterId, { ...request, pk: { id: 99 } }, TEST_META)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
   it("saves, renames, and deletes queries with unique names", async () => {
     const h = await createHarness();
     const saved = await h.data.createSavedQuery(h.harness.qa, h.adapterId, { name: "paid", body: { text: "SELECT 1" } });
@@ -154,6 +223,12 @@ describe("data", () => {
     expect(await h.data.savedQueries(h.adapterId)).toEqual([]);
   });
 });
+
+function customersOf(harness: AdaptersHarness): JsonObject[] {
+  const rows = harness.databases.get("shop")?.get("public.customers");
+  if (rows === undefined) throw new Error("no customers table");
+  return rows;
+}
 
 function cursorOf(page: { page: { next_cursor: string | null } }): string {
   if (page.page.next_cursor === null) throw new Error("no next page");

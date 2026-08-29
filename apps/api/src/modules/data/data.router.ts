@@ -40,6 +40,8 @@ export function createDataRouter(h: DataHandlers): Hono {
   router.get(`${A}/policies`, requireRole("viewer"), describe("data", "Column policies", v.array(columnPolicySchema)), h.policies);
   router.put(`${A}/policies/:table/:column`, requireRole("qa"), describe("data", "Upsert a column policy", columnPolicySchema), h.upsertPolicy);
   router.delete(`${A}/policies/:table/:column`, requireRole("qa"), describe("data", "Remove a column policy", v.undefined(), 204), h.removePolicy);
+  router.post(`${A}/policies/:table/:column/lock`, requireRole("admin"), describe("data", "Lock a policy", columnPolicySchema), h.lockPolicy);
+  router.post(`${A}/policies/:table/:column/unlock`, requireRole("admin"), describe("data", "Unlock a policy", columnPolicySchema), h.unlockPolicy);
   router.post(`${A}/fixture`, requireRole("viewer"), describe("data", "Extract a fixture", fixtureSchema), h.fixture);
   return router;
 }

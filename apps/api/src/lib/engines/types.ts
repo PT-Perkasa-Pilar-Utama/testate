@@ -122,6 +122,19 @@ export type PageQuery = {
   filters: RowFilter[];
 };
 
+/** A cell on the way in: a plain JSON value or the column default (24 §24.2, functions already applied). */
+export type RowValue = { kind: "value"; value: JsonValue } | { kind: "default" };
+export type RowValues = Record<string, RowValue>;
+
+export type RowOp =
+  | { kind: "insert"; values: RowValues }
+  | { kind: "update"; pk: JsonObject; values: RowValues }
+  | { kind: "delete"; pk: JsonObject };
+
+export type RowOpResult = { kind: RowOp["kind"]; pk: JsonObject; row: RowText | null };
+
+export type WriteOptions = { foreignKeyChecks: boolean; signal?: AbortSignal };
+
 export type RowsPageResult = {
   rows: RowText[];
   columns: { name: string; type: string }[];
@@ -189,6 +202,13 @@ export type DbEngine = {
   repairCounters(conn: ConnectionRef, tables: TableRef[]): Promise<CounterReport>;
   readTable(conn: ConnectionRef, table: TableRef, opts: ReadOptions): AsyncIterable<RowChunk>;
   pageRows(conn: ConnectionRef, query: PageQuery): Promise<RowsPageResult>;
+  /** Every op in one transaction; a failure rolls back and names the op index (06 §6.6). */
+  writeRows(
+    conn: ConnectionRef,
+    table: TableRef,
+    ops: RowOp[],
+    opts: WriteOptions
+  ): Promise<RowOpResult[]>;
   runQuery(conn: ConnectionRef, query: EngineQuery, opts: QueryOptions): Promise<QueryResult>;
   listRunningQueries(conn: ConnectionRef): Promise<RunningQuery[]>;
   cancelQuery(conn: ConnectionRef, queryId: string): Promise<void>;

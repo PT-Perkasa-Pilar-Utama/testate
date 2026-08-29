@@ -1,4 +1,4 @@
-import type { Actor, QueryRequest, QueryResult, Settings } from "@testate/shared";
+import type { Actor, JsonObject, QueryRequest, QueryResult, Settings } from "@testate/shared";
 
 import type { ConnectionRef, DbEngine, QueryOptions } from "../../lib/engines/index.ts";
 import { AppError, forbidden } from "../../lib/http/index.ts";
@@ -6,6 +6,7 @@ import type { RequestMeta } from "../../lib/http/auth.ts";
 import { sha256 } from "../../lib/password/index.ts";
 import type { AdapterRecord } from "../adapters/adapters.repository.ts";
 import type { DataRepository } from "./data.repository.ts";
+import type { Masked } from "./data.masks.ts";
 import type { WriteSessions } from "./data.sessions.ts";
 
 export type RunningQueryView = {
@@ -25,6 +26,7 @@ export type QueryDeps = {
   connect: (adapter: AdapterRecord) => Promise<{ engine: DbEngine; conn: ConnectionRef }>;
   guarded: <T>(adapter: AdapterRecord, work: () => Promise<T>) => Promise<T>;
   sessions: WriteSessions;
+  maskFor: (actor: Actor, adapter: AdapterRecord, rows: JsonObject[]) => Masked;
 };
 
 export type QueryRunner = {
@@ -105,15 +107,17 @@ export function createQueryRunner(deps: QueryDeps): QueryRunner {
           engine.runQuery(conn, { text }, { mode: request.mode, queryId, ...budgets })
         );
         deps.repo.insertHistory({ ...history, duration_ms: result.durationMs, row_count: result.rows.length, error: null });
+        // ponytail: masks match on column name across the adapter, since a query's tables are unknown.
+        const masked = deps.maskFor(actor, adapter, result.rows.map((row) => engine.decodeRow(row)));
         return {
           query_id: queryId,
           columns: result.columns.map((name) => ({ name, type: "unknown" })),
-          rows: result.rows.map((row) => engine.decodeRow(row)),
+          rows: masked.rows,
           rows_affected: result.rowsAffected,
           truncated: { rows: result.truncated, bytes: false, time: false },
           duration_ms: result.durationMs,
           read_only_enforcement: "transaction",
-          masked_columns: [],
+          masked_columns: masked.masked_columns,
         };
       } catch (cause: unknown) {
         const message = cause instanceof Error ? cause.message : String(cause);

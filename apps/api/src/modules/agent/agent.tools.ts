@@ -7,6 +7,7 @@ import type { AdaptersService } from "../adapters/adapters.service.ts";
 import type { DataService } from "../data/data.service.ts";
 import type { DiffsService } from "../diffs/diffs.service.ts";
 import type { ProjectsService } from "../projects/projects.service.ts";
+import type { RequestMeta } from "../../lib/http/auth.ts";
 import type { StatesService } from "../states/states.service.ts";
 import type { StatesFilter } from "../states/states.repository.ts";
 
@@ -29,6 +30,9 @@ export type AgentToolDeps = {
 };
 
 /** The agent actor: viewer role, agent flag on, so every read path applies masks and lower caps. */
+/** Agent calls carry no HTTP context yet; the agent card threads the real request through (23 §23.1). */
+const AGENT_META: RequestMeta = { ip: "", user_agent: "mcp", request_id: null };
+
 const AGENT_ACTOR: Actor = {
   kind: "token",
   id: "01991f00-0000-7000-8000-0000000000a0",
@@ -81,9 +85,9 @@ export function createAgentTools(deps: AgentToolDeps): ToolRunner {
       list_adapters: async (args) => json(await deps.adapters.list(text(args, "project"), {})),
       ...tableTools(deps.data),
       page_rows: async (args) =>
-        json(await deps.data.rows(text(args, "adapter"), text(args, "table"))),
+        json(await deps.data.rows(AGENT_ACTOR, text(args, "adapter"), text(args, "table"))),
       get_row: async (args) =>
-        json(await deps.data.rows(text(args, "adapter"), text(args, "table"))),
+        json(await deps.data.rows(AGENT_ACTOR, text(args, "adapter"), text(args, "table"))),
       run_readonly_query: async (args) =>
         json(
           await deps.data.query(AGENT_ACTOR, text(args, "adapter"), {
@@ -93,7 +97,14 @@ export function createAgentTools(deps: AgentToolDeps): ToolRunner {
           })
         ),
       extract_fixture: async (args) =>
-        json(await deps.data.fixture(AGENT_ACTOR, text(args, "adapter"), text(args, "table"))),
+        json(
+          await deps.data.fixture(
+            AGENT_ACTOR,
+            text(args, "adapter"),
+            { table: text(args, "table"), pk: {}, depth: 2, direction: "parents", format: "sql" },
+            AGENT_META
+          )
+        ),
       list_states: async (args) =>
         json(await deps.states.list(text(args, "project"), AGENT_STATES_FILTER)),
       get_state: async (args) =>

@@ -38,6 +38,8 @@ import type { ProjectsRepository } from "./modules/projects/projects.repository.
 import { createCheckoutsRepository } from "./modules/checkouts/checkouts.repository.ts";
 import { createCheckoutsService } from "./modules/checkouts/checkouts.service.ts";
 import type { CheckoutsDeps, CheckoutsService } from "./modules/checkouts/checkouts.service.ts";
+import { createPoliciesRepository } from "./modules/data/data.policies.ts";
+import type { PoliciesRepository } from "./modules/data/data.policies.ts";
 import { createDataRepository } from "./modules/data/data.repository.ts";
 import type { DataRepository } from "./modules/data/data.repository.ts";
 import { createDataService } from "./modules/data/data.service.ts";
@@ -156,6 +158,7 @@ export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now" | "hooks"> & 
   requests: RestRepository;
   hooks: HooksRepository;
   data: DataRepository;
+  policies: PoliciesRepository;
   probe: ProbeFn;
   fileProbe: FileProbeFn;
 };
@@ -181,6 +184,7 @@ export function createEngineWiring(
     requests: createRestRepository(db),
     hooks: createHooksRepository(db),
     data: createDataRepository(db),
+    policies: createPoliciesRepository(db),
     projects,
   };
 }

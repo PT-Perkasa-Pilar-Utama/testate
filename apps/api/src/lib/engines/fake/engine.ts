@@ -4,6 +4,7 @@ import * as v from "valibot";
 
 import { computeFingerprint } from "../pure/fingerprint.ts";
 import { decodeOffsetCursor } from "../pure/page.ts";
+import { fakeWriteRows } from "./write.ts";
 import { EngineError, rowText, sameTable, tableKey } from "../types.ts";
 import type {
   CheckoutProgress,
@@ -265,6 +266,7 @@ export function createFakeEngine(opts: FakeEngineOptions): DbEngine {
         kind: "offset",
       };
     },
+    writeRows: async (conn, table, ops) => fakeWriteRows(databaseOf(conn), table, ops),
     /** Reads `SELECT * FROM <table>`; anything else answers as a write with one affected row. */
     async runQuery(conn, query, opts) {
       const database = databaseOf(conn);

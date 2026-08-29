@@ -15,6 +15,7 @@ import { toConnectionConfig } from "../../lib/engines/connection.ts";
 import { EngineError } from "../../lib/engines/index.ts";
 import type { ConnectionRef, DbEngine, PageQuery } from "../../lib/engines/index.ts";
 import { AppError, conflict, forbidden, notFound } from "../../lib/http/index.ts";
+import { tableKey } from "../../lib/engines/index.ts";
 import type { RequestMeta } from "../../lib/http/auth.ts";
 import type { AdapterRecord } from "../adapters/adapters.repository.ts";
 import { CONFIG_COLUMN, openSecrets } from "../adapters/adapters.secrets.ts";
@@ -22,7 +23,13 @@ import { toAppError } from "../checkouts/checkouts.restore.ts";
 import type { RestoreDeps } from "../checkouts/checkouts.restore.ts";
 import type { JobsService } from "../jobs/jobs.service.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
-import { COLUMN_POLICY_MOCK, FIXTURE_MOCK } from "./data.mock.ts";
+import { createEditing } from "./data.editing.ts";
+import type { PolicyBody, RowEditsResult } from "./data.editing.ts";
+import type { FixtureRequest } from "./data.fixture.ts";
+import type { RowEdit } from "./data.forms.ts";
+import type { LookupRow } from "./data.lookup.ts";
+import { maskRows } from "./data.masks.ts";
+import type { PoliciesRepository } from "./data.policies.ts";
 import { createQueryRunner } from "./data.query.ts";
 import type { QueryDeps, RunningQueryView } from "./data.query.ts";
 import type { DataRepository, HistoryFilter, HistoryRow, SavedQueryRecord } from "./data.repository.ts";
@@ -33,12 +40,12 @@ export type SavedQueryInput = { name: string; body: JsonObject };
 
 export type DataService = {
   schema(adapterId: string): Promise<Introspection>;
-  rows(adapterId: string, table: string, query?: Partial<PageQuery>): Promise<RowsPage>;
-  lookup(adapterId: string, table: string, column: string): Promise<{ key: (string | number)[]; display: string }[]>;
+  rows(actor: Actor, adapterId: string, table: string, query?: Partial<PageQuery>): Promise<RowsPage>;
+  lookup(adapterId: string, table: string, column: string, q: string, limit: number): Promise<LookupRow[]>;
   startWriteSession(actor: Actor, adapterId: string, foreignKeyChecks: boolean, meta: RequestMeta): Promise<WriteSession>;
   setWriteSessionOptions(actor: Actor, sessionId: string, foreignKeyChecks: boolean, meta: RequestMeta): Promise<WriteSession>;
   endWriteSession(actor: Actor, sessionId: string, meta: RequestMeta): Promise<void>;
-  rowEdits(adapterId: string, table: string, sessionId: string, count: number): Promise<{ results: { index: number; kind: "insert"; pk: { id: string }; row: { id: string } }[]; stash_state_id: string }>;
+  rowEdits(actor: Actor, adapterId: string, table: string, sessionId: string, edits: RowEdit[], meta: RequestMeta): Promise<RowEditsResult>;
   query(actor: Actor, adapterId: string, request: QueryRequest): Promise<QueryResult>;
   runningQueries(adapterId: string): Promise<RunningQueryView[]>;
   cancelQuery(actor: Actor, adapterId: string, queryId: string): Promise<void>;
@@ -47,14 +54,16 @@ export type DataService = {
   updateSavedQuery(adapterId: string, id: string, patch: Partial<SavedQueryInput>): Promise<SavedQueryRecord>;
   removeSavedQuery(adapterId: string, id: string): Promise<void>;
   history(actor: Actor, adapterId: string, limit: number, mode?: "read" | "write"): Promise<HistoryRow[]>;
-  policies(adapterId: string): Promise<ColumnPolicy[]>;
-  upsertPolicy(actor: Actor, adapterId: string, table: string, column: string): Promise<ColumnPolicy>;
-  removePolicy(actor: Actor, adapterId: string, table: string, column: string): Promise<void>;
-  fixture(actor: Actor, adapterId: string, table: string): Promise<Fixture>;
+  policies(adapterId: string, table?: string): Promise<ColumnPolicy[]>;
+  upsertPolicy(actor: Actor, adapterId: string, table: string, column: string, body: PolicyBody, meta: RequestMeta): Promise<ColumnPolicy>;
+  removePolicy(actor: Actor, adapterId: string, table: string, column: string, meta: RequestMeta): Promise<void>;
+  setPolicyLock(actor: Actor, adapterId: string, table: string, column: string, locked: boolean, meta: RequestMeta): Promise<ColumnPolicy>;
+  fixture(actor: Actor, adapterId: string, request: FixtureRequest, meta: RequestMeta): Promise<Fixture>;
 };
 
 export type DataDeps = RestoreDeps & {
   repo: DataRepository;
+  policies: PoliciesRepository;
   projects: Pick<ProjectsRepository, "byId" | "setHead" | "usedBytes">;
   jobs: Pick<JobsService, "enqueue" | "wait">;
   settings: { get(): Promise<Settings> };
@@ -66,12 +75,6 @@ export type DataDeps = RestoreDeps & {
 export function parseTableRef(table: string): { schema: string | null; name: string } {
   const dot = table.indexOf(".");
   return dot === -1 ? { schema: null, name: table } : { schema: table.slice(0, dot), name: table.slice(dot + 1) };
-}
-
-function requireTabular(adapter: AdapterRecord): void {
-  if (adapter.tier !== "tabular") {
-    throw new AppError("ENGINE_UNSUPPORTED", "operation outside the adapter's tier", { reason: "tier" });
-  }
 }
 
 export function createDataService(deps: DataDeps): DataService {
@@ -101,7 +104,23 @@ export function createDataService(deps: DataDeps): DataService {
     }
   };
   const sessions = createWriteSessions({ ...deps, adapterOf });
-  const queries = createQueryRunner({ ...deps, adapterOf, connect, guarded, sessions });
+  /** Live introspection with the adapter's policies laid over each column (06 §6.1). */
+  const schemaOf = async (adapter: AdapterRecord): Promise<Introspection> => {
+    const { engine, conn } = await connect(adapter);
+    const excluded = adapter.excluded_tables.map(parseTableRef);
+    const schema = await guarded(adapter, () => engine.introspect(conn, excluded));
+    const policies = deps.policies.list(adapter.id);
+    for (const table of schema.tables) {
+      for (const column of table.columns) {
+        const policy = policies.find((item) => item.table === tableKey(table) && item.column === column.name);
+        if (policy !== undefined) column.policy = { required_function: policy.required_function, mask: policy.mask };
+        if (policy?.display === true) table.display_column = policy.column;
+      }
+    }
+    return schema;
+  };
+  const queries = createQueryRunner({ ...deps, adapterOf, connect, guarded, sessions, maskFor: (actor, adapter, rows) => maskRows(actor, rows, deps.policies.list(adapter.id)) });
+  const editing = createEditing({ ...deps, adapterOf, connect, guarded, schemaOf, sessions });
   const savedOf = (adapter: AdapterRecord, id: string): SavedQueryRecord => {
     const query = repo.savedQuery(id);
     if (query === null || query.adapter_id !== adapter.id) throw notFound("saved query");
@@ -110,12 +129,9 @@ export function createDataService(deps: DataDeps): DataService {
 
   return {
     async schema(adapterId) {
-      const adapter = adapterOf(adapterId);
-      const { engine, conn } = await connect(adapter);
-      const excluded = adapter.excluded_tables.map(parseTableRef);
-      return guarded(adapter, () => engine.introspect(conn, excluded));
+      return schemaOf(adapterOf(adapterId));
     },
-    async rows(adapterId, table, query = {}) {
+    async rows(actor, adapterId, table, query = {}) {
       const adapter = adapterOf(adapterId);
       const { engine, conn } = await connect(adapter);
       const page: PageQuery = {
@@ -127,39 +143,23 @@ export function createDataService(deps: DataDeps): DataService {
       if (query.cursor !== undefined) page.cursor = query.cursor;
       if (query.sort !== undefined) page.sort = query.sort;
       const result = await guarded(adapter, () => engine.pageRows(conn, page));
-      // SCAFFOLD: masks and FK display values arrive with the table-editing card (24 §24.3).
+      const masked = maskRows(actor, result.rows.map((row) => engine.decodeRow(row)), deps.policies.list(adapter.id, tableKey(page.table)));
+      // ponytail: FK display values (`_display`) wait for a join in pageRows; the lookup endpoint covers forms.
       return {
-        data: result.rows.map((row) => engine.decodeRow(row)),
+        data: masked.rows,
         page: { next_cursor: result.nextCursor, limit: page.limit, kind: result.kind },
         columns: result.columns,
-        masked_columns: [],
+        masked_columns: masked.masked_columns,
       };
     },
-    // SCAFFOLD: lookup, row edits, policies, and fixtures belong to the table-editing card (24).
-    async lookup(adapterId, table, column) {
-      requireTabular(adapterOf(adapterId));
-      if (table !== "public.orders" || column !== "customer_id") {
-        throw new AppError("VALIDATION_ERROR", "not a foreign key column");
-      }
-      return [{ key: [5120], display: "Dina Putri" }];
-    },
+    lookup: (adapterId, table, column, q, limit) => editing.lookup(adapterId, table, column, q, limit),
     startWriteSession: (actor, adapterId, foreignKeyChecks, meta) =>
       sessions.start(actor, adapterId, foreignKeyChecks, meta),
     setWriteSessionOptions: (actor, sessionId, foreignKeyChecks, meta) =>
       sessions.setForeignKeyChecks(actor, sessionId, foreignKeyChecks, meta),
     endWriteSession: (actor, sessionId, meta) => sessions.end(actor, sessionId, meta),
-    async rowEdits(adapterId, table, sessionId, count) {
-      requireTabular(adapterOf(adapterId));
-      const session = sessions.require(sessionId);
-      if (table === "") throw notFound("table");
-      const results = Array.from({ length: count }, (_, index) => ({
-        index,
-        kind: "insert" as const,
-        pk: { id: String(88214 + index) },
-        row: { id: String(88214 + index) },
-      }));
-      return { results, stash_state_id: session.stash_state_id ?? "" };
-    },
+    rowEdits: (actor, adapterId, table, sessionId, edits, meta) =>
+      editing.rowEdits(actor, adapterId, table, sessionId, edits, meta),
     query: (actor, adapterId, request) => queries.run(actor, adapterId, request),
     async runningQueries(adapterId) {
       adapterOf(adapterId);
@@ -214,28 +214,14 @@ export function createDataService(deps: DataDeps): DataService {
       if (mode !== undefined) filter.mode = mode;
       return repo.history(adapter.id, filter);
     },
-    async policies(adapterId) {
-      requireTabular(adapterOf(adapterId));
-      return [COLUMN_POLICY_MOCK];
-    },
-    async upsertPolicy(actor, adapterId, table, column) {
-      requireTabular(adapterOf(adapterId));
-      if (table === COLUMN_POLICY_MOCK.table && column === COLUMN_POLICY_MOCK.column && actor.role !== "admin") {
-        throw forbidden("policy is locked");
-      }
-      return { ...COLUMN_POLICY_MOCK, table, column, locked: false };
-    },
-    async removePolicy(actor, adapterId, table, column) {
-      requireTabular(adapterOf(adapterId));
-      if (table === COLUMN_POLICY_MOCK.table && column === COLUMN_POLICY_MOCK.column && actor.role !== "admin") {
-        throw forbidden("policy is locked");
-      }
-    },
-    async fixture(actor, adapterId, table) {
-      adapterOf(adapterId);
-      if (table === "") throw notFound("row");
-      return actor.role === "viewer" || actor.agent ? FIXTURE_MOCK : { ...FIXTURE_MOCK, masked_columns: [] };
-    },
+    policies: (adapterId, table) => editing.policies(adapterId, table),
+    upsertPolicy: (actor, adapterId, table, column, body, meta) =>
+      editing.upsertPolicy(actor, adapterId, table, column, body, meta),
+    removePolicy: (actor, adapterId, table, column, meta) =>
+      editing.removePolicy(actor, adapterId, table, column, meta),
+    setPolicyLock: (actor, adapterId, table, column, locked, meta) =>
+      editing.setPolicyLock(actor, adapterId, table, column, locked, meta),
+    fixture: (actor, adapterId, request, meta) => editing.fixture(actor, adapterId, request, meta),
   };
 }
 
