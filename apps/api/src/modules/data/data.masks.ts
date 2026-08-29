@@ -31,7 +31,8 @@ export function maskRows(actor: Actor, rows: JsonObject[], policies: ColumnPolic
     const copy: JsonObject = { ...row };
     for (const policy of masks) {
       const value = copy[policy.column];
-      if (value !== undefined && policy.mask !== null) copy[policy.column] = maskValue(value, policy.mask);
+      if (value !== undefined && policy.mask !== null)
+        copy[policy.column] = maskValue(value, policy.mask);
     }
     return copy;
   });

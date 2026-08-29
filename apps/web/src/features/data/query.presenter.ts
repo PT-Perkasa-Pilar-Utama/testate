@@ -62,14 +62,21 @@ function parseJson(label: string, text: string): JsonObject | JsonObject[] | und
   if (text.trim() === "") return undefined;
   try {
     const raw: unknown = JSON.parse(text);
-    return Array.isArray(raw) ? v.parse(v.array(jsonObjectSchema), raw) : v.parse(jsonObjectSchema, raw);
+    return Array.isArray(raw)
+      ? v.parse(v.array(jsonObjectSchema), raw)
+      : v.parse(jsonObjectSchema, raw);
   } catch {
     throw new Error(`${label} is not valid JSON`);
   }
 }
 
 /** The request body for the console: SQL text, or the Mongo form parsed into an operation. */
-export function buildRequest(isMongo: boolean, sql: string, mongo: MongoDraft, rowCap: string): QueryRequest {
+export function buildRequest(
+  isMongo: boolean,
+  sql: string,
+  mongo: MongoDraft,
+  rowCap: string
+): QueryRequest {
   const cap = Number.parseInt(rowCap, 10);
   const base: QueryRequest = { dialect: isMongo ? "mongo" : "sql", mode: "read" };
   if (Number.isInteger(cap) && cap > 0) base.row_cap = cap;
@@ -132,7 +139,11 @@ export function createQueryPresenter(slug: () => string, id: () => string): Quer
   const saved = createRefreshable(() => dataModel.savedQueries(slug(), id()));
   const history = createRefreshable(() => dataModel.history(slug(), id()));
   const running = createRefreshable(() => dataModel.running(slug(), id()));
-  const runQuery = async (staticSlug: string, staticId: string, body: QueryRequest): Promise<void> => {
+  const runQuery = async (
+    staticSlug: string,
+    staticId: string,
+    body: QueryRequest
+  ): Promise<void> => {
     try {
       setResult(await dataModel.query(staticSlug, staticId, body));
     } catch (cause: unknown) {

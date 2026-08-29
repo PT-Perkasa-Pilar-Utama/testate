@@ -1,10 +1,14 @@
-import { createSignal } from "solid-js";
-import type { JsonValue, RowsPage } from "@testate/shared";
+import { createMemo, createSignal } from "solid-js";
+import type { Adapter, JsonValue, RowsPage, TableSchema } from "@testate/shared";
 import * as v from "valibot";
 
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
+import { adapterModel } from "../adapter/adapter.model.ts";
+import { adaptersModel } from "../adapters/adapters.model.ts";
 import { dataModel } from "./data.model.ts";
+import { createEditingPresenter } from "./editing.presenter.ts";
+import type { EditingPresenter } from "./editing.presenter.ts";
 import type { RowsQuery } from "./data.model.ts";
 
 export const FILTER_OPS = [
@@ -27,6 +31,12 @@ export type PageSize = (typeof PAGE_SIZES)[number];
 
 export type GridPresenter = {
   page: Refreshable<RowsPage>;
+  adapter: Refreshable<Adapter>;
+  /** The table's schema from the adapter's introspection; null until it loads or when unknown. */
+  table: () => TableSchema | null;
+  editing: EditingPresenter;
+  /** Editing needs qa, a sandbox database adapter on the Tabular tier, and a primary key. */
+  editable: () => boolean;
   sort: () => string | undefined;
   order: () => "asc" | "desc";
   toggleSort: (column: string) => void;
@@ -53,10 +63,14 @@ export function cellText(value: JsonValue | undefined): string {
   return v.is(v.string(), value) ? value : JSON.stringify(value);
 }
 
+export function qualifiedName(table: { schema: string | null; name: string }): string {
+  return table.schema === null ? table.name : `${table.schema}.${table.name}`;
+}
+
 export function createGridPresenter(
   slug: () => string,
   id: () => string,
-  table: () => string
+  table_: () => string
 ): GridPresenter {
   const [sort, setSort] = createSignal<string | undefined>(undefined);
   const [order, setOrder] = createSignal<"asc" | "desc">("asc");
@@ -73,13 +87,31 @@ export function createGridPresenter(
     const sorted = sort();
     if (cursor !== undefined) query.cursor = cursor;
     if (sorted !== undefined) query.sort = sorted;
-    return dataModel.rows(slug(), id(), table(), query);
+    return dataModel.rows(slug(), id(), table_(), query);
   });
   const reset = (): void => {
     setCursors([]);
   };
+  const adapter = createRefreshable(() => adaptersModel.get(slug(), id()));
+  const schema = createRefreshable(() => adapterModel.schema(slug(), id()));
+  const table = createMemo((): TableSchema | null => {
+    const wanted = table_();
+    return schema.value().tables.find((item) => qualifiedName(item) === wanted) ?? null;
+  });
+  const editing = createEditingPresenter(slug, id, table_, table, () => page.refresh());
   return {
     page,
+    adapter,
+    table,
+    editing,
+    editable: () => {
+      const current = adapter.value();
+      return (
+        current.tier === "tabular" &&
+        current.mode === "sandbox" &&
+        (table()?.primary_key?.length ?? 0) > 0
+      );
+    },
     sort,
     order,
     toggleSort: (column) => {

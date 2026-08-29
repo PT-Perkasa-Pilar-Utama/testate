@@ -44,7 +44,10 @@ function budgetsOf(request: QueryRequest, limits: Settings["limits"]): Budgets {
   return {
     rowCap: Math.min(request.row_cap ?? limits.query_rows_default, limits.query_rows_max),
     byteBudget: request.byte_budget ?? limits.query_bytes,
-    timeBudgetMs: Math.min(request.time_budget_ms ?? limits.query_timeout_ms, limits.query_timeout_max_ms),
+    timeBudgetMs: Math.min(
+      request.time_budget_ms ?? limits.query_timeout_ms,
+      limits.query_timeout_max_ms
+    ),
   };
 }
 
@@ -56,7 +59,10 @@ function budgetsOf(request: QueryRequest, limits: Settings["limits"]): Budgets {
 /** `mongo` carries an operation to a MongoDB adapter; `sql` goes to the SQL engines (06 §6.7). */
 function assertDialect(adapter: AdapterRecord, request: QueryRequest): void {
   const wantsMongo = request.dialect === "mongo";
-  if (wantsMongo !== (adapter.engine === "mongodb") || (wantsMongo && request.mongo === undefined)) {
+  if (
+    wantsMongo !== (adapter.engine === "mongodb") ||
+    (wantsMongo && request.mongo === undefined)
+  ) {
     throw new AppError("ENGINE_UNSUPPORTED", "the dialect does not match the adapter's engine", {
       reason: "dialect",
     });
@@ -67,15 +73,22 @@ export function createQueryRunner(deps: QueryDeps): QueryRunner {
   const running = new Map<string, Running>();
   const meta: RequestMeta = { ip: "", user_agent: "", request_id: null };
 
-  const authorize = async (actor: Actor, adapter: AdapterRecord, request: QueryRequest): Promise<void> => {
+  const authorize = async (
+    actor: Actor,
+    adapter: AdapterRecord,
+    request: QueryRequest
+  ): Promise<void> => {
     assertDialect(adapter, request);
     if (request.mode !== "write") return;
     if (actor.role === "viewer" || actor.agent) throw forbidden("role");
     if (request.write_session_id === undefined) throw forbidden("write session required");
     const session = deps.sessions.require(request.write_session_id);
-    if (session.adapter_id !== adapter.id || session.user_id !== actor.id) throw forbidden("not the session's owner");
+    if (session.adapter_id !== adapter.id || session.user_id !== actor.id)
+      throw forbidden("not the session's owner");
     if (adapter.mode !== "sandbox") {
-      throw new AppError("ADAPTER_READ_ONLY", `${adapter.name} is read-only`, { adapter_id: adapter.id });
+      throw new AppError("ADAPTER_READ_ONLY", `${adapter.name} is read-only`, {
+        adapter_id: adapter.id,
+      });
     }
     await deps.sessions.beforeWrite(session, actor, meta);
   };
@@ -84,7 +97,8 @@ export function createQueryRunner(deps: QueryDeps): QueryRunner {
     async run(actor, adapterId, request) {
       const adapter = deps.adapterOf(adapterId);
       await authorize(actor, adapter, request);
-      const text = request.dialect === "mongo" ? JSON.stringify(request.mongo) : (request.text ?? "");
+      const text =
+        request.dialect === "mongo" ? JSON.stringify(request.mongo) : (request.text ?? "");
       const budgets = budgetsOf(request, (await deps.settings.get()).limits);
       const { engine, conn } = await deps.connect(adapter);
       const queryId = Bun.randomUUIDv7();
@@ -114,9 +128,18 @@ export function createQueryRunner(deps: QueryDeps): QueryRunner {
         const result = await deps.guarded(adapter, () =>
           engine.runQuery(conn, { text }, { mode: request.mode, queryId, ...budgets })
         );
-        deps.repo.insertHistory({ ...history, duration_ms: result.durationMs, row_count: result.rows.length, error: null });
+        deps.repo.insertHistory({
+          ...history,
+          duration_ms: result.durationMs,
+          row_count: result.rows.length,
+          error: null,
+        });
         // ponytail: masks match on column name across the adapter, since a query's tables are unknown.
-        const masked = deps.maskFor(actor, adapter, result.rows.map((row) => engine.decodeRow(row)));
+        const masked = deps.maskFor(
+          actor,
+          adapter,
+          result.rows.map((row) => engine.decodeRow(row))
+        );
         return {
           query_id: queryId,
           columns: result.columns.map((name) => ({ name, type: "unknown" })),
@@ -129,7 +152,12 @@ export function createQueryRunner(deps: QueryDeps): QueryRunner {
         };
       } catch (cause: unknown) {
         const message = cause instanceof Error ? cause.message : String(cause);
-        deps.repo.insertHistory({ ...history, duration_ms: Date.now() - startedAt.getTime(), row_count: null, error: message });
+        deps.repo.insertHistory({
+          ...history,
+          duration_ms: Date.now() - startedAt.getTime(),
+          row_count: null,
+          error: message,
+        });
         throw cause;
       } finally {
         running.delete(queryId);
@@ -139,7 +167,10 @@ export function createQueryRunner(deps: QueryDeps): QueryRunner {
       const now = Date.now();
       return [...running.values()]
         .filter((item) => item.adapterId === adapterId)
-        .map(({ adapterId: _adapter, ownerId: _owner, startedMs, ...view }) => ({ ...view, duration_ms: now - startedMs }));
+        .map(({ adapterId: _adapter, ownerId: _owner, startedMs, ...view }) => ({
+          ...view,
+          duration_ms: now - startedMs,
+        }));
     },
     ownerOf(queryId) {
       return running.get(queryId)?.ownerId ?? null;

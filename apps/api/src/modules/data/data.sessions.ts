@@ -21,8 +21,18 @@ export type SessionDeps = {
 };
 
 export type WriteSessions = {
-  start(actor: Actor, adapterId: string, foreignKeyChecks: boolean, meta: RequestMeta): Promise<WriteSession>;
-  setForeignKeyChecks(actor: Actor, id: string, enabled: boolean, meta: RequestMeta): Promise<WriteSession>;
+  start(
+    actor: Actor,
+    adapterId: string,
+    foreignKeyChecks: boolean,
+    meta: RequestMeta
+  ): Promise<WriteSession>;
+  setForeignKeyChecks(
+    actor: Actor,
+    id: string,
+    enabled: boolean,
+    meta: RequestMeta
+  ): Promise<WriteSession>;
   end(actor: Actor, id: string, meta: RequestMeta): Promise<void>;
   /** An open, unexpired session or `CONFLICT` (06 §6.6 step 1). */
   require(id: string): WriteSessionRecord;
@@ -60,7 +70,13 @@ export function createWriteSessions(deps: SessionDeps): WriteSessions {
     stash_state_id: session.stash_state_id,
     expires_at: expiresAt(session),
   });
-  const record = (actor: Actor, action: string, adapter: AdapterRecord, session: WriteSessionRecord, meta: RequestMeta): void =>
+  const record = (
+    actor: Actor,
+    action: string,
+    adapter: AdapterRecord,
+    session: WriteSessionRecord,
+    meta: RequestMeta
+  ): void =>
     deps.audit.record({
       actor,
       action,
@@ -83,10 +99,14 @@ export function createWriteSessions(deps: SessionDeps): WriteSessions {
     async start(actor, adapterId, foreignKeyChecks, meta) {
       const adapter = deps.adapterOf(adapterId);
       if (adapter.tier !== "tabular") {
-        throw new AppError("ENGINE_UNSUPPORTED", "write sessions need a tabular adapter", { reason: "tier" });
+        throw new AppError("ENGINE_UNSUPPORTED", "write sessions need a tabular adapter", {
+          reason: "tier",
+        });
       }
       if (adapter.mode !== "sandbox") {
-        throw new AppError("ADAPTER_READ_ONLY", `${adapter.name} is read-only`, { adapter_id: adapter.id });
+        throw new AppError("ADAPTER_READ_ONLY", `${adapter.name} is read-only`, {
+          adapter_id: adapter.id,
+        });
       }
       const open = deps.repo.openSession(adapter.id, actor.id);
       if (open !== null && Date.parse(expiresAt(open)) > deps.now().getTime()) {
@@ -106,7 +126,9 @@ export function createWriteSessions(deps: SessionDeps): WriteSessions {
     async setForeignKeyChecks(actor, id, enabled, meta) {
       const { session, adapter } = owned(actor, id);
       if (!enabled && FK_MAPPING[adapter.engine] === null) {
-        throw new AppError("ENGINE_UNSUPPORTED", "this engine cannot turn foreign-key checks off", { reason: "fk_toggle" });
+        throw new AppError("ENGINE_UNSUPPORTED", "this engine cannot turn foreign-key checks off", {
+          reason: "fk_toggle",
+        });
       }
       deps.repo.setForeignKeyChecks(session.id, enabled);
       const updated = { ...session, foreign_key_checks: enabled };
@@ -156,7 +178,9 @@ export function createWriteSessions(deps: SessionDeps): WriteSessions {
       });
       const done = await deps.jobs.wait(null, job.id, 300);
       if (done.status !== "succeeded") {
-        throw new AppError("ADAPTER_UNREACHABLE", "the stash before the first write failed", { job_id: job.id });
+        throw new AppError("ADAPTER_UNREACHABLE", "the stash before the first write failed", {
+          job_id: job.id,
+        });
       }
       deps.repo.recordWrite(session.id, nowIso(), stateId);
       return stateId;

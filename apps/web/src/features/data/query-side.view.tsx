@@ -33,7 +33,11 @@ export default function SidePanel(props: { presenter: QueryPresenter }): JSX.Ele
                     {query.name}
                   </button>
                   <Show when={hasRole("qa")}>
-                    <Button size="sm" variant="ghost" onClick={() => void props.presenter.removeSaved(query.id)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => void props.presenter.removeSaved(query.id)}
+                    >
                       Delete
                     </Button>
                   </Show>
@@ -93,7 +97,11 @@ export default function SidePanel(props: { presenter: QueryPresenter }): JSX.Ele
                     {query.actor} · {query.mode} · {query.duration_ms} ms
                     {query.tag === null ? "" : ` · ${query.tag}`}
                   </span>
-                  <Button size="sm" variant="destructive" onClick={() => void props.presenter.cancel(query.query_id)}>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => void props.presenter.cancel(query.query_id)}
+                  >
                     Cancel
                   </Button>
                 </li>
@@ -105,4 +113,3 @@ export default function SidePanel(props: { presenter: QueryPresenter }): JSX.Ele
     </aside>
   );
 }
-

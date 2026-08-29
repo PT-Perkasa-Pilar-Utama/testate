@@ -15,7 +15,11 @@ import { MONGO_OPS, createQueryPresenter } from "./query.presenter.ts";
 import SidePanel from "./query-side.view.tsx";
 import type { QueryPresenter } from "./query.presenter.ts";
 
-const ENFORCEMENT_VARIANT = { transaction: "success", credential: "success", filter: "warning" } as const;
+const ENFORCEMENT_VARIANT = {
+  transaction: "success",
+  credential: "success",
+  filter: "warning",
+} as const;
 const ENFORCEMENT_TEXT = {
   transaction: "read-only transaction",
   credential: "read-only credential",
@@ -69,7 +73,9 @@ function MongoForm(props: { presenter: QueryPresenter }): JSX.Element {
             <Input
               class="font-mono"
               value={draft().projection}
-              onInput={(event) => props.presenter.setMongo({ projection: event.currentTarget.value })}
+              onInput={(event) =>
+                props.presenter.setMongo({ projection: event.currentTarget.value })
+              }
             />
           </label>
           <label class="grid gap-1.5 text-sm">
@@ -188,10 +194,18 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
               <Button type="submit" variant="primary" disabled={presenter.busy()}>
                 {presenter.busy() ? "Running..." : "Run (read-only)"}
               </Button>
-              <Button type="button" variant="secondary" onClick={() => void presenter.exportAs("csv")}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void presenter.exportAs("csv")}
+              >
                 Export CSV
               </Button>
-              <Button type="button" variant="secondary" onClick={() => void presenter.exportAs("json")}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void presenter.exportAs("json")}
+              >
                 Export JSON
               </Button>
             </div>

@@ -27,13 +27,51 @@ export type RowEditsResult = {
 };
 
 export type Editing = {
-  lookup(adapterId: string, table: string, column: string, q: string, limit: number): Promise<LookupRow[]>;
-  rowEdits(actor: Actor, adapterId: string, table: string, sessionId: string, edits: RowEdit[], meta: RequestMeta): Promise<RowEditsResult>;
+  lookup(
+    adapterId: string,
+    table: string,
+    column: string,
+    q: string,
+    limit: number
+  ): Promise<LookupRow[]>;
+  rowEdits(
+    actor: Actor,
+    adapterId: string,
+    table: string,
+    sessionId: string,
+    edits: RowEdit[],
+    meta: RequestMeta
+  ): Promise<RowEditsResult>;
   policies(adapterId: string, table?: string): Promise<ColumnPolicy[]>;
-  upsertPolicy(actor: Actor, adapterId: string, table: string, column: string, body: PolicyBody, meta: RequestMeta): Promise<ColumnPolicy>;
-  removePolicy(actor: Actor, adapterId: string, table: string, column: string, meta: RequestMeta): Promise<void>;
-  setPolicyLock(actor: Actor, adapterId: string, table: string, column: string, locked: boolean, meta: RequestMeta): Promise<ColumnPolicy>;
-  fixture(actor: Actor, adapterId: string, request: FixtureRequest, meta: RequestMeta): Promise<Fixture>;
+  upsertPolicy(
+    actor: Actor,
+    adapterId: string,
+    table: string,
+    column: string,
+    body: PolicyBody,
+    meta: RequestMeta
+  ): Promise<ColumnPolicy>;
+  removePolicy(
+    actor: Actor,
+    adapterId: string,
+    table: string,
+    column: string,
+    meta: RequestMeta
+  ): Promise<void>;
+  setPolicyLock(
+    actor: Actor,
+    adapterId: string,
+    table: string,
+    column: string,
+    locked: boolean,
+    meta: RequestMeta
+  ): Promise<ColumnPolicy>;
+  fixture(
+    actor: Actor,
+    adapterId: string,
+    request: FixtureRequest,
+    meta: RequestMeta
+  ): Promise<Fixture>;
 };
 
 export type EditingDeps = {
@@ -50,14 +88,23 @@ export type EditingDeps = {
 
 function requireTabular(adapter: AdapterRecord): void {
   if (adapter.tier !== "tabular") {
-    throw new AppError("ENGINE_UNSUPPORTED", "operation outside the adapter's tier", { reason: "tier" });
+    throw new AppError("ENGINE_UNSUPPORTED", "operation outside the adapter's tier", {
+      reason: "tier",
+    });
   }
 }
 
 /** Editing, lookups, policies, and fixtures on the Tabular tier (24). */
 export function createEditing(deps: EditingDeps): Editing {
   const nowIso = (): string => deps.now().toISOString();
-  const record = (actor: Actor, action: string, adapter: AdapterRecord, targetId: string, details: JsonObject, meta: RequestMeta): void =>
+  const record = (
+    actor: Actor,
+    action: string,
+    adapter: AdapterRecord,
+    targetId: string,
+    details: JsonObject,
+    meta: RequestMeta
+  ): void =>
     deps.audit.record({
       actor,
       action,
@@ -71,9 +118,13 @@ export function createEditing(deps: EditingDeps): Editing {
     });
   const tableOf = (schema: Introspection, table: string): Introspection["tables"][number] => {
     const dot = table.indexOf(".");
-    const wanted = dot === -1 ? { schema: null, name: table } : { schema: table.slice(0, dot), name: table.slice(dot + 1) };
+    const wanted =
+      dot === -1
+        ? { schema: null, name: table }
+        : { schema: table.slice(0, dot), name: table.slice(dot + 1) };
     const found = schema.tables.find(
-      (item) => (item.schema === wanted.schema || wanted.schema === null) && item.name === wanted.name
+      (item) =>
+        (item.schema === wanted.schema || wanted.schema === null) && item.name === wanted.name
     );
     if (found === undefined) throw new AppError("NOT_FOUND", "table not found", { table });
     return found;
@@ -86,8 +137,10 @@ export function createEditing(deps: EditingDeps): Editing {
       const schema = await deps.schemaOf(adapter);
       const source = tableOf(schema, table);
       const fk = source.foreign_keys_out.find((item) => item.columns[0] === column);
-      const targetKey = fk === undefined ? "" : `${fk.ref.schema ?? ""}.${fk.ref.name}`.replace(/^\./, "");
-      const display = deps.policies.list(adapter.id, targetKey).find((policy) => policy.display)?.column ?? null;
+      const targetKey =
+        fk === undefined ? "" : `${fk.ref.schema ?? ""}.${fk.ref.name}`.replace(/^\./, "");
+      const display =
+        deps.policies.list(adapter.id, targetKey).find((policy) => policy.display)?.column ?? null;
       const target = lookupTarget(schema, source, column, display);
       const { engine, conn } = await deps.connect(adapter);
       return deps.guarded(adapter, () => lookupRows(engine, conn, target, q, limit));
@@ -96,10 +149,13 @@ export function createEditing(deps: EditingDeps): Editing {
       const adapter = deps.adapterOf(adapterId);
       requireTabular(adapter);
       if (adapter.mode !== "sandbox") {
-        throw new AppError("ADAPTER_READ_ONLY", `${adapter.name} is read-only`, { adapter_id: adapter.id });
+        throw new AppError("ADAPTER_READ_ONLY", `${adapter.name} is read-only`, {
+          adapter_id: adapter.id,
+        });
       }
       const session = deps.sessions.require(sessionId);
-      if (session.adapter_id !== adapter.id || session.user_id !== actor.id) throw conflict("write session is closed");
+      if (session.adapter_id !== adapter.id || session.user_id !== actor.id)
+        throw conflict("write session is closed");
       const schema = await deps.schemaOf(adapter);
       const target = tableOf(schema, table);
       const needsKey = edits.some((edit) => edit.kind !== "insert");
@@ -110,7 +166,9 @@ export function createEditing(deps: EditingDeps): Editing {
       const stashId = await deps.sessions.beforeWrite(session, actor, meta);
       const { engine, conn } = await deps.connect(adapter);
       const results = await deps.guarded(adapter, () =>
-        engine.writeRows(conn, { schema: target.schema, name: target.name }, ops, { foreignKeyChecks: session.foreign_key_checks })
+        engine.writeRows(conn, { schema: target.schema, name: target.name }, ops, {
+          foreignKeyChecks: session.foreign_key_checks,
+        })
       );
       return {
         results: results.map((result, index) => ({
@@ -136,8 +194,20 @@ export function createEditing(deps: EditingDeps): Editing {
       if (!tableOf(schema, table).columns.some((item) => item.name === column)) {
         throw new AppError("NOT_FOUND", "column not found", { table, column });
       }
-      const saved = deps.policies.upsert(adapter.id, { table, column, ...body }, actor.id, nowIso());
-      record(actor, existing === null ? "policy.created" : "policy.updated", adapter, `${table}.${column}`, { table, column }, meta);
+      const saved = deps.policies.upsert(
+        adapter.id,
+        { table, column, ...body },
+        actor.id,
+        nowIso()
+      );
+      record(
+        actor,
+        existing === null ? "policy.created" : "policy.updated",
+        adapter,
+        `${table}.${column}`,
+        { table, column },
+        meta
+      );
       return saved;
     },
     async removePolicy(actor, adapterId, table, column, meta) {
@@ -153,7 +223,14 @@ export function createEditing(deps: EditingDeps): Editing {
       requireTabular(adapter);
       requirePolicy(deps.policies.byColumn(adapter.id, table, column));
       deps.policies.setLocked(adapter.id, table, column, locked, nowIso());
-      record(actor, locked ? "policy.locked" : "policy.unlocked", adapter, `${table}.${column}`, { table, column }, meta);
+      record(
+        actor,
+        locked ? "policy.locked" : "policy.unlocked",
+        adapter,
+        `${table}.${column}`,
+        { table, column },
+        meta
+      );
       return requirePolicy(deps.policies.byColumn(adapter.id, table, column));
     },
     async fixture(actor, adapterId, request, meta) {
@@ -180,9 +257,16 @@ export function createEditing(deps: EditingDeps): Editing {
         action: "fixture.extracted",
         target_type: "adapter",
         target_id: adapter.id,
-        project: { id: adapter.project_id, slug: deps.projects.byId(adapter.project_id)?.slug ?? "" },
+        project: {
+          id: adapter.project_id,
+          slug: deps.projects.byId(adapter.project_id)?.slug ?? "",
+        },
         adapter: { id: adapter.id, name: adapter.name },
-        details: { table: request.table, rows: fixture.rows, masked: fixture.masked_columns.length },
+        details: {
+          table: request.table,
+          rows: fixture.rows,
+          masked: fixture.masked_columns.length,
+        },
         outcome: "succeeded",
         meta,
       });

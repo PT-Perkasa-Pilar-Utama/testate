@@ -50,7 +50,12 @@ export type HistoryFilter = {
 export type DataRepository = {
   openSession(adapterId: string, userId: string): WriteSessionRecord | null;
   sessionById(id: string): WriteSessionRecord | null;
-  insertSession(session: Omit<WriteSessionRecord, "last_write_at" | "ended_at" | "stash_state_id" | "write_count">): WriteSessionRecord;
+  insertSession(
+    session: Omit<
+      WriteSessionRecord,
+      "last_write_at" | "ended_at" | "stash_state_id" | "write_count"
+    >
+  ): WriteSessionRecord;
   setForeignKeyChecks(id: string, enabled: boolean): void;
   /** One more write; the first one records the stash the session took (06 §6.4). */
   recordWrite(id: string, at: string, stashStateId: string | null): void;
@@ -126,13 +131,22 @@ export function createDataRepository(db: MetadataDb): DataRepository {
       db.query(
         `INSERT INTO write_sessions (id, adapter_id, user_id, started_at, foreign_key_checks)
          VALUES (?, ?, ?, ?, ?)`
-      ).run(input.id, input.adapter_id, input.user_id, input.started_at, input.foreign_key_checks ? 1 : 0);
+      ).run(
+        input.id,
+        input.adapter_id,
+        input.user_id,
+        input.started_at,
+        input.foreign_key_checks ? 1 : 0
+      );
       const inserted = session("id = ?", input.id);
       if (inserted === null) throw new Error("write session insert failed");
       return inserted;
     },
     setForeignKeyChecks(id, enabled) {
-      db.query("UPDATE write_sessions SET foreign_key_checks = ? WHERE id = ?").run(enabled ? 1 : 0, id);
+      db.query("UPDATE write_sessions SET foreign_key_checks = ? WHERE id = ?").run(
+        enabled ? 1 : 0,
+        id
+      );
     },
     recordWrite(id, at, stashStateId) {
       db.query(
@@ -141,7 +155,10 @@ export function createDataRepository(db: MetadataDb): DataRepository {
       ).run(at, stashStateId, id);
     },
     endSession(id, at) {
-      db.query("UPDATE write_sessions SET ended_at = ? WHERE id = ? AND ended_at IS NULL").run(at, id);
+      db.query("UPDATE write_sessions SET ended_at = ? WHERE id = ? AND ended_at IS NULL").run(
+        at,
+        id
+      );
     },
     insertHistory(row) {
       db.query(
@@ -173,13 +190,18 @@ export function createDataRepository(db: MetadataDb): DataRepository {
         params.push(filter.mode);
       }
       const rows = db
-        .query(`SELECT * FROM query_history WHERE ${where.join(" AND ")} ORDER BY created_at DESC, id DESC LIMIT ?`)
+        .query(
+          `SELECT * FROM query_history WHERE ${where.join(" AND ")} ORDER BY created_at DESC, id DESC LIMIT ?`
+        )
         .all(...params, filter.limit);
       return v.parse(v.array(historyRow), rows);
     },
     savedQueries: (adapterId) =>
       v
-        .parse(v.array(savedRow), db.query("SELECT * FROM saved_queries WHERE adapter_id = ? ORDER BY name").all(adapterId))
+        .parse(
+          v.array(savedRow),
+          db.query("SELECT * FROM saved_queries WHERE adapter_id = ? ORDER BY name").all(adapterId)
+        )
         .map(toSaved),
     savedQuery: (id) => saved("id = ?", id),
     savedQueryByName: (adapterId, name) => saved("adapter_id = ? AND name = ?", adapterId, name),
@@ -187,7 +209,15 @@ export function createDataRepository(db: MetadataDb): DataRepository {
       db.query(
         `INSERT INTO saved_queries (id, adapter_id, name, body, created_by, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`
-      ).run(query.id, query.adapter_id, query.name, JSON.stringify(query.body), query.created_by, query.created_at, query.updated_at);
+      ).run(
+        query.id,
+        query.adapter_id,
+        query.name,
+        JSON.stringify(query.body),
+        query.created_by,
+        query.created_at,
+        query.updated_at
+      );
     },
     updateSavedQuery(id, patch, at) {
       const sets = ["updated_at = ?"];

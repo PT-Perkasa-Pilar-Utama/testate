@@ -1,22 +1,10 @@
-import type {
-  Actor,
-  ColumnPolicy,
-  Fixture,
-  Introspection,
-  JsonObject,
-  QueryRequest,
-  QueryResult,
-  RowsPage,
-  Settings,
-  WriteSession,
-} from "@testate/shared";
+import type { Introspection, Settings } from "@testate/shared";
 
 import { toConnectionConfig } from "../../lib/engines/connection.ts";
 import { EngineError } from "../../lib/engines/index.ts";
 import type { ConnectionRef, DbEngine, PageQuery } from "../../lib/engines/index.ts";
 import { AppError, conflict, forbidden, notFound } from "../../lib/http/index.ts";
 import { tableKey } from "../../lib/engines/index.ts";
-import type { RequestMeta } from "../../lib/http/auth.ts";
 import type { AdapterRecord } from "../adapters/adapters.repository.ts";
 import { CONFIG_COLUMN, openSecrets } from "../adapters/adapters.secrets.ts";
 import { toAppError } from "../checkouts/checkouts.restore.ts";
@@ -24,42 +12,16 @@ import type { RestoreDeps } from "../checkouts/checkouts.restore.ts";
 import type { JobsService } from "../jobs/jobs.service.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import { createEditing } from "./data.editing.ts";
-import type { PolicyBody, RowEditsResult } from "./data.editing.ts";
-import type { FixtureRequest } from "./data.fixture.ts";
-import type { RowEdit } from "./data.forms.ts";
-import type { LookupRow } from "./data.lookup.ts";
 import { maskRows } from "./data.masks.ts";
 import type { PoliciesRepository } from "./data.policies.ts";
 import { createQueryRunner } from "./data.query.ts";
-import type { QueryDeps, RunningQueryView } from "./data.query.ts";
-import type { DataRepository, HistoryFilter, HistoryRow, SavedQueryRecord } from "./data.repository.ts";
+import type { QueryDeps } from "./data.query.ts";
+import type { DataRepository, HistoryFilter, SavedQueryRecord } from "./data.repository.ts";
 import { createWriteSessions } from "./data.sessions.ts";
+import type { DataService } from "./data.contract.ts";
+
+export type { DataService, SavedQueryInput } from "./data.contract.ts";
 import type { SessionDeps } from "./data.sessions.ts";
-
-export type SavedQueryInput = { name: string; body: JsonObject };
-
-export type DataService = {
-  schema(adapterId: string): Promise<Introspection>;
-  rows(actor: Actor, adapterId: string, table: string, query?: Partial<PageQuery>): Promise<RowsPage>;
-  lookup(adapterId: string, table: string, column: string, q: string, limit: number): Promise<LookupRow[]>;
-  startWriteSession(actor: Actor, adapterId: string, foreignKeyChecks: boolean, meta: RequestMeta): Promise<WriteSession>;
-  setWriteSessionOptions(actor: Actor, sessionId: string, foreignKeyChecks: boolean, meta: RequestMeta): Promise<WriteSession>;
-  endWriteSession(actor: Actor, sessionId: string, meta: RequestMeta): Promise<void>;
-  rowEdits(actor: Actor, adapterId: string, table: string, sessionId: string, edits: RowEdit[], meta: RequestMeta): Promise<RowEditsResult>;
-  query(actor: Actor, adapterId: string, request: QueryRequest): Promise<QueryResult>;
-  runningQueries(adapterId: string): Promise<RunningQueryView[]>;
-  cancelQuery(actor: Actor, adapterId: string, queryId: string): Promise<void>;
-  savedQueries(adapterId: string): Promise<SavedQueryRecord[]>;
-  createSavedQuery(actor: Actor, adapterId: string, input: SavedQueryInput): Promise<SavedQueryRecord>;
-  updateSavedQuery(adapterId: string, id: string, patch: Partial<SavedQueryInput>): Promise<SavedQueryRecord>;
-  removeSavedQuery(adapterId: string, id: string): Promise<void>;
-  history(actor: Actor, adapterId: string, limit: number, mode?: "read" | "write"): Promise<HistoryRow[]>;
-  policies(adapterId: string, table?: string): Promise<ColumnPolicy[]>;
-  upsertPolicy(actor: Actor, adapterId: string, table: string, column: string, body: PolicyBody, meta: RequestMeta): Promise<ColumnPolicy>;
-  removePolicy(actor: Actor, adapterId: string, table: string, column: string, meta: RequestMeta): Promise<void>;
-  setPolicyLock(actor: Actor, adapterId: string, table: string, column: string, locked: boolean, meta: RequestMeta): Promise<ColumnPolicy>;
-  fixture(actor: Actor, adapterId: string, request: FixtureRequest, meta: RequestMeta): Promise<Fixture>;
-};
 
 export type DataDeps = RestoreDeps & {
   repo: DataRepository;
@@ -74,7 +36,9 @@ export type DataDeps = RestoreDeps & {
 /** `schema.table` or `table`; the engine resolves the default schema. */
 export function parseTableRef(table: string): { schema: string | null; name: string } {
   const dot = table.indexOf(".");
-  return dot === -1 ? { schema: null, name: table } : { schema: table.slice(0, dot), name: table.slice(dot + 1) };
+  return dot === -1
+    ? { schema: null, name: table }
+    : { schema: table.slice(0, dot), name: table.slice(dot + 1) };
 }
 
 export function createDataService(deps: DataDeps): DataService {
@@ -83,15 +47,22 @@ export function createDataService(deps: DataDeps): DataService {
     const adapter = deps.adapters.byId(adapterId);
     if (adapter === null) throw notFound("adapter");
     if (adapter.kind !== "database") {
-      throw new AppError("ENGINE_UNSUPPORTED", "this adapter has no database engine", { reason: "kind" });
+      throw new AppError("ENGINE_UNSUPPORTED", "this adapter has no database engine", {
+        reason: "kind",
+      });
     }
     return adapter;
   };
   /** Decrypted config plus engine; the config never leaves this closure (12 §12.8). */
-  const connect = async (adapter: AdapterRecord): Promise<{ engine: DbEngine; conn: ConnectionRef }> => {
+  const connect = async (
+    adapter: AdapterRecord
+  ): Promise<{ engine: DbEngine; conn: ConnectionRef }> => {
     const secrets = await openSecrets(deps.ring, adapter.id, CONFIG_COLUMN, adapter.config_sealed);
     const config = toConnectionConfig(adapter.engine, adapter.config, secrets);
-    return { engine: deps.engines.require(adapter.engine), conn: { connectionId: adapter.id, config } };
+    return {
+      engine: deps.engines.require(adapter.engine),
+      conn: { connectionId: adapter.id, config },
+    };
   };
   const guarded = async <T>(adapter: AdapterRecord, work: () => Promise<T>): Promise<T> => {
     try {
@@ -112,14 +83,24 @@ export function createDataService(deps: DataDeps): DataService {
     const policies = deps.policies.list(adapter.id);
     for (const table of schema.tables) {
       for (const column of table.columns) {
-        const policy = policies.find((item) => item.table === tableKey(table) && item.column === column.name);
-        if (policy !== undefined) column.policy = { required_function: policy.required_function, mask: policy.mask };
+        const policy = policies.find(
+          (item) => item.table === tableKey(table) && item.column === column.name
+        );
+        if (policy !== undefined)
+          column.policy = { required_function: policy.required_function, mask: policy.mask };
         if (policy?.display === true) table.display_column = policy.column;
       }
     }
     return schema;
   };
-  const queries = createQueryRunner({ ...deps, adapterOf, connect, guarded, sessions, maskFor: (actor, adapter, rows) => maskRows(actor, rows, deps.policies.list(adapter.id)) });
+  const queries = createQueryRunner({
+    ...deps,
+    adapterOf,
+    connect,
+    guarded,
+    sessions,
+    maskFor: (actor, adapter, rows) => maskRows(actor, rows, deps.policies.list(adapter.id)),
+  });
   const editing = createEditing({ ...deps, adapterOf, connect, guarded, schemaOf, sessions });
   const savedOf = (adapter: AdapterRecord, id: string): SavedQueryRecord => {
     const query = repo.savedQuery(id);
@@ -143,7 +124,11 @@ export function createDataService(deps: DataDeps): DataService {
       if (query.cursor !== undefined) page.cursor = query.cursor;
       if (query.sort !== undefined) page.sort = query.sort;
       const result = await guarded(adapter, () => engine.pageRows(conn, page));
-      const masked = maskRows(actor, result.rows.map((row) => engine.decodeRow(row)), deps.policies.list(adapter.id, tableKey(page.table)));
+      const masked = maskRows(
+        actor,
+        result.rows.map((row) => engine.decodeRow(row)),
+        deps.policies.list(adapter.id, tableKey(page.table))
+      );
       // ponytail: FK display values (`_display`) wait for a join in pageRows; the lookup endpoint covers forms.
       return {
         data: masked.rows,
@@ -152,7 +137,8 @@ export function createDataService(deps: DataDeps): DataService {
         masked_columns: masked.masked_columns,
       };
     },
-    lookup: (adapterId, table, column, q, limit) => editing.lookup(adapterId, table, column, q, limit),
+    lookup: (adapterId, table, column, q, limit) =>
+      editing.lookup(adapterId, table, column, q, limit),
     startWriteSession: (actor, adapterId, foreignKeyChecks, meta) =>
       sessions.start(actor, adapterId, foreignKeyChecks, meta),
     setWriteSessionOptions: (actor, sessionId, foreignKeyChecks, meta) =>

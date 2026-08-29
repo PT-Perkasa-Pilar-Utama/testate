@@ -30,7 +30,9 @@ function toPolicy(row: v.InferOutput<typeof policyRow>): ColumnPolicy {
     table: row.table_name,
     column: row.column_name,
     required_function:
-      row.required_function === null ? null : v.parse(requiredFunctionSchema, JSON.parse(row.required_function)),
+      row.required_function === null
+        ? null
+        : v.parse(requiredFunctionSchema, JSON.parse(row.required_function)),
     mask: row.mask,
     display: row.display === 1,
     locked: row.locked === 1,
@@ -41,7 +43,9 @@ function toPolicy(row: v.InferOutput<typeof policyRow>): ColumnPolicy {
 export function createPoliciesRepository(db: MetadataDb): PoliciesRepository {
   const one = (adapterId: string, table: string, column: string): ColumnPolicy | null => {
     const row = db
-      .query("SELECT * FROM column_policies WHERE adapter_id = ? AND table_name = ? AND column_name = ?")
+      .query(
+        "SELECT * FROM column_policies WHERE adapter_id = ? AND table_name = ? AND column_name = ?"
+      )
       .get(adapterId, table, column);
     return row === null ? null : toPolicy(v.parse(policyRow, row));
   };
@@ -49,8 +53,16 @@ export function createPoliciesRepository(db: MetadataDb): PoliciesRepository {
     list(adapterId, table) {
       const rows =
         table === undefined
-          ? db.query("SELECT * FROM column_policies WHERE adapter_id = ? ORDER BY table_name, column_name").all(adapterId)
-          : db.query("SELECT * FROM column_policies WHERE adapter_id = ? AND table_name = ? ORDER BY column_name").all(adapterId, table);
+          ? db
+              .query(
+                "SELECT * FROM column_policies WHERE adapter_id = ? ORDER BY table_name, column_name"
+              )
+              .all(adapterId)
+          : db
+              .query(
+                "SELECT * FROM column_policies WHERE adapter_id = ? AND table_name = ? ORDER BY column_name"
+              )
+              .all(adapterId, table);
       return v.parse(v.array(policyRow), rows).map(toPolicy);
     },
     byColumn: one,
@@ -58,7 +70,9 @@ export function createPoliciesRepository(db: MetadataDb): PoliciesRepository {
       db.transaction(() => {
         // One display column per table (06 §6.12).
         if (input.display) {
-          db.query("UPDATE column_policies SET display = 0 WHERE adapter_id = ? AND table_name = ?").run(adapterId, input.table);
+          db.query(
+            "UPDATE column_policies SET display = 0 WHERE adapter_id = ? AND table_name = ?"
+          ).run(adapterId, input.table);
         }
         db.query(
           `INSERT INTO column_policies (id, adapter_id, table_name, column_name, required_function, mask, display, locked, created_by, created_at, updated_at)
@@ -88,7 +102,9 @@ export function createPoliciesRepository(db: MetadataDb): PoliciesRepository {
       ).run(locked ? 1 : 0, at, adapterId, table, column);
     },
     remove(adapterId, table, column) {
-      db.query("DELETE FROM column_policies WHERE adapter_id = ? AND table_name = ? AND column_name = ?").run(adapterId, table, column);
+      db.query(
+        "DELETE FROM column_policies WHERE adapter_id = ? AND table_name = ? AND column_name = ?"
+      ).run(adapterId, table, column);
     },
   };
 }

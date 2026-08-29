@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import type { JsonObject } from "@testate/shared";
 import { For, Loading, Show, createSignal } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
@@ -7,8 +8,12 @@ import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { href, navigate } from "@/lib/router.ts";
+import { hasRole } from "@/lib/session.ts";
+import Switch from "@/components/switch.tsx";
+import FixtureDialog from "./fixture.view.tsx";
 import { FILTER_OPS, PAGE_SIZES, cellText, createGridPresenter } from "./grid.presenter.ts";
 import type { FilterOp, GridPresenter } from "./grid.presenter.ts";
+import RowForm from "./row-form.view.tsx";
 
 const OP_OPTIONS = FILTER_OPS.map((op) => ({ value: op, label: op }));
 const SIZE_OPTIONS = PAGE_SIZES.map((size) => ({ value: size, label: `${size} rows` }));
@@ -35,7 +40,13 @@ function FilterBar(props: { presenter: GridPresenter; columns: string[] }): JSX.
         value={column() === "" ? (props.columns[0] ?? "") : column()}
         onChange={setColumn}
       />
-      <Select size="sm" aria-label="Filter operator" options={OP_OPTIONS} value={op()} onChange={setOp} />
+      <Select
+        size="sm"
+        aria-label="Filter operator"
+        options={OP_OPTIONS}
+        value={op()}
+        onChange={setOp}
+      />
       <Input
         size="sm"
         aria-label="Filter value"
@@ -106,6 +117,86 @@ function Pager(props: { presenter: GridPresenter }): JSX.Element {
   );
 }
 
+function WriteControls(props: { presenter: GridPresenter }): JSX.Element {
+  const session = (): ReturnType<GridPresenter["editing"]["session"]> =>
+    props.presenter.editing.session();
+  return (
+    <Show when={hasRole("qa") && props.presenter.editable()}>
+      <div class="flex flex-wrap items-center gap-3 text-sm">
+        <Switch
+          label="Write mode"
+          checked={session() !== null}
+          onChange={(on) =>
+            void (on ? props.presenter.editing.start() : props.presenter.editing.end())
+          }
+        />
+        <Show when={session()}>
+          {(open) => (
+            <>
+              <Switch
+                label={`Foreign-key checks (${open().fk_checks_mapping})`}
+                checked={open().foreign_key_checks}
+                onChange={(on) => void props.presenter.editing.setForeignKeyChecks(on)}
+              />
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => props.presenter.editing.openInsert()}
+              >
+                Insert row
+              </Button>
+              <Show when={open().stash_state_id !== null}>
+                <Badge variant="info">stash taken</Badge>
+              </Show>
+            </>
+          )}
+        </Show>
+      </div>
+    </Show>
+  );
+}
+
+function RowActions(props: { presenter: GridPresenter; row: JsonObject }): JSX.Element {
+  const row = (): JsonObject => props.row;
+  return (
+    <Cell>
+      <div class="flex gap-1">
+        <Show when={props.presenter.table()?.primary_key?.length}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() =>
+              void props.presenter.editing.fixtureFor(row(), {
+                depth: 2,
+                direction: "parents",
+                format: "sql",
+              })
+            }
+          >
+            Fixture
+          </Button>
+        </Show>
+        <Show when={props.presenter.editing.canWrite()}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => props.presenter.editing.openUpdate(row())}
+          >
+            Edit
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => void props.presenter.editing.remove(row())}
+          >
+            Delete
+          </Button>
+        </Show>
+      </div>
+    </Cell>
+  );
+}
+
 export default function GridView(props: { slug: string; id: string; table: string }): JSX.Element {
   const presenter = createGridPresenter(
     () => props.slug,
@@ -132,6 +223,7 @@ export default function GridView(props: { slug: string; id: string; table: strin
           presenter={presenter}
           columns={presenter.page.value().columns.map((column) => column.name)}
         />
+        <WriteControls presenter={presenter} />
         <Show when={presenter.page.value().masked_columns.length > 0}>
           <p class="text-sm text-kumo-subtle">
             Masked for your role: {presenter.page.value().masked_columns.join(", ")}
@@ -158,6 +250,7 @@ export default function GridView(props: { slug: string; id: string; table: strin
                     </Head>
                   )}
                 </For>
+                <Head>Actions</Head>
               </tr>
             </thead>
             <tbody>
@@ -173,6 +266,7 @@ export default function GridView(props: { slug: string; id: string; table: strin
                         </Cell>
                       )}
                     </For>
+                    <RowActions presenter={presenter} row={row} />
                   </Row>
                 )}
               </For>
@@ -180,6 +274,10 @@ export default function GridView(props: { slug: string; id: string; table: strin
           </Table>
         </div>
         <Pager presenter={presenter} />
+        <Show when={presenter.table()}>
+          {(table) => <RowForm presenter={presenter.editing} table={table()} />}
+        </Show>
+        <FixtureDialog presenter={presenter.editing} />
       </Loading>
     </section>
   );

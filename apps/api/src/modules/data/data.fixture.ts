@@ -1,4 +1,12 @@
-import type { Actor, ColumnPolicy, Fixture, Introspection, JsonObject, JsonValue, TableSchema } from "@testate/shared";
+import type {
+  Actor,
+  ColumnPolicy,
+  Fixture,
+  Introspection,
+  JsonObject,
+  JsonValue,
+  TableSchema,
+} from "@testate/shared";
 import * as v from "valibot";
 
 import { computeDependencyOrder, sameTable, tableKey } from "../../lib/engines/index.ts";
@@ -32,8 +40,13 @@ type Collected = Map<string, { table: TableSchema; rows: Map<string, JsonObject>
 
 function tableOf(schema: Introspection, ref: string): TableSchema {
   const dot = ref.indexOf(".");
-  const wanted = dot === -1 ? { schema: null, name: ref } : { schema: ref.slice(0, dot), name: ref.slice(dot + 1) };
-  const found = schema.tables.find((table) => sameTable(table, wanted) || (wanted.schema === null && table.name === wanted.name));
+  const wanted =
+    dot === -1
+      ? { schema: null, name: ref }
+      : { schema: ref.slice(0, dot), name: ref.slice(dot + 1) };
+  const found = schema.tables.find(
+    (table) => sameTable(table, wanted) || (wanted.schema === null && table.name === wanted.name)
+  );
   if (found === undefined) throw notFound("table");
   return found;
 }
@@ -46,7 +59,12 @@ function filtersOf(key: JsonObject): RowFilter[] {
   }));
 }
 
-async function fetchRows(deps: FixtureDeps, table: TableSchema, key: JsonObject, limit: number): Promise<JsonObject[]> {
+async function fetchRows(
+  deps: FixtureDeps,
+  table: TableSchema,
+  key: JsonObject,
+  limit: number
+): Promise<JsonObject[]> {
   const page = await deps.engine.pageRows(deps.conn, {
     table: { schema: table.schema, name: table.name },
     limit,
@@ -77,7 +95,10 @@ async function visitOne(deps: FixtureDeps, walk: Walk, visit: Visit): Promise<vo
   const rows = await fetchRows(deps, visit.table, visit.key, ROW_CAP - walk.total);
   if (rows.length === 0 && visit.depth === 0) throw notFound("row");
   const key = tableKey(visit.table);
-  const bucket = walk.collected.get(key) ?? { table: visit.table, rows: new Map<string, JsonObject>() };
+  const bucket = walk.collected.get(key) ?? {
+    table: visit.table,
+    rows: new Map<string, JsonObject>(),
+  };
   for (const row of rows) {
     const id = JSON.stringify(keyOf(visit.table, row));
     if (bucket.rows.has(id)) continue;
@@ -116,7 +137,12 @@ async function collect(
   return { collected: walk.collected, truncated: false };
 }
 
-function enqueueParents(schema: Introspection, visit: Visit, row: JsonObject, queue: Visit[]): void {
+function enqueueParents(
+  schema: Introspection,
+  visit: Visit,
+  row: JsonObject,
+  queue: Visit[]
+): void {
   for (const fk of visit.table.foreign_keys_out) {
     const parent = schema.tables.find((table) => sameTable(table, fk.ref));
     if (parent === undefined) continue;
@@ -131,13 +157,21 @@ function enqueueParents(schema: Introspection, visit: Visit, row: JsonObject, qu
   }
 }
 
-function enqueueChildren(schema: Introspection, visit: Visit, row: JsonObject, queue: Visit[]): void {
+function enqueueChildren(
+  schema: Introspection,
+  visit: Visit,
+  row: JsonObject,
+  queue: Visit[]
+): void {
   for (const fk of visit.table.foreign_keys_in) {
     const child = schema.tables.find((table) => sameTable(table, fk.from));
-    const back = child?.foreign_keys_out.find((item) => sameTable(item.ref, visit.table) && item.columns.join() === fk.columns.join());
+    const back = child?.foreign_keys_out.find(
+      (item) => sameTable(item.ref, visit.table) && item.columns.join() === fk.columns.join()
+    );
     if (child === undefined || back === undefined) continue;
     const key: JsonObject = {};
-    for (const [index, column] of fk.columns.entries()) key[column] = row[back.ref_columns[index] ?? ""] ?? null;
+    for (const [index, column] of fk.columns.entries())
+      key[column] = row[back.ref_columns[index] ?? ""] ?? null;
     queue.push({ table: child, key, depth: visit.depth + 1 });
   }
 }
@@ -154,14 +188,20 @@ function toSql(table: TableSchema, rows: JsonObject[]): string {
   const columns = table.columns.map((column) => column.name);
   const target = table.schema === null ? `"${table.name}"` : `"${table.schema}"."${table.name}"`;
   return rows
-    .map((row) => `INSERT INTO ${target} (${columns.map((name) => `"${name}"`).join(", ")}) VALUES (${columns.map((name) => literal(row[name] ?? null)).join(", ")});`)
+    .map(
+      (row) =>
+        `INSERT INTO ${target} (${columns.map((name) => `"${name}"`).join(", ")}) VALUES (${columns.map((name) => literal(row[name] ?? null)).join(", ")});`
+    )
     .join("\n");
 }
 
 /** Rows in dependency order, parents first, masked per role; SQL or JSON (24 §24.6). */
 export async function extractFixture(deps: FixtureDeps, request: FixtureRequest): Promise<Fixture> {
   const { collected, truncated } = await collect(deps, request);
-  const refs = [...collected.values()].map((bucket) => ({ schema: bucket.table.schema, name: bucket.table.name }));
+  const refs = [...collected.values()].map((bucket) => ({
+    schema: bucket.table.schema,
+    name: bucket.table.name,
+  }));
   const order = computeDependencyOrder(deps.schema.tables, refs).order;
   const maskedColumns = new Set<string>();
   const sections: { table: TableSchema; rows: JsonObject[] }[] = [];

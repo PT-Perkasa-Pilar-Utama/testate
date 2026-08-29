@@ -19,13 +19,52 @@ export const INTROSPECTION_MOCK: Introspection = {
       kind: "table",
       row_estimate: 120433,
       columns: [
-        { name: "id", type: "bigint", nullable: false, has_default: true, generated: false, identity: true, policy: { required_function: null, mask: null } },
-        { name: "customer_id", type: "bigint", nullable: false, has_default: false, generated: false, identity: false, policy: { required_function: null, mask: null } },
-        { name: "status", type: "text", nullable: false, has_default: true, generated: false, identity: false, policy: { required_function: null, mask: null } },
-        { name: "card_last4", type: "text", nullable: true, has_default: false, generated: false, identity: false, policy: { required_function: null, mask: "redact" } },
+        {
+          name: "id",
+          type: "bigint",
+          nullable: false,
+          has_default: true,
+          generated: false,
+          identity: true,
+          policy: { required_function: null, mask: null },
+        },
+        {
+          name: "customer_id",
+          type: "bigint",
+          nullable: false,
+          has_default: false,
+          generated: false,
+          identity: false,
+          policy: { required_function: null, mask: null },
+        },
+        {
+          name: "status",
+          type: "text",
+          nullable: false,
+          has_default: true,
+          generated: false,
+          identity: false,
+          policy: { required_function: null, mask: null },
+        },
+        {
+          name: "card_last4",
+          type: "text",
+          nullable: true,
+          has_default: false,
+          generated: false,
+          identity: false,
+          policy: { required_function: null, mask: "redact" },
+        },
       ],
       primary_key: ["id"],
-      foreign_keys_out: [{ columns: ["customer_id"], ref: { schema: "public", name: "customers" }, ref_columns: ["id"], deferrable: false }],
+      foreign_keys_out: [
+        {
+          columns: ["customer_id"],
+          ref: { schema: "public", name: "customers" },
+          ref_columns: ["id"],
+          deferrable: false,
+        },
+      ],
       foreign_keys_in: [{ from: { schema: "public", name: "order_items" }, columns: ["order_id"] }],
       unique: [["order_number"]],
       unsupported: [],
@@ -39,7 +78,13 @@ export const INTROSPECTION_MOCK: Introspection = {
 
 export const ROWS_PAGE_MOCK: RowsPage = {
   data: [
-    { id: "88213", customer_id: 5120, status: "paid", card_last4: "***", _display: { customer_id: "Dina Putri" } },
+    {
+      id: "88213",
+      customer_id: 5120,
+      status: "paid",
+      card_last4: "***",
+      _display: { customer_id: "Dina Putri" },
+    },
   ],
   page: { next_cursor: null, limit: 100, kind: "keyset" },
   columns: [

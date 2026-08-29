@@ -33,7 +33,8 @@ const FUNCTIONS = {
   hash_sha512: (input) => tools.hash({ algorithm: "sha512", value: input }),
   hmac_sha256: (input, params) => {
     const secret = v.parse(v.optional(v.string()), params?.["secret"]);
-    if (secret === undefined) throw new AppError("VALIDATION_ERROR", "hmac_sha256 needs params.secret");
+    if (secret === undefined)
+      throw new AppError("VALIDATION_ERROR", "hmac_sha256 needs params.secret");
     return tools.hash({ algorithm: "hmac_sha256", value: input, secret });
   },
 } satisfies Record<FunctionValue["name"], Applier>;
@@ -49,10 +50,14 @@ export function assertPolicies(values: Record<string, FormValue>, policies: Colu
     const value = values[policy.column];
     if (required === null || value === undefined) continue;
     if (value.kind !== "function" || value.name !== required.name) {
-      throw new AppError("VALIDATION_ERROR", `${policy.column} requires the ${required.name} function`, {
-        column: policy.column,
-        function: required.name,
-      });
+      throw new AppError(
+        "VALIDATION_ERROR",
+        `${policy.column} requires the ${required.name} function`,
+        {
+          column: policy.column,
+          function: required.name,
+        }
+      );
     }
   }
 }
@@ -86,7 +91,9 @@ export async function toRowOps(edits: RowEdit[], policies: ColumnPolicy[]): Prom
     }
     assertPolicies(edit.values, policies);
     const values = await resolveValues(edit.values);
-    ops.push(edit.kind === "insert" ? { kind: "insert", values } : { kind: "update", pk: edit.pk, values });
+    ops.push(
+      edit.kind === "insert" ? { kind: "insert", values } : { kind: "update", pk: edit.pk, values }
+    );
   }
   return ops;
 }

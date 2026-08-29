@@ -9,13 +9,25 @@ export type LookupRow = { key: JsonValue[]; display: string };
 export type LookupTarget = { table: TableSchema; keyColumns: string[]; display: string | null };
 
 /** The referenced table of an FK column, or `VALIDATION_ERROR` (06 §6.3). */
-export function lookupTarget(schema: Introspection, table: TableSchema, column: string, displayOverride: string | null): LookupTarget {
-  const fk = table.foreign_keys_out.find((item) => item.columns.length === 1 && item.columns[0] === column);
-  const target = fk === undefined ? undefined : schema.tables.find((item) => sameTable(item, fk.ref));
+export function lookupTarget(
+  schema: Introspection,
+  table: TableSchema,
+  column: string,
+  displayOverride: string | null
+): LookupTarget {
+  const fk = table.foreign_keys_out.find(
+    (item) => item.columns.length === 1 && item.columns[0] === column
+  );
+  const target =
+    fk === undefined ? undefined : schema.tables.find((item) => sameTable(item, fk.ref));
   if (fk === undefined || target === undefined) {
     throw new AppError("VALIDATION_ERROR", "not a foreign key column", { column });
   }
-  return { table: target, keyColumns: fk.ref_columns, display: displayOverride ?? target.display_column };
+  return {
+    table: target,
+    keyColumns: fk.ref_columns,
+    display: displayOverride ?? target.display_column,
+  };
 }
 
 /** Prefix on the key or the display column; the engine pages both with one `like` (24 §24.1). */
