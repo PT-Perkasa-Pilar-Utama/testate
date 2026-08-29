@@ -119,6 +119,22 @@ function emptyTable(row: v.InferOutput<typeof tableRow>, excluded: TableRef[]): 
   };
 }
 
+/**
+ * Types a snapshot cannot carry: a large object lives in `pg_largeobject`, and the column holds
+ * only its oid, so restoring the column would point at content the state never took (14 §14.1).
+ */
+const UNSUPPORTED_TYPES = new Map([
+  ["oid", "large object content lives outside the table; the state stores the reference only"],
+  ["lo", "large object content lives outside the table; the state stores the reference only"],
+]);
+
+function markUnsupported(table: TableSchema): void {
+  for (const column of table.columns) {
+    const reason = UNSUPPORTED_TYPES.get(column.type.toLowerCase());
+    if (reason !== undefined) table.unsupported.push({ column: column.name, reason });
+  }
+}
+
 function addColumns(byKey: Map<string, TableSchema>, columns: Rows): void {
   for (const row of v.parse(v.array(columnRow), [...columns])) {
     byKey.get(`${row.schema}.${row.table_name}`)?.columns.push({
@@ -176,7 +192,10 @@ export async function introspect(
   }
   addColumns(byKey, columns);
   for (const row of v.parse(v.array(constraintRow), [...constraints])) addConstraint(byKey, row);
-  for (const table of byKey.values()) table.display_column = displayColumn(table.columns);
+  for (const table of byKey.values()) {
+    table.display_column = displayColumn(table.columns);
+    markUnsupported(table);
+  }
   const introspection: Introspection = {
     tier: "tabular",
     fingerprint: "",

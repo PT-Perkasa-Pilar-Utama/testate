@@ -137,6 +137,15 @@ export function snapshot(sql: SQL, opts: SnapshotOptions): SnapshotRun {
       for (const [index, table] of introspection.tables.entries()) {
         if (table.excluded) continue;
         assertNotCancelled(opts.signal);
+        // A state that holds an unsupported column says so, every time (73).
+        for (const item of table.unsupported) {
+          warnings.push({
+            code: "unsupported_column",
+            table: table.name,
+            column: item.column,
+            message: item.reason,
+          });
+        }
         entries.push(yield* readCursor(conn, table, index, chunkRows, opts.signal, warnings));
       }
       resolveManifest({
