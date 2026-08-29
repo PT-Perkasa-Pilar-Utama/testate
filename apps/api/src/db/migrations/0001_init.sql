@@ -339,6 +339,7 @@ CREATE TABLE rest_requests (
   query TEXT NOT NULL DEFAULT '{}',
   headers TEXT NOT NULL DEFAULT '{}',
   headers_sealed TEXT,
+  secret_headers TEXT NOT NULL DEFAULT '[]',
   body TEXT,
   expected_status INTEGER,
   created_at TEXT NOT NULL,
@@ -355,6 +356,8 @@ CREATE TABLE rest_request_runs (
   duration_ms INTEGER,
   response_headers TEXT,
   response_body TEXT,
+  truncated INTEGER NOT NULL DEFAULT 0,
+  matched_expected INTEGER,
   error TEXT,
   created_at TEXT NOT NULL
 );

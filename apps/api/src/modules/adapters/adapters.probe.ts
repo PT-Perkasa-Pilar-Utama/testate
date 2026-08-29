@@ -1,6 +1,10 @@
 import type { Engine, FileProbeResult, JsonObject, ProbeResult } from "@testate/shared";
 
+import * as v from "valibot";
+
 import { toConnectionConfig } from "../../lib/engines/connection.ts";
+import { AppError } from "../../lib/http/index.ts";
+import { sendRequest } from "../rest/rest.client.ts";
 import type { EngineRegistry } from "../../lib/engines/index.ts";
 import { toAppError } from "../checkouts/checkouts.return-to-init.ts";
 import { TIER_OF_ENGINE } from "./adapters.config.ts";
@@ -63,7 +67,39 @@ export function createScaffoldProbe(): ProbeFn {
   };
 }
 
-/** SCAFFOLD: the storage and rest cards open a real connection; today the address check is the test. */
+const httpProbeConfig = v.object({
+  base_url: v.string(),
+  timeout_ms: v.optional(v.number(), 30000),
+  verify_tls: v.optional(v.boolean(), true),
+});
+
+/** REST adapters answer with any HTTP status; only a timeout or a connection error fails (10 §10.4). */
+export function createHttpProbe(fallback: FileProbeFn): FileProbeFn {
+  return async (engine, config, secrets) => {
+    if (engine !== "http") return fallback(engine, config, secrets);
+    const parsed = v.parse(httpProbeConfig, config);
+    try {
+      await sendRequest({
+        url: new URL(parsed.base_url),
+        method: "GET",
+        headers: {},
+        body: null,
+        timeoutMs: parsed.timeout_ms,
+        verifyTls: parsed.verify_tls,
+        bodyCapBytes: 0,
+      });
+    } catch (cause: unknown) {
+      const message = cause instanceof Error ? cause.message : String(cause);
+      throw new AppError("ADAPTER_UNREACHABLE", message);
+    }
+    const warnings: FileProbeResult["warnings"] = parsed.verify_tls
+      ? []
+      : [{ code: "tls_unverified", message: "TLS verification is off for this adapter" }];
+    return { engine, tier: TIER_OF_ENGINE[engine], reachable: true, warnings };
+  };
+}
+
+/** SCAFFOLD: the storage card opens a real connection for s3, sftp, and ftp; today the address check is the test. */
 export function createScaffoldFileProbe(): FileProbeFn {
   return async (engine) => ({
     engine,

@@ -52,5 +52,11 @@ export function createRestRouter(h: RestHandlers): Hono {
     describe("rest", "Recent runs", v.array(restRunSchema)),
     h.runs
   );
+  router.get(
+    `${P}/:rid/runs/:run_id`,
+    requireRole("viewer"),
+    describe("rest", "One run with its body", restRunSchema),
+    h.runDetail
+  );
   return router;
 }

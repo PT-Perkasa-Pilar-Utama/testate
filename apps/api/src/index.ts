@@ -14,10 +14,10 @@ import { Hono } from "hono";
 import {
   bootstrapAdmin,
   createEngineWiring,
-  checkoutsDeps,
+  createIntegrations,
   createJobsRuntime,
   createNetguard,
-  statesDeps,
+  createStateServices,
   createRetention,
   refuse,
   sweepSealed,
@@ -43,13 +43,11 @@ import { createAuthHandlers } from "./modules/auth/auth.handler.ts";
 import { createAuthRepository } from "./modules/auth/auth.repository.ts";
 import { createAuthService } from "./modules/auth/auth.service.ts";
 import { createCheckoutsHandlers } from "./modules/checkouts/checkouts.handler.ts";
-import { createCheckoutsService } from "./modules/checkouts/checkouts.service.ts";
 import { createDataHandlers } from "./modules/data/data.handler.ts";
 import { createDataService } from "./modules/data/data.service.ts";
 import { createDiffsHandlers } from "./modules/diffs/diffs.handler.ts";
 import { createDiffsService } from "./modules/diffs/diffs.service.ts";
 import { createHooksHandlers } from "./modules/hooks/hooks.handler.ts";
-import { createHooksService } from "./modules/hooks/hooks.service.ts";
 import { createImportsHandlers } from "./modules/imports/imports.handler.ts";
 import { createImportsService } from "./modules/imports/imports.service.ts";
 import { createV1 } from "./modules/index.ts";
@@ -62,11 +60,9 @@ import { createProjectsRepository } from "./modules/projects/projects.repository
 import { requireProjectInScope } from "./modules/projects/projects.scope.ts";
 import { createProjectsService } from "./modules/projects/projects.service.ts";
 import { createRestHandlers } from "./modules/rest/rest.handler.ts";
-import { createRestService } from "./modules/rest/rest.service.ts";
 import { createSettingsHandlers } from "./modules/settings/settings.handler.ts";
 import { createSettingsService } from "./modules/settings/settings.service.ts";
 import { createStatesHandlers } from "./modules/states/states.handler.ts";
-import { createStatesService } from "./modules/states/states.service.ts";
 import { createStorageHandlers } from "./modules/storage/storage.handler.ts";
 import { createStorageService } from "./modules/storage/storage.service.ts";
 import { createToolsHandlers } from "./modules/tools/tools.handler.ts";
@@ -154,14 +150,17 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   const settings = createSettingsService();
   const netguard = createNetguard(config, (await settings.get()).netguard.deny);
   const wiring = createEngineWiring(config, ring, db, netguard, projectsRepo);
-  const { jobs, dispatcher } = createJobsRuntime(db, logger, audit, config, now, wiring);
+  const { rest, hooks } = createIntegrations(wiring, projectsRepo, netguard, audit, now);
+  const { jobs, dispatcher } = createJobsRuntime(db, logger, audit, config, now, {
+    ...wiring,
+    hooks,
+  });
   // Steps 8 and 9 of 22 §22.2: recover interrupted jobs, then sweep old ones.
   const recovery = await jobs.recover();
   const historyDays = async (): Promise<number> =>
     (await settings.get()).retention.job_history_days;
   const data = createDataService();
-  const states = createStatesService(statesDeps(wiring, projectsRepo, jobs, audit, now));
-  const checkouts = createCheckoutsService(checkoutsDeps(wiring, projectsRepo, jobs, audit, now));
+  const { states, checkouts } = createStateServices(wiring, projectsRepo, jobs, audit, now);
   const diffs = createDiffsService();
   const storage = createStorageService();
   const adapters = createAdaptersService({
@@ -234,8 +233,8 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     checkouts: createCheckoutsHandlers(checkouts, prefix, config.TESTATE_TRUST_PROXY, jobs),
     diffs: createDiffsHandlers(diffs, prefix),
     storage: createStorageHandlers(storage),
-    rest: createRestHandlers(createRestService()),
-    hooks: createHooksHandlers(createHooksService()),
+    rest: createRestHandlers(rest),
+    hooks: createHooksHandlers(hooks, config.TESTATE_TRUST_PROXY),
     jobs: createJobsHandlers(jobs),
     audit: createAuditHandlers(audit),
     settings: createSettingsHandlers(settings, prefix),

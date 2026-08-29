@@ -19,6 +19,13 @@ import type { AdaptersRepository } from "../src/modules/adapters/adapters.reposi
 import { createAdaptersService } from "../src/modules/adapters/adapters.service.ts";
 import { createCheckoutsRepository } from "../src/modules/checkouts/checkouts.repository.ts";
 import type { CheckoutsRepository } from "../src/modules/checkouts/checkouts.repository.ts";
+import { createHooksRepository } from "../src/modules/hooks/hooks.repository.ts";
+import { createHooksService } from "../src/modules/hooks/hooks.service.ts";
+import type { HooksService } from "../src/modules/hooks/hooks.service.ts";
+import { createRestRepository } from "../src/modules/rest/rest.repository.ts";
+import type { RestRepository } from "../src/modules/rest/rest.repository.ts";
+import { createRestService } from "../src/modules/rest/rest.service.ts";
+import type { RestService } from "../src/modules/rest/rest.service.ts";
 import { createStatesRepository } from "../src/modules/states/states.repository.ts";
 import type { StatesRepository } from "../src/modules/states/states.repository.ts";
 import { registerRunners } from "../src/modules/jobs/jobs.runners.ts";
@@ -54,6 +61,18 @@ export const S3: AdapterDraft = {
   secrets: { access_key_id: "AKIA", secret_access_key: "s3-secret" },
 };
 
+/** A REST adapter draft against a local test server; secrets become default headers. */
+export function httpDraft(baseUrl: string): AdapterDraft {
+  return {
+    kind: "rest",
+    engine: "http",
+    name: "cache-api",
+    mode: "sandbox",
+    config: { base_url: baseUrl, timeout_ms: 2000, default_headers: { "X-Source": "testate" } },
+    secrets: { "X-Internal-Key": "hook-secret" },
+  };
+}
+
 export type AdaptersHarness = {
   adapters: AdaptersService;
   repo: AdaptersRepository;
@@ -71,6 +90,9 @@ export type AdaptersHarness = {
   states: StatesRepository;
   checkouts: CheckoutsRepository;
   engines: EngineRegistry;
+  rest: RestService;
+  requests: RestRepository;
+  hooks: HooksService;
   failCounters: { current: boolean };
   projectsRepo: AccountsHarness["projectsRepo"];
   db: AccountsHarness["db"];
@@ -172,6 +194,25 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
   const checkouts = createCheckoutsRepository(accounts.db);
   const failCounters = { current: false };
   const engines = fakeRegistry({ databases, failCounters });
+  const requests = createRestRepository(accounts.db);
+  const rest = createRestService({
+    repo: requests,
+    adapters: repo,
+    projects: accounts.projectsRepo,
+    ring,
+    netguard: stubNetguard(blocked),
+    now: accounts.now,
+    bodyCapBytes: 64,
+  });
+  const hooks = createHooksService({
+    repo: createHooksRepository(accounts.db),
+    rest,
+    requests,
+    adapters: repo,
+    projects: accounts.projectsRepo,
+    audit: accounts.audit,
+    now: accounts.now,
+  });
   registerRunners(runtime.dispatcher, {
     db: accounts.db,
     audit: accounts.audit,
@@ -182,6 +223,7 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     adapters: repo,
     states,
     checkouts,
+    hooks,
     projects: accounts.projectsRepo,
   });
   runtime.dispatcher.start();
@@ -217,6 +259,9 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     states,
     checkouts,
     engines,
+    rest,
+    requests,
+    hooks,
     failCounters,
     projectsRepo: accounts.projectsRepo,
     db: accounts.db,

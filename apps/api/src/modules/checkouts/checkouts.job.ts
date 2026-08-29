@@ -6,6 +6,8 @@ import type { AuditService } from "../audit/audit.service.ts";
 import type { AdapterRecord } from "../adapters/adapters.repository.ts";
 import type { JobRunner } from "../jobs/jobs.dispatcher.ts";
 import type { JobRecord } from "../jobs/jobs.repository.ts";
+import { HookAbort, hookResultsJson } from "../hooks/hooks.service.ts";
+import type { HookContext, HookRunResult, HookRunner } from "../hooks/hooks.service.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import type { SnapshotDeps } from "../states/states.snapshot.ts";
 import { takeStash } from "../states/states.stash.ts";
@@ -14,6 +16,7 @@ import { restoreFromManifest } from "./checkouts.restore.ts";
 
 export type CheckoutJobDeps = SnapshotDeps & {
   checkouts: CheckoutsRepository;
+  hooks: HookRunner;
   projects: Pick<ProjectsRepository, "setHead" | "byId" | "usedBytes">;
   audit: AuditService;
 };
@@ -98,9 +101,18 @@ function finish(
   });
 }
 
+function hookContextOf(deps: CheckoutJobDeps, job: JobRecord, stateId: string): HookContext {
+  const projectId = job.project_id ?? "";
+  const ctx: HookContext = { projectId, jobId: job.id, actor: job.actor };
+  const state = deps.states.byIdOrName(projectId, stateId);
+  if (state !== null) ctx.state = { id: state.id, name: state.name };
+  return ctx;
+}
+
 /**
- * The `checkout` job (13 §13.2): stash, restore each adapter, record results, move HEAD.
- * SCAFFOLD: `before_checkout` and `after_checkout` hooks run once the hooks card lands.
+ * The `checkout` job (13 §13.2): stash, `before_checkout` hooks (abort fails the job before any
+ * restore), restore each adapter, record results, `after_checkout` hooks (abort marks it partial),
+ * move HEAD.
  * ponytail: adapters restore one after another; parallel under the cap needs a per-job budget.
  */
 export function createCheckoutRunner(deps: CheckoutJobDeps): JobRunner {
@@ -113,6 +125,8 @@ export function createCheckoutRunner(deps: CheckoutJobDeps): JobRunner {
       const found = deps.adapters.byId(id);
       return found === null ? [] : [found];
     });
+    const hookCtx = hookContextOf(deps, job, payload.state_id);
+    const hooks: HookRunResult[] = [];
     try {
       if (!payload.retry) {
         progress({ phase: "stash" });
@@ -126,12 +140,26 @@ export function createCheckoutRunner(deps: CheckoutJobDeps): JobRunner {
         });
         deps.checkouts.setStash(checkout.id, stashId);
       }
+      progress({ phase: "hooks", trigger: "before_checkout" });
+      hooks.push(...(await deps.hooks.run("before_checkout", hookCtx)));
       const results = await restoreAll(deps, checkout.id, adapters, payload, signal, progress);
-      const status = statusOf(results);
+      let status = statusOf(results);
+      progress({ phase: "hooks", trigger: "after_checkout" });
+      try {
+        hooks.push(...(await deps.hooks.run("after_checkout", hookCtx)));
+      } catch (cause: unknown) {
+        if (!(cause instanceof HookAbort)) throw cause;
+        status = status === "failed" ? "failed" : "partial";
+      }
       finish(deps, job, checkout.id, payload, status);
       return {
         status: status === "partial" ? "partial" : "succeeded",
-        result: { checkout_id: checkout.id, status, adapters: results.length },
+        result: {
+          checkout_id: checkout.id,
+          status,
+          adapters: results.length,
+          hooks: hookResultsJson(hooks),
+        },
       };
     } catch (cause: unknown) {
       finish(deps, job, checkout.id, payload, signal.aborted ? "cancelled" : "failed");

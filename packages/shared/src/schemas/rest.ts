@@ -4,6 +4,7 @@ import { hookTriggerSchema } from "../enums.ts";
 import { idSchema, timestampSchema } from "./common.ts";
 
 export const httpMethodSchema = v.picklist(["GET", "POST", "PUT", "PATCH", "DELETE"]);
+export type HttpMethod = v.InferOutput<typeof httpMethodSchema>;
 
 export const restRequestBodySchema = v.object({
   name: v.pipe(v.string(), v.minLength(1), v.maxLength(80)),
