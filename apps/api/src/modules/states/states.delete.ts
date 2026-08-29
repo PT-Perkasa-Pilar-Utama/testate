@@ -17,7 +17,6 @@ const payloadSchema = v.object({ state_id: v.string(), name: v.string(), slug: v
 /**
  * The `state_delete` job (15 §15.4): metadata transaction first, then the blobs nobody references
  * and no job pins. HEAD drops to `none` when the deleted state was HEAD (08 §8.6).
- * SCAFFOLD: diffs that reference the state are removed by the diffs card.
  */
 export function createStateDeleteRunner(deps: DeleteDeps): JobRunner {
   return async ({ job, progress }) => {

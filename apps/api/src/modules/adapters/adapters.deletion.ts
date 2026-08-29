@@ -34,7 +34,6 @@ export function createDeletionPlans(
   return {
     plan(adapter) {
       for (const [planId, stored] of plans) if (stored.expires_at <= nowIso()) plans.delete(planId);
-      // SCAFFOLD: reachability, init-state lookup, and drift land with the engine cards.
       const skip = adapter.kind !== "database" || adapter.mode === "read_only";
       const plan: StoredPlan = {
         plan_id: Bun.randomUUIDv7(),

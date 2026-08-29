@@ -86,7 +86,7 @@ function quotaOf(project: Project, settings: Settings, used: number, instanceUse
   };
 }
 
-/** SCAFFOLD: reachability, init-state lookup, and drift land with the adapters and engine cards. */
+/** The deletion plan per adapter (05 §5.4); reachability and drift come from the adapters service. */
 function planFor(adapter: AdapterSummary): PlanAdapter {
   const base = {
     adapter_id: adapter.id,

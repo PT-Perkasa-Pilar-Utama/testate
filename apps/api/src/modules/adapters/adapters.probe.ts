@@ -99,7 +99,7 @@ export function createHttpProbe(fallback: FileProbeFn): FileProbeFn {
   };
 }
 
-/** SCAFFOLD: the storage card opens a real connection for s3, sftp, and ftp; today the address check is the test. */
+/** Fallback for a file engine outside the registry; every storage engine probes for real through `createFileProbe`. */
 export function createScaffoldFileProbe(): FileProbeFn {
   return async (engine) => ({
     engine,

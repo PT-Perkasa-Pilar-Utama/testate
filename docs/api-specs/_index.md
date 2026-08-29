@@ -27,8 +27,8 @@ Legend: `OK` implemented and tested · `WIP` in progress · `TODO` not started �
 | Checkouts | `POST .../checkouts/preflight`, `POST .../checkouts`, `GET .../checkouts`, `GET .../checkouts/{id}`, `POST .../retry`, `POST .../terminate-blockers`, `GET .../counters`, `POST .../repair-counters` | OK except terminate-blockers (SCAFFOLD) |
 | Diffs | `POST .../diffs`, `GET .../diffs`, `GET .../diffs/{id}`, `GET .../rows`, `GET .../export`, `DELETE` | OK |
 | Storage | `GET .../entries`, `GET .../entries/stat`, `GET .../entries/preview`, `GET .../entries/download`, `POST .../host-key/accept` | Real (S3 via `Bun.S3Client`, SFTP via ssh2, FTP via basic-ftp; host-key TOFU and accept; 5 MB preview cap) |
-| REST requests | requests CRUD, `POST .../run`, `GET .../runs` | SCAFFOLD |
-| Hooks | `GET/POST .../hooks`, `PATCH/DELETE .../hooks/{id}`, `PUT .../hooks/order` | SCAFFOLD |
+| REST requests | requests CRUD, `POST .../run`, `GET .../runs` | OK (placeholders, sealed headers, no redirects, body cap) |
+| Hooks | `GET/POST .../hooks`, `PATCH/DELETE .../hooks/{id}`, `PUT .../hooks/order` | OK (after_snapshot, before/after_checkout, after_import wired) |
 | Jobs | `GET /jobs`, `GET /jobs/{id}`, `POST /jobs/{id}/cancel`, `GET /jobs/{id}/events` | OK |
 | Audit logs | `GET /audit-logs`, `GET /audit-logs/export` | OK |
 | Settings | `GET /settings`, `PATCH /settings`, `POST /settings/store-migration`, `POST /settings/backup`, `GET /settings/backups/{job_id}` | OK: sealed `store.s3` keys, `storage_migration` job (S3 store via `Bun.S3Client`); `backup` job to a 24-hour download tar or the store, with download |
