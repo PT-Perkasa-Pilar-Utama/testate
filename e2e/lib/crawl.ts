@@ -33,6 +33,8 @@ const SKIP = new Set([
   "New diff",
   "New hook",
   "New import",
+  "Migrate store",
+  "Run backup",
   "Re-import rejected",
   "Move up",
   "Move down",

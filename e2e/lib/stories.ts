@@ -39,7 +39,6 @@ const NO_SCREEN: [number, number][] = [
   // 85: no engine reports blocking session ids yet, so the SPA has nothing to terminate.
   [85, 85],
   [107, 107],
-  [118, 120],
 ];
 
 function inRanges(id: number, ranges: [number, number][]): boolean {
