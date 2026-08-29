@@ -197,7 +197,11 @@ describe("data", () => {
       h.data.removePolicy(h.harness.qa, h.adapterId, "public.customers", "email", TEST_META)
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(h.data.lookup(h.adapterId, "public.orders", "total", "", 20)).rejects.toThrow("not a foreign key column");
-    await expect(h.data.lookup(h.adapterId, "public.orders", "customer_id", "", 20)).rejects.toThrow("not a foreign key column");
+    const found = await h.data.lookup(h.adapterId, "public.orders", "customer_id", "", 20);
+    expect(found).toEqual([
+      { key: [1], display: "a@x.io" },
+      { key: [2], display: "b@x.io" },
+    ]);
   });
 
   it("extracts a fixture with parents in dependency order, masked for viewers", async () => {
@@ -205,10 +209,15 @@ describe("data", () => {
     await h.data.upsertPolicy(h.harness.qa, h.adapterId, "public.customers", "email", { required_function: null, mask: "redact", display: false }, TEST_META);
     const request = { table: "public.orders", pk: { id: 1 }, depth: 2, direction: "parents" as const, format: "sql" as const };
     const fixture = await h.data.fixture(h.viewer, h.adapterId, request, TEST_META);
-    expect(fixture).toMatchObject({ rows: 1, tables: ["public.orders"], truncated: false, masked_columns: [] });
+    expect(fixture).toMatchObject({
+      rows: 2,
+      tables: ["public.customers", "public.orders"],
+      truncated: false,
+      masked_columns: ["public.customers.email"],
+    });
     expect(fixture.content).toContain('INSERT INTO "public"."orders"');
     const json = await h.data.fixture(h.harness.qa, h.adapterId, { ...request, format: "json" }, TEST_META);
-    expect(JSON.parse(json.content).tables[0].rows).toEqual([{ id: 1, customer_id: 1, total: "10.00" }]);
+    expect(JSON.parse(json.content).tables[1].rows).toEqual([{ id: 1, customer_id: 1, total: "10.00" }]);
     await expect(h.data.fixture(h.viewer, h.adapterId, { ...request, pk: { id: 99 } }, TEST_META)).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 

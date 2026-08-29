@@ -33,7 +33,7 @@ Legend: `OK` implemented and tested · `WIP` in progress · `TODO` not started �
 | Audit logs | `GET /audit-logs`, `GET /audit-logs/export` | OK |
 | Settings | `GET /settings`, `PATCH /settings`, `POST /settings/store-migration`, `POST /settings/backup`, `GET /settings/backups/{job_id}` | OK except store-migration, backup, backup download (SCAFFOLD) |
 | Tools | `POST /tools/hash`, `POST /tools/random`, `POST /tools/uuid` | OK |
-| Agent (MCP) | `POST /mcp`, `GET /mcp`: `initialize`, `tools/list`, `tools/call` (13 tools), `resources/list`, `resources/read`, `ping` | SCAFFOLD |
+| Agent (MCP) | `POST /mcp`, `GET /mcp`: `initialize`, `tools/list`, `tools/call` (13 tools), `resources/list`, `resources/read`, `ping` | Real (per-token rate limit, scope, masks; `list_files`/`preview_file` wait on the storage card) |
 | System | `GET /health`, `GET /health/live`, `GET /health/ready`, `POST /admin/reset-state` (non-production), `GET /openapi.json`, `GET /docs` | OK |
 
 ## Files in This Directory

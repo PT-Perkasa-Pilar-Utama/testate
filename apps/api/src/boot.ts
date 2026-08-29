@@ -2,6 +2,7 @@
  * Boot helpers the composition root calls in order (22 §22.2). Wiring only; each step's rule
  * lives in the library or module it calls.
  */
+import type { App } from "./index.ts";
 import { networkInterfaces } from "node:os";
 
 import { ConfigError } from "./lib/config/index.ts";
@@ -168,4 +169,22 @@ export function refuse(cause: unknown): never {
   if (!(cause instanceof ConfigError) && !(cause instanceof SealedConfigError)) throw cause;
   process.stderr.write(`${RULE}\nTestate refused to start\n${cause.message}\n${RULE}\n`);
   process.exit(78);
+}
+
+/** Listens, starts the timers, and drains on SIGTERM/SIGINT (22 §22.2 step 10). */
+export function serve(app: App): void {
+  const server = Bun.serve({ port: app.port, fetch: app.fetch });
+  app.start();
+  let stopping = false;
+  const shutdown = (): void => {
+    if (stopping) return;
+    stopping = true;
+    server.stop();
+    void (async (): Promise<void> => {
+      await app.close();
+      process.exit(0);
+    })();
+  };
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
 }

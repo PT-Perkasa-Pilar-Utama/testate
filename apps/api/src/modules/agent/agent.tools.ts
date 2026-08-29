@@ -1,125 +1,115 @@
-import type { Actor, JsonObject, JsonValue } from "@testate/shared";
-import { jsonValueSchema } from "@testate/shared";
-import * as v from "valibot";
+import type { JsonObject, Project } from "@testate/shared";
 
-import { AppError } from "../../lib/http/index.ts";
-import type { AdaptersService } from "../adapters/adapters.service.ts";
-import type { DataService } from "../data/data.service.ts";
-import type { DiffsService } from "../diffs/diffs.service.ts";
-import type { ProjectsService } from "../projects/projects.service.ts";
-import type { RequestMeta } from "../../lib/http/auth.ts";
-import type { StatesService } from "../states/states.service.ts";
-import type { StatesFilter } from "../states/states.repository.ts";
+import { AppError, notFound } from "../../lib/http/index.ts";
+import { sha256 } from "../../lib/password/index.ts";
+import type { AdapterRecord } from "../adapters/adapters.repository.ts";
+import type { AgentToolDeps, Scope } from "./agent.catalog.ts";
+import { json, tools } from "./agent.catalog.ts";
+import type { AgentContext, AgentRuntime, Resource } from "./agent.service.ts";
 
-const AGENT_STATES_FILTER: StatesFilter = {
-  limit: 50,
-  sort: "created_at",
-  order: "desc",
-  includeStash: false,
-};
-import type { StorageService } from "../storage/storage.service.ts";
-import type { ToolRunner } from "./agent.service.ts";
+export type { AgentToolDeps } from "./agent.catalog.ts";
+export { AGENT_CAPS } from "./agent.catalog.ts";
 
-export type AgentToolDeps = {
-  projects: ProjectsService;
-  adapters: AdaptersService;
-  data: DataService;
-  states: StatesService;
-  diffs: DiffsService;
-  storage: StorageService;
-};
+/** What one call resolved, so its audit row names the project and adapter. */
+type Seen = { project?: Project; adapter?: AdapterRecord };
 
-/** The agent actor: viewer role, agent flag on, so every read path applies masks and lower caps. */
-/** Agent calls carry no HTTP context yet; the agent card threads the real request through (23 §23.1). */
-const AGENT_META: RequestMeta = { ip: "", user_agent: "mcp", request_id: null };
+type AuditEntry = Parameters<AgentToolDeps["audit"]["record"]>[0];
 
-const AGENT_ACTOR: Actor = {
-  kind: "token",
-  id: "01991f00-0000-7000-8000-0000000000a0",
-  label: "token:agent",
-  role: "viewer",
-  agent: true,
-};
-
-type Tool = (args: JsonObject) => Promise<JsonValue>;
-type TableTools = { list_tables: Tool; describe_table: Tool };
-
-function text(args: JsonObject, key: string): string {
-  return v.parse(v.string(`${key} is required`), args[key]);
-}
-
-function json<T>(value: T): JsonValue {
-  return v.parse(jsonValueSchema, value);
-}
-
-function tableTools(data: DataService): TableTools {
-  return {
-    list_tables: async (args) => {
-      const schema = await data.schema(text(args, "adapter"));
-      return json(
-        schema.tables.map((table) => ({
-          schema: table.schema,
-          name: table.name,
-          row_estimate: table.row_estimate,
-          primary_key: table.primary_key,
-        }))
-      );
+/** Maps MCP tool names to the read paths of the modules; every call is scoped and audited (23 §23.1). */
+export function createAgentTools(deps: AgentToolDeps): AgentRuntime {
+  const registry = tools(deps);
+  const scopeFor = (ctx: AgentContext, seen: Seen): Scope => ({
+    project(slug) {
+      const project = deps.projectsRepo.bySlug(slug);
+      if (project === null || (ctx.scope !== null && !ctx.scope.includes(project.id)))
+        throw notFound("project");
+      seen.project = project;
+      return project;
     },
-    describe_table: async (args) => {
-      const schema = await data.schema(text(args, "adapter"));
-      const wanted = text(args, "table");
-      const table = schema.tables.find((item) => `${item.schema}.${item.name}` === wanted);
-      if (table === undefined) throw new AppError("NOT_FOUND", "table not found");
-      return json(table);
+    adapter(project, ref) {
+      const adapter = deps.adaptersRepo
+        .list(project.id, {})
+        .find((item) => item.id === ref || item.name === ref);
+      if (adapter === undefined) throw notFound("adapter");
+      seen.adapter = adapter;
+      return adapter;
     },
+  });
+  const record = (
+    ctx: AgentContext,
+    name: string,
+    args: JsonObject,
+    seen: Seen,
+    outcome: "succeeded" | "failed"
+  ): void => {
+    const entry: AuditEntry = {
+      actor: ctx.actor,
+      action: "agent.tool_call",
+      target_type: "tool",
+      target_id: name,
+      details: { tool: name, arguments_hash: sha256(JSON.stringify(args)) },
+      outcome,
+      meta: ctx.meta,
+    };
+    if (seen.project !== undefined)
+      entry.project = { id: seen.project.id, slug: seen.project.slug };
+    if (seen.adapter !== undefined)
+      entry.adapter = { id: seen.adapter.id, name: seen.adapter.name };
+    deps.audit.record(entry);
   };
-}
-
-/** Maps MCP tool names to the read paths of the modules. No write path is reachable from here. */
-export function createAgentTools(deps: AgentToolDeps): ToolRunner {
-  const tools = new Map<string, Tool>(
-    Object.entries({
-      // SCAFFOLD: the agent card threads the token's project scope into these reads (23 §23.1).
-      list_projects: async () =>
-        json(await deps.projects.list(null, { limit: 200, sort: "name", order: "asc" })),
-      list_adapters: async (args) => json(await deps.adapters.list(text(args, "project"), {})),
-      ...tableTools(deps.data),
-      page_rows: async (args) =>
-        json(await deps.data.rows(AGENT_ACTOR, text(args, "adapter"), text(args, "table"))),
-      get_row: async (args) =>
-        json(await deps.data.rows(AGENT_ACTOR, text(args, "adapter"), text(args, "table"))),
-      run_readonly_query: async (args) =>
-        json(
-          await deps.data.query(AGENT_ACTOR, text(args, "adapter"), {
-            dialect: "sql",
-            text: text(args, "sql"),
-            mode: "read",
+  return {
+    async runTool(name, args, ctx) {
+      const tool = registry.get(name);
+      if (tool === undefined) throw new AppError("NOT_FOUND", `unknown tool ${name}`);
+      const seen: Seen = {};
+      try {
+        const result = await tool(args, ctx, scopeFor(ctx, seen));
+        record(ctx, name, args, seen, "succeeded");
+        return result;
+      } catch (cause: unknown) {
+        record(ctx, name, args, seen, "failed");
+        throw cause;
+      }
+    },
+    async listResources(ctx) {
+      const resources: Resource[] = [];
+      for (const project of await deps.projects.list(ctx.scope, {
+        limit: 200,
+        sort: "name",
+        order: "asc",
+      })) {
+        resources.push({
+          uri: `testate://projects/${project.slug}/states`,
+          name: `${project.slug} states`,
+          mimeType: "application/json",
+        });
+        for (const adapter of deps.adaptersRepo.list(project.id, {})) {
+          if (adapter.kind !== "database") continue;
+          resources.push({
+            uri: `testate://projects/${project.slug}/adapters/${adapter.id}/schema`,
+            name: `${project.slug}/${adapter.name} schema`,
+            mimeType: "application/json",
+          });
+        }
+      }
+      return resources;
+    },
+    async readResource(uri, ctx) {
+      const match = /^testate:\/\/projects\/([^/]+)\/(states|adapters\/([^/]+)\/schema)$/.exec(uri);
+      if (match === null) throw notFound("resource");
+      const seen: Seen = {};
+      const scope = scopeFor(ctx, seen);
+      const project = scope.project(match[1] ?? "");
+      if (match[2] === "states")
+        return json(
+          await deps.states.list(project.slug, {
+            limit: 200,
+            sort: "created_at",
+            order: "desc",
+            includeStash: false,
           })
-        ),
-      extract_fixture: async (args) =>
-        json(
-          await deps.data.fixture(
-            AGENT_ACTOR,
-            text(args, "adapter"),
-            { table: text(args, "table"), pk: {}, depth: 2, direction: "parents", format: "sql" },
-            AGENT_META
-          )
-        ),
-      list_states: async (args) =>
-        json(await deps.states.list(text(args, "project"), AGENT_STATES_FILTER)),
-      get_state: async (args) =>
-        json(await deps.states.get(text(args, "project"), text(args, "state"))),
-      diff_summary: async (args) =>
-        json(await deps.diffs.get(text(args, "project"), text(args, "diff"))),
-      list_files: async (args) =>
-        json(await deps.storage.list(text(args, "adapter"), undefined, undefined)),
-      preview_file: async (args) =>
-        json(await deps.storage.preview(text(args, "adapter"), text(args, "path"))),
-    } satisfies Record<string, Tool>)
-  );
-  return async (name, args) => {
-    const tool = tools.get(name);
-    if (tool === undefined) throw new AppError("NOT_FOUND", `unknown tool ${name}`);
-    return tool(args);
+        );
+      return json(await deps.data.schema(scope.adapter(project, match[3] ?? "").id));
+    },
   };
 }

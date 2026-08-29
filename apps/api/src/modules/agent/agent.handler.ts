@@ -1,13 +1,50 @@
+import type { Settings } from "@testate/shared";
 import { jsonValueSchema } from "@testate/shared";
 import * as v from "valibot";
 
+import { currentActor, requestMeta } from "../../lib/http/auth.ts";
 import type { Handler } from "../../lib/http/index.ts";
-import type { AgentService, ToolRunner } from "./agent.service.ts";
-import { ERR_PARSE } from "./agent.service.ts";
+import type { AgentContext, AgentRuntime, AgentService } from "./agent.service.ts";
+import { ERR_PARSE, ERR_RATE_LIMITED } from "./agent.service.ts";
 
 export type AgentHandlers = { post: Handler; get: Handler };
 
-export function createAgentHandlers(service: AgentService, runTool: ToolRunner): AgentHandlers {
+export type AgentHandlerDeps = {
+  settings: { get(): Promise<Settings> };
+  trustProxy: boolean;
+  now: () => Date;
+};
+
+const WINDOW_MS = 60 * 1000;
+const methodOf = v.object({
+  method: v.optional(v.string()),
+  params: v.optional(v.object({ name: v.optional(v.string()) })),
+});
+
+/** Sliding one-minute window per token (18 §18.1); the map forgets idle tokens on its next sweep. */
+export function createRateLimiter(
+  now: () => Date
+): (tokenId: string, perMinute: number) => number | null {
+  const calls = new Map<string, number[]>();
+  return (tokenId, perMinute) => {
+    const at = now().getTime();
+    const recent = (calls.get(tokenId) ?? []).filter((stamp) => at - stamp < WINDOW_MS);
+    if (recent.length >= perMinute) {
+      calls.set(tokenId, recent);
+      return Math.ceil((WINDOW_MS - (at - (recent[0] ?? at))) / 1000);
+    }
+    recent.push(at);
+    calls.set(tokenId, recent);
+    return null;
+  };
+}
+
+export function createAgentHandlers(
+  service: AgentService,
+  runtime: AgentRuntime,
+  deps: AgentHandlerDeps
+): AgentHandlers {
+  const limiter = createRateLimiter(deps.now);
   return {
     post: async (c) => {
       const raw = v.safeParse(jsonValueSchema, await c.req.json().catch(() => undefined));
@@ -17,8 +54,40 @@ export function createAgentHandlers(service: AgentService, runTool: ToolRunner):
           { status: 200 }
         );
       }
-      c.get("event").add("op", { name: "mcp" });
-      const response = await service.handle(raw.output, runTool);
+      const actor = currentActor(c);
+      const ctx: AgentContext = {
+        actor,
+        scope: c.get("projectScope"),
+        meta: requestMeta(c, deps.trustProxy),
+      };
+      const envelope = v.safeParse(methodOf, raw.output);
+      const tool = envelope.success ? envelope.output.params?.name : undefined;
+      c.get("event").add("op", {
+        name:
+          tool === undefined
+            ? `mcp:${envelope.success ? (envelope.output.method ?? "?") : "?"}`
+            : `mcp:${tool}`,
+      });
+      const retryAfter = limiter(
+        actor.id,
+        (await deps.settings.get()).limits.agent_requests_per_minute
+      );
+      if (retryAfter !== null) {
+        c.header("Retry-After", String(retryAfter));
+        return c.json(
+          {
+            jsonrpc: "2.0",
+            id: null,
+            error: {
+              code: ERR_RATE_LIMITED,
+              message: "rate limited",
+              data: { retry_after: retryAfter },
+            },
+          },
+          { status: 429 }
+        );
+      }
+      const response = await service.handle(raw.output, runtime, ctx);
       if (response === null) return c.body(null, 202);
       return c.json(response, { status: 200 });
     },

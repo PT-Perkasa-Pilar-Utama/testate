@@ -17,6 +17,7 @@ import {
   createNetguard,
   createRetention,
   refuse,
+  serve,
   sweepSealed,
 } from "./boot.ts";
 import {
@@ -240,7 +241,16 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     tools: createToolsHandlers(createToolsService()),
     agent: createAgentHandlers(
       createAgentService(VERSION),
-      createAgentTools({ projects, adapters, storage, ...core })
+      createAgentTools({
+        projects,
+        projectsRepo,
+        adapters,
+        adaptersRepo: wiring.adapters,
+        storage,
+        audit,
+        ...core,
+      }),
+      { settings, trustProxy: config.TESTATE_TRUST_PROXY, now }
     ),
   };
 
@@ -307,20 +317,4 @@ async function bootOrRefuse(): Promise<App> {
   }
 }
 
-if (import.meta.main) {
-  const app = await bootOrRefuse();
-  const server = Bun.serve({ port: app.port, fetch: app.fetch });
-  app.start();
-  let stopping = false;
-  const shutdown = (): void => {
-    if (stopping) return;
-    stopping = true;
-    server.stop();
-    void (async (): Promise<void> => {
-      await app.close();
-      process.exit(0);
-    })();
-  };
-  process.on("SIGTERM", shutdown);
-  process.on("SIGINT", shutdown);
-}
+if (import.meta.main) serve(await bootOrRefuse());
