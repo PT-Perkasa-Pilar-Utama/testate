@@ -22,6 +22,7 @@ import { registerRunners } from "./modules/jobs/jobs.runners.ts";
 import type { RunnerDeps } from "./modules/jobs/jobs.runners.ts";
 import { createLocalBlobStore } from "./lib/blobstore/index.ts";
 import { createEngineRegistry } from "./lib/engines/index.ts";
+import { check as netguardCheck, parseDenyList } from "./lib/netguard/index.ts";
 import type { Netguard } from "./lib/engines/index.ts";
 import {
   createEngineProbe,
@@ -31,6 +32,8 @@ import {
 import type { FileProbeFn, ProbeFn } from "./modules/adapters/adapters.probe.ts";
 import { createAdaptersRepository } from "./modules/adapters/adapters.repository.ts";
 import type { ProjectsRepository } from "./modules/projects/projects.repository.ts";
+import { createCheckoutsRepository } from "./modules/checkouts/checkouts.repository.ts";
+import type { CheckoutsDeps } from "./modules/checkouts/checkouts.service.ts";
 import { createStatesRepository } from "./modules/states/states.repository.ts";
 import type { StatesDeps } from "./modules/states/states.service.ts";
 import { createJobsService } from "./modules/jobs/jobs.service.ts";
@@ -44,6 +47,13 @@ export type SealedBoot = { reSealed: number; unreadable: Unreadable[]; banner: s
 export type Bootstrap = { bootstrapped: boolean; bootstrap: (() => Promise<boolean>) | null };
 
 /** Every address this process listens on, so an adapter cannot point Testate at itself (18 §18.1). */
+/** The outbound address policy every engine connect passes through (18 §18.2). */
+export function createNetguard(config: Config, deny: readonly string[]): Netguard {
+  const denyList = parseDenyList(deny);
+  const self = { addresses: ownAddresses(), port: config.PORT };
+  return { check: (input) => netguardCheck(input, denyList, self) };
+}
+
 export function ownAddresses(): string[] {
   return Object.values(networkInterfaces())
     .flat()
@@ -147,6 +157,7 @@ export function createEngineWiring(
     ring,
     adapters: createAdaptersRepository(db),
     states: createStatesRepository(db),
+    checkouts: createCheckoutsRepository(db),
     projects,
   };
 }
@@ -160,6 +171,16 @@ export function statesDeps(
   now: () => Date
 ): StatesDeps {
   return { repo: wiring.states, projects, adapters: wiring.adapters, jobs, audit, now };
+}
+
+export function checkoutsDeps(
+  wiring: EngineWiring,
+  projects: ProjectsRepository,
+  jobs: JobsService,
+  audit: AuditService,
+  now: () => Date
+): CheckoutsDeps {
+  return { ...wiring, repo: wiring.checkouts, projects, jobs, audit, now };
 }
 
 export type Retention = { start(): void; stop(): void };

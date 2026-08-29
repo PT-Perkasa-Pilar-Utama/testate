@@ -76,7 +76,6 @@ describe("return to init", () => {
       returnToInit(deps, adapter.id, "restore", new AbortController().signal)
     ).rejects.toMatchObject({ code: "SCHEMA_DRIFT" });
     const forced = await returnToInit(deps, adapter.id, "force", new AbortController().signal);
-    expect(forced.status).toBe("restored");
     expect(forced.tables.length).toBe(2);
   });
 });

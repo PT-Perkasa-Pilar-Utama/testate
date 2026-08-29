@@ -24,7 +24,7 @@ Legend: `OK` implemented and tested · `WIP` in progress · `TODO` not started �
 | Data | `GET .../schema`, `GET .../tables/{table}/rows`, `GET .../lookup`, `POST .../write-sessions`, `PATCH/DELETE .../write-sessions/{sid}`, `POST .../row-edits`, `POST .../query`, `POST .../query/export`, `GET .../queries`, `DELETE .../queries/{query_id}`, saved queries, `GET .../query-history`, policies, `POST .../fixture` | SCAFFOLD |
 | Imports | `POST .../uploads`, `POST .../imports/preview`, mappings, `POST .../imports`, `GET .../imports`, `GET .../imports/{run_id}`, `GET .../rejected`, `GET .../tables/{table}/sample` | SCAFFOLD |
 | States | `GET .../states`, `GET .../states/tree`, `POST .../states`, `GET .../states/{id}`, `PATCH`, `DELETE`, `GET .../archive`, `GET .../uploads/{upload_id}/archive-manifest`, `POST .../states/import` | OK except archive download, archive-manifest, import (SCAFFOLD) |
-| Checkouts | `POST .../checkouts/preflight`, `POST .../checkouts`, `GET .../checkouts`, `GET .../checkouts/{id}`, `POST .../retry`, `POST .../terminate-blockers`, `GET .../counters`, `POST .../repair-counters` | SCAFFOLD routes; return-to-init real (Postgres) |
+| Checkouts | `POST .../checkouts/preflight`, `POST .../checkouts`, `GET .../checkouts`, `GET .../checkouts/{id}`, `POST .../retry`, `POST .../terminate-blockers`, `GET .../counters`, `POST .../repair-counters` | OK except terminate-blockers (SCAFFOLD) |
 | Diffs | `POST .../diffs`, `GET .../diffs`, `GET .../diffs/{id}`, `GET .../rows`, `GET .../export`, `DELETE` | SCAFFOLD |
 | Storage | `GET .../entries`, `GET .../entries/stat`, `GET .../entries/preview`, `GET .../entries/download`, `POST .../host-key/accept` | SCAFFOLD |
 | REST requests | requests CRUD, `POST .../run`, `GET .../runs` | SCAFFOLD |

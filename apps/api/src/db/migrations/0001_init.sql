@@ -227,6 +227,7 @@ CREATE TABLE checkout_adapters (
   skipped_tables TEXT NOT NULL DEFAULT '[]',
   skipped_columns TEXT NOT NULL DEFAULT '[]',
   defaulted_columns TEXT NOT NULL DEFAULT '[]',
+  counters TEXT NOT NULL DEFAULT '[]',
   error TEXT,
   PRIMARY KEY (checkout_id, adapter_id)
 );

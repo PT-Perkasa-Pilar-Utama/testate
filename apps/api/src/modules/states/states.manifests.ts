@@ -29,6 +29,8 @@ export type ManifestStore = {
   commitManifest(stateId: string, manifests: AdapterManifest[], at: string): number;
   /** The latest ready `init` state that covers an adapter (13 §13.7). */
   latestInit(adapterId: string): InitManifest | null;
+  /** Every adapter manifest of one state, removed adapters included (13 §13.2). */
+  manifestsOf(stateId: string): AdapterManifest[];
 };
 
 const manifestRow = v.object({
@@ -48,6 +50,22 @@ const manifestRow = v.object({
 });
 
 const sizeRow = v.object({ n: v.number() });
+
+function toManifest(parsed: v.InferOutput<typeof manifestRow>): AdapterManifest {
+  return {
+    adapter_id: parsed.adapter_id,
+    adapter_name: parsed.adapter_name,
+    engine: parsed.engine,
+    engine_version: parsed.engine_version,
+    fingerprint: parsed.fingerprint,
+    consistency: parsed.consistency,
+    tables: v.parse(v.array(manifestTableSchema), JSON.parse(parsed.tables)),
+    introspection: v.parse(introspectionSchema, JSON.parse(parsed.introspection)),
+    row_count: parsed.row_count,
+    byte_count: parsed.byte_count,
+    warnings: v.parse(v.array(engineWarningSchema), JSON.parse(parsed.warnings)),
+  };
+}
 
 export function createManifestStore(db: MetadataDb): ManifestStore {
   const count = (sql: string, ...params: (string | number)[]): number =>
@@ -124,20 +142,17 @@ export function createManifestStore(db: MetadataDb): ManifestStore {
       return {
         state_id: parsed.state_id,
         state_name: parsed.state_name,
-        manifest: {
-          adapter_id: parsed.adapter_id,
-          adapter_name: parsed.adapter_name,
-          engine: parsed.engine,
-          engine_version: parsed.engine_version,
-          fingerprint: parsed.fingerprint,
-          consistency: parsed.consistency,
-          tables: v.parse(v.array(manifestTableSchema), JSON.parse(parsed.tables)),
-          introspection: v.parse(introspectionSchema, JSON.parse(parsed.introspection)),
-          row_count: parsed.row_count,
-          byte_count: parsed.byte_count,
-          warnings: v.parse(v.array(engineWarningSchema), JSON.parse(parsed.warnings)),
-        },
+        manifest: toManifest(parsed),
       };
+    },
+    manifestsOf(stateId) {
+      const rows = db
+        .query(
+          `SELECT s.id AS state_id, s.name AS state_name, sa.* FROM state_adapters sa
+           JOIN states s ON s.id = sa.state_id WHERE sa.state_id = ? ORDER BY sa.adapter_name`
+        )
+        .all(stateId);
+      return v.parse(v.array(manifestRow), rows).map(toManifest);
     },
   };
 }

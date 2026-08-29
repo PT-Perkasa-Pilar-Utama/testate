@@ -17,6 +17,8 @@ import {
 import { createAdaptersRepository } from "../src/modules/adapters/adapters.repository.ts";
 import type { AdaptersRepository } from "../src/modules/adapters/adapters.repository.ts";
 import { createAdaptersService } from "../src/modules/adapters/adapters.service.ts";
+import { createCheckoutsRepository } from "../src/modules/checkouts/checkouts.repository.ts";
+import type { CheckoutsRepository } from "../src/modules/checkouts/checkouts.repository.ts";
 import { createStatesRepository } from "../src/modules/states/states.repository.ts";
 import type { StatesRepository } from "../src/modules/states/states.repository.ts";
 import { registerRunners } from "../src/modules/jobs/jobs.runners.ts";
@@ -67,6 +69,9 @@ export type AdaptersHarness = {
   databases: Map<string, FakeDatabase>;
   blobs: BlobStore;
   states: StatesRepository;
+  checkouts: CheckoutsRepository;
+  engines: EngineRegistry;
+  failCounters: { current: boolean };
   projectsRepo: AccountsHarness["projectsRepo"];
   db: AccountsHarness["db"];
   now: () => Date;
@@ -164,15 +169,19 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
   const databases = new Map<string, FakeDatabase>([["shop", shopDatabase()]]);
   const blobs = createMemoryBlobStore();
   const states = createStatesRepository(accounts.db);
+  const checkouts = createCheckoutsRepository(accounts.db);
+  const failCounters = { current: false };
+  const engines = fakeRegistry({ databases, failCounters });
   registerRunners(runtime.dispatcher, {
     db: accounts.db,
     audit: accounts.audit,
     now: accounts.now,
-    engines: fakeRegistry({ databases }),
+    engines,
     blobs,
     ring,
     adapters: repo,
     states,
+    checkouts,
     projects: accounts.projectsRepo,
   });
   runtime.dispatcher.start();
@@ -206,6 +215,9 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     databases,
     blobs,
     states,
+    checkouts,
+    engines,
+    failCounters,
     projectsRepo: accounts.projectsRepo,
     db: accounts.db,
     now: accounts.now,

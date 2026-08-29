@@ -22,6 +22,8 @@ export type FakeEngineOptions = {
   version?: string;
   /** When set, every checkout fails with this engine error kind. */
   failCheckout?: "schema_drift" | "checkout_blocked" | "unreachable";
+  /** When set, checkouts report one failed counter until `repairCounters` runs. */
+  failCounters?: { current: boolean };
 };
 
 const PROBE: Omit<ProbeResult, "version"> = {
@@ -213,7 +215,10 @@ export function createFakeEngine(opts: FakeEngineOptions): DbEngine {
           tables,
           skipped: { tables: [], columns: [] },
           defaultedColumns: [],
-          counters: [],
+          counters:
+            opts.failCounters?.current === true
+              ? [{ name: "orders_id_seq", ok: false, error: "fake" }]
+              : [],
           lockWaitMs: 0,
           batches: tables.length,
           warnings: [],
@@ -228,7 +233,10 @@ export function createFakeEngine(opts: FakeEngineOptions): DbEngine {
         },
       };
     },
-    repairCounters: async () => ({ counters: [] }),
+    repairCounters: async () => {
+      if (opts.failCounters !== undefined) opts.failCounters.current = false;
+      return { counters: [{ name: "orders_id_seq", ok: true }] };
+    },
     async *readTable(conn, table) {
       const database = databaseOf(conn);
       const found = [...database.keys()].find((key) => sameTable(schemaOf(key, []), table));

@@ -14,10 +14,11 @@ import { Hono } from "hono";
 import {
   bootstrapAdmin,
   createEngineWiring,
+  checkoutsDeps,
   createJobsRuntime,
+  createNetguard,
   statesDeps,
   createRetention,
-  ownAddresses,
   refuse,
   sweepSealed,
 } from "./boot.ts";
@@ -27,8 +28,6 @@ import { migrate, openMetadataDb } from "./lib/db/index.ts";
 import { authenticate } from "./lib/http/auth.ts";
 import { errorResponse, notFound } from "./lib/http/index.ts";
 import { createLogger } from "./lib/logger/index.ts";
-import { check as netguardCheck, parseDenyList } from "./lib/netguard/index.ts";
-import type { Check } from "./lib/netguard/index.ts";
 import { mountOpenApi } from "./lib/openapi.ts";
 import { createPasswordHasher } from "./lib/password/index.ts";
 import { loadKeyRing } from "./lib/sealed/index.ts";
@@ -153,9 +152,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   });
   const { bootstrapped, bootstrap } = await bootstrapAdmin(usersRepo.count(), users, config);
   const settings = createSettingsService();
-  const denyList = parseDenyList((await settings.get()).netguard.deny);
-  const self = { addresses: ownAddresses(), port: config.PORT };
-  const netguard = { check: (input: Check) => netguardCheck(input, denyList, self) };
+  const netguard = createNetguard(config, (await settings.get()).netguard.deny);
   const wiring = createEngineWiring(config, ring, db, netguard, projectsRepo);
   const { jobs, dispatcher } = createJobsRuntime(db, logger, audit, config, now, wiring);
   // Steps 8 and 9 of 22 §22.2: recover interrupted jobs, then sweep old ones.
@@ -164,6 +161,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     (await settings.get()).retention.job_history_days;
   const data = createDataService();
   const states = createStatesService(statesDeps(wiring, projectsRepo, jobs, audit, now));
+  const checkouts = createCheckoutsService(checkoutsDeps(wiring, projectsRepo, jobs, audit, now));
   const diffs = createDiffsService();
   const storage = createStorageService();
   const adapters = createAdaptersService({
@@ -233,7 +231,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
       config.TESTATE_MAX_UPLOAD_MB * 1024 * 1024
     ),
     states: createStatesHandlers(states, prefix, config.TESTATE_TRUST_PROXY),
-    checkouts: createCheckoutsHandlers(createCheckoutsService(), prefix),
+    checkouts: createCheckoutsHandlers(checkouts, prefix, config.TESTATE_TRUST_PROXY, jobs),
     diffs: createDiffsHandlers(diffs, prefix),
     storage: createStorageHandlers(storage),
     rest: createRestHandlers(createRestService()),

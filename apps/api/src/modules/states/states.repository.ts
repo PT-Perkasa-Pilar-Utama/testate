@@ -46,6 +46,7 @@ export type NewState = {
   kind: StateKind;
   protected: boolean;
   parent_state_id: string | null;
+  stash_reason?: "checkout" | "import" | "write-session";
   job_id: string;
   actor: Actor;
   created_at: string;
@@ -214,8 +215,8 @@ function createStateRows(db: MetadataDb): StateRows {
     insert(state) {
       db.query(
         `INSERT INTO states (id, project_id, name, kind, status, protected, notes, tags, parent_state_id,
-           job_id, actor_user_id, actor_token_id, size_bytes, created_at, updated_at)
-         VALUES (?, ?, ?, ?, 'creating', ?, NULL, '[]', ?, ?, ?, ?, 0, ?, ?)`
+           stash_reason, job_id, actor_user_id, actor_token_id, size_bytes, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'creating', ?, NULL, '[]', ?, ?, ?, ?, ?, 0, ?, ?)`
       ).run(
         state.id,
         state.project_id,
@@ -223,6 +224,7 @@ function createStateRows(db: MetadataDb): StateRows {
         state.kind,
         state.protected ? 1 : 0,
         state.parent_state_id,
+        state.stash_reason ?? null,
         state.job_id,
         state.actor.kind === "user" ? state.actor.id : null,
         state.actor.kind === "token" ? state.actor.id : null,
