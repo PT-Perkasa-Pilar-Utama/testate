@@ -240,3 +240,70 @@ test("@story-85 a checkout that waits on a lock times out and names the session 
   );
   dropDatabase(database);
 });
+
+test("@story-15 a project whose planned restore fails stays in place, with HEAD unknown", async () => {
+  test.setTimeout(240_000);
+  const database = `deletion_${STAMP}`;
+  createDatabase(database);
+  runSql(database, [
+    "CREATE TABLE t (id int primary key, label text)",
+    "INSERT INTO t VALUES (1, 'before')",
+  ]);
+  const slug = `deletion-${STAMP}`;
+  const adapterId = await seedProject(session, slug, database);
+  await waitIdle(session);
+
+  // The init state can no longer be restored: the live table refuses the rows it holds.
+  runSql(database, [
+    "UPDATE t SET label = 'after'",
+    "ALTER TABLE t ADD CONSTRAINT never_before CHECK (label <> 'before')",
+  ]);
+  const plan = await call<{ data: { plan_id: string } }>(
+    session,
+    "GET",
+    `projects/${slug}/deletion-plan`
+  );
+  const removal = await call<{ data: { id: string; status: string } }>(
+    session,
+    "POST",
+    `projects/${slug}/deletion?wait=120`,
+    {
+      confirm_slug: slug,
+      plan_id: plan.json.data.plan_id,
+      adapters: [{ adapter_id: adapterId, action: "restore" }],
+    }
+  );
+  expect(removal.json.data.status).toBe("failed");
+
+  const project = await call<{
+    data: {
+      project: { head: { status: string } };
+      adapters: { id: string }[];
+      banner: { kind: string } | null;
+    };
+  }>(session, "GET", `projects/${slug}`);
+  expect(project.status).toBe(200);
+  expect(project.json.data.project.head.status).toBe("unknown");
+  expect(project.json.data.banner?.kind).toBe("head_unknown");
+  expect(project.json.data.adapters.map((adapter) => adapter.id)).toContain(adapterId);
+  expect(runSql<{ label: string }[]>(database, ["SELECT label FROM t"])[0]?.label).toBe("after");
+  dropDatabase(database);
+});
+
+test("@story-20 an engine below the floor is refused, and the message names the floor", async () => {
+  test.setTimeout(180_000);
+  const slug = `floor-${STAMP}`;
+  await call(session, "PATCH", "settings", { netguard: { deny: [] } });
+  await call(session, "POST", "projects", { slug, name: slug });
+  const draft = draftFor("127.0.0.1", "old-postgres");
+  const attempt = await call<{
+    error: { code: string; message: string; details: { floor: string } };
+  }>(session, "POST", `projects/${slug}/adapters/test`, {
+    ...draft,
+    config: { ...draft.config, port: 54325 },
+  });
+  expect(attempt.status).toBe(422);
+  expect(attempt.json.error.code).toBe("ENGINE_UNSUPPORTED");
+  expect(attempt.json.error.details.floor).toBe("13");
+  expect(attempt.json.error.message).toContain("below the floor");
+});

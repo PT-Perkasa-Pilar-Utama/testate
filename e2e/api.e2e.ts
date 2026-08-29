@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import { API_PORT, E2E_DIR } from "../playwright.config.ts";
 import { apiContext, bearerContext, createToken, demoAdapters, demoProjectId } from "./lib/api.ts";
+import { typedWorkbook } from "./lib/sql.ts";
 
 const STAMP = Date.now().toString(36);
 type OpenApiDocument = { openapi: string; paths: object };
@@ -142,4 +143,34 @@ test.describe("API contract", () => {
     await admin.delete(`tokens/${standard.record.id}`);
     await admin.dispose();
   });
+});
+
+test("@story-50 an XLSX preview reads date and number cells from their typed value", async () => {
+  const qa = await apiContext("qa");
+  const upload = await qa.post("projects/demo/uploads", {
+    multipart: {
+      file: {
+        name: "typed.xlsx",
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        buffer: readFileSync(typedWorkbook()),
+      },
+      purpose: "import",
+    },
+  });
+  expect(upload.status()).toBe(201);
+  const uploaded: { data: { upload_id: string } } = await upload.json();
+  const preview: { data: { columns: string[]; rows: string[][] } } = await (
+    await qa.post("projects/demo/imports/preview", {
+      data: { source: { upload_id: uploaded.data.upload_id } },
+    })
+  ).json();
+  expect(preview.data.columns).toStrictEqual(["Email", "Signed", "Seen", "Balance"]);
+  // The serials behind these cells are 46091 and 46091.5; the styles make them dates.
+  expect(preview.data.rows[0]).toStrictEqual([
+    "typed@x.io",
+    "2026-03-10",
+    "2026-03-10T12:00:00Z",
+    "1234.5",
+  ]);
+  await qa.dispose();
 });

@@ -1,5 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
-import { join } from "node:path";
+import { mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 import { E2E_DIR } from "../../playwright.config.ts";
 
@@ -67,4 +68,34 @@ export async function awaitLock(database: string, table: string): Promise<void> 
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   throw new Error(`no session ever locked ${table}`);
+}
+
+/** Runs SQL on a spawned instance's metadata database, for state the API offers no route to. */
+export function runSqlite<T>(dataDir: string, statements: string[]): T {
+  const result = spawnSync("bun", ["scripts/e2e-sqlite.ts", join(dataDir, "metadata.db")], {
+    cwd: ROOT,
+    input: JSON.stringify(statements),
+    encoding: "utf8",
+  });
+  if (result.status !== 0) throw new Error(`sqlite on ${dataDir}: ${result.stderr}`);
+  return JSON.parse(result.stdout);
+}
+
+/** The host key an instance trusts for an adapter; missing means the connection never recorded one. */
+export function hostKeyFingerprint(dataDir: string, adapterId: string): string {
+  const rows = runSqlite<{ fingerprint: string }[]>(dataDir, [
+    `SELECT fingerprint FROM known_host_keys WHERE adapter_id = '${adapterId}'`,
+  ]);
+  const first = rows[0];
+  if (first === undefined) throw new Error(`no host key recorded for ${adapterId}`);
+  return first.fingerprint;
+}
+
+/** Builds the typed workbook fixture and returns its path; the reader has to read its styles. */
+export function typedWorkbook(): string {
+  const target = join(E2E_DIR, "fixtures", "typed.xlsx");
+  mkdirSync(dirname(target), { recursive: true });
+  const result = spawnSync("bun", ["scripts/e2e-xlsx.ts", target], { cwd: ROOT, encoding: "utf8" });
+  if (result.status !== 0) throw new Error(`xlsx fixture: ${result.stderr}`);
+  return target;
 }

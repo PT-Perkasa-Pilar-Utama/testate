@@ -16,6 +16,21 @@ services:
       timeout: 3s
       retries: 20
 
+  # Below the Postgres floor of 13. Only the connection test talks to it (story 20).
+  postgres-old:
+    image: postgres:12-alpine
+    environment:
+      POSTGRES_USER: testate
+      POSTGRES_PASSWORD: testate
+      POSTGRES_DB: shop
+    ports:
+      - "54325:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testate -d shop"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   mysql:
     image: mysql:8.4
     environment:

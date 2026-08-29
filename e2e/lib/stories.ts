@@ -6,20 +6,12 @@ export type Story = { id: number; section: string; actor: string; title: string 
 const ROOT = join(import.meta.dirname, "..", "..");
 
 /**
- * Stories no screen shows. The E2E suite still covers many of them through the API (`api.e2e.ts`,
- * `agent.e2e.ts`); what stays here needs an injected failure, a second boot, or a clock.
+ * Stories no screen shows. Every one of them is covered through the API instead — contract and
+ * agent stories in `api.e2e.ts` and `agent.e2e.ts`, boot and key stories in `boot.e2e.ts`, engine
+ * behaviour in `engine.e2e.ts`, `types.e2e.ts`, `session.e2e.ts`, and `storage.e2e.ts` — so this
+ * list is empty. Put an id back only when a story genuinely cannot be exercised at all.
  */
-const NON_UI: [number, number][] = [
-  // 15 needs a restore that fails against a real engine; the API and job tests inject that.
-  [15, 15],
-  // Session expiry needs a clock, the engine minimum an old server, the host key a second SSH
-  // identity; the API and boot tests hold those.
-  [8, 8],
-  [20, 20],
-  [97, 97],
-  // 50: XLSX typed cells are engine-tested; Playwright runs on Node without the Bun writer.
-  [50, 50],
-];
+const NON_UI: [number, number][] = [];
 
 /**
  * Stories whose screen does not exist in the SPA yet (the project tabs list states, checkouts,
