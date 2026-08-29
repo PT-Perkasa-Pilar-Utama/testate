@@ -3,7 +3,9 @@
  * lives in the library or module it calls.
  */
 import { networkInterfaces } from "node:os";
+
 import { ConfigError } from "./lib/config/index.ts";
+import { SETTINGS_DEFAULTS } from "./modules/settings/settings.service.ts";
 import type { Config } from "./lib/config/index.ts";
 import type { MetadataDb } from "./lib/db/index.ts";
 import { SealedConfigError } from "./lib/sealed/index.ts";
@@ -32,10 +34,21 @@ export type Bootstrap = { bootstrapped: boolean; bootstrap: (() => Promise<boole
 
 /** Every address this process listens on, so an adapter cannot point Testate at itself (18 §18.1). */
 /** The outbound address policy every engine connect passes through (18 §18.2). */
-export function createNetguard(config: Config, deny: readonly string[]): Netguard {
-  const denyList = parseDenyList(deny);
+export type LiveNetguard = Netguard & { setDeny(deny: readonly string[]): void };
+
+/** The deny list is live: a settings change swaps it without a restart (16 §16.2). */
+export function createNetguard(
+  config: Config,
+  deny: readonly string[] = SETTINGS_DEFAULTS.netguard.deny
+): LiveNetguard {
+  let denyList = parseDenyList(deny);
   const self = { addresses: ownAddresses(), port: config.PORT };
-  return { check: (input) => netguardCheck(input, denyList, self) };
+  return {
+    check: (input) => netguardCheck(input, denyList, self),
+    setDeny(next) {
+      denyList = parseDenyList(next);
+    },
+  };
 }
 
 export function ownAddresses(): string[] {

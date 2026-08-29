@@ -8,7 +8,7 @@ import { PG, createAdaptersHarness, createSettled } from "../../../test/adapters
 import type { AdaptersHarness } from "../../../test/adapters.ts";
 import { expectContract } from "../../../test/contract.ts";
 import { createPoliciesRepository } from "../data/data.policies.ts";
-import { createSettingsService } from "../settings/settings.service.ts";
+import { createTestSettings } from "../../../test/settings.ts";
 import { createStatesService } from "../states/states.service.ts";
 import { DIFF_MOCK, DIFF_ROWS_MOCK } from "./diffs.mock.ts";
 import { createDiffsService } from "./diffs.service.ts";
@@ -33,7 +33,7 @@ async function createHarness(): Promise<Harness> {
     projects: harness.projectsRepo,
     blobs: harness.blobs,
     jobs: harness.runtime.jobs,
-    settings: createSettingsService(),
+    settings: createTestSettings(harness.db, harness.audit, harness.now),
     audit: harness.audit,
     now: harness.now,
   });
@@ -52,6 +52,7 @@ async function manualState(h: Harness, name: string): Promise<string> {
     projects: h.harness.projectsRepo,
     adapters: h.harness.repo,
     jobs: h.harness.runtime.jobs,
+    blobs: h.harness.blobs,
     audit: h.harness.audit,
     now: h.harness.now,
   });

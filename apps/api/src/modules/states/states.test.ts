@@ -19,6 +19,7 @@ async function createStatesHarness(): Promise<{ harness: AdaptersHarness; states
     projects: harness.projectsRepo,
     adapters: harness.repo,
     jobs: harness.runtime.jobs,
+    blobs: harness.blobs,
     audit: harness.audit,
     now: harness.now,
   });

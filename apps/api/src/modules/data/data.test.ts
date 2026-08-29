@@ -14,7 +14,7 @@ import { TEST_META } from "../../../test/accounts.ts";
 import { PG, createAdaptersHarness, createSettled } from "../../../test/adapters.ts";
 import type { AdaptersHarness } from "../../../test/adapters.ts";
 import { expectContract } from "../../../test/contract.ts";
-import { createSettingsService } from "../settings/settings.service.ts";
+import { createTestSettings } from "../../../test/settings.ts";
 import { parseFilter } from "./data.handler.ts";
 import {
   COLUMN_POLICY_MOCK,
@@ -44,7 +44,7 @@ async function createHarness(): Promise<Harness> {
     policies: createPoliciesRepository(harness.db),
     projects: harness.projectsRepo,
     jobs: harness.runtime.jobs,
-    settings: createSettingsService(),
+    settings: createTestSettings(harness.db, harness.audit, harness.now),
     audit: harness.audit,
     now: harness.now,
   });

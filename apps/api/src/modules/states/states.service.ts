@@ -9,6 +9,7 @@ import type {
   UpdateStateInput,
 } from "@testate/shared";
 
+import type { BlobStore } from "../../lib/blobstore/index.ts";
 import { AppError, conflict, notFound } from "../../lib/http/index.ts";
 import type { RequestMeta } from "../../lib/http/auth.ts";
 import type { AdaptersRepository } from "../adapters/adapters.repository.ts";
@@ -37,6 +38,8 @@ export type StatesService = {
     meta: RequestMeta
   ): Promise<State>;
   remove(actor: Actor, slug: string, id: string, meta: RequestMeta): Promise<Job>;
+  /** Deletes a state and its orphan blobs at once; the retention sweep uses it for stashes (15 §15.4). */
+  removeNow(id: string): Promise<void>;
   archiveManifest(uploadId: string): Promise<typeof ARCHIVE_MANIFEST_MOCK>;
   importArchive(slug: string, name: string): Promise<Job>;
 };
@@ -46,6 +49,7 @@ export type StatesDeps = {
   projects: Pick<ProjectsRepository, "bySlug" | "usedBytes">;
   adapters: Pick<AdaptersRepository, "list" | "byId">;
   jobs: Pick<JobsService, "enqueue">;
+  blobs: BlobStore;
   audit: AuditService;
   now: () => Date;
 };
@@ -246,6 +250,12 @@ export function createStatesService(deps: StatesDeps): StatesService {
       });
       record(actor, "state.deletion_requested", project, state, meta);
       return job;
+    },
+    async removeNow(id) {
+      const removal = repo.remove(id);
+      const orphans = repo.unpinnedOrphans(removal.orphans);
+      for (const hash of orphans) await deps.blobs.delete(hash);
+      repo.forgetBlobs(orphans);
     },
     // SCAFFOLD: archives (PAX tar, upload manifest, import) belong to the archive card (15 §15.5).
     async archiveManifest() {

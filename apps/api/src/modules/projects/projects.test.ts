@@ -7,7 +7,7 @@ import { TEST_META, actorOf, createAccounts } from "../../../test/accounts.ts";
 import { createJobsHarness } from "../../../test/jobs.ts";
 import { expectContract } from "../../../test/contract.ts";
 import { ADAPTER_MOCK } from "../adapters/adapters.mock.ts";
-import { createSettingsService } from "../settings/settings.service.ts";
+import { createTestSettings } from "../../../test/settings.ts";
 import { PROJECT_JOB_MOCK, PROJECT_MOCK, QUOTA_MOCK } from "./projects.mock.ts";
 import { requireProjectInScope } from "./projects.scope.ts";
 import { PLAN_TTL_MS, createProjectsService } from "./projects.service.ts";
@@ -51,7 +51,7 @@ async function setup(): Promise<Harness> {
   const projects = createProjectsService({
     repo: accounts.projectsRepo,
     audit: accounts.audit,
-    settings: createSettingsService(),
+    settings: createTestSettings(accounts.db, accounts.audit, accounts.now),
     adapters: { list: async () => [ADAPTER_MOCK] },
     jobs: createJobsHarness(accounts.db, accounts.now).jobs,
     now: accounts.now,

@@ -106,6 +106,8 @@ export type AdaptersFilter = {
 
 export type AdaptersRepository = {
   list(projectId: string, filter: AdaptersFilter): AdapterRecord[];
+  /** Every adapter of every project, for instance-wide policy rechecks (16 §16.2). */
+  all(): AdapterRecord[];
   byId(id: string): AdapterRecord | null;
   byName(projectId: string, name: string): AdapterRecord | null;
   insert(adapter: NewAdapter): AdapterRecord;
@@ -223,6 +225,10 @@ export function createAdaptersRepository(db: MetadataDb): AdaptersRepository {
         .all(...params);
       return v.parse(v.array(recordSchema), rows).map(toRecord);
     },
+    all: () =>
+      v
+        .parse(v.array(recordSchema), db.query("SELECT * FROM adapters ORDER BY id").all())
+        .map(toRecord),
     byId: (id) => one("id = ?", id),
     byName: (projectId, name) => one("project_id = ? AND name = ?", projectId, name),
     insert(adapter) {

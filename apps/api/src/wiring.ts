@@ -43,6 +43,8 @@ import { createRestRepository } from "./modules/rest/rest.repository.ts";
 import type { RestRepository } from "./modules/rest/rest.repository.ts";
 import { createRestService } from "./modules/rest/rest.service.ts";
 import type { RestDeps, RestService } from "./modules/rest/rest.service.ts";
+import { createSettingsRepository } from "./modules/settings/settings.repository.ts";
+import type { SettingsDeps } from "./modules/settings/settings.service.ts";
 import { createStatesRepository } from "./modules/states/states.repository.ts";
 import { createStatesService } from "./modules/states/states.service.ts";
 import type { StatesDeps, StatesService } from "./modules/states/states.service.ts";
@@ -97,7 +99,15 @@ export function statesDeps(
   audit: AuditService,
   now: () => Date
 ): StatesDeps {
-  return { repo: wiring.states, projects, adapters: wiring.adapters, jobs, audit, now };
+  return {
+    repo: wiring.states,
+    projects,
+    adapters: wiring.adapters,
+    jobs,
+    blobs: wiring.blobs,
+    audit,
+    now,
+  };
 }
 
 export function checkoutsDeps(
@@ -173,9 +183,10 @@ export function createStateServices(
   jobs: JobsService,
   audit: AuditService,
   settings: { get(): Promise<Settings> },
-  maxUploadBytes: number,
+  config: Config,
   now: () => Date
 ): StateServices {
+  const maxUploadBytes = config.TESTATE_MAX_UPLOAD_MB * 1024 * 1024;
   return {
     states: createStatesService(statesDeps(wiring, projects, jobs, audit, now)),
     checkouts: createCheckoutsService(checkoutsDeps(wiring, projects, jobs, audit, now)),
@@ -198,5 +209,32 @@ export function createStateServices(
       maxUploadBytes,
       now,
     }),
+  };
+}
+
+export type SettingsHooks = {
+  setDeny: (deny: string[]) => void;
+  recheck: () => Promise<string[]>;
+  removeState: (id: string) => Promise<void>;
+};
+
+/** Settings need the live netguard, the adapters service, and the states service; all arrive as closures. */
+export function settingsDeps(
+  config: Config,
+  audit: AuditService,
+  db: MetadataDb,
+  now: () => Date,
+  hooks: SettingsHooks
+): SettingsDeps {
+  return {
+    repo: createSettingsRepository(db),
+    config,
+    audit,
+    recheckDenyList: async (deny) => {
+      hooks.setDeny(deny);
+      return hooks.recheck();
+    },
+    retention: { db, removeState: hooks.removeState },
+    now,
   };
 }

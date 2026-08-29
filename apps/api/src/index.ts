@@ -19,7 +19,12 @@ import {
   refuse,
   sweepSealed,
 } from "./boot.ts";
-import { createEngineWiring, createIntegrations, createStateServices } from "./wiring.ts";
+import {
+  createEngineWiring,
+  createIntegrations,
+  createStateServices,
+  settingsDeps,
+} from "./wiring.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import type { Config } from "./lib/config/index.ts";
 import { migrate, openMetadataDb } from "./lib/db/index.ts";
@@ -142,9 +147,16 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     now,
   });
   const { bootstrapped, bootstrap } = await bootstrapAdmin(usersRepo.count(), users, config);
-  const settings = createSettingsService();
-  const netguard = createNetguard(config, (await settings.get()).netguard.deny);
+  const netguard = createNetguard(config);
   const wiring = createEngineWiring(config, ring, db, netguard, projectsRepo);
+  const settings = createSettingsService(
+    settingsDeps(config, audit, db, now, {
+      setDeny: (deny) => netguard.setDeny(deny),
+      recheck: () => adapters.recheckDenyList(),
+      removeState: (id) => core.states.removeNow(id),
+    })
+  );
+  netguard.setDeny((await settings.get()).netguard.deny);
   const { rest, hooks } = createIntegrations(wiring, projectsRepo, netguard, audit, now);
   const { jobs, dispatcher } = createJobsRuntime(db, logger, audit, config, now, {
     ...wiring,
@@ -152,10 +164,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   });
   // Steps 8 and 9 of 22 §22.2: recover interrupted jobs, then sweep old ones.
   const recovery = await jobs.recover();
-  const historyDays = async (): Promise<number> =>
-    (await settings.get()).retention.job_history_days;
-  const maxUpload = config.TESTATE_MAX_UPLOAD_MB * 1024 * 1024;
-  const core = createStateServices(wiring, projectsRepo, jobs, audit, settings, maxUpload, now);
+  const core = createStateServices(wiring, projectsRepo, jobs, audit, settings, config, now);
   const storage = createStorageService();
   const adapters = createAdaptersService({
     repo: wiring.adapters,
@@ -227,7 +236,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     hooks: createHooksHandlers(hooks, config.TESTATE_TRUST_PROXY),
     jobs: createJobsHandlers(jobs),
     audit: createAuditHandlers(audit),
-    settings: createSettingsHandlers(settings, prefix),
+    settings: createSettingsHandlers(settings, prefix, config.TESTATE_TRUST_PROXY),
     tools: createToolsHandlers(createToolsService()),
     agent: createAgentHandlers(
       createAgentService(VERSION),
@@ -268,7 +277,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   const retention = createRetention(
     logger,
     () => jobs.sweep,
-    historyDays,
+    async () => (await settings.get()).retention.job_history_days,
     () => core.diffs.expire()
   );
   return {

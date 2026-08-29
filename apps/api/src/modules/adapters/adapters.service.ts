@@ -29,6 +29,7 @@ import {
   toPublic,
 } from "./adapters.helpers.ts";
 import { applyPatch } from "./adapters.patch.ts";
+import { recheckDenyList } from "./adapters.policy.ts";
 import type { AdapterPatch } from "./adapters.patch.ts";
 import type { FileProbeFn, ProbeFn } from "./adapters.probe.ts";
 import type { AdapterRecord, AdaptersFilter, AdaptersRepository } from "./adapters.repository.ts";
@@ -76,6 +77,8 @@ export type AdaptersService = {
     action: DeletionAction,
     meta: RequestMeta
   ): Promise<Job>;
+  /** Disables every adapter whose target the deny list now blocks; returns their ids (16 §16.2). */
+  recheckDenyList(): Promise<string[]>;
 };
 
 export type AdaptersDeps = {
@@ -281,6 +284,7 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
     async deletionPlan(slug, id) {
       return plans.plan(find(projectOf(slug).id, id));
     },
+    recheckDenyList: () => recheckDenyList({ repo, ring, netguard: deps.netguard, now: deps.now }),
     async remove(actor, slug, id, planId, action, meta) {
       const project = projectOf(slug);
       // A repeated Idempotency-Key after the row is gone still answers with the same job.
