@@ -9,6 +9,7 @@ import Dialog from "@/components/dialog.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
+import EditDialog from "./adapter.edit.view.tsx";
 import { createAdapterPresenter } from "./adapter.presenter.ts";
 import type { AdapterPresenter } from "./adapter.presenter.ts";
 
@@ -132,6 +133,9 @@ function Actions(props: { presenter: AdapterPresenter; base: string }): JSX.Elem
       <Show when={adapter().credential.set}>
         <Badge variant="outline">sealed · {fingerprint()}</Badge>
       </Show>
+      <Show when={adapter().readonly_credential.set}>
+        <Badge variant="outline">read-only credential sealed</Badge>
+      </Show>
       <Show when={adapter().kind === "database"}>
         <Button size="sm" variant="secondary" onClick={() => navigate(`${props.base}/query`)}>
           Query console
@@ -153,6 +157,9 @@ function Actions(props: { presenter: AdapterPresenter; base: string }): JSX.Elem
         </Button>
       </Show>
       <Show when={hasRole("qa")}>
+        <Button size="sm" variant="secondary" onClick={() => props.presenter.openEdit()}>
+          Edit adapter
+        </Button>
         <Button size="sm" variant="secondary" onClick={() => void props.presenter.retest()}>
           Retest
         </Button>
@@ -252,6 +259,7 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
           </Match>
         </Switch>
         <DeleteDialog presenter={presenter} name={presenter.adapter.value().name} />
+        <EditDialog presenter={presenter} adapter={presenter.adapter.value()} />
       </Loading>
     </section>
   );

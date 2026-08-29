@@ -34,6 +34,7 @@ const SKIP = new Set([
   "New hook",
   "New import",
   "Migrate store",
+  "Edit adapter",
   "Run backup",
   "Re-import rejected",
   "Move up",

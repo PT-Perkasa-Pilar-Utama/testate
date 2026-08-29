@@ -7,10 +7,18 @@ const ROOT = join(import.meta.dirname, "..", "..");
 
 /** Stories the dashboard cannot show: CI, developer, operator, and agent stories live in API and boot tests. */
 const NON_UI: [number, number][] = [
+  // 15, 78, 85, 107 need a failing restore, real schema drift, a held lock, or a restart: the
+  // API and job tests inject those; a dashboard cannot.
+  [15, 15],
+  [78, 78],
+  [85, 85],
+  [107, 107],
   // Sessions, engine minimums, the deny list, sealing, snapshot progress, host keys, and audit
   // retention have no control of their own on a screen; API and boot tests hold them.
   [8, 9],
   [20, 20],
+  // 28: a retarget needs a second reachable host; the compose engines offer one address each.
+  [28, 28],
   [32, 34],
   [74, 74],
   [97, 97],
@@ -32,13 +40,8 @@ const NON_UI: [number, number][] = [
  * diffs, imports, and hooks but offer no actions). E2E cannot cover them until those cards land.
  */
 const NO_SCREEN: [number, number][] = [
-  // 15: needs a failing restore.
-  [15, 15],
-  [23, 31],
-  [78, 79],
-  // 85: no engine reports blocking session ids yet, so the SPA has nothing to terminate.
-  [85, 85],
-  [107, 107],
+  // 79: a partial-state checkout; the preflight shows "not in state" but no story test takes one yet.
+  [79, 79],
 ];
 
 function inRanges(id: number, ranges: [number, number][]): boolean {

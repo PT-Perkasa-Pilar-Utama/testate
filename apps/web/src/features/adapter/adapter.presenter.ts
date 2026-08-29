@@ -5,10 +5,13 @@ import { attempt, showToast } from "@/components/toast.tsx";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { navigate } from "@/lib/router.ts";
+import { followJob } from "@/lib/sse.ts";
 import { adaptersModel } from "../adapters/adapters.model.ts";
 import type { AdapterDeletionPlan } from "../adapters/adapters.model.ts";
 import { describeOutcome } from "../adapters/adapters.presenter.ts";
 import { adapterModel } from "./adapter.model.ts";
+import { draftFrom, toPatchBody } from "./adapter.edit.ts";
+import type { EditDraft } from "./adapter.edit.ts";
 
 export type AdapterDetail =
   | { view: "tables"; schema: Introspection }
@@ -22,6 +25,13 @@ export type AdapterPresenter = {
   entries: () => Entry[] | null;
   requests: () => RestRequest[] | null;
   setMode: (mode: "sandbox" | "read_only") => Promise<void>;
+  editing: () => boolean;
+  draft: () => EditDraft;
+  openEdit: () => void;
+  closeEdit: () => void;
+  setDraft: (patch: Partial<EditDraft>) => void;
+  setValue: (key: string, value: string) => void;
+  save: () => Promise<void>;
   retest: () => Promise<void>;
   plan: () => AdapterDeletionPlan | null;
   openDelete: () => Promise<void>;
@@ -44,7 +54,41 @@ export function createAdapterPresenter(slug: () => string, id: () => string): Ad
   const adapter = createRefreshable(() => adaptersModel.get(slug(), id()));
   const detail = createRefreshable(() => loadDetail(slug(), adapter.value()));
   const [plan, setPlan] = createSignal<AdapterDeletionPlan | null>(null);
+  const [editing, setEditing] = createSignal(false);
+  const [draft, setDraftSignal] = createSignal<EditDraft>({
+    name: "",
+    excluded_tables: "",
+    schemas: "",
+    restore_mode: "atomic",
+    lock_timeout_ms: "60000",
+    values: {},
+  });
   return {
+    editing,
+    draft,
+    openEdit: () => {
+      setDraftSignal(draftFrom(adapter.value()));
+      setEditing(true);
+    },
+    closeEdit: () => setEditing(false),
+    setDraft: (patch) => setDraftSignal((current) => ({ ...current, ...patch })),
+    setValue: (key, value) =>
+      setDraftSignal((current) => ({ ...current, values: { ...current.values, [key]: value } })),
+    save: () => {
+      const staticSlug = slug();
+      const staticId = id();
+      const staticBody = toPatchBody(draft(), adapter.value());
+      return attempt(async () => {
+        const result = await adaptersModel.update(staticSlug, staticId, staticBody);
+        setEditing(false);
+        adapter.refresh();
+        detail.refresh();
+        showToast(
+          result.init_job === null ? "Adapter saved" : "Adapter saved; init snapshot queued",
+          "success"
+        );
+      });
+    },
     adapter,
     detail,
     tables: () => {
@@ -91,13 +135,20 @@ export function createAdapterPresenter(slug: () => string, id: () => string): Ad
       const staticId = id();
       if (staticPlan === null) return Promise.resolve();
       return attempt(async () => {
-        await adaptersModel.remove(staticSlug, staticId, {
+        const job = await adaptersModel.remove(staticSlug, staticId, {
           plan_id: staticPlan.plan_id,
           action: staticPlan.adapter.action === "skip" ? "skip" : "restore",
         });
         setPlan(null);
         showToast("Deletion job queued; the database returns to its init state first", "info");
-        navigate(`/projects/${staticSlug}`);
+        // The project page lists adapters once on mount, so it opens after the job ends.
+        followJob(job, (done) => {
+          showToast(
+            `Adapter deletion ${done.status}`,
+            done.status === "succeeded" ? "success" : "error"
+          );
+          navigate(`/projects/${staticSlug}`);
+        });
       });
     },
   };

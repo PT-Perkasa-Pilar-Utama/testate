@@ -27,6 +27,8 @@ export const adaptersModel = {
     apiClient.post(`${base(slug)}/test`, { schema: probeOutcomeSchema, body }),
   create: (slug: string, body: JsonObject): Promise<CreatedAdapter> =>
     apiClient.post(base(slug), { schema: createAdapterResponseSchema, body }),
+  update: (slug: string, id: string, body: JsonObject): Promise<CreatedAdapter> =>
+    apiClient.patch(one(slug, id), { schema: createAdapterResponseSchema, body }),
   setMode: (slug: string, id: string, mode: "sandbox" | "read_only"): Promise<Adapter> =>
     apiClient.post(`${one(slug, id)}/mode`, { schema: adapterSchema, body: { mode } }),
   retest: (slug: string, id: string): Promise<ProbeOutcome> =>

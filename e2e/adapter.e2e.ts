@@ -1,0 +1,63 @@
+import { expect, test } from "@playwright/test";
+
+import { settle, watch } from "./lib/crawl.ts";
+import type { Issue } from "./lib/crawl.ts";
+import { statePath } from "./lib/roles.ts";
+
+const STAMP = Date.now().toString(36);
+
+/** An adapter's init snapshot and its deletion restore the shared database; nothing else runs meanwhile. */
+test.describe("adapter settings stories", () => {
+  test.use({ storageState: statePath("qa") });
+
+  test("@story-23 @story-24 @story-25 @story-26 @story-27 @story-29 @story-30 @story-31 configures, renames, and deletes an adapter through its plan", async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    const issues: Issue[] = [];
+    watch(page, issues);
+    await page.goto("/projects/demo");
+    await settle(page);
+    await page.getByRole("button", { name: "New adapter" }).click();
+    const create = page.locator("dialog[open]");
+    await create.getByLabel("Name").fill(`cfg-${STAMP}`);
+    await create.getByLabel("Host").fill("127.0.0.1");
+    await create.getByLabel("Port").fill("54320");
+    await create.getByRole("textbox", { name: "Database" }).fill("shop");
+    await create.getByLabel("User").fill("testate");
+    await create.getByLabel("Password").fill("testate");
+    await page.getByRole("button", { name: "Create" }).click();
+    await expect(page.locator("dialog[open]")).toHaveCount(0);
+    await page.getByRole("tab", { name: "States" }).click();
+    await expect(page.locator("tr", { hasText: `init-cfg-${STAMP}` })).toBeVisible({
+      timeout: 60_000,
+    });
+    await page.getByRole("tab", { name: "Adapters" }).click();
+    await page.getByRole("link", { name: `cfg-${STAMP}` }).click();
+    await settle(page);
+    await page.getByRole("button", { name: "Edit adapter" }).click();
+    const edit = page.locator("dialog[open]");
+    // Migration tables are excluded by the engines themselves (story 25); the list holds extras.
+    await expect(edit.getByText(/excluded by default/)).toBeVisible();
+    await edit.getByLabel("Name").fill(`cfg-${STAMP}-2`);
+    await edit.getByLabel(/Excluded tables/).fill("contract.schema_migrations, contract.notes");
+    await edit.getByLabel(/^Schemas/).fill("contract");
+    await edit.getByLabel(/Password for read-only sessions/).fill("testate");
+    await edit.getByRole("button", { name: "Save adapter" }).click();
+    await expect(page.locator("dialog[open]")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: `cfg-${STAMP}-2` })).toBeVisible();
+    await expect(page.getByText(/read-only credential/i)).toBeVisible();
+    await page.getByRole("button", { name: "Delete" }).click();
+    const plan = page.locator("dialog[open]");
+    await expect(plan.getByText(/init state/)).toBeVisible();
+    await plan.locator('button[type="submit"]').click();
+    await expect(page).toHaveURL(/\/projects\/demo$/);
+    await settle(page);
+    await expect(page.getByRole("link", { name: `cfg-${STAMP}-2` })).toHaveCount(0, {
+      timeout: 60_000,
+    });
+    await page.getByRole("tab", { name: "States" }).click();
+    await expect(page.locator("tr", { hasText: `init-cfg-${STAMP}` })).toBeVisible();
+    expect(issues).toStrictEqual([]);
+  });
+});

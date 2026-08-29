@@ -42,7 +42,8 @@ export default defineConfig({
     },
     // Checkouts restore the demo databases; nothing else may edit them meanwhile.
     { name: "states", testMatch: /states\.e2e\.ts/, dependencies: ["flows"] },
-    { name: "crawl", testMatch: /buttons\.e2e\.ts/, dependencies: ["states"] },
+    { name: "adapter", testMatch: /adapter\.e2e\.ts/, dependencies: ["states"] },
+    { name: "crawl", testMatch: /buttons\.e2e\.ts/, dependencies: ["adapter"] },
   ],
   globalSetup: "./e2e/setup.ts",
   outputDir: join(E2E_DIR, "results"),

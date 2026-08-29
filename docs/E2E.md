@@ -11,6 +11,7 @@ engines must be up (`docker compose up --wait`).
 | `routes`   | `e2e/routes.e2e.ts`                   | Each screen renders or refuses per role; sidebar matches the role  |
 | `flows`    | `e2e/flows.e2e.ts`, `stories.e2e.ts`  | One test per user story that the dashboard can act on              |
 | `states`   | `e2e/states.e2e.ts`                   | Snapshot, checkout, and diff stories; serial, alone, after flows  |
+| `adapter`  | `e2e/adapter.e2e.ts`                  | Adapter settings and deletion (init snapshot, restore); after states |
 | `crawl`    | `e2e/buttons.e2e.ts`                  | Clicks every visible control per role; no 5xx, no console error    |
 
 Projects run in that order (`dependencies`), tests inside a project run on 3 workers.
