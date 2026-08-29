@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --hot src/index.ts",
-    "build": "rm -rf dist && bun build src/index.ts --target=bun --format=esm --outdir dist --sourcemap=linked && mkdir -p dist/db && cp -R src/db/migrations dist/db/migrations",
+    "build": "rm -rf dist && bun build src/index.ts --target=bun --format=esm --outdir dist --sourcemap=linked --external \"*.node\" && mkdir -p dist/db && cp -R src/db/migrations dist/db/migrations",
     "start": "bun dist/index.js"
   },
   "dependencies": {
