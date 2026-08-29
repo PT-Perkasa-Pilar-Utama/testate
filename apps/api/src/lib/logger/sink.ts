@@ -1,4 +1,12 @@
-import { mkdirSync, readdirSync, unlinkSync, statSync } from "node:fs";
+import {
+  closeSync,
+  mkdirSync,
+  openSync,
+  readdirSync,
+  statSync,
+  unlinkSync,
+  writeSync,
+} from "node:fs";
 import { join } from "node:path";
 
 import type { WideEventRecord } from "./event.ts";
@@ -19,7 +27,8 @@ function serialize(record: WideEventRecord): string {
 /** Appends one JSON line per event to a daily file and mirrors it to stdout. */
 export class FileSink {
   private currentDay = "";
-  private writer: ReturnType<ReturnType<typeof Bun.file>["writer"]> | null = null;
+  /** An append handle, not a `Bun.file` writer: a restart on the same day must not overwrite it. */
+  private handle: number | null = null;
   degraded = false;
 
   constructor(private readonly options: SinkOptions) {
@@ -31,8 +40,7 @@ export class FileSink {
     if (this.options.stdout) console.log(line);
     try {
       this.rotate(record.ts.slice(0, 10));
-      this.writer?.write(`${line}\n`);
-      this.writer?.flush();
+      if (this.handle !== null) writeSync(this.handle, `${line}\n`);
     } catch (cause: unknown) {
       this.degraded = true;
       if (!this.options.stdout) console.log(line);
@@ -41,10 +49,10 @@ export class FileSink {
   }
 
   private rotate(day: string): void {
-    if (day === this.currentDay && this.writer !== null) return;
-    this.writer?.end();
+    if (day === this.currentDay && this.handle !== null) return;
+    this.close();
     this.currentDay = day;
-    this.writer = Bun.file(join(this.options.dir, `testate-${day}.jsonl`)).writer();
+    this.handle = openSync(join(this.options.dir, `testate-${day}.jsonl`), "a");
     this.sweep();
   }
 
@@ -66,7 +74,7 @@ export class FileSink {
   }
 
   close(): void {
-    this.writer?.end();
-    this.writer = null;
+    if (this.handle !== null) closeSync(this.handle);
+    this.handle = null;
   }
 }
