@@ -22,16 +22,12 @@ const NON_UI: [number, number][] = [
   [8, 8],
   [20, 20],
   [32, 33],
-  [74, 74],
   [97, 97],
   // 50: XLSX typed cells are engine-tested; Playwright runs on Node without the Bun writer.
   [50, 50],
   [63, 63],
-  [70, 70],
   [72, 73],
   [83, 83],
-  [86, 86],
-  [113, 115],
   [122, 130],
 ];
 

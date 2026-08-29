@@ -1,7 +1,9 @@
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { request } from "@playwright/test";
-import type { APIRequestContext } from "@playwright/test";
+import type { APIRequestContext, APIResponse } from "@playwright/test";
 
-import { API_PORT } from "../../playwright.config.ts";
+import { API_PORT, E2E_DIR } from "../../playwright.config.ts";
 import { PASSWORDS, USERNAMES } from "./roles.ts";
 import type { Role } from "./roles.ts";
 
@@ -134,4 +136,100 @@ export async function demoProjectId(admin: APIRequestContext): Promise<string> {
   const demo = body.data.find((project) => project.slug === "demo");
   if (demo === undefined) throw new Error("the demo project is missing from the seed");
   return demo.id;
+}
+
+/** Polls a job until it leaves `running`/`queued`; the terminal job comes back. */
+export async function waitForJob(qa: APIRequestContext, jobId: string): Promise<JobRow> {
+  for (let attempt = 0; attempt < 240; attempt += 1) {
+    const body: { data: JobRow } = await (await qa.get(`jobs/${jobId}`)).json();
+    if (!["queued", "running"].includes(body.data.status)) return body.data;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(`job ${jobId} never finished`);
+}
+
+export type JobRow = { id: string; status: string; kind: string };
+export type TakenState = { stateId: string; job: JobRow };
+
+/** `POST /states` answers 202 with the state and its job; this waits the job out. */
+export async function takeState(
+  qa: APIRequestContext,
+  name: string,
+  adapterId: string,
+  headers: { [name: string]: string } = {}
+): Promise<TakenState> {
+  const response = await qa.post("projects/demo/states", {
+    data: { name, adapter_ids: [adapterId] },
+    headers,
+  });
+  if (response.status() !== 202) throw new Error(`take ${name}: ${await response.text()}`);
+  const body: { data: { state: { id: string }; job: JobRow } } = await response.json();
+  return { stateId: body.data.state.id, job: await waitForJob(qa, body.data.job.id) };
+}
+
+/** Takes a state of one adapter and returns `table:blob_hash` for every table it stored. */
+export async function stateHashes(
+  qa: APIRequestContext,
+  name: string,
+  adapterId: string
+): Promise<string[]> {
+  const taken = await takeState(qa, name, adapterId);
+  const detail: {
+    data: { adapters: { tables: { schema: string | null; name: string; blob_hash: string }[] }[] };
+  } = await (await qa.get(`projects/demo/states/${taken.stateId}`)).json();
+  return detail.data.adapters
+    .flatMap((adapter) => adapter.tables)
+    .map((table) => `${table.schema ?? ""}.${table.name}:${table.blob_hash}`)
+    .sort();
+}
+
+/** The refused half of two racing job requests. */
+export function refusedOf(one: APIResponse, two: APIResponse): APIResponse {
+  const refused = [one, two].find((response) => response.status() === 409);
+  if (refused === undefined) throw new Error("neither request was refused");
+  return refused;
+}
+
+/** Waits until no job holds the adapter, so the next test starts on an idle lane. */
+export async function waitForIdle(qa: APIRequestContext, adapterId: string): Promise<void> {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    const running: { data: { adapter_ids: string[] }[] } = await (
+      await qa.get("jobs?status=running&status=queued&limit=100")
+    ).json();
+    const busy = running.data.some((job) => job.adapter_ids.includes(adapterId));
+    if (!busy) return;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(`adapter ${adapterId} never went idle`);
+}
+
+export type ThrowawayAdapter = { id: string; initJobId: string | null };
+
+/** A second Postgres adapter on the demo database, for tests that must create and delete one. */
+export async function createPostgresAdapter(
+  qa: APIRequestContext,
+  name: string
+): Promise<ThrowawayAdapter> {
+  const response = await qa.post("projects/demo/adapters", {
+    data: {
+      kind: "database",
+      engine: "postgres",
+      name,
+      config: { host: "127.0.0.1", port: 54320, database: "shop", user: "testate" },
+      secrets: { password: "testate" },
+    },
+  });
+  if (response.status() !== 201) throw new Error(`create ${name}: ${await response.text()}`);
+  const body: { data: { adapter: { id: string }; init_job: { id: string } | null } } =
+    await response.json();
+  return { id: body.data.adapter.id, initJobId: body.data.init_job?.id ?? null };
+}
+
+/** Files in the local blob store; an unchanged table must not add one (05 §5.10). */
+export function blobCount(): number {
+  const dir = join(E2E_DIR, "data", "blobs");
+  if (!existsSync(dir)) return 0;
+  return readdirSync(dir, { recursive: true, withFileTypes: true }).filter((entry) =>
+    entry.isFile()
+  ).length;
 }

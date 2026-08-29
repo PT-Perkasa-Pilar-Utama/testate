@@ -44,7 +44,9 @@ export default defineConfig({
     },
     // Checkouts restore the demo databases; nothing else may edit them meanwhile.
     { name: "states", testMatch: /states\.e2e\.ts/, dependencies: ["flows"] },
-    { name: "adapter", testMatch: /adapter\.e2e\.ts/, dependencies: ["states"] },
+    // The API-only state stories hold the same adapters; they run between the two UI phases.
+    { name: "state-api", testMatch: /state-api\.e2e\.ts/, dependencies: ["states"] },
+    { name: "adapter", testMatch: /adapter\.e2e\.ts/, dependencies: ["state-api"] },
     { name: "crawl", testMatch: /buttons\.e2e\.ts/, dependencies: ["adapter"] },
   ],
   globalSetup: "./e2e/setup.ts",
