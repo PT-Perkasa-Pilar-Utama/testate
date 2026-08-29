@@ -20,7 +20,7 @@ import { restoreFromManifest } from "./checkouts.restore.ts";
 export type CheckoutJobDeps = SnapshotDeps & {
   checkouts: CheckoutsRepository;
   hooks: HookRunner;
-  projects: Pick<ProjectsRepository, "setHead" | "byId" | "usedBytes">;
+  projects: Pick<ProjectsRepository, "setHead" | "byId" | "usedBytes" | "instanceUsedBytes">;
   audit: AuditService;
 };
 

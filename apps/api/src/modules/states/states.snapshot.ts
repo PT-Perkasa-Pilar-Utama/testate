@@ -1,4 +1,4 @@
-import type { Actor, ManifestTable, TableRef } from "@testate/shared";
+import type { Actor, ManifestTable, TableRef, JsonObject } from "@testate/shared";
 import * as v from "valibot";
 
 import { runLanes } from "../../lib/async/lanes.ts";
@@ -26,10 +26,12 @@ export type SnapshotDeps = {
   ring: KeyRing;
   adapters: AdaptersRepository;
   states: StatesRepository;
-  projects: Pick<ProjectsRepository, "setHead" | "byId" | "usedBytes">;
+  projects: Pick<ProjectsRepository, "setHead" | "byId" | "usedBytes" | "instanceUsedBytes">;
   audit: AuditService;
   hooks: HookRunner;
   now: () => Date;
+  /** The instance defaults a project without a quota falls back to, and the instance ceiling. */
+  quota?: () => Promise<QuotaSettings>;
   /** Adapters on distinct targets run in this many lanes at once; same target stays sequential. */
   adapterLanes?: number;
 };
@@ -146,21 +148,34 @@ export async function snapshotAdapter(
   }
 }
 
+export type QuotaSettings = { default_bytes: number; instance_ceiling_bytes: number | null };
+
 /**
- * Project quota at job start (15 §15.8): a full project takes no new state.
- * ponytail: no instance ceiling and no re-check before the first blob write — the ceiling lives
- * in settings, which is still a scaffold; add both when the settings card lands.
+ * Quotas at job start (15 §15.8): a project at its own quota (or the instance default when it has
+ * none) takes no new state, and neither does anyone once the instance ceiling is reached. The
+ * check runs once per job; a state that starts under the line may still finish over it.
  */
-function assertQuota(projects: SnapshotDeps["projects"], projectId: string): void {
-  const project = projects.byId(projectId);
-  if (project === null || project.quota_bytes === null) return;
-  const used = projects.usedBytes(projectId);
-  if (used >= project.quota_bytes) {
-    throw new AppError("QUOTA_EXCEEDED", "the project is at its storage quota", {
-      used_bytes: used,
-      quota_bytes: project.quota_bytes,
-    });
-  }
+async function assertQuota(deps: SnapshotDeps, projectId: string): Promise<void> {
+  const project = deps.projects.byId(projectId);
+  if (project === null) return;
+  const settings = deps.quota === undefined ? null : await deps.quota();
+  assertUnder(
+    deps.projects.usedBytes(projectId),
+    project.quota_bytes ?? settings?.default_bytes ?? null,
+    "the project is at its storage quota",
+    {}
+  );
+  assertUnder(
+    deps.projects.instanceUsedBytes(),
+    settings?.instance_ceiling_bytes ?? null,
+    "the instance is at its storage ceiling",
+    { reason: "instance" }
+  );
+}
+
+function assertUnder(used: number, limit: number | null, message: string, extra: JsonObject): void {
+  if (limit === null || used < limit) return;
+  throw new AppError("QUOTA_EXCEEDED", message, { ...extra, used_bytes: used, quota_bytes: limit });
 }
 
 /** `init`, then `init-<adapter>`, then a suffixed name, so a re-created adapter never collides (05 §5.8). */
@@ -256,7 +271,7 @@ export function createSnapshotRunner(deps: SnapshotDeps): JobRunner {
     const projectId = target.adapters[0]?.project_id ?? job.project_id ?? "";
     const actor: Actor = job.actor;
     try {
-      assertQuota(deps.projects, projectId);
+      await assertQuota(deps, projectId);
       let finished = 0;
       const manifests: AdapterManifest[] = await runLanes(
         target.adapters,

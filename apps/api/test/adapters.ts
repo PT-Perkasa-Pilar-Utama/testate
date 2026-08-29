@@ -31,16 +31,17 @@ import { createPoliciesRepository } from "../src/modules/data/data.policies.ts";
 import type { PoliciesRepository } from "../src/modules/data/data.policies.ts";
 import { createImportsRepository } from "../src/modules/imports/imports.repository.ts";
 import type { ImportsRepository } from "../src/modules/imports/imports.repository.ts";
-import { createHooksRepository } from "../src/modules/hooks/hooks.repository.ts";
-import { createHooksService } from "../src/modules/hooks/hooks.service.ts";
 import type { HooksService } from "../src/modules/hooks/hooks.service.ts";
-import { createRestRepository } from "../src/modules/rest/rest.repository.ts";
 import type { RestRepository } from "../src/modules/rest/rest.repository.ts";
-import { createRestService } from "../src/modules/rest/rest.service.ts";
 import type { RestService } from "../src/modules/rest/rest.service.ts";
 import { createStatesRepository } from "../src/modules/states/states.repository.ts";
 import type { StatesRepository } from "../src/modules/states/states.repository.ts";
 import { registerRunners } from "../src/modules/jobs/jobs.runners.ts";
+import type { QuotaSettings } from "../src/modules/states/states.snapshot.ts";
+
+/** Instance quota defaults the snapshot job reads; a test lowers them to hit the ceiling. */
+type QuotaKnob = { current: QuotaSettings };
+import { createTestIntegrations } from "./integrations.ts";
 import type { AdaptersService } from "../src/modules/adapters/adapters.service.ts";
 import { secretsSchema } from "../src/modules/adapters/adapters.secrets.ts";
 import type { Secrets } from "../src/modules/adapters/adapters.secrets.ts";
@@ -108,6 +109,8 @@ export type AdaptersHarness = {
   engines: EngineRegistry;
   /** Live options of the fake engine; set `failCheckout` to make the next checkout fail that way. */
   fakeOptions: FakeEngineOptions;
+  /** Instance quota defaults the snapshot job reads; lower them to test the ceiling. */
+  quota: { current: { default_bytes: number; instance_ceiling_bytes: number | null } };
   rest: RestService;
   requests: RestRepository;
   hooks: HooksService;
@@ -224,26 +227,17 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
   // The fake reads its options at call time, so a test can flip a failure on and off.
   const fakeOptions: FakeEngineOptions = { databases, failCounters };
   const engines = fakeRegistry(fakeOptions);
-  const requests = createRestRepository(accounts.db);
-  const rest = createRestService({
-    repo: requests,
-    adapters: repo,
-    projects: accounts.projectsRepo,
+  const { requests, rest, hooks } = createTestIntegrations(
+    accounts,
+    repo,
     ring,
-    netguard: stubNetguard(blocked),
-    now: accounts.now,
-    bodyCapBytes: 64,
-  });
-  const hooks = createHooksService({
-    repo: createHooksRepository(accounts.db),
-    rest,
-    requests,
-    adapters: repo,
-    projects: accounts.projectsRepo,
-    audit: accounts.audit,
-    now: accounts.now,
-  });
+    stubNetguard(blocked)
+  );
+  const quota: QuotaKnob = {
+    current: { default_bytes: 10 * 1024 ** 3, instance_ceiling_bytes: null },
+  };
   registerRunners(runtime.dispatcher, {
+    quota: async () => quota.current,
     db: accounts.db,
     audit: accounts.audit,
     now: accounts.now,
@@ -309,6 +303,7 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     dataDir,
     engines,
     fakeOptions,
+    quota,
     rest,
     requests,
     hooks,

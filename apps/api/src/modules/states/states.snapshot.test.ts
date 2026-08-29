@@ -101,6 +101,19 @@ describe("init snapshot job", () => {
     expect(harness.states.latestInit(created.adapterId)).toBeNull();
   });
 
+  it("falls back to the instance default quota and stops at the instance ceiling (15 §15.8)", async () => {
+    const harness = await createAdaptersHarness();
+    harness.quota.current = { default_bytes: 0, instance_ceiling_bytes: null };
+    const byDefault = await createUnsettled(harness, PG);
+    expect((await harness.runtime.jobs.wait(null, byDefault.jobId, 5)).error?.code).toBe(
+      "QUOTA_EXCEEDED"
+    );
+    harness.quota.current = { default_bytes: 10 * 1024 * 1024, instance_ceiling_bytes: 0 };
+    const byCeiling = await createUnsettled(harness, { ...PG, name: "second" });
+    const job = await harness.runtime.jobs.wait(null, byCeiling.jobId, 5);
+    expect(job.error).toMatchObject({ code: "QUOTA_EXCEEDED", details: { reason: "instance" } });
+  });
+
   it("fails the state and the job when the database is unreachable, leaving no pins", async () => {
     const harness = await createAdaptersHarness();
     const draft = { ...PG, config: { ...PG.config, database: "shop" } };

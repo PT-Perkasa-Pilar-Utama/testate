@@ -17,6 +17,7 @@ import type { DiffsRepository } from "../diffs/diffs.repository.ts";
 import { createStateDeleteRunner } from "../states/states.delete.ts";
 import { createArchiveImportRunner } from "../states/states.import.ts";
 import { createSnapshotRunner } from "../states/states.snapshot.ts";
+import type { QuotaSettings } from "../states/states.snapshot.ts";
 import type { Dispatcher, JobRunner, JobRunnerContext } from "./jobs.dispatcher.ts";
 
 export type RunnerDeps = ReturnToInitDeps & {
@@ -28,8 +29,10 @@ export type RunnerDeps = ReturnToInitDeps & {
   policies: PoliciesRepository;
   dataDir: string;
   audit: AuditService;
-  projects: Pick<ProjectsRepository, "setHead" | "byId" | "usedBytes">;
+  projects: Pick<ProjectsRepository, "setHead" | "byId" | "usedBytes" | "instanceUsedBytes">;
   now: () => Date;
+  /** Instance quota defaults and ceiling for snapshots; absent means project quotas only. */
+  quota?: () => Promise<QuotaSettings>;
   /** Snapshot and checkout lanes: adapters on distinct targets run this many at once. */
   adapterLanes?: number;
 };

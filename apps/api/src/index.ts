@@ -167,6 +167,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   const { jobs, dispatcher } = createJobsRuntime(db, logger, audit, config, now, {
     ...wiring,
     hooks,
+    quota: async () => (await settings.get()).quota,
   });
   const storeTarget = await bootStore(config, db, ring, wiring, dispatcher, audit, now, VERSION);
   // Steps 8 and 9 of 22 §22.2: recover interrupted jobs, then sweep old ones.
