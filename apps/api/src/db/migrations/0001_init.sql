@@ -255,6 +255,7 @@ CREATE TABLE diff_tables (
   changed INTEGER NOT NULL DEFAULT 0,
   compare TEXT NOT NULL CHECK (compare IN ('primary-key', 'row-hash')),
   blob_hash TEXT REFERENCES blobs (hash),
+  schema_changed TEXT,
   PRIMARY KEY (diff_id, adapter_id, table_name)
 );
 

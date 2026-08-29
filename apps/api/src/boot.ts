@@ -44,6 +44,10 @@ import { createDataRepository } from "./modules/data/data.repository.ts";
 import type { DataRepository } from "./modules/data/data.repository.ts";
 import { createDataService } from "./modules/data/data.service.ts";
 import type { DataService } from "./modules/data/data.service.ts";
+import { createDiffsRepository } from "./modules/diffs/diffs.repository.ts";
+import type { DiffsRepository } from "./modules/diffs/diffs.repository.ts";
+import { createDiffsService } from "./modules/diffs/diffs.service.ts";
+import type { DiffsService } from "./modules/diffs/diffs.service.ts";
 import { createHooksRepository } from "./modules/hooks/hooks.repository.ts";
 import type { HooksRepository } from "./modules/hooks/hooks.repository.ts";
 import { createHooksService } from "./modules/hooks/hooks.service.ts";
@@ -159,6 +163,7 @@ export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now" | "hooks"> & 
   hooks: HooksRepository;
   data: DataRepository;
   policies: PoliciesRepository;
+  diffs: DiffsRepository;
   probe: ProbeFn;
   fileProbe: FileProbeFn;
 };
@@ -185,6 +190,7 @@ export function createEngineWiring(
     hooks: createHooksRepository(db),
     data: createDataRepository(db),
     policies: createPoliciesRepository(db),
+    diffs: createDiffsRepository(db),
     projects,
   };
 }
@@ -263,6 +269,7 @@ export type StateServices = {
   states: StatesService;
   checkouts: CheckoutsService;
   data: DataService;
+  diffs: DiffsService;
 };
 
 export function createStateServices(
@@ -277,6 +284,15 @@ export function createStateServices(
     states: createStatesService(statesDeps(wiring, projects, jobs, audit, now)),
     checkouts: createCheckoutsService(checkoutsDeps(wiring, projects, jobs, audit, now)),
     data: createDataService({ ...wiring, repo: wiring.data, projects, jobs, settings, audit, now }),
+    diffs: createDiffsService({
+      ...wiring,
+      repo: wiring.diffs,
+      projects,
+      jobs,
+      settings,
+      audit,
+      now,
+    }),
   };
 }
 
@@ -288,13 +304,15 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export function createRetention(
   logger: Logger,
   sweep: () => (days: number) => { deleted: number; stubbed: number },
-  historyDays: () => Promise<number>
+  historyDays: () => Promise<number>,
+  expireDiffs: () => Promise<number>
 ): Retention {
   let timer: ReturnType<typeof setInterval> | null = null;
   const run = async (): Promise<void> => {
     const swept = sweep()(await historyDays());
+    const diffs = await expireDiffs();
     const event = logger.create("job");
-    event.add("op", { name: "retention:jobs", deleted: swept.deleted, stubbed: swept.stubbed });
+    event.add("op", { name: "retention", deleted: swept.deleted, stubbed: swept.stubbed, diffs });
     event.emit();
   };
   return {

@@ -19,6 +19,8 @@ import type { AdaptersRepository } from "../src/modules/adapters/adapters.reposi
 import { createAdaptersService } from "../src/modules/adapters/adapters.service.ts";
 import { createCheckoutsRepository } from "../src/modules/checkouts/checkouts.repository.ts";
 import type { CheckoutsRepository } from "../src/modules/checkouts/checkouts.repository.ts";
+import { createDiffsRepository } from "../src/modules/diffs/diffs.repository.ts";
+import type { DiffsRepository } from "../src/modules/diffs/diffs.repository.ts";
 import { createHooksRepository } from "../src/modules/hooks/hooks.repository.ts";
 import { createHooksService } from "../src/modules/hooks/hooks.service.ts";
 import type { HooksService } from "../src/modules/hooks/hooks.service.ts";
@@ -89,6 +91,7 @@ export type AdaptersHarness = {
   blobs: BlobStore;
   states: StatesRepository;
   checkouts: CheckoutsRepository;
+  diffs: DiffsRepository;
   engines: EngineRegistry;
   rest: RestService;
   requests: RestRepository;
@@ -192,6 +195,7 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
   const blobs = createMemoryBlobStore();
   const states = createStatesRepository(accounts.db);
   const checkouts = createCheckoutsRepository(accounts.db);
+  const diffs = createDiffsRepository(accounts.db);
   const failCounters = { current: false };
   const engines = fakeRegistry({ databases, failCounters });
   const requests = createRestRepository(accounts.db);
@@ -223,6 +227,7 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     adapters: repo,
     states,
     checkouts,
+    diffs,
     hooks,
     projects: accounts.projectsRepo,
   });
@@ -258,6 +263,7 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     blobs,
     states,
     checkouts,
+    diffs,
     engines,
     rest,
     requests,

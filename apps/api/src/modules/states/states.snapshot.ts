@@ -167,10 +167,13 @@ function initName(states: StatesRepository, projectId: string, adapter: AdapterR
   return free;
 }
 
+/** Stashes and hidden diff states never move HEAD (05 §5.8, §5.10). */
+const MOVES_HEAD = new Set<Target["kind"]>(["init", "manual"]);
+
 type Target = {
   stateId: string;
   name: string;
-  kind: "init" | "manual" | "stash";
+  kind: "init" | "manual" | "stash" | "diff";
   adapters: AdapterRecord[];
 };
 
@@ -203,7 +206,7 @@ function resolveTarget(deps: SnapshotDeps, job: JobRunnerContext["job"]): Target
   return {
     stateId: state.id,
     name: state.name,
-    kind: state.kind === "stash" ? "stash" : "manual",
+    kind: state.kind === "stash" || state.kind === "diff" ? state.kind : "manual",
     adapters: adapters.flatMap((a) => (a === null ? [] : [a])),
   };
 }
@@ -262,7 +265,7 @@ export function createSnapshotRunner(deps: SnapshotDeps): JobRunner {
       }
       const size = deps.states.commitManifest(target.stateId, manifests, deps.now().toISOString());
       // A stash never moves HEAD (05 §5.8).
-      if (target.kind !== "stash") {
+      if (MOVES_HEAD.has(target.kind)) {
         deps.projects.setHead(projectId, target.stateId, "at_state", deps.now().toISOString());
       }
       const { hooks, aborted } = await afterSnapshot(deps, job.id, actor, target, projectId);

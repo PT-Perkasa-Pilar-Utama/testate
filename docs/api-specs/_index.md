@@ -25,7 +25,7 @@ Legend: `OK` implemented and tested · `WIP` in progress · `TODO` not started �
 | Imports | `POST .../uploads`, `POST .../imports/preview`, mappings, `POST .../imports`, `GET .../imports`, `GET .../imports/{run_id}`, `GET .../rejected`, `GET .../tables/{table}/sample` | SCAFFOLD |
 | States | `GET .../states`, `GET .../states/tree`, `POST .../states`, `GET .../states/{id}`, `PATCH`, `DELETE`, `GET .../archive`, `GET .../uploads/{upload_id}/archive-manifest`, `POST .../states/import` | OK except archive download, archive-manifest, import (SCAFFOLD) |
 | Checkouts | `POST .../checkouts/preflight`, `POST .../checkouts`, `GET .../checkouts`, `GET .../checkouts/{id}`, `POST .../retry`, `POST .../terminate-blockers`, `GET .../counters`, `POST .../repair-counters` | OK except terminate-blockers (SCAFFOLD) |
-| Diffs | `POST .../diffs`, `GET .../diffs`, `GET .../diffs/{id}`, `GET .../rows`, `GET .../export`, `DELETE` | SCAFFOLD |
+| Diffs | `POST .../diffs`, `GET .../diffs`, `GET .../diffs/{id}`, `GET .../rows`, `GET .../export`, `DELETE` | OK |
 | Storage | `GET .../entries`, `GET .../entries/stat`, `GET .../entries/preview`, `GET .../entries/download`, `POST .../host-key/accept` | SCAFFOLD |
 | REST requests | requests CRUD, `POST .../run`, `GET .../runs` | SCAFFOLD |
 | Hooks | `GET/POST .../hooks`, `PATCH/DELETE .../hooks/{id}`, `PUT .../hooks/order` | SCAFFOLD |

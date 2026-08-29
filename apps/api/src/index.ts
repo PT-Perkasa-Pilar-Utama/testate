@@ -45,7 +45,6 @@ import { createAuthService } from "./modules/auth/auth.service.ts";
 import { createCheckoutsHandlers } from "./modules/checkouts/checkouts.handler.ts";
 import { createDataHandlers } from "./modules/data/data.handler.ts";
 import { createDiffsHandlers } from "./modules/diffs/diffs.handler.ts";
-import { createDiffsService } from "./modules/diffs/diffs.service.ts";
 import { createHooksHandlers } from "./modules/hooks/hooks.handler.ts";
 import { createImportsHandlers } from "./modules/imports/imports.handler.ts";
 import { createImportsService } from "./modules/imports/imports.service.ts";
@@ -159,7 +158,6 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   const historyDays = async (): Promise<number> =>
     (await settings.get()).retention.job_history_days;
   const core = createStateServices(wiring, projectsRepo, jobs, audit, settings, now);
-  const diffs = createDiffsService();
   const storage = createStorageService();
   const adapters = createAdaptersService({
     repo: wiring.adapters,
@@ -229,7 +227,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     ),
     states: createStatesHandlers(core.states, prefix, config.TESTATE_TRUST_PROXY),
     checkouts: createCheckoutsHandlers(core.checkouts, prefix, config.TESTATE_TRUST_PROXY, jobs),
-    diffs: createDiffsHandlers(diffs, prefix),
+    diffs: createDiffsHandlers(core.diffs, prefix, config.TESTATE_TRUST_PROXY),
     storage: createStorageHandlers(storage),
     rest: createRestHandlers(rest),
     hooks: createHooksHandlers(hooks, config.TESTATE_TRUST_PROXY),
@@ -239,7 +237,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     tools: createToolsHandlers(createToolsService()),
     agent: createAgentHandlers(
       createAgentService(VERSION),
-      createAgentTools({ projects, adapters, data: core.data, states: core.states, diffs, storage })
+      createAgentTools({ projects, adapters, storage, ...core })
     ),
   };
 
@@ -273,7 +271,12 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   bootEvent.emit();
   ready = true;
 
-  const retention = createRetention(logger, () => jobs.sweep, historyDays);
+  const retention = createRetention(
+    logger,
+    () => jobs.sweep,
+    historyDays,
+    () => core.diffs.expire()
+  );
   return {
     fetch: app.fetch,
     port: config.PORT,
