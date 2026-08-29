@@ -55,8 +55,8 @@ export function createMysqlPoolManager(netguard: Netguard): PoolManager {
   const pools = new Map<string, { sql: SQL; key: string }>();
   return {
     async acquire(ref: ConnectionRef) {
-      if (ref.config.engine === "postgres")
-        throw new EngineError("unsupported", "postgres config on the mysql engine");
+      if (ref.config.engine !== "mysql" && ref.config.engine !== "mariadb")
+        throw new EngineError("unsupported", `${ref.config.engine} config on the mysql engine`);
       const key = keyOf(ref.config);
       const existing = pools.get(ref.connectionId);
       if (existing !== undefined && existing.key === key) return existing.sql;

@@ -36,7 +36,19 @@ export type MysqlConfig = {
   ssl: "disable" | "prefer" | "require";
 };
 
-export type ConnectionConfig = PostgresConfig | MysqlConfig;
+/** Field form authenticates against `admin` (the container default); a connection string names its own `authSource`. */
+export type MongodbConfig = {
+  engine: "mongodb";
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+  ssl: "disable" | "prefer" | "require";
+  authSource: string;
+};
+
+export type ConnectionConfig = PostgresConfig | MysqlConfig | MongodbConfig;
 
 export type ConnectionRef = { connectionId: string; config: ConnectionConfig };
 

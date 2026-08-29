@@ -47,8 +47,8 @@ export function createMysqlEngine(netguard: Netguard): DbEngine {
   };
   return {
     async probe(config) {
-      if (config.engine === "postgres")
-        throw new EngineError("unsupported", "postgres is not mysql");
+      if (config.engine !== "mysql" && config.engine !== "mariadb")
+        throw new EngineError("unsupported", `${config.engine} is not mysql`);
       const sql = await connect(config, netguard, 2);
       try {
         return await guarded("probe", () => probe(sql));

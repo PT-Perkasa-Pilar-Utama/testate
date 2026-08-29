@@ -51,16 +51,24 @@ function budgetsOf(request: QueryRequest, limits: Settings["limits"]): Budgets {
 /**
  * SQL queries on the engine port: read mode in a read-only transaction, write mode inside a write
  * session with a stash before the first write; every run lands in the caller's history.
- * SCAFFOLD: the mongo dialect waits for the MongoDB engine; masks wait for the table-editing card.
+ * The mongo dialect carries the operation as JSON text to a MongoDB adapter (06 §6.7).
  */
+/** `mongo` carries an operation to a MongoDB adapter; `sql` goes to the SQL engines (06 §6.7). */
+function assertDialect(adapter: AdapterRecord, request: QueryRequest): void {
+  const wantsMongo = request.dialect === "mongo";
+  if (wantsMongo !== (adapter.engine === "mongodb") || (wantsMongo && request.mongo === undefined)) {
+    throw new AppError("ENGINE_UNSUPPORTED", "the dialect does not match the adapter's engine", {
+      reason: "dialect",
+    });
+  }
+}
+
 export function createQueryRunner(deps: QueryDeps): QueryRunner {
   const running = new Map<string, Running>();
   const meta: RequestMeta = { ip: "", user_agent: "", request_id: null };
 
   const authorize = async (actor: Actor, adapter: AdapterRecord, request: QueryRequest): Promise<void> => {
-    if (request.dialect !== "sql") {
-      throw new AppError("ENGINE_UNSUPPORTED", "the mongo dialect needs a MongoDB engine", { reason: "dialect" });
-    }
+    assertDialect(adapter, request);
     if (request.mode !== "write") return;
     if (actor.role === "viewer" || actor.agent) throw forbidden("role");
     if (request.write_session_id === undefined) throw forbidden("write session required");
@@ -76,7 +84,7 @@ export function createQueryRunner(deps: QueryDeps): QueryRunner {
     async run(actor, adapterId, request) {
       const adapter = deps.adapterOf(adapterId);
       await authorize(actor, adapter, request);
-      const text = request.text ?? "";
+      const text = request.dialect === "mongo" ? JSON.stringify(request.mongo) : (request.text ?? "");
       const budgets = budgetsOf(request, (await deps.settings.get()).limits);
       const { engine, conn } = await deps.connect(adapter);
       const queryId = Bun.randomUUIDv7();
@@ -116,7 +124,7 @@ export function createQueryRunner(deps: QueryDeps): QueryRunner {
           rows_affected: result.rowsAffected,
           truncated: { rows: result.truncated, bytes: false, time: false },
           duration_ms: result.durationMs,
-          read_only_enforcement: "transaction",
+          read_only_enforcement: adapter.read_only_enforcement ?? "transaction",
           masked_columns: masked.masked_columns,
         };
       } catch (cause: unknown) {

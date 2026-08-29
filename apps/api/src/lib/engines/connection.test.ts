@@ -43,6 +43,13 @@ describe("toConnectionConfig", () => {
     expect(() =>
       toConnectionConfig("postgres", {}, { connection_string: "postgres://a:b@h/" })
     ).toThrow("needs a host and a database");
-    expect(() => toConnectionConfig("mongodb", { host: "h" }, {})).toThrow("has no engine");
+    expect(() => toConnectionConfig("s3", { host: "h" }, {})).toThrow("has no engine");
+    expect(
+      toConnectionConfig(
+        "mongodb",
+        {},
+        { connection_string: "mongodb://u:p@h/shop?authSource=admin" }
+      )
+    ).toMatchObject({ engine: "mongodb", port: 27017, database: "shop", authSource: "admin" });
   });
 });

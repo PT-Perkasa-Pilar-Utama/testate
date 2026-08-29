@@ -49,8 +49,8 @@ export function createEngineProbe(engines: EngineRegistry, fallback: ProbeFn): P
 }
 
 /**
- * SCAFFOLD: mongodb has no driver yet. The address check in front of this runs for real; the
- * probe answers a static capability set per engine so create, retest, and the SPA flow work end to end.
+ * Fallback for an engine name the registry lacks; every database engine has one in this build,
+ * so this answers only in tests that build a smaller registry.
  */
 export function createScaffoldProbe(): ProbeFn {
   return async (engine) => {
