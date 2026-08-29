@@ -134,16 +134,18 @@ export async function writeS3Settings(
   at: string
 ): Promise<void> {
   const { access_key_id, secret_access_key, ...config } = input;
-  repo.set("store.s3", config, updatedBy, at);
   const keys: [string, string][] = [
     ["store.s3.access_key_id", access_key_id],
     ["store.s3.secret_access_key", secret_access_key],
   ];
+  const entries: [string, JsonValue][] = [["store.s3", config]];
   for (const [key, value] of keys) {
     if (value === "keep") continue;
-    repo.set(key, await seal(ring, value, aadFor("settings", key, "global")), updatedBy, at);
+    entries.push([key, await seal(ring, value, aadFor("settings", key, "global"))]);
   }
-  repo.set("store.s3.set_at", at, updatedBy, at);
+  entries.push(["store.s3.set_at", at]);
+  // One transaction: a reader that saw a sealed key without its `set_at` got a 500 (17 §17.6).
+  repo.setMany(entries, updatedBy, at);
 }
 
 /** The store at boot: the environment wins; otherwise the stored driver, opening the sealed keys. */

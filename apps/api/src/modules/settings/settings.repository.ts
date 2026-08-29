@@ -8,9 +8,24 @@ import type { MetadataDb } from "../../lib/db/index.ts";
 export type SettingsRepository = {
   all(): Map<string, JsonValue>;
   set(key: string, value: JsonValue, updatedBy: string | null, at: string): void;
+  /** Every key in one transaction: a concurrent reader never sees half of a multi-key write. */
+  setMany(entries: [string, JsonValue][], updatedBy: string | null, at: string): void;
 };
 
 const row = v.object({ key: v.string(), value: v.string() });
+
+function write(
+  db: MetadataDb,
+  key: string,
+  value: JsonValue,
+  updatedBy: string | null,
+  at: string
+): void {
+  db.query(
+    `INSERT INTO settings (key, value, updated_by, updated_at) VALUES (?, ?, ?, ?)
+     ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_by = excluded.updated_by, updated_at = excluded.updated_at`
+  ).run(key, JSON.stringify(value), updatedBy, at);
+}
 
 export function createSettingsRepository(db: MetadataDb): SettingsRepository {
   return {
@@ -21,10 +36,12 @@ export function createSettingsRepository(db: MetadataDb): SettingsRepository {
       );
     },
     set(key, value, updatedBy, at) {
-      db.query(
-        `INSERT INTO settings (key, value, updated_by, updated_at) VALUES (?, ?, ?, ?)
-         ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_by = excluded.updated_by, updated_at = excluded.updated_at`
-      ).run(key, JSON.stringify(value), updatedBy, at);
+      write(db, key, value, updatedBy, at);
+    },
+    setMany(entries, updatedBy, at) {
+      db.transaction(() => {
+        for (const [key, value] of entries) write(db, key, value, updatedBy, at);
+      })();
     },
   };
 }

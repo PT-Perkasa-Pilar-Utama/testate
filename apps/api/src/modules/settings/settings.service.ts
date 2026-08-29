@@ -182,8 +182,12 @@ export function createSettingsService(deps: SettingsDeps): SettingsService {
       if (blocked !== undefined)
         throw conflict(`${blocked[0]} is set by the environment`, { key: blocked[0] });
       const before = read();
-      for (const [key, value] of leaves)
-        if (key !== "store.s3") deps.repo.set(key, value, actor.id, nowIso());
+      const at = nowIso();
+      deps.repo.setMany(
+        leaves.filter(([key]) => key !== "store.s3"),
+        actor.id,
+        at
+      );
       const after = read();
       deps.audit.record({
         actor,

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import type { JsonObject } from "@testate/shared";
 import * as v from "valibot";
 
 import { TEST_META } from "../../../test/accounts.ts";
@@ -55,6 +56,44 @@ describe("settings store", () => {
     ).rejects.toMatchObject({
       code: "CONFLICT",
     });
+  });
+
+  it("writes the S3 keys and their set_at in one transaction", async () => {
+    const h = await createSettingsHarness();
+    const repo = createSettingsRepository(h.harness.db);
+    await h.settings.update(
+      h.harness.admin,
+      {
+        store: {
+          s3: {
+            bucket: "snapshots",
+            prefix: "testate",
+            region: null,
+            endpoint: "http://minio.sit.internal:9000",
+            virtual_hosted: false,
+            access_key_id: "AKIA1",
+            secret_access_key: "s3cret",
+          },
+        },
+      },
+      TEST_META
+    );
+    // A reader that saw a sealed key without its set_at answered 500 on GET /settings.
+    expect(repo.all().get("store.s3.set_at")).toEqual(expect.any(String));
+
+    const circular: JsonObject = {};
+    circular["self"] = circular;
+    expect(() =>
+      repo.setMany(
+        [
+          ["probe.one", 1],
+          ["probe.two", circular],
+        ],
+        null,
+        "2026-01-01T00:00:00.000Z"
+      )
+    ).toThrow("cyclic");
+    expect(repo.all().get("probe.one")).toBeUndefined();
   });
 
   it("migrates every referenced blob to the target store, flips the driver, and swaps the live store", async () => {
