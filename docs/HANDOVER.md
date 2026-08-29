@@ -135,3 +135,36 @@ join (needs a live introspection per page — FK links and lookups cover it), S3
 MongoDB index exclusion, `authSource` field, the ssh2 note, the in-house router.
 
 Open PRD items no dashboard can prove: stories 15, 78, 107 (failure injection; unit-tested).
+
+## 9. Recurring pitfalls (each of these cost at least two chain runs)
+
+Lint rules that fire on almost every new file — write to them up front, do not dodge them:
+
+| Rule | What trips it | Do this instead |
+|---|---|---|
+| `max-lines` 300 | any view with 3+ dialogs, any harness | split into `*.dialogs.view.tsx` / helper files early; counts code lines only |
+| `complexity` 10 | patch builders, validators | extract `xPatch()`, `assertUnder()` helpers |
+| `anti-slop/no-conditional-empty-object-spread` | `...(x === undefined ? {} : { x })` | build the object, then `if (x !== undefined) obj.x = x` |
+| `anti-slop/no-runtime-typeof` | `typeof v === "string"` | `v.safeParse(v.union([...]), value)` or `Array.isArray` |
+| `anti-slop/no-known-value-widening` | `const q: { a: string } = …`, anonymous return types | name the type (`type QuotaKnob = …`) or use `satisfies` |
+| `anti-slop/require-safety-comment-for-type-assertion` | `as never`, `as number \| null` | change the signature instead of asserting |
+| `solid/reactivity` | reading a signal at setup and using it in a returned async fn | capture as `const staticX = x()` before `attempt(...)` |
+| `jest/no-conditional-in-test` | `??`, `?.`, ternaries, `if` inside `test()` and even inside `describe()` | move logic into `e2e/lib` or a module-level helper |
+| `no-unused-vars` | leftover imports after a refactor | grep the symbol before committing |
+
+Type system: `exactOptionalPropertyTypes` is on — never assign `undefined` to an optional key.
+Test fixtures for `TableSchema` need `unique`, `unsupported`, `excluded`, `display_column` too.
+
+Editing with scripts: `bun run fmt:fix` reflows code, so a python/sed anchor written from memory
+often no longer matches. Edits then silently do nothing (the script prints no error when it is
+followed by `|| exit`). Always `grep` the anchor or the new symbol after the edit; check `git diff`.
+
+Tests encode old behaviour: when a rule changes (dry run keeps its upload, preflight lists
+untouched adapters) expect an existing unit test to fail and update it, don't weaken the rule.
+
+Before "fixing" the product from an E2E failure, look at the API first: `sqlite3 .e2e/data/metadata.db`
+and a direct request against a standalone boot (§3). Half of the E2E failures were my wrong
+assumption about a label, a schema name, or a toast, not a bug.
+
+Shell on this Mac: no `timeout`; `grep --include=*.ts` and bare `=====` echo trip zsh globbing
+(`setopt` is off — quote them); `ls` is aliased (use `command ls` in scripts).
