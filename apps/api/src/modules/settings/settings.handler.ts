@@ -25,8 +25,13 @@ export function createSettingsHandlers(
       return ok(c, await service.update(currentActor(c), patch, requestMeta(c, trustProxy)));
     },
     migrateStore: async (c) => {
-      await parseBody(c, storeMigrationSchema);
-      return accepted(c, await service.migrateStore(false), apiPrefix);
+      const body = await parseBody(c, storeMigrationSchema);
+      const job = await service.migrateStore(
+        currentActor(c),
+        body.target,
+        requestMeta(c, trustProxy)
+      );
+      return accepted(c, job, apiPrefix);
     },
     backup: async (c) => {
       await parseBody(c, backupRequestSchema);

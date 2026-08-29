@@ -6,8 +6,7 @@ import type { KeyRing, Sealed } from "./index.ts";
 
 /**
  * Every sealed column (17 §17.4). Adding a `*_sealed` column updates this list and the spec table
- * in the same change. SCAFFOLD: the sealed fields inside `settings.value` for `store.s3` join with
- * the settings card.
+ * in the same change. The sealed `settings` keys live in `SEALED_SETTINGS_KEYS` and sweep below.
  */
 export const SEALED_COLUMNS = [
   { table: "adapters", column: "config_sealed", owner: "adapter" },
@@ -70,10 +69,53 @@ async function sweepColumn(
   }
 }
 
+const SEALED_SETTINGS_KEYS = ["store.s3.access_key_id", "store.s3.secret_access_key"];
+const settingRow = v.object({ key: v.string(), value: v.string() });
+
+/** Settings keep the sealed S3 keys as JSON strings under dotted keys, bound to `settings:<key>:global`. */
+async function sweepSettings(ring: KeyRing, db: MetadataDb, report: SweepReport): Promise<void> {
+  const rows = v.parse(
+    v.array(settingRow),
+    db
+      .query(
+        `SELECT key, value FROM settings WHERE key IN (${SEALED_SETTINGS_KEYS.map(() => "?").join(", ")})`
+      )
+      .all(...SEALED_SETTINGS_KEYS)
+  );
+  for (const row of rows) {
+    const value = v.safeParse(v.string(), JSON.parse(row.value));
+    if (!value.success || !isSealed(value.output)) {
+      report.unreadable.push({
+        table: "settings",
+        column: row.key,
+        rowId: "global",
+        kid: "malformed",
+      });
+      continue;
+    }
+    // SAFETY: isSealed validated the envelope format on the line above.
+    const sealed = value.output as Sealed;
+    const kid = kidOfSealed(sealed);
+    if (kid === ring.activeKid) {
+      report.skipped += 1;
+      continue;
+    }
+    if (!ring.all.has(kid)) {
+      report.unreadable.push({ table: "settings", column: row.key, rowId: "global", kid });
+      continue;
+    }
+    const next = await reseal(ring, sealed, aadFor("settings", row.key, "global"));
+    if (next === null) continue;
+    db.query("UPDATE settings SET value = ? WHERE key = ?").run(JSON.stringify(next), row.key);
+    report.reSealed += 1;
+  }
+}
+
 /** Re-seals every stored value under the active key and lists what no configured key opens (17 §17.3). */
 export async function sweep(ring: KeyRing, db: MetadataDb): Promise<SweepReport> {
   const report: SweepReport = { reSealed: 0, unreadable: [], skipped: 0 };
   for (const entry of SEALED_COLUMNS) await sweepColumn(ring, db, entry, report);
+  await sweepSettings(ring, db, report);
   return report;
 }
 

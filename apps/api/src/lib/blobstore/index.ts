@@ -33,3 +33,7 @@ export function assertHash(expected: string | undefined, actual: string): void {
 
 export { createLocalBlobStore } from "./local.ts";
 export { createMemoryBlobStore } from "./memory.ts";
+export { createS3BlobStore } from "./s3.ts";
+export type { S3StoreConfig } from "./s3.ts";
+export { createSwitchableBlobStore } from "./switchable.ts";
+export type { SwitchableBlobStore } from "./switchable.ts";

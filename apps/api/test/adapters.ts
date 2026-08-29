@@ -1,14 +1,14 @@
 import type { Actor, Adapter, AdapterDraft } from "@testate/shared";
 import * as v from "valibot";
 
-import { createMemoryBlobStore } from "../src/lib/blobstore/index.ts";
+import { createMemoryBlobStore, createSwitchableBlobStore } from "../src/lib/blobstore/index.ts";
 import type { MemoryTree } from "../src/lib/files/index.ts";
 import { memoryOpen } from "./files.ts";
 import { createFilesResolver } from "../src/modules/adapters/adapters.files.ts";
 import type { FilesResolver } from "../src/modules/adapters/adapters.files.ts";
 import { createHostKeysRepository } from "../src/modules/adapters/adapters.hostkeys.ts";
 import type { HostKeysRepository } from "../src/modules/adapters/adapters.hostkeys.ts";
-import type { BlobStore } from "../src/lib/blobstore/index.ts";
+import type { SwitchableBlobStore } from "../src/lib/blobstore/index.ts";
 import { createFakeEngine } from "../src/lib/engines/fake/engine.ts";
 import type { FakeDatabase, FakeEngineOptions } from "../src/lib/engines/fake/engine.ts";
 import type { DbEngine, EngineRegistry } from "../src/lib/engines/index.ts";
@@ -98,7 +98,7 @@ export type AdaptersHarness = {
   runtime: JobsHarness;
   /** Fake databases by name; the `shop` database starts with two tables. */
   databases: Map<string, FakeDatabase>;
-  blobs: BlobStore;
+  blobs: SwitchableBlobStore;
   states: StatesRepository;
   checkouts: CheckoutsRepository;
   diffs: DiffsRepository;
@@ -211,7 +211,7 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
   const scaffold = createScaffoldProbe();
   const runtime = createJobsHarness(accounts.db, accounts.now);
   const databases = new Map<string, FakeDatabase>([["shop", shopDatabase()]]);
-  const blobs = createMemoryBlobStore();
+  const blobs = createSwitchableBlobStore(createMemoryBlobStore());
   const states = createStatesRepository(accounts.db);
   const checkouts = createCheckoutsRepository(accounts.db);
   const diffs = createDiffsRepository(accounts.db);

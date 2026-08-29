@@ -6,7 +6,8 @@ import type { MetadataDb } from "./lib/db/index.ts";
 import type { KeyRing } from "./lib/sealed/index.ts";
 import type { AuditService } from "./modules/audit/audit.service.ts";
 import type { RunnerDeps } from "./modules/jobs/jobs.runners.ts";
-import { createLocalBlobStore } from "./lib/blobstore/index.ts";
+import { createLocalBlobStore, createSwitchableBlobStore } from "./lib/blobstore/index.ts";
+import type { SwitchableBlobStore } from "./lib/blobstore/index.ts";
 import { createEngineRegistry } from "./lib/engines/index.ts";
 import type { Netguard } from "./lib/engines/index.ts";
 import {
@@ -48,14 +49,20 @@ import { createRestRepository } from "./modules/rest/rest.repository.ts";
 import type { RestRepository } from "./modules/rest/rest.repository.ts";
 import { createRestService } from "./modules/rest/rest.service.ts";
 import type { RestDeps, RestService } from "./modules/rest/rest.service.ts";
+import type { Dispatcher } from "./modules/jobs/jobs.dispatcher.ts";
+import { createStoreMigrationRunner } from "./modules/settings/settings.migration.ts";
 import { createSettingsRepository } from "./modules/settings/settings.repository.ts";
+import { bootStoreTarget, createStoreFactory } from "./modules/settings/settings.store.ts";
+import type { StoreTarget } from "./modules/settings/settings.store.ts";
 import type { SettingsDeps } from "./modules/settings/settings.service.ts";
 import { createStatesRepository } from "./modules/states/states.repository.ts";
 import { createStatesService } from "./modules/states/states.service.ts";
 import type { StatesDeps, StatesService } from "./modules/states/states.service.ts";
+import type { StorageDeps } from "./modules/storage/storage.service.ts";
 import type { JobsService } from "./modules/jobs/jobs.service.ts";
 
-export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now" | "hooks"> & {
+export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now" | "hooks" | "blobs"> & {
+  blobs: SwitchableBlobStore;
   requests: RestRepository;
   hooks: HooksRepository;
   data: DataRepository;
@@ -94,7 +101,7 @@ export function createEngineWiring(
       open: openFileSource,
       now,
     }),
-    blobs: createLocalBlobStore(join(config.TESTATE_DATA_DIR, "blobs")),
+    blobs: createSwitchableBlobStore(createLocalBlobStore(join(config.TESTATE_DATA_DIR, "blobs"))),
     ring,
     adapters,
     states: createStatesRepository(db),
@@ -236,6 +243,9 @@ export type SettingsHooks = {
   setDeny: (deny: string[]) => void;
   recheck: () => Promise<string[]>;
   removeState: (id: string) => Promise<void>;
+  jobs: SettingsDeps["jobs"];
+  ring: KeyRing;
+  netguard: Netguard;
 };
 
 /** Settings need the live netguard, the adapters service, and the states service; all arrive as closures. */
@@ -250,6 +260,9 @@ export function settingsDeps(
     repo: createSettingsRepository(db),
     config,
     audit,
+    ring: hooks.ring,
+    netguard: hooks.netguard,
+    jobs: hooks.jobs,
     recheckDenyList: async (deny) => {
       hooks.setDeny(deny);
       return hooks.recheck();
@@ -257,4 +270,44 @@ export function settingsDeps(
     retention: { db, removeState: hooks.removeState },
     now,
   };
+}
+
+/**
+ * Picks the snapshot store for this boot (environment first, then the stored driver), swaps it
+ * behind the live handle, and registers the `storage_migration` job (15 §15.6, §15.7).
+ */
+export async function bootStore(
+  config: Config,
+  db: MetadataDb,
+  ring: KeyRing,
+  wiring: EngineWiring,
+  dispatcher: Dispatcher,
+  audit: AuditService,
+  now: () => Date
+): Promise<StoreTarget> {
+  const stores = createStoreFactory(config);
+  const target = await bootStoreTarget(config, db, ring);
+  if (target.driver === "s3") wiring.blobs.swap(stores(target));
+  dispatcher.registerKind(
+    "storage_migration",
+    createStoreMigrationRunner({
+      repo: createSettingsRepository(db),
+      ring,
+      live: wiring.blobs,
+      stores,
+      referencedBlobs: () => wiring.states.referencedBlobs(),
+      audit,
+      now,
+    })
+  );
+  return target;
+}
+
+export function storageDeps(
+  wiring: EngineWiring,
+  projects: ProjectsRepository,
+  audit: AuditService,
+  now: () => Date
+): StorageDeps {
+  return { projects, files: wiring.files, hostKeys: wiring.hostKeys, audit, now };
 }

@@ -21,10 +21,12 @@ import {
   sweepSealed,
 } from "./boot.ts";
 import {
+  bootStore,
   createEngineWiring,
   createIntegrations,
   createStateServices,
   settingsDeps,
+  storageDeps,
 } from "./wiring.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import type { Config } from "./lib/config/index.ts";
@@ -155,6 +157,9 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
       setDeny: (deny) => netguard.setDeny(deny),
       recheck: () => adapters.recheckDenyList(),
       removeState: (id) => core.states.removeNow(id),
+      jobs: { enqueue: (input) => jobs.enqueue(input), heartbeat: () => jobs.heartbeat() },
+      ring,
+      netguard,
     })
   );
   netguard.setDeny((await settings.get()).netguard.deny);
@@ -163,16 +168,11 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     ...wiring,
     hooks,
   });
+  const storeTarget = await bootStore(config, db, ring, wiring, dispatcher, audit, now);
   // Steps 8 and 9 of 22 §22.2: recover interrupted jobs, then sweep old ones.
   const recovery = await jobs.recover();
   const core = createStateServices(wiring, projectsRepo, jobs, audit, settings, config, now);
-  const storage = createStorageService({
-    projects: projectsRepo,
-    files: wiring.files,
-    hostKeys: wiring.hostKeys,
-    audit,
-    now,
-  });
+  const storage = createStorageService(storageDeps(wiring, projectsRepo, audit, now));
   const adapters = createAdaptersService({
     repo: wiring.adapters,
     projects: projectsRepo,
@@ -203,7 +203,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
         version: VERSION,
         bootId,
         bootedAt,
-        storeDriver: config.TESTATE_STORE ?? "local",
+        storeDriver: storeTarget.driver,
         activeKid: ring.activeKid,
         extraKeys: ring.all.size - 1,
         sinkDegraded: () => logger.sink.degraded,

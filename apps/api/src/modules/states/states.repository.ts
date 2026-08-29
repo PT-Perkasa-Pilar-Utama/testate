@@ -63,6 +63,8 @@ export type StateRows = {
   remove(id: string): Removal;
   /** Blobs with no reference and no pin; the caller deletes them from the store. */
   unpinnedOrphans(hashes: string[]): string[];
+  /** Every blob some state or diff still references; the store migration copies exactly these. */
+  referencedBlobs(): string[];
   forgetBlobs(hashes: string[]): void;
   nameTaken(projectId: string, name: string): boolean;
   setStatus(id: string, status: StateStatus, at: string): void;
@@ -198,6 +200,14 @@ function createStateRows(db: MetadataDb): StateRows {
         db.query("DELETE FROM states WHERE id = ?").run(id);
         return { orphans: hashes.map((item) => item.blob_hash), wasHead };
       })();
+    },
+    referencedBlobs() {
+      return v
+        .parse(
+          v.array(v.object({ hash: v.string() })),
+          db.query("SELECT hash FROM blobs WHERE ref_count > 0 ORDER BY hash").all()
+        )
+        .map((row) => row.hash);
     },
     unpinnedOrphans(hashes) {
       return hashes.filter(

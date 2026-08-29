@@ -2,14 +2,38 @@ import { describe, expect, it } from "bun:test";
 import { settingsSchema } from "@testate/shared";
 
 import { TEST_META } from "../../../test/accounts.ts";
+import { IDLE_SETTINGS_DEPS } from "../../../test/settings.ts";
 import { PG, createAdaptersHarness, createSettled } from "../../../test/adapters.ts";
 import type { AdaptersHarness } from "../../../test/adapters.ts";
 import { expectContract } from "../../../test/contract.ts";
+import { createMemoryBlobStore } from "../../lib/blobstore/index.ts";
+import { createStoreMigrationRunner } from "./settings.migration.ts";
 import { createSettingsRepository } from "./settings.repository.ts";
+import { storedS3Target } from "./settings.store.ts";
+import type { MigrationTarget } from "./settings.service.ts";
 import { SETTINGS_MOCK, createSettingsService, leavesOf } from "./settings.service.ts";
 import type { SettingsService } from "./settings.service.ts";
 
 type Harness = { harness: AdaptersHarness; settings: SettingsService; rechecks: string[][] };
+
+function s3Target(endpoint: string): MigrationTarget {
+  return {
+    driver: "s3",
+    s3: {
+      bucket: "snapshots",
+      prefix: "testate",
+      endpoint,
+      virtual_hosted: false,
+      access_key_id: "AKIA",
+      secret_access_key: "s3cret",
+    },
+  };
+}
+
+function jobIdOf(job: { id: string } | null): string {
+  if (job === null) throw new Error("no init job");
+  return job.id;
+}
 
 async function createHarness(store: "local" | "s3" | undefined = undefined): Promise<Harness> {
   const harness = await createAdaptersHarness();
@@ -18,6 +42,14 @@ async function createHarness(store: "local" | "s3" | undefined = undefined): Pro
     repo: createSettingsRepository(harness.db),
     config: { TESTATE_MAX_UPLOAD_MB: 7, TESTATE_JOB_CONCURRENCY: 3, TESTATE_STORE: store },
     audit: harness.audit,
+    ring: harness.ring,
+    jobs: harness.runtime.jobs,
+    netguard: {
+      check: async (input) =>
+        harness.blocked.has(input.host)
+          ? { allowed: false, reason: "policy", matched: input.host }
+          : { allowed: true, addresses: ["10.0.0.9"] },
+    },
     recheckDenyList: async (deny) => {
       rechecks.push(deny);
       harness.blocked.add("pg.sit.internal");
@@ -103,6 +135,7 @@ describe("settings", () => {
       repo: createSettingsRepository(h.harness.db),
       config: { TESTATE_MAX_UPLOAD_MB: 7, TESTATE_JOB_CONCURRENCY: 3, TESTATE_STORE: undefined },
       audit: h.harness.audit,
+      ...IDLE_SETTINGS_DEPS,
       recheckDenyList: async () => [],
       retention: { db: h.harness.db, removeState: async (id) => void removed.push(id) },
       now: h.harness.now,
@@ -118,5 +151,103 @@ describe("settings", () => {
     const report = await settings.runRetention();
     expect(report).toMatchObject({ query_history: 1, stashes: 2, import_runs: 0 });
     expect(removed).toEqual(["s2", "s1"]);
+  });
+
+  it('seals the S3 keys, shows them as markers, and keeps a key on "keep"', async () => {
+    const h = await createHarness();
+    const s3 = {
+      bucket: "snapshots",
+      prefix: "testate",
+      region: null,
+      endpoint: "http://minio.sit.internal:9000",
+      virtual_hosted: false,
+      access_key_id: "AKIA1",
+      secret_access_key: "s3cret",
+    };
+    const updated = await h.settings.update(h.harness.admin, { store: { s3 } }, TEST_META);
+    expect(updated.store.s3).toMatchObject({
+      bucket: "snapshots",
+      access_key_id: { set: true },
+      secret_access_key: { set: true },
+    });
+    expect(JSON.stringify(updated)).not.toContain("s3cret");
+    const values = createSettingsRepository(h.harness.db).all();
+    expect(values.get("store.s3.secret_access_key")).not.toBe("s3cret");
+    expect(await storedS3Target(values, h.harness.ring)).toMatchObject({
+      secret_access_key: "s3cret",
+    });
+    await h.settings.update(
+      h.harness.admin,
+      { store: { s3: { ...s3, access_key_id: "AKIA2", secret_access_key: "keep" } } },
+      TEST_META
+    );
+    expect(
+      await storedS3Target(createSettingsRepository(h.harness.db).all(), h.harness.ring)
+    ).toMatchObject({ access_key_id: "AKIA2", secret_access_key: "s3cret" });
+    const locked = await createHarness("local");
+    await expect(
+      locked.settings.update(h.harness.admin, { store: { s3 } }, TEST_META)
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
+  });
+
+  it("migrates every referenced blob to the target store, flips the driver, and swaps the live store", async () => {
+    const h = await createHarness();
+    await createSettled(h.harness, PG);
+    const before = h.harness.states.referencedBlobs();
+    expect(before.length).toBeGreaterThan(0);
+    const target = createMemoryBlobStore();
+    h.harness.runtime.dispatcher.registerKind(
+      "storage_migration",
+      createStoreMigrationRunner({
+        repo: createSettingsRepository(h.harness.db),
+        ring: h.harness.ring,
+        live: h.harness.blobs,
+        stores: () => target,
+        referencedBlobs: () => h.harness.states.referencedBlobs(),
+        audit: h.harness.audit,
+        now: h.harness.now,
+      })
+    );
+    h.harness.blocked.add("blocked.sit.internal");
+    await expect(
+      h.settings.migrateStore(
+        h.harness.admin,
+        s3Target("http://blocked.sit.internal:9000"),
+        TEST_META
+      )
+    ).rejects.toMatchObject({ code: "HOST_BLOCKED" });
+    const job = await h.settings.migrateStore(
+      h.harness.admin,
+      s3Target("http://minio.sit.internal:9000"),
+      TEST_META
+    );
+    const done = await h.harness.runtime.jobs.wait(null, job.id, 5);
+    expect(done.error).toBeNull();
+    expect(done.result).toEqual({ driver: "s3", copied: before.length, skipped: 0 });
+    for (const hash of before) expect(await target.has(hash)).toBe(true);
+    expect((await h.settings.get()).store.driver).toBe("s3");
+    expect(h.harness.blobs.current()).toBe(target);
+    const again = await h.settings.migrateStore(h.harness.admin, { driver: "local" }, TEST_META);
+    const second = await h.harness.runtime.jobs.wait(null, again.id, 5);
+    expect(second.result).toMatchObject({ driver: "local", copied: 0, skipped: before.length });
+    const audit = h.harness.db
+      .query("SELECT COUNT(*) AS n FROM audit_logs WHERE action = 'store.migrated'")
+      .get();
+    expect(audit).toEqual({ n: 2 });
+  });
+
+  it("refuses a store migration while a job runs or when the environment sets the store", async () => {
+    const h = await createHarness();
+    const { init_job } = await h.harness.adapters.create(h.harness.qa, "shop", PG, TEST_META);
+    await expect(
+      h.settings.migrateStore(h.harness.admin, { driver: "local" }, TEST_META)
+    ).rejects.toMatchObject({ code: "JOB_IN_PROGRESS" });
+    await h.harness.runtime.jobs.wait(null, jobIdOf(init_job), 5);
+    const locked = await createHarness("s3");
+    await expect(
+      locked.settings.migrateStore(h.harness.admin, { driver: "local" }, TEST_META)
+    ).rejects.toMatchObject({ code: "CONFLICT" });
   });
 });
