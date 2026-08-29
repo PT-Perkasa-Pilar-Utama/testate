@@ -50,8 +50,45 @@ function parseDate(input: string, format: string, timezone: string | undefined):
   const iso = `${pad(datePart(parts, "yyyy", "", 9999), 4)}-${pad(datePart(parts, "MM", "1", 12))}-${pad(datePart(parts, "dd", "1", 31))}`;
   const hours = parts.get("HH");
   if (hours === undefined) return iso;
-  // ponytail: the zone is recorded, not applied — offsets need a tz database; UTC until then.
-  return `${iso}T${hours}:${parts.get("mm") ?? "00"}:${parts.get("ss") ?? "00"}${timezone === undefined ? "" : "Z"}`;
+  const local = `${iso}T${hours}:${parts.get("mm") ?? "00"}:${parts.get("ss") ?? "00"}`;
+  if (timezone === undefined) return local;
+  return `${zonedToUtc(local, timezone).toISOString().slice(0, 19)}Z`;
+}
+
+const PART_KEYS = ["year", "month", "day", "hour", "minute", "second"] as const;
+
+/** The wall-clock reading of `instant` in `timezone` as a UTC timestamp, via Intl (no tz database). */
+function wallClockAsUtc(instant: Date, timezone: string): number {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const read = new Map(formatter.formatToParts(instant).map((part) => [part.type, part.value]));
+  const [year, month, day, hour, minute, second] = PART_KEYS.map((key) =>
+    Number(read.get(key) ?? "0")
+  );
+  return Date.UTC(year ?? 0, (month ?? 1) - 1, day ?? 1, hour ?? 0, minute ?? 0, second ?? 0);
+}
+
+/** The instant whose wall clock in `timezone` reads `local` (`yyyy-MM-ddTHH:mm:ss`); DST edges settle on a second pass. */
+export function zonedToUtc(local: string, timezone: string): Date {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: timezone });
+  } catch {
+    throw new TransformError(`unknown timezone ${timezone}`);
+  }
+  const wanted = Date.parse(`${local}Z`);
+  let guess = wanted;
+  for (let pass = 0; pass < 2; pass += 1) {
+    guess -= wallClockAsUtc(new Date(guess), timezone) - wanted;
+  }
+  return new Date(guess);
 }
 
 function parseNumber(value: JsonValue, locale: string | undefined): number {

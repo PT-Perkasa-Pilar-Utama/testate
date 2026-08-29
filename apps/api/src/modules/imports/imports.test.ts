@@ -25,7 +25,7 @@ import {
   PREVIEW_MOCK,
   UPLOAD_MOCK,
 } from "./imports.mock.ts";
-import { applyTransforms } from "./imports.transforms.ts";
+import { applyTransforms, zonedToUtc } from "./imports.transforms.ts";
 import { validateImportRow } from "./imports.validate.ts";
 
 describe("imports", () => {
@@ -95,6 +95,20 @@ describe("imports", () => {
     expect(await applyTransforms("31/01/2026", [{ kind: "date", format: "dd/MM/yyyy" }])).toBe(
       "2026-01-31"
     );
+    // A zoned wall time lands on its UTC instant: 10:00 in Jakarta (+07:00) is 03:00Z.
+    expect(
+      await applyTransforms("31/01/2026 10:00", [
+        { kind: "date", format: "dd/MM/yyyy HH:mm", timezone: "Asia/Jakarta" },
+      ])
+    ).toBe("2026-01-31T03:00:00Z");
+    expect(zonedToUtc("2026-07-01T12:00:00", "Europe/Berlin").toISOString()).toBe(
+      "2026-07-01T10:00:00.000Z"
+    );
+    await expect(
+      applyTransforms("31/01/2026 10:00", [
+        { kind: "date", format: "dd/MM/yyyy HH:mm", timezone: "Mars/Olympus" },
+      ])
+    ).rejects.toThrow("unknown timezone");
     expect(await applyTransforms("1.234,50", [{ kind: "number", locale: "id-ID" }])).toBe(1234.5);
     expect(
       await applyTransforms("yes", [{ kind: "boolean", trueValues: ["yes"], falseValues: ["no"] }])
