@@ -98,6 +98,17 @@ function planTables(manifest: SnapshotManifest): ManifestTable[] {
   }));
 }
 
+function firstOf(rows: RowText[]): RowText {
+  const first = rows[0];
+  if (first === undefined) throw new Error("empty page");
+  return first;
+}
+
+function cursorOf(page: { nextCursor: string | null }): string {
+  if (page.nextCursor === null) throw new Error("no next page");
+  return page.nextCursor;
+}
+
 function rowsFrom(
   saved: Map<string, EncodedRow[]>
 ): (table: TableRef) => AsyncIterable<EncodedRow> {
@@ -201,6 +212,53 @@ describe.skipIf(!(await reachable()))("postgres engine (contract)", () => {
     await expect(checkout.result).rejects.toThrow("the live schema differs from the state");
     const after = await admin.unsafe("SELECT COUNT(*)::int AS o FROM contract.orders");
     expect(after[0].o).toBe(0);
+  });
+
+  test("pageRows pages by keyset with filters and sort, and by offset without a key", async () => {
+    await admin.unsafe(FIXTURE);
+    const first = await engine.pageRows(conn, {
+      table: { schema: "contract", name: "orders" },
+      limit: 2,
+      order: "desc",
+      filters: [{ column: "customer_id", op: "eq", value: "1" }],
+    });
+    expect(first.kind).toBe("keyset");
+    expect(first.rows.map((row) => decodeRow(row)["id"])).toEqual([2, 1]);
+    expect(first.nextCursor).toBeNull();
+    const byTotal = await engine.pageRows(conn, {
+      table: { schema: "contract", name: "orders" },
+      limit: 1,
+      sort: "total",
+      order: "asc",
+      filters: [],
+    });
+    expect(decodeRow(firstOf(byTotal.rows))["total"]).toBe(5.25);
+    const next = await engine.pageRows(conn, {
+      table: { schema: "contract", name: "orders" },
+      limit: 1,
+      sort: "total",
+      order: "asc",
+      filters: [],
+      cursor: cursorOf(byTotal),
+    });
+    expect(decodeRow(firstOf(next.rows))["total"]).toBe(10);
+    const notes = await engine.pageRows(conn, {
+      table: { schema: "contract", name: "notes" },
+      limit: 2,
+      order: "asc",
+      filters: [{ column: "body", op: "like", value: "t%" }],
+    });
+    expect(notes).toMatchObject({ kind: "offset", nextCursor: null });
+    expect(notes.rows.length).toBe(2);
+    await expect(
+      engine.pageRows(conn, {
+        table: { schema: "contract", name: "notes" },
+        limit: 1,
+        order: "asc",
+        sort: "nope",
+        filters: [],
+      })
+    ).rejects.toThrow("unknown column nope");
   });
 
   test("runQuery caps rows, reports truncation, and read mode never writes", async () => {

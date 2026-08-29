@@ -3,6 +3,7 @@ import { jsonObjectSchema } from "@testate/shared";
 import * as v from "valibot";
 
 import { computeFingerprint } from "../pure/fingerprint.ts";
+import { decodeOffsetCursor } from "../pure/page.ts";
 import { EngineError, rowText, sameTable, tableKey } from "../types.ts";
 import type {
   CheckoutProgress,
@@ -132,9 +133,6 @@ export function createFakeEngine(opts: FakeEngineOptions): DbEngine {
       throw new EngineError("unreachable", `${conn.config.database} is down`);
     return found;
   };
-  const unsupported = (): never => {
-    throw new EngineError("unsupported", "the fake engine has no query path");
-  };
   return {
     async probe(config) {
       if (!opts.databases.has(config.database)) {
@@ -243,7 +241,48 @@ export function createFakeEngine(opts: FakeEngineOptions): DbEngine {
       const rows = encode(found === undefined ? [] : (database.get(found) ?? []));
       yield { table, rows, bytes: 0 };
     },
-    runQuery: async () => unsupported(),
+    async pageRows(conn, query) {
+      const database = databaseOf(conn);
+      const rows = [...(database.get(tableKey(query.table)) ?? [])];
+      const compare = (a: JsonObject, b: JsonObject): number =>
+        String(a[query.sort ?? "id"] ?? "").localeCompare(
+          String(b[query.sort ?? "id"] ?? ""),
+          undefined,
+          { numeric: true }
+        );
+      rows.sort((a, b) => (query.order === "desc" ? -compare(a, b) : compare(a, b)));
+      const filtered = rows.filter((row) =>
+        query.filters.every(
+          (filter) => filter.op !== "eq" || String(row[filter.column]) === filter.value
+        )
+      );
+      const offset = decodeOffsetCursor(query.cursor);
+      const page = filtered.slice(offset, offset + query.limit);
+      return {
+        rows: page.map((row) => rowText(JSON.stringify(row))),
+        columns: Object.keys(filtered[0] ?? { id: 1 }).map((name) => ({ name, type: "text" })),
+        nextCursor: filtered.length > offset + query.limit ? String(offset + query.limit) : null,
+        kind: "offset",
+      };
+    },
+    /** Reads `SELECT * FROM <table>`; anything else answers as a write with one affected row. */
+    async runQuery(conn, query, opts) {
+      const database = databaseOf(conn);
+      const match = /^\s*SELECT \* FROM ([\w.]+)/i.exec(query.text);
+      if (match === null) {
+        if (opts.mode === "read")
+          throw new EngineError("batch_failed", "cannot execute in a read-only transaction");
+        return { columns: [], rows: [], rowsAffected: 1, truncated: false, durationMs: 1 };
+      }
+      const rows = database.get(match[1] ?? "") ?? [];
+      return {
+        columns: Object.keys(rows[0] ?? {}),
+        rows: rows.slice(0, opts.rowCap).map((row) => rowText(JSON.stringify(row))),
+        rowsAffected: null,
+        truncated: rows.length > opts.rowCap,
+        durationMs: 1,
+      };
+    },
     listRunningQueries: async () => [],
     cancelQuery: async () => undefined,
     decodeRow: (row) => v.parse(jsonObjectSchema, JSON.parse(row)),

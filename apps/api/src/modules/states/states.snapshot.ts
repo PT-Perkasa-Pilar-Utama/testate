@@ -167,7 +167,12 @@ function initName(states: StatesRepository, projectId: string, adapter: AdapterR
   return free;
 }
 
-type Target = { stateId: string; name: string; kind: "init" | "manual"; adapters: AdapterRecord[] };
+type Target = {
+  stateId: string;
+  name: string;
+  kind: "init" | "manual" | "stash";
+  adapters: AdapterRecord[];
+};
 
 /** Init payloads create their protected state here; manual ones were created by the service (08 §8.3). */
 function resolveTarget(deps: SnapshotDeps, job: JobRunnerContext["job"]): Target {
@@ -198,7 +203,7 @@ function resolveTarget(deps: SnapshotDeps, job: JobRunnerContext["job"]): Target
   return {
     stateId: state.id,
     name: state.name,
-    kind: "manual",
+    kind: state.kind === "stash" ? "stash" : "manual",
     adapters: adapters.flatMap((a) => (a === null ? [] : [a])),
   };
 }
@@ -256,7 +261,10 @@ export function createSnapshotRunner(deps: SnapshotDeps): JobRunner {
         );
       }
       const size = deps.states.commitManifest(target.stateId, manifests, deps.now().toISOString());
-      deps.projects.setHead(projectId, target.stateId, "at_state", deps.now().toISOString());
+      // A stash never moves HEAD (05 §5.8).
+      if (target.kind !== "stash") {
+        deps.projects.setHead(projectId, target.stateId, "at_state", deps.now().toISOString());
+      }
       const { hooks, aborted } = await afterSnapshot(deps, job.id, actor, target, projectId);
       deps.audit.record({
         actor,

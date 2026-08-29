@@ -13,6 +13,7 @@ import { probe } from "./probe.ts";
 import { cancelQuery, createCancelChannel, listRunningQueries, runQuery } from "./query.ts";
 import { readTable, snapshot, swallow } from "./reader.ts";
 import { checkout, resetCounters } from "./restore.ts";
+import { pageRows } from "./rows.ts";
 
 /** Big integers and decimals stay text so the SPA never rounds them (12 §12.4). */
 export function decodeRow(row: RowText): DisplayRow {
@@ -81,6 +82,10 @@ export function createPostgresEngine(netguard: Netguard): DbEngine {
       if (found === undefined)
         throw new EngineError("batch_failed", `table ${table.name} not found`);
       yield* readTable(sql, found, opts.chunkRows);
+    },
+    async pageRows(conn, query) {
+      const sql = await pools.acquire(conn);
+      return guarded("rows", () => pageRows(sql, query, conn.config.schemas));
     },
     async runQuery(conn, query, opts) {
       const sql = await pools.acquire(conn);

@@ -7,9 +7,15 @@ import {
   rowsPageSchema,
   writeSessionSchema,
 } from "@testate/shared";
+import type { Actor } from "@testate/shared";
+import * as v from "valibot";
 
+import { TEST_META } from "../../../test/accounts.ts";
+import { PG, createAdaptersHarness, createSettled } from "../../../test/adapters.ts";
+import type { AdaptersHarness } from "../../../test/adapters.ts";
 import { expectContract } from "../../../test/contract.ts";
-import { ADAPTER_ID, ADAPTER_MONGO_ID, QA_ACTOR } from "../../lib/mock/fixtures.ts";
+import { createSettingsService } from "../settings/settings.service.ts";
+import { parseFilter } from "./data.handler.ts";
 import {
   COLUMN_POLICY_MOCK,
   FIXTURE_MOCK,
@@ -18,9 +24,30 @@ import {
   ROWS_PAGE_MOCK,
   WRITE_SESSION_MOCK,
 } from "./data.mock.ts";
+import { createDataRepository } from "./data.repository.ts";
 import { createDataService } from "./data.service.ts";
+import type { DataService } from "./data.service.ts";
 
-const VIEWER = { ...QA_ACTOR, role: "viewer" } as const;
+type Harness = { harness: AdaptersHarness; data: DataService; adapterId: string; viewer: Actor };
+
+async function createHarness(): Promise<Harness> {
+  const harness = await createAdaptersHarness();
+  const adapter = await createSettled(harness, PG);
+  const data = createDataService({
+    engines: harness.engines,
+    blobs: harness.blobs,
+    ring: harness.ring,
+    adapters: harness.repo,
+    states: harness.states,
+    repo: createDataRepository(harness.db),
+    projects: harness.projectsRepo,
+    jobs: harness.runtime.jobs,
+    settings: createSettingsService(),
+    audit: harness.audit,
+    now: harness.now,
+  });
+  return { harness, data, adapterId: adapter.id, viewer: { ...harness.qa, role: "viewer" } };
+}
 
 describe("data", () => {
   it("mocks match the contract", () => {
@@ -44,30 +71,104 @@ describe("data", () => {
     });
   });
 
-  it("refuses tabular-only operations on a document adapter", async () => {
-    const service = createDataService();
-    await expect(service.policies(ADAPTER_MONGO_ID)).rejects.toThrow("outside the adapter's tier");
+  it("parses grid filters and rejects malformed ones", () => {
+    expect(parseFilter("status:eq:paid")).toEqual({ column: "status", op: "eq", value: "paid" });
+    expect(parseFilter("note:like:a:b")).toEqual({ column: "note", op: "like", value: "a:b" });
+    expect(() => parseFilter("status:between:1")).toThrow("invalid filter");
   });
 
-  it("requires a write session for write-mode queries", async () => {
-    const service = createDataService();
+  it("introspects the live schema and pages rows with sort, filter, and cursor", async () => {
+    const h = await createHarness();
+    const schema = await h.data.schema(h.adapterId);
+    expect(schema.tables.map((table) => table.name)).toEqual(["customers", "orders"]);
+    const first = await h.data.rows(h.adapterId, "public.customers", { limit: 1, order: "desc" });
+    expect(first.data).toEqual([{ id: 2, email: "b@x.io" }]);
+    expect(first.page).toMatchObject({ kind: "offset", limit: 1 });
+    const second = await h.data.rows(h.adapterId, "public.customers", {
+      limit: 1,
+      order: "desc",
+      cursor: cursorOf(first),
+    });
+    expect(second.data).toEqual([{ id: 1, email: "a@x.io" }]);
+    expect(second.page.next_cursor).toBeNull();
+    const filtered = await h.data.rows(h.adapterId, "public.customers", {
+      filters: [{ column: "email", op: "eq", value: "a@x.io" }],
+    });
+    expect(filtered.data.length).toBe(1);
+  });
+
+  it("runs read queries, records history per caller, and refuses write mode without a session", async () => {
+    const h = await createHarness();
+    const result = await h.data.query(h.viewer, h.adapterId, { dialect: "sql", text: "SELECT * FROM public.orders", mode: "read" });
+    expect(result.rows).toEqual([{ id: 1, customer_id: 1, total: "10.00" }]);
+    expect(result.columns.map((column) => column.name)).toEqual(["id", "customer_id", "total"]);
     await expect(
-      service.query(QA_ACTOR, ADAPTER_ID, { dialect: "sql", text: "DELETE FROM orders", mode: "write" })
-    ).rejects.toThrow("forbidden");
-  });
-
-  it("masks fixtures for viewers and not for qa", async () => {
-    const service = createDataService();
-    const forViewer = await service.fixture(VIEWER, ADAPTER_ID, "public.orders");
-    const forQa = await service.fixture(QA_ACTOR, ADAPTER_ID, "public.orders");
-    expect(forViewer.masked_columns.length).toBeGreaterThan(0);
-    expect(forQa.masked_columns).toStrictEqual([]);
-  });
-
-  it("locked policies need admin", async () => {
-    const service = createDataService();
+      h.data.query(h.viewer, h.adapterId, { dialect: "sql", text: "DELETE FROM x", mode: "read" })
+    ).rejects.toMatchObject({ code: "INTERNAL" });
     await expect(
-      service.removePolicy(QA_ACTOR, ADAPTER_ID, "public.users", "password_hash")
-    ).rejects.toMatchObject({ code: "FORBIDDEN", details: { reason: "policy is locked" } });
+      h.data.query(h.viewer, h.adapterId, { dialect: "sql", text: "DELETE FROM x", mode: "write" })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      h.data.query(h.harness.qa, h.adapterId, { dialect: "sql", text: "DELETE FROM x", mode: "write" })
+    ).rejects.toMatchObject({ code: "FORBIDDEN", details: { reason: "write session required" } });
+    const own = await h.data.history(h.viewer, h.adapterId, 10);
+    expect(own.map((row) => row.error === null)).toEqual([false, true]);
+    expect((await h.data.history(h.harness.admin, h.adapterId, 10)).length).toBe(2);
+  });
+
+  it("takes one stash on the session's first write and counts later writes", async () => {
+    const h = await createHarness();
+    const session = await h.data.startWriteSession(h.harness.qa, h.adapterId, true, TEST_META);
+    expect(session).toMatchObject({ foreign_key_checks: true, stash_state_id: null, fk_checks_mapping: "SET CONSTRAINTS ALL DEFERRED" });
+    await expect(h.data.startWriteSession(h.harness.qa, h.adapterId, true, TEST_META)).rejects.toThrow(
+      "a write session is already open"
+    );
+    const write = { dialect: "sql" as const, text: "UPDATE orders SET total = 0", mode: "write" as const, write_session_id: session.id };
+    expect((await h.data.query(h.harness.qa, h.adapterId, write)).rows_affected).toBe(1);
+    await h.data.query(h.harness.qa, h.adapterId, write);
+    const stashes = harnessStashes(h.harness);
+    expect(stashes).toEqual([{ kind: "stash", stash_reason: "write-session", write_count: 2 }]);
+    expect(h.harness.db.query("SELECT COUNT(*) AS n FROM states WHERE kind = 'stash'").get()).toEqual({ n: 1 });
+    expect(h.harness.projectsRepo.bySlug("shop")?.head.state_name).toBe("init");
+    await h.data.endWriteSession(h.harness.qa, session.id, TEST_META);
+    await expect(h.data.query(h.harness.qa, h.adapterId, write)).rejects.toThrow("write session is closed");
+  });
+
+  it("refuses write sessions on read-only adapters and tabular-only operations elsewhere", async () => {
+    const h = await createHarness();
+    await h.harness.adapters.setMode(h.harness.qa, "shop", h.adapterId, "read_only", TEST_META);
+    await expect(h.data.startWriteSession(h.harness.qa, h.adapterId, true, TEST_META)).rejects.toMatchObject({
+      code: "ADAPTER_READ_ONLY",
+    });
+    await expect(h.data.schema("01991f00-0000-7000-8000-000000000999")).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("saves, renames, and deletes queries with unique names", async () => {
+    const h = await createHarness();
+    const saved = await h.data.createSavedQuery(h.harness.qa, h.adapterId, { name: "paid", body: { text: "SELECT 1" } });
+    await expect(
+      h.data.createSavedQuery(h.harness.qa, h.adapterId, { name: "Paid", body: {} })
+    ).rejects.toThrow("saved query name is taken");
+    expect((await h.data.updateSavedQuery(h.adapterId, saved.id, { name: "paid-orders" })).name).toBe("paid-orders");
+    await h.data.removeSavedQuery(h.adapterId, saved.id);
+    expect(await h.data.savedQueries(h.adapterId)).toEqual([]);
   });
 });
+
+function cursorOf(page: { page: { next_cursor: string | null } }): string {
+  if (page.page.next_cursor === null) throw new Error("no next page");
+  return page.page.next_cursor;
+}
+
+function harnessStashes(harness: AdaptersHarness): { kind: string; stash_reason: string | null; write_count: number }[] {
+  const rows = harness.db
+    .query(
+      `SELECT s.kind, s.stash_reason, w.write_count FROM states s
+       JOIN write_sessions w ON w.stash_state_id = s.id ORDER BY s.created_at`
+    )
+    .all();
+  return v.parse(
+    v.array(v.object({ kind: v.string(), stash_reason: v.nullable(v.string()), write_count: v.number() })),
+    rows
+  );
+}

@@ -44,7 +44,6 @@ import { createAuthRepository } from "./modules/auth/auth.repository.ts";
 import { createAuthService } from "./modules/auth/auth.service.ts";
 import { createCheckoutsHandlers } from "./modules/checkouts/checkouts.handler.ts";
 import { createDataHandlers } from "./modules/data/data.handler.ts";
-import { createDataService } from "./modules/data/data.service.ts";
 import { createDiffsHandlers } from "./modules/diffs/diffs.handler.ts";
 import { createDiffsService } from "./modules/diffs/diffs.service.ts";
 import { createHooksHandlers } from "./modules/hooks/hooks.handler.ts";
@@ -159,8 +158,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   const recovery = await jobs.recover();
   const historyDays = async (): Promise<number> =>
     (await settings.get()).retention.job_history_days;
-  const data = createDataService();
-  const { states, checkouts } = createStateServices(wiring, projectsRepo, jobs, audit, now);
+  const core = createStateServices(wiring, projectsRepo, jobs, audit, settings, now);
   const diffs = createDiffsService();
   const storage = createStorageService();
   const adapters = createAdaptersService({
@@ -223,14 +221,14 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     projects: createProjectsHandlers(projects, prefix, config.TESTATE_TRUST_PROXY, jobs),
     projectScope: requireProjectInScope(projectsRepo),
     adapters: createAdaptersHandlers(adapters, prefix, config.TESTATE_TRUST_PROXY, jobs),
-    data: createDataHandlers(data),
+    data: createDataHandlers(core.data, config.TESTATE_TRUST_PROXY),
     imports: createImportsHandlers(
       createImportsService(),
       prefix,
       config.TESTATE_MAX_UPLOAD_MB * 1024 * 1024
     ),
-    states: createStatesHandlers(states, prefix, config.TESTATE_TRUST_PROXY),
-    checkouts: createCheckoutsHandlers(checkouts, prefix, config.TESTATE_TRUST_PROXY, jobs),
+    states: createStatesHandlers(core.states, prefix, config.TESTATE_TRUST_PROXY),
+    checkouts: createCheckoutsHandlers(core.checkouts, prefix, config.TESTATE_TRUST_PROXY, jobs),
     diffs: createDiffsHandlers(diffs, prefix),
     storage: createStorageHandlers(storage),
     rest: createRestHandlers(rest),
@@ -241,7 +239,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     tools: createToolsHandlers(createToolsService()),
     agent: createAgentHandlers(
       createAgentService(VERSION),
-      createAgentTools({ projects, adapters, data, states, diffs, storage })
+      createAgentTools({ projects, adapters, data: core.data, states: core.states, diffs, storage })
     ),
   };
 

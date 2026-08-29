@@ -5,6 +5,8 @@
 import { networkInterfaces } from "node:os";
 import { join } from "node:path";
 
+import type { Settings } from "@testate/shared";
+
 import { ConfigError } from "./lib/config/index.ts";
 import type { Config } from "./lib/config/index.ts";
 import type { MetadataDb } from "./lib/db/index.ts";
@@ -36,6 +38,10 @@ import type { ProjectsRepository } from "./modules/projects/projects.repository.
 import { createCheckoutsRepository } from "./modules/checkouts/checkouts.repository.ts";
 import { createCheckoutsService } from "./modules/checkouts/checkouts.service.ts";
 import type { CheckoutsDeps, CheckoutsService } from "./modules/checkouts/checkouts.service.ts";
+import { createDataRepository } from "./modules/data/data.repository.ts";
+import type { DataRepository } from "./modules/data/data.repository.ts";
+import { createDataService } from "./modules/data/data.service.ts";
+import type { DataService } from "./modules/data/data.service.ts";
 import { createHooksRepository } from "./modules/hooks/hooks.repository.ts";
 import type { HooksRepository } from "./modules/hooks/hooks.repository.ts";
 import { createHooksService } from "./modules/hooks/hooks.service.ts";
@@ -149,6 +155,7 @@ export function createJobsRuntime(
 export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now" | "hooks"> & {
   requests: RestRepository;
   hooks: HooksRepository;
+  data: DataRepository;
   probe: ProbeFn;
   fileProbe: FileProbeFn;
 };
@@ -173,6 +180,7 @@ export function createEngineWiring(
     checkouts: createCheckoutsRepository(db),
     requests: createRestRepository(db),
     hooks: createHooksRepository(db),
+    data: createDataRepository(db),
     projects,
   };
 }
@@ -247,18 +255,24 @@ export function createIntegrations(
   return { rest, hooks };
 }
 
-export type StateServices = { states: StatesService; checkouts: CheckoutsService };
+export type StateServices = {
+  states: StatesService;
+  checkouts: CheckoutsService;
+  data: DataService;
+};
 
 export function createStateServices(
   wiring: EngineWiring,
   projects: ProjectsRepository,
   jobs: JobsService,
   audit: AuditService,
+  settings: { get(): Promise<Settings> },
   now: () => Date
 ): StateServices {
   return {
     states: createStatesService(statesDeps(wiring, projects, jobs, audit, now)),
     checkouts: createCheckoutsService(checkoutsDeps(wiring, projects, jobs, audit, now)),
+    data: createDataService({ ...wiring, repo: wiring.data, projects, jobs, settings, audit, now }),
   };
 }
 

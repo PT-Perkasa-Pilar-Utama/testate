@@ -109,6 +109,26 @@ export type CounterReport = { counters: CounterResult[] };
 
 export type ReadOptions = { chunkRows?: number; signal?: AbortSignal };
 
+export type FilterOp = "eq" | "ne" | "lt" | "le" | "gt" | "ge" | "like" | "in" | "null" | "notnull";
+export type RowFilter = { column: string; op: FilterOp; value: string };
+
+/** One grid page (06 §6.2): keyset on the primary key when there is one, else offset. */
+export type PageQuery = {
+  table: TableRef;
+  limit: number;
+  cursor?: string;
+  sort?: string;
+  order: "asc" | "desc";
+  filters: RowFilter[];
+};
+
+export type RowsPageResult = {
+  rows: RowText[];
+  columns: { name: string; type: string }[];
+  nextCursor: string | null;
+  kind: "keyset" | "offset";
+};
+
 export type EngineQuery = { text: string };
 
 export type QueryOptions = {
@@ -168,6 +188,7 @@ export type DbEngine = {
   checkout(conn: ConnectionRef, plan: CheckoutPlan): CheckoutRun;
   repairCounters(conn: ConnectionRef, tables: TableRef[]): Promise<CounterReport>;
   readTable(conn: ConnectionRef, table: TableRef, opts: ReadOptions): AsyncIterable<RowChunk>;
+  pageRows(conn: ConnectionRef, query: PageQuery): Promise<RowsPageResult>;
   runQuery(conn: ConnectionRef, query: EngineQuery, opts: QueryOptions): Promise<QueryResult>;
   listRunningQueries(conn: ConnectionRef): Promise<RunningQuery[]>;
   cancelQuery(conn: ConnectionRef, queryId: string): Promise<void>;
