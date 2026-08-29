@@ -142,6 +142,11 @@ function Actions(props: { presenter: AdapterPresenter; base: string }): JSX.Elem
           Policies
         </Button>
       </Show>
+      <Show when={adapter().kind === "storage"}>
+        <Button size="sm" variant="secondary" onClick={() => navigate(`${props.base}/files`)}>
+          Browse files
+        </Button>
+      </Show>
       <Show when={hasRole("qa")}>
         <Button size="sm" variant="secondary" onClick={() => void props.presenter.retest()}>
           Retest

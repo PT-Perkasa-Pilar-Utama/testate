@@ -102,9 +102,15 @@ async function download(path: string, body: JsonObject, fallback: string): Promi
   return { blob: await response.blob(), filename };
 }
 
+/** A full API URL for links the browser follows itself (downloads, framed previews). */
+function url(path: string, query?: Query): string {
+  return `${API}${path}${toQuery(query)}`;
+}
+
 export const apiClient = {
   envelope,
   download,
+  url,
   get: <TSchema extends v.GenericSchema>(
     path: string,
     options: RequestOptions<TSchema>
