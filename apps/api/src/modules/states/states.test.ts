@@ -6,6 +6,8 @@ import { TEST_META } from "../../../test/accounts.ts";
 import { PG, createAdaptersHarness, createSettled } from "../../../test/adapters.ts";
 import type { AdaptersHarness } from "../../../test/adapters.ts";
 import { expectContract } from "../../../test/contract.ts";
+import { readTar, writeTar } from "../../lib/snapshot/tar.ts";
+import type { TarEntry } from "../../lib/snapshot/tar.ts";
 import { ARCHIVE_MANIFEST_MOCK, STATE_MOCK, TREE_MOCK } from "./states.mock.ts";
 import { createStatesService } from "./states.service.ts";
 import type { StatesService } from "./states.service.ts";
@@ -221,5 +223,63 @@ describe("state archives", () => {
     await expect(
       h.states.archiveManifest("shop", "01991f00-0000-7000-8000-0000000000ab")
     ).rejects.toThrow("not a Testate archive");
+  });
+});
+
+/** Every blob entry replaced by zero bytes of the same length; the manifest keeps the real hashes. */
+function tamperBlobs(entries: { name: string; bytes: Uint8Array }[]): TarEntry[] {
+  return entries.map((entry) => {
+    const bytes = entry.name.startsWith("blobs/")
+      ? new Uint8Array(entry.bytes.byteLength)
+      : entry.bytes;
+    return { name: entry.name, size: bytes.byteLength, body: new Blob([bytes]).stream() };
+  });
+}
+
+describe("archive verification", () => {
+  it("fails the import job and the state when a blob does not match its hash", async () => {
+    const h = await createStatesHarness();
+    const adapter = await createSettled(h.harness, PG);
+    const id = await snapshotSettled(h, "golden");
+    const { body } = await h.states.archive("shop", id);
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of body) chunks.push(chunk);
+    const tar = Buffer.concat(chunks);
+    const entries = [...readTar(tar)];
+    const tampered = tamperBlobs(entries);
+    const rewritten: Uint8Array[] = [];
+    for await (const chunk of writeTar(
+      (async function* () {
+        yield* tampered;
+      })()
+    ))
+      rewritten.push(chunk);
+    await Bun.write(`${h.harness.dataDir}/tampered.tar`, Buffer.concat(rewritten));
+    h.harness.imports.insertUpload({
+      upload_id: "01991f00-0000-7000-8000-0000000000ac",
+      project_id: adapter.project_id,
+      file_name: "tampered.tar",
+      path: `${h.harness.dataDir}/tampered.tar`,
+      size_bytes: 1,
+      type: "tar",
+      purpose: "archive",
+      expires_at: "2999-01-01T00:00:00.000Z",
+      created_at: "2026-08-29T00:00:00.000Z",
+    });
+    await h.states.removeNow(id);
+    const job = await h.states.importArchive(
+      h.harness.qa,
+      "shop",
+      {
+        upload_id: "01991f00-0000-7000-8000-0000000000ac",
+        name: "bad-copy",
+        adapter_mapping: [{ archive_adapter_id: adapter.id, target: { adapter_id: adapter.id } }],
+      },
+      TEST_META
+    );
+    const done = await h.harness.runtime.jobs.wait(null, job.id, 5);
+    expect(done.status).toBe("failed");
+    expect(done.error?.message).toContain("blob hash mismatch");
+    expect((await h.states.get("shop", "bad-copy")).status).toBe("failed");
   });
 });
