@@ -9,7 +9,9 @@ import type {
 } from "@testate/shared";
 
 import { AppError, conflict, notFound } from "../../lib/http/index.ts";
+import { toConnectionConfig } from "../../lib/engines/connection.ts";
 import type { RequestMeta } from "../../lib/http/auth.ts";
+import { CONFIG_COLUMN, openSecrets } from "../adapters/adapters.secrets.ts";
 import type { AdapterRecord } from "../adapters/adapters.repository.ts";
 import type { AuditService } from "../audit/audit.service.ts";
 import type { EnqueueInput, JobsService } from "../jobs/jobs.service.ts";
@@ -38,10 +40,12 @@ export type CheckoutsService = {
   get(slug: string, id: string): Promise<Checkout>;
   retry(actor: Actor, slug: string, id: string, meta: RequestMeta): Promise<CheckoutWithJob>;
   terminateBlockers(
+    actor: Actor,
     slug: string,
     id: string,
     adapterId: string,
-    sessionIds: string[]
+    sessionIds: string[],
+    meta: RequestMeta
   ): Promise<{ terminated: string[]; failed: string[] }>;
   counters(slug: string, id: string): Promise<{ adapters: AdapterCounters[] }>;
   repairCounters(
@@ -230,13 +234,40 @@ export function createCheckoutsService(deps: CheckoutsDeps): CheckoutsService {
       record(actor, "checkout.retried", project, updated, meta);
       return { checkout: updated, job };
     },
-    // SCAFFOLD: the engine port has no terminate call yet (12 §12.5); the data card adds it.
-    async terminateBlockers(slug, id) {
-      find(projectOf(slug), id);
-      throw new AppError(
-        "ENGINE_UNSUPPORTED",
-        "terminating sessions is not available in this build"
+    async terminateBlockers(actor, slug, id, adapterId, sessionIds, meta) {
+      const project = projectOf(slug);
+      const checkout = find(project, id);
+      const adapter = deps.adapters.byId(adapterId);
+      if (adapter === null || adapter.project_id !== project.id) throw notFound("adapter");
+      if (adapter.capabilities?.canTerminateSessions !== true) {
+        throw new AppError("ENGINE_UNSUPPORTED", "the probe found no privilege to end sessions", {
+          reason: "capability",
+        });
+      }
+      const secrets = await openSecrets(
+        deps.ring,
+        adapter.id,
+        CONFIG_COLUMN,
+        adapter.config_sealed
       );
+      const config = toConnectionConfig(adapter.engine, adapter.config, secrets);
+      const engine = deps.engines.require(adapter.engine);
+      const result = await engine.terminateSessions(
+        { connectionId: adapter.id, config },
+        sessionIds
+      );
+      audit.record({
+        actor,
+        action: "checkout.blockers_terminated",
+        target_type: "checkout",
+        target_id: checkout.id,
+        project: { id: project.id, slug: project.slug },
+        adapter: { id: adapter.id, name: adapter.name },
+        details: { terminated: result.terminated, failed: result.failed },
+        outcome: result.failed.length === 0 ? "succeeded" : "partial",
+        meta,
+      });
+      return result;
     },
     async counters(slug, id) {
       return { adapters: repo.counters(find(projectOf(slug), id).id) };

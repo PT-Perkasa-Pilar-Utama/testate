@@ -13,6 +13,7 @@ import type {
   RowText,
   RowsPageResult,
   RunningQuery,
+  TerminateResult,
 } from "../types.ts";
 import type { MongoHandle } from "./client.ts";
 import { byteLength, decodeDocument, encodeDocument } from "./codec.ts";
@@ -137,6 +138,24 @@ export async function listRunningQueries(handle: MongoHandle): Promise<RunningQu
       text: JSON.stringify(op.command ?? {}),
       state: op.op ?? "",
     }));
+}
+
+/** `killOp` per operation id (13 §13.6); an id the server rejects is reported as failed. */
+export async function terminateSessions(
+  handle: MongoHandle,
+  ids: string[]
+): Promise<TerminateResult> {
+  const result: TerminateResult = { terminated: [], failed: [] };
+  for (const id of ids) {
+    const op = /^\d+$/.test(id) ? Number(id) : id;
+    try {
+      await handle.db.admin().command({ killOp: 1, op });
+      result.terminated.push(id);
+    } catch {
+      result.failed.push(id);
+    }
+  }
+  return result;
 }
 
 /** `killOp` on the operation tagged with the query id; nothing to kill is not an error. */

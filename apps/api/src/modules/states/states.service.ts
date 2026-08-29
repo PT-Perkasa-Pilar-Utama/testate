@@ -65,7 +65,10 @@ export type StatesDeps = {
   uploads: Pick<ImportsRepository, "upload">;
   audit: AuditService;
   now: () => Date;
+  createAdapter?: ArchiveDeps["createAdapter"];
 };
+
+import type { ArchiveDeps } from "./states.archives.ts";
 
 export type { ImportArchiveInput } from "./states.archives.ts";
 
@@ -173,7 +176,10 @@ export function createStatesService(deps: StatesDeps): StatesService {
     return requested;
   };
 
-  const archives = createArchiveOps({ ...deps, find, assertNameFree, record });
+  const { createAdapter, ...shared } = deps;
+  const archiveDeps: ArchiveDeps = { ...shared, find, assertNameFree, record };
+  if (createAdapter !== undefined) archiveDeps.createAdapter = createAdapter;
+  const archives = createArchiveOps(archiveDeps);
 
   return {
     async list(slug, filter) {

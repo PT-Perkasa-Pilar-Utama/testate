@@ -3,6 +3,7 @@ import { jsonValueSchema } from "@testate/shared";
 import * as v from "valibot";
 
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
+import { createRateLimiter } from "../../lib/http/ratelimit.ts";
 import type { Handler } from "../../lib/http/index.ts";
 import type { AgentContext, AgentRuntime, AgentService } from "./agent.service.ts";
 import { ERR_PARSE, ERR_RATE_LIMITED } from "./agent.service.ts";
@@ -15,29 +16,12 @@ export type AgentHandlerDeps = {
   now: () => Date;
 };
 
-const WINDOW_MS = 60 * 1000;
 const methodOf = v.object({
   method: v.optional(v.string()),
   params: v.optional(v.object({ name: v.optional(v.string()) })),
 });
 
 /** Sliding one-minute window per token (18 §18.1); the map forgets idle tokens on its next sweep. */
-export function createRateLimiter(
-  now: () => Date
-): (tokenId: string, perMinute: number) => number | null {
-  const calls = new Map<string, number[]>();
-  return (tokenId, perMinute) => {
-    const at = now().getTime();
-    const recent = (calls.get(tokenId) ?? []).filter((stamp) => at - stamp < WINDOW_MS);
-    if (recent.length >= perMinute) {
-      calls.set(tokenId, recent);
-      return Math.ceil((WINDOW_MS - (at - (recent[0] ?? at))) / 1000);
-    }
-    recent.push(at);
-    calls.set(tokenId, recent);
-    return null;
-  };
-}
 
 export function createAgentHandlers(
   service: AgentService,

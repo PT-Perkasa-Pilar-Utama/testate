@@ -1,7 +1,8 @@
 import type { Actor, ApiToken, Role } from "@testate/shared";
 
 import type { RequestMeta, Resolved } from "../../lib/http/auth.ts";
-import { AppError, forbidden, notFound } from "../../lib/http/index.ts";
+import { AppError, forbidden, notFound, rateLimited } from "../../lib/http/index.ts";
+import { createRateLimiter } from "../../lib/http/ratelimit.ts";
 import { randomSecret, sha256 } from "../../lib/password/index.ts";
 import type { AuditService } from "../audit/audit.service.ts";
 import type { AuthRepository, TokensListQuery } from "./auth.repository.ts";
@@ -31,6 +32,8 @@ export type TokenDeps = {
   now: () => Date;
   /** Project existence check for `project_ids` (02 §2.7). */
   projectExists: (id: string) => boolean;
+  /** `limits.token_requests_per_minute` from settings (16 §16.1); absent means no budget. */
+  tokenBudget?: () => Promise<number>;
 };
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -52,6 +55,7 @@ function tokenActor(token: ApiToken): Actor {
 
 /** Bearer tokens: `tst_` plus 32 random bytes; SHA-256 stored, first eight characters shown (09 §9.3). */
 export function createTokenService(deps: TokenDeps): TokenService {
+  const limiter = createRateLimiter(deps.now);
   const { repo, audit } = deps;
   const nowMs = (): number => deps.now().getTime();
   const nowIso = (): string => deps.now().toISOString();
@@ -77,7 +81,10 @@ export function createTokenService(deps: TokenDeps): TokenService {
       }
       const lastUsed = record.last_used_at === null ? 0 : new Date(record.last_used_at).getTime();
       if (nowMs() - lastUsed >= TOUCH_INTERVAL_MS) repo.touchToken(record.id, nowIso());
-      // SCAFFOLD: the settings card adds the per-token budget (limits.token_requests_per_minute).
+      if (deps.tokenBudget !== undefined) {
+        const wait = limiter(record.id, await deps.tokenBudget());
+        if (wait !== null) throw rateLimited(wait);
+      }
       return {
         actor: tokenActor(record),
         mustChangePassword: false,

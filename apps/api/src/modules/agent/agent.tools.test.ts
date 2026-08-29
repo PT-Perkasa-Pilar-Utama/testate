@@ -15,7 +15,7 @@ import { createDiffsService } from "../diffs/diffs.service.ts";
 import { createProjectsService } from "../projects/projects.service.ts";
 import { createStatesService } from "../states/states.service.ts";
 import { createStorageService } from "../storage/storage.service.ts";
-import { createRateLimiter } from "./agent.handler.ts";
+import { createRateLimiter } from "../../lib/http/ratelimit.ts";
 import type { AgentContext, AgentRuntime } from "./agent.service.ts";
 import { createAgentTools } from "./agent.tools.ts";
 

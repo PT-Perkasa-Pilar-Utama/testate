@@ -8,6 +8,7 @@ import type { AuditService } from "../audit/audit.service.ts";
 import type { UserRecord, UsersRepository } from "../users/users.repository.ts";
 import type { AuthRepository, SessionRecord } from "./auth.repository.ts";
 import { createTokenService } from "./auth.tokens.ts";
+import type { TokenDeps } from "./auth.tokens.ts";
 import type { TokenService } from "./auth.tokens.ts";
 
 export type { CreateTokenInput } from "./auth.tokens.ts";
@@ -47,6 +48,7 @@ export type AuthDeps = {
   password: PasswordHasher;
   now: () => Date;
   projectExists: (id: string) => boolean;
+  tokenBudget?: () => Promise<number>;
 };
 
 const HOUR = 60 * 60 * 1000;
@@ -86,12 +88,14 @@ export function createAuthService(deps: AuthDeps): AuthService {
   const { users, repo, audit, password } = deps;
   const nowMs = (): number => deps.now().getTime();
   const nowIso = (): string => deps.now().toISOString();
-  const tokens = createTokenService({
+  const tokenDeps: TokenDeps = {
     repo,
     audit,
     now: deps.now,
     projectExists: deps.projectExists,
-  });
+  };
+  if (deps.tokenBudget !== undefined) tokenDeps.tokenBudget = deps.tokenBudget;
+  const tokens = createTokenService(tokenDeps);
 
   const failLogin = (user: UserRecord, meta: RequestMeta): void => {
     const count = user.failed_login_count + 1;

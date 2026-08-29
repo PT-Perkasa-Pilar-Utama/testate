@@ -131,4 +131,19 @@ describe("api tokens", () => {
       )
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
+
+  it("refuses a token past its per-minute budget with RATE_LIMITED and a wait", async () => {
+    const { auth, admin } = await createAccounts({ tokenBudget: async () => 2 });
+    const { token } = await auth.createToken(
+      admin,
+      { name: "busy", kind: "standard", role: "viewer", project_ids: [] },
+      TEST_META
+    );
+    await auth.fromBearer(token);
+    await auth.fromBearer(token);
+    await expect(auth.fromBearer(token)).rejects.toMatchObject({
+      code: "RATE_LIMITED",
+      retryAfterSeconds: 60,
+    });
+  });
 });

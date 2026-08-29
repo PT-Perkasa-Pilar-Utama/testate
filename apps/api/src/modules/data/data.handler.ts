@@ -12,6 +12,7 @@ import { currentActor, requestMeta } from "../../lib/http/auth.ts";
 import { AppError, ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.ts";
 import type { Handler } from "../../lib/http/index.ts";
 import { firstQuery } from "../../lib/http/query.ts";
+import { exportStream } from "./data.export.ts";
 import type { DataService, SavedQueryInput } from "./data.service.ts";
 
 export type DataHandlers = {
@@ -167,7 +168,6 @@ export function createDataHandlers(service: DataService, trustProxy: boolean): D
       const body = await parseBody(c, queryRequestSchema);
       return ok(c, await service.query(currentActor(c), param(c, "id"), body));
     },
-    // SCAFFOLD: export streams the same result as a file once the data card's second half lands (06 §6.8).
     queryExport: async (c) => {
       const body = await parseBody(
         c,
@@ -178,17 +178,14 @@ export function createDataHandlers(service: DataService, trustProxy: boolean): D
         mode: "read",
       });
       c.header(
+        "Content-Type",
+        body.format === "csv" ? "text/csv; charset=utf-8" : "application/json"
+      );
+      c.header(
         "Content-Disposition",
         `attachment; filename="query-${result.query_id}.${body.format}"`
       );
-      const csv = result.rows
-        .map((row) =>
-          Object.values(row)
-            .map((value) => JSON.stringify(value))
-            .join(",")
-        )
-        .join("\n");
-      return c.text(body.format === "json" ? JSON.stringify(result.rows) : csv);
+      return c.body(exportStream(result, body.format), 200);
     },
     runningQueries: async (c) => okPage(c, await service.runningQueries(param(c, "id")), null, 50),
     cancelQuery: async (c) => {

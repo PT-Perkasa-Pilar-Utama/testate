@@ -3,7 +3,13 @@ import type { JsonValue } from "@testate/shared";
 import * as v from "valibot";
 
 import { EngineError, rowText } from "../types.ts";
-import type { EngineQuery, QueryOptions, QueryResult, RunningQuery } from "../types.ts";
+import type {
+  EngineQuery,
+  QueryOptions,
+  QueryResult,
+  RunningQuery,
+  TerminateResult,
+} from "../types.ts";
 import { guarded } from "./errors.ts";
 import { swallow } from "./reader.ts";
 
@@ -112,6 +118,23 @@ export async function listRunningQueries(sql: SQL): Promise<RunningQuery[]> {
 }
 
 /** `pg_cancel_backend` from a second connection (ADR 0001 cancel rule). */
+/** `pg_terminate_backend` per pid; a pid that is gone counts as failed, never as an error. */
+export async function terminateSessions(sql: SQL, ids: string[]): Promise<TerminateResult> {
+  const result: TerminateResult = { terminated: [], failed: [] };
+  for (const id of ids) {
+    const pid = Number.parseInt(id, 10);
+    if (!Number.isInteger(pid)) {
+      result.failed.push(id);
+      continue;
+    }
+    const rows = v.parse(v.array(v.object({ ok: v.boolean() })), [
+      ...(await sql.unsafe("SELECT pg_terminate_backend($1) AS ok", [pid])),
+    ]);
+    (rows[0]?.ok === true ? result.terminated : result.failed).push(id);
+  }
+  return result;
+}
+
 export async function cancelQuery(
   sql: SQL,
   connectionId: string,

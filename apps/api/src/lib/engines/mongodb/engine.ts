@@ -8,7 +8,7 @@ import { decodeRow } from "./codec.ts";
 import { introspect } from "./introspect.ts";
 import { probe, topologyOf } from "./probe.ts";
 import type { Topology } from "./probe.ts";
-import { cancelQuery, listRunningQueries, pageRows, runQuery } from "./query.ts";
+import { cancelQuery, listRunningQueries, pageRows, runQuery, terminateSessions } from "./query.ts";
 import { readCollection, snapshot } from "./reader.ts";
 import { checkout } from "./restore.ts";
 
@@ -119,6 +119,10 @@ export function createMongodbEngine(netguard: Netguard): DbEngine {
     async cancelQuery(conn, queryId) {
       const { handle } = await open(conn);
       await guarded("cancel", () => cancelQuery(handle, queryId));
+    },
+    async terminateSessions(conn, ids) {
+      const { handle } = await open(conn);
+      return guarded("terminate", () => terminateSessions(handle, ids));
     },
     decodeRow,
     evict: (connectionId) => {

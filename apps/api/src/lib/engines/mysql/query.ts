@@ -3,7 +3,13 @@ import type { JsonValue } from "@testate/shared";
 import * as v from "valibot";
 
 import { EngineError, rowText } from "../types.ts";
-import type { EngineQuery, QueryOptions, QueryResult, RunningQuery } from "../types.ts";
+import type {
+  EngineQuery,
+  QueryOptions,
+  QueryResult,
+  RunningQuery,
+  TerminateResult,
+} from "../types.ts";
 import type { CancelChannel } from "../postgres/query.ts";
 import { guarded } from "./errors.ts";
 import { swallow } from "./reader.ts";
@@ -96,6 +102,25 @@ export async function listRunningQueries(sql: SQL): Promise<RunningQuery[]> {
     text: row.info ?? "",
     state: row.state ?? "",
   }));
+}
+
+/** `KILL CONNECTION <id>` ends the session that holds the lock (09 §9.5). */
+export async function terminateSessions(sql: SQL, ids: string[]): Promise<TerminateResult> {
+  const result: TerminateResult = { terminated: [], failed: [] };
+  for (const id of ids) {
+    const pid = Number.parseInt(id, 10);
+    if (!Number.isInteger(pid)) {
+      result.failed.push(id);
+      continue;
+    }
+    try {
+      await sql.unsafe(`KILL CONNECTION ${pid}`);
+      result.terminated.push(id);
+    } catch {
+      result.failed.push(id);
+    }
+  }
+  return result;
 }
 
 /** `KILL QUERY <id>` from a second connection interrupts the statement, not the session. */

@@ -17,7 +17,13 @@ import { introspect } from "./introspect.ts";
 import { connect, createPoolManager } from "./pool.ts";
 import type { Netguard } from "./pool.ts";
 import { probe } from "./probe.ts";
-import { cancelQuery, createCancelChannel, listRunningQueries, runQuery } from "./query.ts";
+import {
+  cancelQuery,
+  createCancelChannel,
+  listRunningQueries,
+  runQuery,
+  terminateSessions,
+} from "./query.ts";
 import { readTable, snapshot, swallow } from "./reader.ts";
 import { checkout, resetCounters } from "./restore.ts";
 import { importRows } from "./import.ts";
@@ -120,6 +126,10 @@ export function createPostgresEngine(netguard: Netguard): DbEngine {
     async cancelQuery(conn, queryId) {
       const sql = await pools.acquire(conn);
       await guarded("cancel", () => cancelQuery(sql, conn.connectionId, cancel, queryId));
+    },
+    async terminateSessions(conn, ids) {
+      const sql = await pools.acquire(conn);
+      return guarded("terminate", () => terminateSessions(sql, ids));
     },
     decodeRow,
     evict: (connectionId) => pools.evict(connectionId),

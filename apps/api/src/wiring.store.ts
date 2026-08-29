@@ -4,7 +4,12 @@ import type { KeyRing } from "./lib/sealed/index.ts";
 import type { AuditService } from "./modules/audit/audit.service.ts";
 import type { Dispatcher } from "./modules/jobs/jobs.dispatcher.ts";
 import type { JobsService } from "./modules/jobs/jobs.service.ts";
+import type { HealthDeps } from "./modules/ops/ops.service.ts";
+import type { ResetDeps } from "./modules/ops/ops.reset.ts";
+import { createSeeds } from "./modules/ops/ops.seeds.ts";
+import type { SeedDeps } from "./modules/ops/ops.seeds.ts";
 import type { ProjectsRepository } from "./modules/projects/projects.repository.ts";
+import type { UsersRepository } from "./modules/users/users.repository.ts";
 import { createBackupRunner } from "./modules/settings/settings.backup.ts";
 import { createStoreMigrationRunner } from "./modules/settings/settings.migration.ts";
 import { createSettingsRepository } from "./modules/settings/settings.repository.ts";
@@ -75,4 +80,62 @@ export function storageDeps(
   now: () => Date
 ): StorageDeps {
   return { projects, files: wiring.files, hostKeys: wiring.hostKeys, audit, now };
+}
+
+export type SeedServices = Pick<SeedDeps, "users" | "projects" | "adapters" | "states"> & {
+  usersRepo: Pick<UsersRepository, "byUsername">;
+};
+
+/** The reset endpoint outside production (19 §19.3): wipe, migrate, bootstrap, seed. */
+export function resetDeps(
+  config: Config,
+  db: MetadataDb,
+  migrationsDir: string,
+  bootstrap: (() => Promise<boolean>) | null,
+  jobs: Pick<JobsService, "heartbeat">,
+  services: SeedServices
+): ResetDeps {
+  return {
+    db,
+    migrationsDir,
+    defaultSeed: config.TESTATE_RESET_SEED,
+    jobsRunning: () => jobs.heartbeat().running > 0,
+    bootstrap,
+    seed: createSeeds({
+      users: services.users,
+      projects: services.projects,
+      adapters: services.adapters,
+      states: services.states,
+      admin: () => services.usersRepo.byUsername(config.TESTATE_ADMIN_USER),
+      selfUrl: config.TESTATE_PUBLIC_URL ?? `http://127.0.0.1:${config.PORT}`,
+    }),
+  };
+}
+
+/** Health and readiness inputs (19 §19.1); the closures read live state at request time. */
+export function opsDeps(
+  config: Config,
+  db: MetadataDb,
+  version: string,
+  bootId: string,
+  bootedAt: number,
+  storeDriver: "local" | "s3",
+  ring: KeyRing,
+  logger: { sink: { degraded: boolean } },
+  jobs: Pick<JobsService, "heartbeat">
+): HealthDeps {
+  return {
+    db,
+    dataDir: config.TESTATE_DATA_DIR,
+    env: config.TESTATE_ENV,
+    version,
+    bootId,
+    bootedAt,
+    storeDriver,
+    activeKid: ring.activeKid,
+    extraKeys: ring.all.size - 1,
+    sinkDegraded: () => logger.sink.degraded,
+    dispatcher: () => jobs.heartbeat(),
+    originShared: false,
+  };
 }

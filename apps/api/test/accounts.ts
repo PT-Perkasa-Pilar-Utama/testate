@@ -5,6 +5,7 @@ import { createAuditService } from "../src/modules/audit/audit.service.ts";
 import type { AuditService } from "../src/modules/audit/audit.service.ts";
 import { createAuthRepository } from "../src/modules/auth/auth.repository.ts";
 import { createAuthService } from "../src/modules/auth/auth.service.ts";
+import type { AuthDeps } from "../src/modules/auth/auth.service.ts";
 import type { AuthService } from "../src/modules/auth/auth.service.ts";
 import { createProjectsRepository } from "../src/modules/projects/projects.repository.ts";
 import type { ProjectsRepository } from "../src/modules/projects/projects.repository.ts";
@@ -33,7 +34,9 @@ export function actorOf(user: { id: string; username: string; role: Role }): Act
 }
 
 /** Real users, auth, and audit services on a fresh in-memory database with one bootstrapped admin. */
-export async function createAccounts(): Promise<AccountsHarness> {
+export async function createAccounts(
+  options: { tokenBudget?: () => Promise<number> } = {}
+): Promise<AccountsHarness> {
   const db = createTestDb();
   const clock = createClock();
   const audit = createAuditService({ repo: createAuditRepository(db), now: clock.now });
@@ -47,14 +50,16 @@ export async function createAccounts(): Promise<AccountsHarness> {
     password: TEST_HASHER,
     now: clock.now,
   });
-  const auth = createAuthService({
+  const authDeps: AuthDeps = {
     users: usersRepo,
     repo: authRepo,
     audit,
     password: TEST_HASHER,
     now: clock.now,
     projectExists: (id) => projectsRepo.exists(id),
-  });
+  };
+  if (options.tokenBudget !== undefined) authDeps.tokenBudget = options.tokenBudget;
+  const auth = createAuthService(authDeps);
   await users.bootstrap("admin", ADMIN_PASSWORD);
   const [admin] = await users.list({ limit: 1, sort: "username", order: "asc" });
   if (admin === undefined) throw new Error("bootstrap failed");

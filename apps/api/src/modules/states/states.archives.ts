@@ -1,4 +1,12 @@
-import type { Actor, ArchiveManifest, Job, Project, State } from "@testate/shared";
+import type {
+  Actor,
+  ArchiveManifest,
+  Job,
+  Project,
+  State,
+  Adapter,
+  AdapterDraft,
+} from "@testate/shared";
 import type { importArchiveSchema } from "@testate/shared";
 import type * as v from "valibot";
 
@@ -22,6 +30,13 @@ export type ArchiveDeps = {
   blobs: BlobStore;
   uploads: Pick<ImportsRepository, "upload">;
   now: () => Date;
+  /** Creates a new adapter for a `target.create` mapping (08 §8.9); absent in builds without the adapters service. */
+  createAdapter?: (
+    actor: Actor,
+    project: Project,
+    draft: AdapterDraft,
+    meta: RequestMeta
+  ) => Promise<Adapter>;
   find: (project: Project, idOrName: string) => State;
   assertNameFree: (project: Project, name: string) => void;
   record: (
@@ -60,23 +75,37 @@ export function createArchiveOps(deps: ArchiveDeps): ArchiveOps {
       throw new AppError("VALIDATION_ERROR", "the upload is not a tar archive");
     return readArchive(new Uint8Array(await Bun.file(upload.path).arrayBuffer())).manifest;
   };
-  /** SCAFFOLD: `target.create` (new adapters from an archive) arrives with a later card; existing ones only. */
-  const mapOne = (
+  /** `target.create` makes the adapter first (with its own init state), then maps like an existing one. */
+  const mapOne = async (
+    actor: Actor,
     project: Project,
     archive: ArchiveManifest,
-    item: ImportArchiveInput["adapter_mapping"][number]
-  ): Mapped => {
-    if ("create" in item.target) {
-      throw new AppError("ENGINE_UNSUPPORTED", "map the archive adapter to an existing adapter", {
-        reason: "create",
-      });
-    }
+    item: ImportArchiveInput["adapter_mapping"][number],
+    meta: RequestMeta
+  ): Promise<Mapped> => {
     const source = archive.adapters.find(
       (entry) => entry.archive_adapter_id === item.archive_adapter_id
     );
+    if (source === undefined) throw notFound("adapter");
+    if ("create" in item.target) {
+      if (deps.createAdapter === undefined)
+        throw new AppError(
+          "ENGINE_UNSUPPORTED",
+          "this build cannot create adapters from an archive",
+          {
+            reason: "create",
+          }
+        );
+      if (item.target.create.engine !== source.engine)
+        throw new AppError(
+          "VALIDATION_ERROR",
+          `${item.target.create.name} is ${item.target.create.engine}, the archive adapter is ${source.engine}`
+        );
+      const created = await deps.createAdapter(actor, project, item.target.create, meta);
+      return { archive_adapter_id: item.archive_adapter_id, adapter_id: created.id };
+    }
     const adapter = deps.adapters.byId(item.target.adapter_id);
-    if (source === undefined || adapter === null || adapter.project_id !== project.id)
-      throw notFound("adapter");
+    if (adapter === null || adapter.project_id !== project.id) throw notFound("adapter");
     if (adapter.engine !== source.engine) {
       throw new AppError(
         "VALIDATION_ERROR",
@@ -101,7 +130,9 @@ export function createArchiveOps(deps: ArchiveDeps): ArchiveOps {
         throw new AppError("QUOTA_EXCEEDED", "the project is at its storage quota");
       }
       const archive = await manifestOf(project, input.upload_id);
-      const mapping = input.adapter_mapping.map((item) => mapOne(project, archive, item));
+      const mapping: Mapped[] = [];
+      for (const item of input.adapter_mapping)
+        mapping.push(await mapOne(actor, project, archive, item, meta));
       if (mapping.length === 0) throw new AppError("VALIDATION_ERROR", "adapter_mapping is empty");
       const stateId = Bun.randomUUIDv7();
       deps.repo.insert({

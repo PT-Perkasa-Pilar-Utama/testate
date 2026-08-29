@@ -206,11 +206,12 @@ export function createStateServices(
   audit: AuditService,
   settings: { get(): Promise<Settings> },
   config: Config,
-  now: () => Date
+  now: () => Date,
+  extra: Pick<StatesDeps, "createAdapter">
 ): StateServices {
   const maxUploadBytes = config.TESTATE_MAX_UPLOAD_MB * 1024 * 1024;
   return {
-    states: createStatesService(statesDeps(wiring, projects, jobs, audit, now)),
+    states: createStatesService({ ...statesDeps(wiring, projects, jobs, audit, now), ...extra }),
     checkouts: createCheckoutsService(checkoutsDeps(wiring, projects, jobs, audit, now)),
     data: createDataService({ ...wiring, repo: wiring.data, projects, jobs, settings, audit, now }),
     diffs: createDiffsService({

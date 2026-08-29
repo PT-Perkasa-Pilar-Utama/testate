@@ -151,4 +151,31 @@ describe("checkouts", () => {
       h.checkouts.repairCounters(h.harness.qa, "shop", broken.id, TEST_META)
     ).rejects.toThrow("nothing to repair");
   });
+
+  it("terminates blocking sessions through the engine when the probe allows and audits it", async () => {
+    const h = await createCheckoutsHarness();
+    const adapter = await createSettled(h.harness, PG);
+    const checkout = await settled(h, await checkoutInit(h));
+    const result = await h.checkouts.terminateBlockers(
+      h.harness.qa,
+      "shop",
+      checkout.id,
+      adapter.id,
+      ["101", "dead-7"],
+      TEST_META
+    );
+    expect(result).toEqual({ terminated: ["101"], failed: ["dead-7"] });
+    const audit = h.harness.db
+      .query("SELECT outcome FROM audit_logs WHERE action = 'checkout.blockers_terminated'")
+      .all();
+    expect(audit).toEqual([{ outcome: "partial" }]);
+    h.harness.db
+      .query(
+        "UPDATE adapters SET capabilities = json_set(capabilities, '$.canTerminateSessions', json('false')) WHERE id = ?"
+      )
+      .run(adapter.id);
+    await expect(
+      h.checkouts.terminateBlockers(h.harness.qa, "shop", checkout.id, adapter.id, ["1"], TEST_META)
+    ).rejects.toMatchObject({ code: "ENGINE_UNSUPPORTED", details: { reason: "capability" } });
+  });
 });

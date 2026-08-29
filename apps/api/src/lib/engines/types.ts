@@ -197,6 +197,8 @@ export type QueryResult = {
   durationMs: number;
 };
 
+export type TerminateResult = { terminated: string[]; failed: string[] };
+
 export type RunningQuery = { pid: string; startedAt: string; text: string; state: string };
 
 export type DisplayRow = JsonObject;
@@ -255,6 +257,8 @@ export type DbEngine = {
   runQuery(conn: ConnectionRef, query: EngineQuery, opts: QueryOptions): Promise<QueryResult>;
   listRunningQueries(conn: ConnectionRef): Promise<RunningQuery[]>;
   cancelQuery(conn: ConnectionRef, queryId: string): Promise<void>;
+  /** Ends the sessions that blocked a checkout (09 §9.5); needs `canTerminateSessions` from the probe. */
+  terminateSessions(conn: ConnectionRef, sessionIds: string[]): Promise<TerminateResult>;
   decodeRow(row: RowText): DisplayRow;
   /** Drops pooled connections for a connection record (credential or target change). */
   evict(connectionId: string): Promise<void>;

@@ -17,7 +17,7 @@ import { guarded } from "./errors.ts";
 import { introspect } from "./introspect.ts";
 import { connect, createMysqlPoolManager } from "./pool.ts";
 import { dialectOf, probe } from "./probe.ts";
-import { cancelQuery, listRunningQueries, runQuery } from "./query.ts";
+import { cancelQuery, listRunningQueries, runQuery, terminateSessions } from "./query.ts";
 import { snapshot, swallow } from "./reader.ts";
 import { checkout, resetCounters } from "./restore.ts";
 import { pageRows } from "./rows.ts";
@@ -138,6 +138,10 @@ export function createMysqlEngine(netguard: Netguard): DbEngine {
     async cancelQuery(conn, queryId) {
       const sql = await pools.acquire(conn);
       await guarded("cancel", () => cancelQuery(sql, conn.connectionId, cancel, queryId));
+    },
+    async terminateSessions(conn, ids) {
+      const sql = await pools.acquire(conn);
+      return guarded("terminate", () => terminateSessions(sql, ids));
     },
     decodeRow,
     evict: (connectionId) => {

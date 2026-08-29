@@ -65,7 +65,6 @@ function resolveManifests(
 /**
  * The `archive_import` job (08 §8.9, 15 §15.5): every blob is stored with its expected hash before
  * any manifest row exists, then the state commits with the mapped adapter ids.
- * SCAFFOLD: `target.create` mappings (new adapters from the archive) arrive with a later card.
  */
 export function createArchiveImportRunner(deps: ArchiveImportDeps): JobRunner {
   return async ({ job, progress }) => {

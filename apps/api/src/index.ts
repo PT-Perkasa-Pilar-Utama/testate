@@ -26,7 +26,7 @@ import {
   createStateServices,
   settingsDeps,
 } from "./wiring.ts";
-import { bootStore, lazyJobs, storageDeps } from "./wiring.store.ts";
+import { bootStore, lazyJobs, opsDeps, resetDeps, storageDeps } from "./wiring.store.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import type { Config } from "./lib/config/index.ts";
 import { migrate, openMetadataDb } from "./lib/db/index.ts";
@@ -140,6 +140,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     password,
     now,
     projectExists: (id) => projectsRepo.exists(id),
+    tokenBudget: async () => (await settings.get()).limits.token_requests_per_minute,
   });
   const users = createUsersService({
     repo: usersRepo,
@@ -170,7 +171,10 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   const storeTarget = await bootStore(config, db, ring, wiring, dispatcher, audit, now, VERSION);
   // Steps 8 and 9 of 22 §22.2: recover interrupted jobs, then sweep old ones.
   const recovery = await jobs.recover();
-  const core = createStateServices(wiring, projectsRepo, jobs, audit, settings, config, now);
+  const core = createStateServices(wiring, projectsRepo, jobs, audit, settings, config, now, {
+    createAdapter: async (actor, project, draft, meta) =>
+      (await adapters.create(actor, project.slug, draft, meta)).adapter,
+  });
   const storage = createStorageService(storageDeps(wiring, projectsRepo, audit, now));
   const adapters = createAdaptersService({
     repo: wiring.adapters,
@@ -195,33 +199,22 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
 
   const handlers = {
     ops: createOpsHandlers(
-      {
-        db,
-        dataDir: config.TESTATE_DATA_DIR,
-        env: config.TESTATE_ENV,
-        version: VERSION,
-        bootId,
-        bootedAt,
-        storeDriver: storeTarget.driver,
-        activeKid: ring.activeKid,
-        extraKeys: ring.all.size - 1,
-        sinkDegraded: () => logger.sink.degraded,
-        dispatcher: () => jobs.heartbeat(),
-        originShared: false,
-      },
+      opsDeps(config, db, VERSION, bootId, bootedAt, storeTarget.driver, ring, logger, jobs),
       () => ready
     ),
     // The reset route exists only outside production: registration, not authorization, is the gate (07 §7.8).
     resetState:
       config.TESTATE_ENV === "production"
         ? null
-        : createResetHandler({
-            db,
-            migrationsDir,
-            defaultSeed: config.TESTATE_RESET_SEED,
-            jobsRunning: () => jobs.heartbeat().running > 0,
-            bootstrap,
-          }),
+        : createResetHandler(
+            resetDeps(config, db, migrationsDir, bootstrap, jobs, {
+              users,
+              projects,
+              adapters,
+              states: core.states,
+              usersRepo,
+            })
+          ),
     auth: createAuthHandlers(auth, {
       env: config.TESTATE_ENV,
       basePath: config.TESTATE_BASE_PATH,

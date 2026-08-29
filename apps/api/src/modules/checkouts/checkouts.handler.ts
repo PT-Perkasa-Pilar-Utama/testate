@@ -87,10 +87,12 @@ export function createCheckoutsHandlers(
       return ok(
         c,
         await service.terminateBlockers(
+          currentActor(c),
           param(c, "slug"),
           param(c, "id"),
           input.adapter_id,
-          input.session_ids
+          input.session_ids,
+          meta(c)
         )
       );
     },
