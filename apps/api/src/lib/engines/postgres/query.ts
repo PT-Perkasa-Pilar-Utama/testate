@@ -118,6 +118,22 @@ export async function listRunningQueries(sql: SQL): Promise<RunningQuery[]> {
 }
 
 /** `pg_cancel_backend` from a second connection (ADR 0001 cancel rule). */
+/** Other sessions holding relation locks in this database: the likely blockers after a lock timeout (story 85). */
+export async function blockingSessions(sql: SQL): Promise<string[]> {
+  try {
+    const rows = v.parse(v.array(v.object({ pid: v.string() })), [
+      ...(await sql.unsafe(
+        `SELECT DISTINCT l.pid::text AS pid FROM pg_locks l
+           WHERE l.granted AND l.locktype = 'relation' AND l.pid <> pg_backend_pid()
+             AND l.database = (SELECT oid FROM pg_database WHERE datname = current_database())`
+      )),
+    ]);
+    return rows.map((row) => row.pid);
+  } catch {
+    return [];
+  }
+}
+
 /** `pg_terminate_backend` per pid; a pid that is gone counts as failed, never as an error. */
 export async function terminateSessions(sql: SQL, ids: string[]): Promise<TerminateResult> {
   const result: TerminateResult = { terminated: [], failed: [] };

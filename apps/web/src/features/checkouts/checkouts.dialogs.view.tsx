@@ -7,7 +7,7 @@ import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
-import { countersSummary, skippedSummary } from "./checkouts.presenter.ts";
+import { blockingSessions, countersSummary, skippedSummary } from "./checkouts.presenter.ts";
 import type { CheckoutsPresenter } from "./checkouts.presenter.ts";
 
 export const RESULT_VARIANT = {
@@ -57,6 +57,15 @@ export function DetailDialog(props: { presenter: CheckoutsPresenter }): JSX.Elem
                         </Show>
                         <Show when={adapter.error}>
                           {(error) => <p class="text-kumo-danger text-sm">{error().message}</p>}
+                        </Show>
+                        <Show when={hasRole("qa") && blockingSessions(adapter).length > 0}>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => void props.presenter.terminate(checkout(), adapter)}
+                          >
+                            Terminate blockers ({blockingSessions(adapter).join(", ")})
+                          </Button>
                         </Show>
                       </Cell>
                       <Cell>

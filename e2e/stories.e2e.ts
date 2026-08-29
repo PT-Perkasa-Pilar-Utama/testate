@@ -86,11 +86,13 @@ test.describe("qa stories", () => {
     await page.getByLabel("email mode").selectOption("function");
     await page.getByLabel("email function").selectOption("uuid_v7");
     await page.getByLabel("Copies").fill("2");
-    const before = await page.locator("main tbody tr").count();
+    const uuidV7 = /[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-/;
+    // Other stories edit this table too, so only this story's uuid-mail rows are counted.
+    const mine = page.locator("main tbody tr", { hasText: uuidV7 });
+    const before = await mine.count();
     await page.getByRole("button", { name: "Insert", exact: true }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
-    await expect(page.locator("main tbody tr")).toHaveCount(before + 2);
-    const uuidV7 = /[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-/;
+    await expect(mine).toHaveCount(before + 2);
     const row = page.locator("main tbody tr", { hasText: uuidV7 }).first();
     await row.getByRole("button", { name: "Fixture" }).click();
     await expect(page.locator("dialog[open]").getByText(/INSERT INTO/)).toBeVisible();
@@ -103,7 +105,7 @@ test.describe("qa stories", () => {
         .click();
       await settle(page);
     }
-    await expect(page.locator("main tbody tr")).toHaveCount(before);
+    await expect(mine).toHaveCount(before);
     await page.getByRole("switch", { name: "Write mode" }).click();
     expect(issues).toStrictEqual([]);
   });

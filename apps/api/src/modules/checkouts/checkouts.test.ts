@@ -164,6 +164,17 @@ describe("checkouts", () => {
     ).rejects.toThrow("nothing to repair");
   });
 
+  it("a lock timeout names the blocking sessions on the adapter result (story 85)", async () => {
+    const h = await createCheckoutsHarness();
+    await createSettled(h.harness, PG);
+    h.harness.fakeOptions.failCheckout = "lock_timeout";
+    const blocked = await settled(h, await checkoutInit(h));
+    delete h.harness.fakeOptions.failCheckout;
+    expect(blocked.adapters[0]).toMatchObject({
+      error: { code: "CHECKOUT_BLOCKED", details: { blocking_sessions: ["42", "dead-1"] } },
+    });
+  });
+
   it("terminates blocking sessions through the engine when the probe allows and audits it", async () => {
     const h = await createCheckoutsHarness();
     const adapter = await createSettled(h.harness, PG);

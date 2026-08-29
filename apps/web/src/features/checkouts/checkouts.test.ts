@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { Checkout } from "@testate/shared";
 
-import { countersSummary, retriable, skippedSummary } from "./checkouts.presenter.ts";
+import {
+  blockingSessions,
+  countersSummary,
+  retriable,
+  skippedSummary,
+} from "./checkouts.presenter.ts";
 
 const ADAPTER: Checkout["adapters"][number] = {
   adapter_id: "a1",
@@ -44,6 +49,26 @@ describe("checkouts feature", () => {
         adapters: [{ ...ADAPTER, result: "pending" }],
       })
     ).toBe(false);
+  });
+
+  test("blocking session ids come from the adapter error details (story 85)", () => {
+    expect(blockingSessions(ADAPTER)).toStrictEqual([]);
+    expect(
+      blockingSessions({
+        ...ADAPTER,
+        error: {
+          code: "CHECKOUT_BLOCKED",
+          message: "lock",
+          details: { blocking_sessions: ["42"] },
+        },
+      })
+    ).toStrictEqual(["42"]);
+    expect(
+      blockingSessions({
+        ...ADAPTER,
+        error: { code: "CHECKOUT_BLOCKED", message: "lock", details: { blocking_sessions: "x" } },
+      })
+    ).toStrictEqual([]);
   });
 
   test("counters and skipped work are summarised for the dialogs (stories 78, 81)", () => {

@@ -106,6 +106,8 @@ export type AdaptersHarness = {
   policies: PoliciesRepository;
   dataDir: string;
   engines: EngineRegistry;
+  /** Live options of the fake engine; set `failCheckout` to make the next checkout fail that way. */
+  fakeOptions: FakeEngineOptions;
   rest: RestService;
   requests: RestRepository;
   hooks: HooksService;
@@ -219,7 +221,9 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
   const policies = createPoliciesRepository(accounts.db);
   const dataDir = runtime.dataDir;
   const failCounters = { current: false };
-  const engines = fakeRegistry({ databases, failCounters });
+  // The fake reads its options at call time, so a test can flip a failure on and off.
+  const fakeOptions: FakeEngineOptions = { databases, failCounters };
+  const engines = fakeRegistry(fakeOptions);
   const requests = createRestRepository(accounts.db);
   const rest = createRestService({
     repo: requests,
@@ -304,6 +308,7 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     policies,
     dataDir,
     engines,
+    fakeOptions,
     rest,
     requests,
     hooks,

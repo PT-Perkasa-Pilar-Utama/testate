@@ -16,6 +16,7 @@ import type {
   EncodedRow,
 } from "../types.ts";
 import { translate } from "./errors.ts";
+import { blockingSessions } from "./query.ts";
 import { introspect } from "./introspect.ts";
 import { pgArray, quoteIdent, quoteTable } from "./pool.ts";
 import { swallow } from "./reader.ts";
@@ -264,7 +265,10 @@ export function checkout(sql: SQL, plan: CheckoutPlan): CheckoutRun {
       return await restoreAll(sql, conn, plan, push);
     } catch (cause: unknown) {
       await swallow(conn.unsafe("ROLLBACK"));
-      throw translate(cause, "checkout");
+      const error = translate(cause, "checkout");
+      if (error.kind === "lock_timeout")
+        error.details["blocking_sessions"] = await blockingSessions(sql);
+      throw error;
     } finally {
       conn.release();
       finished = true;

@@ -234,7 +234,10 @@ export function checkout(sql: SQL, plan: CheckoutPlan): CheckoutRun {
       return await restoreAll(conn, plan, push);
     } catch (cause: unknown) {
       await swallow(conn.unsafe("ROLLBACK"));
-      throw translate(cause, "checkout");
+      const error = translate(cause, "checkout");
+      if (error.kind === "lock_timeout")
+        error.details["blocking_sessions"] = await blockingSessions(sql);
+      throw error;
     } finally {
       await swallow(conn.unsafe("SET SESSION FOREIGN_KEY_CHECKS = 1"));
       conn.release();
@@ -260,4 +263,19 @@ export function checkout(sql: SQL, plan: CheckoutPlan): CheckoutRun {
       }
     },
   };
+}
+
+/** Blocking connection ids from performance_schema when readable, else empty (13 §13.5, story 85). */
+async function blockingSessions(sql: SQL): Promise<string[]> {
+  try {
+    const rows = v.parse(v.array(v.object({ id: v.union([v.string(), v.number()]) })), [
+      ...(await sql.unsafe(
+        `SELECT DISTINCT t.PROCESSLIST_ID AS id FROM performance_schema.data_lock_waits w
+           JOIN performance_schema.threads t ON t.THREAD_ID = w.BLOCKING_THREAD_ID`
+      )),
+    ]);
+    return rows.map((row) => String(row.id));
+  } catch {
+    return [];
+  }
 }

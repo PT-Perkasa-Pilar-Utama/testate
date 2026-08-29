@@ -17,6 +17,15 @@ export const checkoutsModel = {
     apiClient.post(base(slug), { schema: withJob, body }),
   retry: (slug: string, id: string): Promise<{ checkout: Checkout; job: Job }> =>
     apiClient.post(`${one(slug, id)}/retry`, { schema: withJob, body: {} }),
+  terminateBlockers: (
+    slug: string,
+    id: string,
+    body: JsonObject
+  ): Promise<{ terminated: string[]; failed: string[] }> =>
+    apiClient.post(`${one(slug, id)}/terminate-blockers`, {
+      schema: v.object({ terminated: v.array(v.string()), failed: v.array(v.string()) }),
+      body,
+    }),
   counters: (slug: string, id: string): Promise<Counters> =>
     apiClient.get(`${one(slug, id)}/counters`, { schema: countersSchema }),
   repairCounters: (slug: string, id: string): Promise<Counters> =>

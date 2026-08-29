@@ -1,4 +1,5 @@
 import { createSignal } from "solid-js";
+import * as v from "valibot";
 import type { Checkout, Counters } from "@testate/shared";
 
 import { attempt, showToast } from "@/components/toast.tsx";
@@ -14,6 +15,7 @@ export type CheckoutsPresenter = Refreshable<Checkout[]> & {
   openCounters: (checkout: Checkout) => Promise<void>;
   close: () => void;
   retry: (checkout: Checkout) => Promise<void>;
+  terminate: (checkout: Checkout, adapter: Checkout["adapters"][number]) => Promise<void>;
   repair: () => Promise<void>;
 };
 
@@ -32,6 +34,14 @@ export function countersSummary(counters: Counters): string {
   const all = counters.adapters.flatMap((adapter) => adapter.counters);
   const failed = all.filter((counter) => !counter.ok).length;
   return `${all.length - failed} ok · ${failed} failed`;
+}
+
+const sessionsSchema = v.array(v.string());
+
+/** The session ids the engine named as blockers on a lock timeout, or none (story 85). */
+export function blockingSessions(adapter: Checkout["adapters"][number]): string[] {
+  const parsed = v.safeParse(sessionsSchema, adapter.error?.details?.["blocking_sessions"]);
+  return parsed.success ? parsed.output : [];
 }
 
 /** "3 tables, 2 columns skipped · 1 column defaulted" or "" when a restore was complete. */
@@ -82,6 +92,21 @@ export function createCheckoutsPresenter(
         showToast(`Retrying ${checkout.state.name} on the failed adapters`, "info");
         refreshAll();
         followJob(job, refreshAll);
+      });
+    },
+    terminate: (checkout, adapter) => {
+      const staticSlug = slug();
+      const staticSessions = blockingSessions(adapter);
+      return attempt(async () => {
+        const result = await checkoutsModel.terminateBlockers(staticSlug, checkout.id, {
+          adapter_id: adapter.adapter_id,
+          session_ids: staticSessions,
+        });
+        showToast(
+          `Terminated ${result.terminated.length} session(s)${result.failed.length === 0 ? "" : `; ${result.failed.length} refused`}`,
+          result.failed.length === 0 ? "success" : "error"
+        );
+        checkouts.refresh();
       });
     },
     repair: () => {

@@ -8,7 +8,8 @@ const ROOT = join(import.meta.dirname, "..", "..");
 /** Stories the dashboard cannot show: CI, developer, operator, and agent stories live in API and boot tests. */
 const NON_UI: [number, number][] = [
   // 15, 78, 85, 107 need a failing restore, real schema drift, a held lock, or a restart: the
-  // API and job tests inject those; a dashboard cannot.
+  // API and job tests inject those; a dashboard cannot. (85: the engines name blockers and the
+  // checkout details offer Terminate blockers; the fake-engine test covers the path.)
   [15, 15],
   [78, 78],
   [85, 85],

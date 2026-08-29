@@ -24,7 +24,7 @@ export type FakeEngineOptions = {
   databases: Map<string, FakeDatabase>;
   version?: string;
   /** When set, every checkout fails with this engine error kind. */
-  failCheckout?: "schema_drift" | "checkout_blocked" | "unreachable";
+  failCheckout?: "schema_drift" | "checkout_blocked" | "unreachable" | "lock_timeout";
   /** When set, checkouts report one failed counter until `repairCounters` runs. */
   failCounters?: { current: boolean };
 };
@@ -184,7 +184,15 @@ export function createFakeEngine(opts: FakeEngineOptions): DbEngine {
       const run = async (): Promise<CheckoutResult> => {
         const database = databaseOf(conn);
         if (opts.failCheckout !== undefined) {
-          throw new EngineError(opts.failCheckout, `fake checkout failed: ${opts.failCheckout}`);
+          // A lock timeout names its blockers like the real engines do (story 85).
+          const details =
+            opts.failCheckout === "lock_timeout" ? { blocking_sessions: ["42", "dead-1"] } : {};
+          throw new EngineError(
+            opts.failCheckout,
+            `fake checkout failed: ${opts.failCheckout}`,
+            details,
+            opts.failCheckout === "lock_timeout"
+          );
         }
         const live = introspection(database);
         if (
