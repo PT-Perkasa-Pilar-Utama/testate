@@ -58,7 +58,6 @@ function stubDeps(calls: Calls, refuse: string | null): SeedDeps {
       },
     },
     admin: () => ({ id: "u1", username: "admin", role: "admin" }),
-    selfUrl: "http://127.0.0.1:3000",
   };
 }
 
@@ -80,7 +79,7 @@ describe("reset seeds", () => {
       "shop-mysql",
       "shop-mariadb",
       "exports",
-      "self-health",
+      "minio-health",
     ]);
     expect(calls.states).toEqual(["seeded-baseline"]);
     expect(calls.waits).toEqual([
@@ -88,7 +87,7 @@ describe("reset seeds", () => {
       "init-shop-mysql",
       "init-shop-mariadb",
       "init-exports",
-      "init-self-health",
+      "init-minio-health",
     ]);
     expect(counts).toEqual({
       users: 3,
@@ -104,14 +103,14 @@ describe("reset seeds", () => {
     const counts = await createSeeds(stubDeps(calls, null))("qa");
     expect(counts).toEqual({ users: 1, projects: 0, adapters: 0, states: 0, warnings: [] });
     expect(calls.adapters).toEqual([]);
-    const drafts = devAdapters("http://127.0.0.1:3000");
+    const drafts = devAdapters();
     expect(drafts.map(targetOf)).toEqual([
       "postgres:54320",
       "mysql:33060",
       "mariadb:33070",
       "mongodb:url",
       "s3:http://127.0.0.1:9010",
-      "http:http://127.0.0.1:3000/api/v1/health/live",
+      "http:http://127.0.0.1:9010/minio/health/live",
     ]);
   });
 });

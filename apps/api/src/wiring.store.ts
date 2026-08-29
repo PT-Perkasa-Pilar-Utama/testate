@@ -108,7 +108,6 @@ export function resetDeps(
       states: services.states,
       jobs: services.jobs,
       admin: () => services.usersRepo.byUsername(config.TESTATE_ADMIN_USER),
-      selfUrl: config.TESTATE_PUBLIC_URL ?? `http://127.0.0.1:${config.PORT}`,
     }),
   };
 }

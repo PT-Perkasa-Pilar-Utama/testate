@@ -35,7 +35,7 @@ Module: `ops` ([../technical-specs/05-module-definitions.md §5.17](../technical
 
 **Input.** Body: `seed` `dev` | `qa` optional (default `TESTATE_RESET_SEED`); `confirm` string required, must equal `"reset"`.
 
-**Behavior.** Refuse while jobs run (`JOB_IN_PROGRESS`); pause the dispatcher; delete every metadata table, local blobs, uploads, import artifacts, and diff blobs; re-apply migrations; run the seed (`dev`: admin, `qa` and `viewer` users with known passwords, project `demo` with adapters at the compose engines, a storage adapter at MinIO, a REST adapter at the health endpoint, one manual state; `qa`: admin only); resume the dispatcher; audit `reset_state.run`. Sessions other than the caller's are gone.
+**Behavior.** Refuse while jobs run (`JOB_IN_PROGRESS`); pause the dispatcher; delete every metadata table, local blobs, uploads, import artifacts, and diff blobs; re-apply migrations; run the seed (`dev`: admin, `qa` and `viewer` users with known passwords, project `demo` with adapters at the compose engines, a storage adapter at MinIO, a REST adapter at MinIO's health endpoint (the API's own endpoint is a `self` target, which [18 §18.3](../technical-specs/18-outbound-address-policy.md) refuses on purpose), one manual state; `qa`: admin only); resume the dispatcher; audit `reset_state.run`. Sessions other than the caller's are gone.
 
 **Output.** `200 { "data": { "seed": "dev", "users": 3, "projects": 1, "adapters": 5, "states": 1, "duration_ms": 4120 } }`. **Errors.** `JOB_IN_PROGRESS`, `VALIDATION_ERROR`, `NOT_FOUND` in production. **Traceability.** Testing decisions in `../PRD.md` §5; [05 §5.17](../technical-specs/05-module-definitions.md).
 

@@ -27,8 +27,6 @@ export type SeedDeps = {
   jobs: Pick<JobsService, "wait">;
   /** The bootstrap admin's row; seeds act as it. */
   admin: () => { id: string; username: string; role: Actor["role"] } | null;
-  /** The API's own base URL for the REST adapter (the health endpoint). */
-  selfUrl: string;
 };
 
 /** Known passwords for the dev seed only (19 §19.3); never used outside a dev box. */
@@ -37,8 +35,11 @@ export const DEV_PASSWORDS = { qa: "qa-password-1234", viewer: "viewer-password-
 const META: RequestMeta = { ip: "", user_agent: "seed", request_id: null };
 const INIT_WAIT_SECONDS = 60;
 
+/** MinIO's liveness endpoint: a REST target that is not the API itself, which 18 §18.3 refuses. */
+export const REST_HEALTH_URL = "http://127.0.0.1:9010/minio/health/live";
+
 /** Adapters at the compose engines from `deploy/compose.engines.yml`, ports offset as documented there. */
-export function devAdapters(selfUrl: string): AdapterDraft[] {
+export function devAdapters(): AdapterDraft[] {
   const database = (engine: AdapterDraft["engine"], name: string, port: number): AdapterDraft => ({
     kind: "database",
     engine,
@@ -77,9 +78,9 @@ export function devAdapters(selfUrl: string): AdapterDraft[] {
     {
       kind: "rest",
       engine: "http",
-      name: "self-health",
+      name: "minio-health",
       mode: "read_only",
-      config: { base_url: `${selfUrl}/api/v1/health/live` },
+      config: { base_url: REST_HEALTH_URL },
       secrets: {},
     },
   ];
@@ -104,7 +105,7 @@ async function devSeed(deps: SeedDeps, admin: Actor): Promise<SeedCounts> {
     META
   );
   counts.projects = 1;
-  for (const draft of devAdapters(deps.selfUrl)) {
+  for (const draft of devAdapters()) {
     try {
       const { init_job } = await deps.adapters.create(admin, project.slug, draft, META);
       if (init_job !== null) await deps.jobs.wait(null, init_job.id, INIT_WAIT_SECONDS);

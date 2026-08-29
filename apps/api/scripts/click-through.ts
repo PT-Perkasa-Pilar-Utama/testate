@@ -263,6 +263,14 @@ async function main(): Promise<void> {
     screen = "setup";
     const seeded = await setupThroughApi(API_PORT, ADMIN_PASSWORD, FINAL_PASSWORD);
     await Bun.write(join(OUT, "seed.json"), JSON.stringify(seeded, null, 2));
+    const report = v.safeParse(
+      v.object({ data: v.object({ adapters: v.number(), warnings: v.array(v.string()) }) }),
+      seeded
+    );
+    if (!report.success)
+      issues.push({ screen, kind: "seed", detail: JSON.stringify(seeded).slice(0, 300) });
+    else if (report.output.data.warnings.length > 0)
+      issues.push({ screen, kind: "seed", detail: report.output.data.warnings.join("; ") });
 
     screen = "login";
     await goto(page, "/login");
