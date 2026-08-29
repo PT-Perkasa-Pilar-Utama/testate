@@ -37,6 +37,7 @@ export default defineConfig({
     { name: "routes", testMatch: /routes\.e2e\.ts/ },
     // Contract and agent stories talk to the API only; nothing they touch is shared state.
     { name: "api", testMatch: /(api|agent)\.e2e\.ts/ },
+
     {
       name: "flows",
       testMatch: /(flows|stories|hooks|gaps|admin)\.e2e\.ts/,
@@ -48,6 +49,8 @@ export default defineConfig({
     { name: "state-api", testMatch: /state-api\.e2e\.ts/, dependencies: ["states"] },
     { name: "adapter", testMatch: /adapter\.e2e\.ts/, dependencies: ["state-api"] },
     { name: "crawl", testMatch: /buttons\.e2e\.ts/, dependencies: ["adapter"] },
+    // Boot stories spawn API processes of their own; run them last so they never starve a browser.
+    { name: "boot", testMatch: /boot\.e2e\.ts/, dependencies: ["crawl"] },
   ],
   globalSetup: "./e2e/setup.ts",
   outputDir: join(E2E_DIR, "results"),

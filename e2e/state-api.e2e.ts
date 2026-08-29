@@ -112,6 +112,24 @@ test.describe("state and job contract stories", () => {
     await qa.dispose();
   });
 
+  test("@story-128 a backup records the key fingerprints that sealed its values", async () => {
+    test.setTimeout(180_000);
+    const admin = await apiContext("admin");
+    const response = await admin.post("settings/backup", {
+      data: { include_blobs: false, destination: "download" },
+    });
+    expect(response.status()).toBe(202);
+    const started: { data: { id: string } } = await response.json();
+    const job = await waitForJob(admin, started.data.id);
+    expect(job.status).toBe("succeeded");
+    const detail: { data: { result: { key_fingerprints: string[]; size_bytes: number } } } = await (
+      await admin.get(`jobs/${started.data.id}`)
+    ).json();
+    expect(detail.data.result.key_fingerprints.length).toBeGreaterThan(0);
+    expect(detail.data.result.size_bytes).toBeGreaterThan(0);
+    await admin.dispose();
+  });
+
   test("@story-113 checks out a state by name and waits for the job in the same call", async () => {
     test.setTimeout(180_000);
     const qa = await apiContext("qa");
