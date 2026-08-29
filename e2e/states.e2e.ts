@@ -170,6 +170,71 @@ test.describe("state stories", () => {
     await expect(page.locator("tr", { hasText: "live database" })).toHaveCount(0);
     expect(issues).toStrictEqual([]);
   });
+  test("@story-49 @story-52 @story-53 @story-54 @story-55 @story-56 @story-57 @story-58 @story-59 @story-60 @story-149 imports a CSV through the wizard, dry-runs, runs, and re-imports the rejected rows", async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    const issues: Issue[] = [];
+    watch(page, issues);
+    const csv = `email,balance,big\nimp-${STAMP}-1@x.io,1.5,1\nimp-${STAMP}-2@x.io,abc,2\n`;
+    const postgres = await demoAdapter({ engine: "postgres" });
+    const table = await firstTable(postgres.id);
+    await page.goto("/projects/demo");
+    await settle(page);
+    await page.getByRole("tab", { name: "Imports" }).click();
+    await page.getByRole("button", { name: "New import" }).click();
+    const wizard = page.locator("dialog[open]");
+    await wizard.locator('input[type="file"]').setInputFiles({
+      name: "customers.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(csv),
+    });
+    await expect(wizard.getByRole("columnheader", { name: "email" })).toBeVisible();
+    await wizard.getByLabel("Database adapter").selectOption({ label: postgres.name });
+    await wizard.getByLabel("Table").selectOption(table);
+    await expect(wizard.getByLabel("email source")).toHaveValue("email");
+    await wizard.getByLabel("email transform").selectOption("trim");
+    await wizard.getByLabel("Mapping name").fill(`map-${STAMP}`);
+    const sample = await wizard.getByRole("link", { name: "CSV" }).getAttribute("href");
+    expect((await page.request.get(String(sample))).status()).toBe(200);
+    await wizard.getByRole("button", { name: "Dry run" }).click();
+    await expect(wizard.getByText(/Dry run: .*skipped 1 · failed 1/)).toBeVisible({
+      timeout: 90_000,
+    });
+    await expect(wizard.getByText(/row \d+: balance/)).toBeVisible();
+    await wizard.getByRole("button", { name: "Run import" }).click();
+    await expect(wizard.getByText(/Import: inserted 1 .* failed 1/)).toBeVisible({
+      timeout: 90_000,
+    });
+    await expect(wizard.getByText("A stash was taken first")).toBeVisible();
+    const rejected = await wizard.getByRole("link", { name: "Rejected rows" }).getAttribute("href");
+    const rejectedFile = await page.request.get(String(rejected));
+    expect(rejectedFile.status()).toBe(200);
+    expect(await rejectedFile.text()).toContain(`imp-${STAMP}-2@x.io`);
+    await wizard.getByText("Close", { exact: true }).click();
+    const run = page.locator("main tbody tr", { hasText: "inserted 1" }).first();
+    await expect(run.getByText("failed 1")).toBeVisible();
+    await run.getByRole("button", { name: "Report" }).click();
+    await expect(page.locator("dialog[open]").getByText(/Import: inserted 1/)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await run.getByRole("button", { name: "Re-import rejected" }).click();
+    await expect(
+      page.locator("dialog[open]").getByRole("columnheader", { name: "email" })
+    ).toBeVisible();
+    await page
+      .locator("dialog[open]")
+      .getByLabel("Database adapter")
+      .selectOption({ label: postgres.name });
+    await page
+      .locator("dialog[open]")
+      .getByLabel("Saved mapping")
+      .selectOption({ label: `map-${STAMP}` });
+    await expect(page.locator("dialog[open]").getByLabel("Mapping name")).toHaveValue(
+      `map-${STAMP}`
+    );
+    await page.keyboard.press("Escape");
+    expect(issues).toStrictEqual([]);
+  });
 });
 
 test.describe("viewer state stories", () => {

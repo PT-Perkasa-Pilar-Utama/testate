@@ -24,6 +24,7 @@ import { AppError, conflict, notFound } from "../../lib/http/index.ts";
 import type { RequestMeta } from "../../lib/http/auth.ts";
 import type { KeyRing } from "../../lib/sealed/index.ts";
 import type { FilesResolver } from "../adapters/adapters.files.ts";
+import { ERRORS_PREVIEW, toReport } from "./imports.runs.ts";
 import { fetchStorageSource } from "./imports.source.ts";
 import type { AdapterRecord, AdaptersRepository } from "../adapters/adapters.repository.ts";
 import { CONFIG_COLUMN, openSecrets } from "../adapters/adapters.secrets.ts";
@@ -35,7 +36,6 @@ import type {
   ImportSource,
   ImportsRepository,
   MappingPatch,
-  RunRecord,
   RunsFilter,
   UploadRecord,
 } from "./imports.repository.ts";
@@ -74,7 +74,7 @@ export type ImportsDeps = {
   engines: EngineRegistry;
   ring: KeyRing;
   files: FilesResolver;
-  jobs: Pick<JobsService, "enqueue">;
+  jobs: Pick<JobsService, "enqueue" | "get">;
   audit: AuditService;
   dataDir: string;
   maxUploadBytes: number;
@@ -154,18 +154,6 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
     return fetchStorageSource(deps, project, source.adapter_id, source.path);
   };
   const files = createFileOps({ ...deps, sourcePath, tableOf });
-  const toReport = (run: RunRecord): ImportReport => ({
-    run_id: run.id,
-    dry_run: run.dry_run,
-    inserted: v.parse(v.optional(v.number(), 0), run.counts?.["inserted"]),
-    updated: v.parse(v.optional(v.number(), 0), run.counts?.["updated"]),
-    skipped: v.parse(v.optional(v.number(), 0), run.counts?.["skipped"]),
-    failed: v.parse(v.optional(v.number(), 0), run.counts?.["failed"]),
-    duration_ms: v.parse(v.optional(v.number(), 0), run.counts?.["duration_ms"]),
-    errors_preview: [],
-    rejected_available: run.rejected_available,
-    stash_state_id: run.stash_state_id,
-  });
 
   return {
     upload: (slug, file, purpose) => files.upload(projectOf(slug), file, purpose),
@@ -286,7 +274,9 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
     async report(slug, runId) {
       const run = repo.run(projectOf(slug).id, runId);
       if (run === null) throw notFound("import run");
-      return toReport(run);
+      const job = await deps.jobs.get(null, run.job_id).catch(() => null);
+      const preview = v.safeParse(ERRORS_PREVIEW, job?.result?.["errors_preview"]);
+      return { ...toReport(run), errors_preview: preview.success ? preview.output : [] };
     },
     async rejectedRows(slug, runId) {
       const run = repo.run(projectOf(slug).id, runId);

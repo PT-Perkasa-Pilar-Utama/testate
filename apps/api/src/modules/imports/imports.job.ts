@@ -208,6 +208,8 @@ function cleanup(
   jobId: string
 ): void {
   deps.states.releasePins(jobId);
+  // A dry run keeps its upload so the real import can follow on the same file (story 56).
+  if (payload.dry_run && payload.source_upload_id !== null) return;
   if (payload.source_upload_id !== null) deps.imports.removeUpload(payload.source_upload_id);
   if (payload.source_upload_id !== null || isFetchedSource(payload.source_path))
     rmSync(dirname(payload.source_path), { recursive: true, force: true });

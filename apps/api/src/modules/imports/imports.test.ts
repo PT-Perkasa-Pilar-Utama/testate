@@ -7,6 +7,7 @@ import {
   uploadSchema,
 } from "@testate/shared";
 import * as v from "valibot";
+import type { TableSchema } from "@testate/shared";
 
 import { TEST_META } from "../../../test/accounts.ts";
 import { expectContract } from "../../../test/contract.ts";
@@ -25,8 +26,38 @@ import {
   UPLOAD_MOCK,
 } from "./imports.mock.ts";
 import { applyTransforms } from "./imports.transforms.ts";
+import { validateImportRow } from "./imports.validate.ts";
 
 describe("imports", () => {
+  it("a dry run rejects text in a sized numeric column (story 56)", () => {
+    const table: TableSchema = {
+      schema: "contract",
+      name: "customers",
+      kind: "table",
+      row_estimate: 1,
+      columns: [
+        {
+          name: "balance",
+          type: "numeric(24,4)",
+          nullable: true,
+          has_default: false,
+          generated: false,
+          identity: false,
+          policy: { required_function: null, mask: null },
+        },
+      ],
+      primary_key: null,
+      foreign_keys_out: [],
+      foreign_keys_in: [],
+      unique: [],
+      unsupported: [],
+      excluded: false,
+      display_column: null,
+    };
+    expect(validateImportRow({ balance: "abc" }, table, [])).toContain("balance: not a");
+    expect(validateImportRow({ balance: "1.5" }, table, [])).toBeNull();
+  });
+
   it("mocks match the contract", () => {
     expectContract(uploadSchema, UPLOAD_MOCK, (clone) => {
       clone["type"] = "pdf";
@@ -134,6 +165,12 @@ describe("imports", () => {
       stash_state_id: null,
     });
     expect(h.harness.databases.get("shop")?.get("public.customers")?.length).toBe(2);
+    // The dry run keeps the upload so the real import can follow on the same file (story 56).
+    expect((await h.imports.preview("shop", { source: { upload_id: uploadId } })).rows.length).toBe(
+      2
+    );
+    const real = await runToReport(h, mapping, uploadId, { dry_run: false });
+    expect(real.dry_run).toBe(false);
     await expect(
       h.imports.preview("shop", { source: { upload_id: uploadId } })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });

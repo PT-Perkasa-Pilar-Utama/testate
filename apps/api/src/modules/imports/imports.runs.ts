@@ -1,4 +1,4 @@
-import type { Actor, ImportRun } from "@testate/shared";
+import type { Actor, ImportReport, ImportRun } from "@testate/shared";
 import { importModeSchema, roleSchema } from "@testate/shared";
 import * as v from "valibot";
 
@@ -76,5 +76,26 @@ export function toRun(row: v.InferOutput<typeof runRow>): RunRecord {
     actor: actorOf(row),
     created_at: row.created_at,
     finished_at: row.finished_at,
+  };
+}
+
+/** The first errors of a run live on its job result (19 §19.1). */
+export const ERRORS_PREVIEW = v.array(v.object({ row_number: v.number(), reason: v.string() }));
+
+const count = (run: RunRecord, key: string): number =>
+  v.parse(v.optional(v.number(), 0), run.counts?.[key]);
+
+export function toReport(run: RunRecord): ImportReport {
+  return {
+    run_id: run.id,
+    dry_run: run.dry_run,
+    inserted: count(run, "inserted"),
+    updated: count(run, "updated"),
+    skipped: count(run, "skipped"),
+    failed: count(run, "failed"),
+    duration_ms: count(run, "duration_ms"),
+    errors_preview: [],
+    rejected_available: run.rejected_available,
+    stash_state_id: run.stash_state_id,
   };
 }

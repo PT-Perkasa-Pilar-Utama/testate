@@ -102,6 +102,29 @@ async function download(path: string, body: JsonObject, fallback: string): Promi
   return { blob: await response.blob(), filename };
 }
 
+/** A multipart upload: the browser writes the boundary, so no Content-Type is set here. */
+async function upload<TSchema extends v.GenericSchema>(
+  path: string,
+  file: File,
+  fields: Record<string, string>,
+  schema: TSchema
+): Promise<v.InferOutput<TSchema>> {
+  const form = new FormData();
+  form.set("file", file);
+  for (const [key, value] of Object.entries(fields)) form.set(key, value);
+  const response = await fetch(`${API}${path}`, {
+    method: "POST",
+    headers: new Headers({ Accept: "application/json", "X-Testate-Request": "1" }),
+    credentials: "same-origin",
+    body: form,
+  });
+  if (!response.ok) throw await parseError(response);
+  const envelope = v.safeParse(v.object({ data: schema }), await response.json());
+  if (!envelope.success)
+    throw new ApiError("INTERNAL", response.status, "response did not match its contract");
+  return envelope.output.data;
+}
+
 /** A full API URL for links the browser follows itself (downloads, framed previews). */
 function url(path: string, query?: Query): string {
   return `${API}${path}${toQuery(query)}`;
@@ -109,6 +132,7 @@ function url(path: string, query?: Query): string {
 
 export const apiClient = {
   envelope,
+  upload,
   download,
   url,
   get: <TSchema extends v.GenericSchema>(

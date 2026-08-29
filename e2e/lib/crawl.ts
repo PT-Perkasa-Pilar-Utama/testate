@@ -32,6 +32,8 @@ const SKIP = new Set([
   "Repair counters",
   "New diff",
   "New hook",
+  "New import",
+  "Re-import rejected",
   "Move up",
   "Move down",
   "Abort on failure",

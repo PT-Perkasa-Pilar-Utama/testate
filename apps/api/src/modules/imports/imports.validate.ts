@@ -70,7 +70,8 @@ export function validateMapping(
 const NUMERIC = new Set(["integer", "bigint", "smallint", "numeric", "real", "double precision"]);
 
 function typeMatches(type: string, value: JsonValue): boolean {
-  const canonical = canonicalType(type);
+  // `numeric(24,4)` and `varchar(80)` carry a size; the family decides the check.
+  const canonical = canonicalType(type).replace(/\(.*\)$/, "");
   if (NUMERIC.has(canonical))
     return (
       v.is(v.number(), value) || (v.is(v.string(), value) && /^-?\d+(\.\d+)?$/.test(value.trim()))
