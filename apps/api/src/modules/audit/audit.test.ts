@@ -33,7 +33,7 @@ describe("audit", () => {
       target_id: "u1",
       details: { role: "qa" },
       outcome: "succeeded",
-      meta: { ip: "10.0.0.1", user_agent: "curl" },
+      meta: { ip: "10.0.0.1", user_agent: "curl", request_id: null },
     });
     const page = await audit.list({ limit: 10 });
     expect(page.rows.map((row) => row.action)).toStrictEqual(["user.created"]);

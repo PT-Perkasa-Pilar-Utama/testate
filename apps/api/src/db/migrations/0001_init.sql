@@ -166,7 +166,7 @@ CREATE TABLE state_blobs (
 CREATE TABLE jobs (
   id TEXT PRIMARY KEY,
   project_id TEXT,
-  adapter_id TEXT,
+  adapter_ids TEXT NOT NULL DEFAULT '[]',
   kind TEXT NOT NULL CHECK (kind IN ('snapshot', 'checkout', 'import', 'diff', 'state_delete', 'adapter_delete', 'project_delete', 'archive_import', 'storage_migration', 'backup')),
   status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'running', 'succeeded', 'failed', 'cancelled', 'partial', 'interrupted')),
   payload TEXT NOT NULL,
@@ -175,6 +175,7 @@ CREATE TABLE jobs (
   progress TEXT,
   cancel_requested INTEGER NOT NULL DEFAULT 0,
   parent_request_id TEXT,
+  actor TEXT NOT NULL DEFAULT '{}',
   actor_user_id TEXT,
   actor_token_id TEXT,
   created_at TEXT NOT NULL,

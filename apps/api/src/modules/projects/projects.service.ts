@@ -4,8 +4,7 @@ import type { RequestMeta } from "../../lib/http/auth.ts";
 import { conflict, forbidden, notFound } from "../../lib/http/index.ts";
 import type { AdaptersService } from "../adapters/adapters.service.ts";
 import type { AuditService } from "../audit/audit.service.ts";
-import type { JobsService } from "../jobs/jobs.service.ts";
-import { PROJECT_JOB_MOCK } from "./projects.mock.ts";
+import type { EnqueueInput, JobsService } from "../jobs/jobs.service.ts";
 import type { ProjectPatch, ProjectsListQuery, ProjectsRepository } from "./projects.repository.ts";
 
 export type AdapterSummary = {
@@ -67,7 +66,7 @@ export type ProjectsDeps = {
   audit: AuditService;
   settings: { get(): Promise<Settings> };
   adapters: Pick<AdaptersService, "list">;
-  jobs: Pick<JobsService, "list">;
+  jobs: Pick<JobsService, "list" | "enqueue" | "replay">;
   now: () => Date;
 };
 
@@ -105,6 +104,20 @@ function planFor(adapter: AdapterSummary): PlanAdapter {
 function allowedActions(planned: PlanAdapter): readonly string[] {
   if (planned.action === "skip" || planned.action === "none") return ["skip"];
   return planned.drift === null ? ["restore", "skip"] : ["restore", "force", "skip"];
+}
+
+/** Every database adapter in the plan needs an action the plan allows (04 §4.8 step 1). */
+function assertActionsAllowed(plan: DeletionPlan, chosen: Map<string, string>): void {
+  for (const planned of plan.adapters) {
+    if (planned.action === "none") continue;
+    const action = chosen.get(planned.adapter_id);
+    if (action === undefined) {
+      throw conflict("every database adapter needs an action", { adapter_id: planned.adapter_id });
+    }
+    if (!allowedActions(planned).includes(action)) {
+      throw conflict("action not allowed by the plan", { adapter_id: planned.adapter_id, action });
+    }
+  }
 }
 
 export function createProjectsService(deps: ProjectsDeps): ProjectsService {
@@ -159,12 +172,12 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
       const [settings, adapters, jobs] = await Promise.all([
         deps.settings.get(),
         summaries(slug),
-        deps.jobs.list(actor),
+        deps.jobs.list(actor, null, { limit: 10, order: "desc", project_id: project.id }),
       ]);
       return {
         project,
         adapters,
-        latest_jobs: jobs.filter((job) => job.project_id === project.id).slice(0, 10),
+        latest_jobs: jobs.rows,
         quota: quotaOf(project, settings, repo.usedBytes(project.id), repo.instanceUsedBytes()),
         banner:
           project.head.status === "unknown"
@@ -219,6 +232,10 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
       };
     },
     async deleteProject(actor, slug, input, meta) {
+      if (meta.idempotency_key !== undefined && repo.bySlug(slug) === null) {
+        const replayed = await deps.jobs.replay(meta.idempotency_key, actor);
+        if (replayed !== null) return replayed;
+      }
       const project = find(slug);
       if (input.confirm_slug !== slug) throw conflict("confirm_slug does not match");
       const plan = plans.get(input.plan_id);
@@ -226,20 +243,7 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
         throw conflict("deletion plan is stale");
       }
       const chosen = new Map(input.adapters.map((item) => [item.adapter_id, item.action]));
-      for (const planned of plan.adapters) {
-        if (planned.action === "none") continue;
-        const action = chosen.get(planned.adapter_id);
-        if (action === undefined)
-          throw conflict("every database adapter needs an action", {
-            adapter_id: planned.adapter_id,
-          });
-        if (!allowedActions(planned).includes(action)) {
-          throw conflict("action not allowed by the plan", {
-            adapter_id: planned.adapter_id,
-            action,
-          });
-        }
-      }
+      assertActionsAllowed(plan, chosen);
       plans.delete(input.plan_id);
       audit.record({
         actor,
@@ -251,15 +255,22 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
         outcome: "succeeded",
         meta,
       });
-      // SCAFFOLD: the jobs card enqueues project_delete (return to init, then remove rows, 04 §4.8).
-      return {
-        ...PROJECT_JOB_MOCK,
+      const actions = plan.adapters
+        .filter((planned) => planned.action !== "none")
+        .map((planned) => ({
+          adapter_id: planned.adapter_id,
+          action: chosen.get(planned.adapter_id) ?? "skip",
+        }));
+      const request: EnqueueInput = {
         kind: "project_delete",
-        status: "queued",
-        project_id: project.id,
-        finished_at: null,
-        result: null,
+        projectId: project.id,
+        adapterIds: plan.adapters.map((planned) => planned.adapter_id),
+        payload: { slug, actions },
+        actor,
+        parentRequestId: meta.request_id,
       };
+      if (meta.idempotency_key !== undefined) request.idempotencyKey = meta.idempotency_key;
+      return deps.jobs.enqueue(request);
     },
   };
 }

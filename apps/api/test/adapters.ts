@@ -1,4 +1,4 @@
-import type { Actor, AdapterDraft } from "@testate/shared";
+import type { Actor, Adapter, AdapterDraft } from "@testate/shared";
 import * as v from "valibot";
 
 import type { Check, Verdict } from "../src/lib/netguard/index.ts";
@@ -12,10 +12,13 @@ import {
 import { createAdaptersRepository } from "../src/modules/adapters/adapters.repository.ts";
 import type { AdaptersRepository } from "../src/modules/adapters/adapters.repository.ts";
 import { createAdaptersService } from "../src/modules/adapters/adapters.service.ts";
+import { registerRunners } from "../src/modules/jobs/jobs.runners.ts";
 import type { AdaptersService } from "../src/modules/adapters/adapters.service.ts";
 import { secretsSchema } from "../src/modules/adapters/adapters.secrets.ts";
 import type { Secrets } from "../src/modules/adapters/adapters.secrets.ts";
 import { TEST_META, actorOf, createAccounts } from "./accounts.ts";
+import { createJobsHarness } from "./jobs.ts";
+import type { JobsHarness } from "./jobs.ts";
 import type { AccountsHarness } from "./accounts.ts";
 
 export const PROJECT_ID = "01991f00-0000-7000-8000-000000000010";
@@ -52,6 +55,7 @@ export type AdaptersHarness = {
   audit: AccountsHarness["audit"];
   /** Hosts the stub policy blocks; mutate it to change verdicts mid-test. */
   blocked: Set<string>;
+  runtime: JobsHarness;
 };
 
 type Netguard = { check(input: Check): Promise<Verdict> };
@@ -67,6 +71,16 @@ function stubNetguard(blocked: Set<string>): Netguard {
       return { allowed: true, addresses: ["10.0.0.5"] };
     },
   };
+}
+
+/** Creates an adapter and waits for its init snapshot job, so the adapter is free for the next job. */
+export async function createSettled(
+  harness: AdaptersHarness,
+  draft: AdapterDraft
+): Promise<Adapter> {
+  const { adapter, init_job } = await harness.adapters.create(harness.qa, "shop", draft, TEST_META);
+  if (init_job !== null) await harness.runtime.jobs.wait(null, init_job.id, 5);
+  return adapter;
 }
 
 /** The stored secrets of an adapter, opened with the harness ring. */
@@ -107,6 +121,13 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
   const repo = createAdaptersRepository(accounts.db);
   const blocked = new Set<string>();
   const scaffold = createScaffoldProbe();
+  const runtime = createJobsHarness(accounts.db, accounts.now);
+  registerRunners(runtime.dispatcher, {
+    db: accounts.db,
+    audit: accounts.audit,
+    now: accounts.now,
+  });
+  runtime.dispatcher.start();
   const adapters = createAdaptersService({
     repo,
     projects: accounts.projectsRepo,
@@ -121,6 +142,7 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
         : result;
     },
     fileProbe: createScaffoldFileProbe(),
+    jobs: runtime.jobs,
     now: accounts.now,
   });
   return {
@@ -132,5 +154,6 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     advance: accounts.advance,
     audit: accounts.audit,
     blocked,
+    runtime,
   };
 }

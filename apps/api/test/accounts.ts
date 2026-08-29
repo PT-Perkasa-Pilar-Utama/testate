@@ -14,7 +14,7 @@ import type { UsersService } from "../src/modules/users/users.service.ts";
 import type { MetadataDb } from "../src/lib/db/index.ts";
 import { TEST_HASHER, createClock, createTestDb } from "./db.ts";
 
-export const TEST_META = { ip: "10.0.0.1", user_agent: "test" };
+export const TEST_META = { ip: "10.0.0.1", user_agent: "test", request_id: null };
 export const ADMIN_PASSWORD = "bootstrap-admin-secret";
 
 export type AccountsHarness = {

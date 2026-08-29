@@ -1,14 +1,21 @@
 import { describe, expect, it } from "bun:test";
+import * as v from "valibot";
 
 import { TEST_META } from "../../../test/accounts.ts";
-import { PG, S3, createAdaptersHarness, storedSecrets } from "../../../test/adapters.ts";
+import {
+  PG,
+  S3,
+  createAdaptersHarness,
+  createSettled,
+  storedSecrets,
+} from "../../../test/adapters.ts";
 import { PLAN_TTL_MS, mergeSecrets } from "./adapters.service.ts";
 
 describe("adapter updates", () => {
   it("renames without a new init state, re-inits on a target change, and tracks credential replacement", async () => {
     const harness = await createAdaptersHarness();
     const { adapters, qa, audit } = harness;
-    const { adapter } = await adapters.create(qa, "shop", PG, TEST_META);
+    const adapter = await createSettled(harness, PG);
     const renamed = await adapters.update(qa, "shop", adapter.id, { name: "orders" }, TEST_META);
     expect(renamed.adapter.name).toBe("orders");
     expect(renamed.init_job).toBeNull();
@@ -20,6 +27,7 @@ describe("adapter updates", () => {
       TEST_META
     );
     expect(moved.init_job?.kind).toBe("snapshot");
+    await harness.runtime.jobs.wait(null, v.parse(v.string(), moved.init_job?.id), 5);
     expect(moved.adapter.config["host"]).toBe("pg2.sit.internal");
     expect(await storedSecrets(harness, adapter.id)).toStrictEqual({ password: "pg-secret" });
     const replaced = await adapters.update(
@@ -82,8 +90,9 @@ describe("adapter updates", () => {
   });
 
   it("plans a deletion, refuses stale plans and disallowed actions, and queues the job", async () => {
-    const { adapters, qa, advance } = await createAdaptersHarness();
-    const { adapter } = await adapters.create(qa, "shop", PG, TEST_META);
+    const harness = await createAdaptersHarness();
+    const { adapters, qa, advance } = harness;
+    const adapter = await createSettled(harness, PG);
     const plan = await adapters.deletionPlan("shop", adapter.id);
     expect(plan.adapter.action).toBe("restore");
     expect(plan.states_referencing).toBe(0);
@@ -105,6 +114,22 @@ describe("adapter updates", () => {
       action: "skip",
       reason: "read_only",
     });
+  });
+
+  it("replays a deletion for a repeated Idempotency-Key after the row is gone", async () => {
+    const harness = await createAdaptersHarness();
+    const { adapters, qa } = harness;
+    const s3 = await createSettled(harness, S3);
+    const plan = await adapters.deletionPlan("shop", s3.id);
+    const meta = { ...TEST_META, idempotency_key: "del-1" };
+    const job = await adapters.remove(qa, "shop", s3.id, plan.plan_id, "skip", meta);
+    expect((await harness.runtime.jobs.wait(null, job.id, 5)).status).toBe("succeeded");
+    await expect(adapters.get("shop", s3.id)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    const again = await adapters.remove(qa, "shop", s3.id, plan.plan_id, "skip", meta);
+    expect(again.id).toBe(job.id);
+    await expect(
+      adapters.remove(qa, "shop", s3.id, plan.plan_id, "skip", TEST_META)
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
   it("merges patch secrets with keep semantics", () => {

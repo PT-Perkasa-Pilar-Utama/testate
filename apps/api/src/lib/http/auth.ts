@@ -23,7 +23,13 @@ export type ActorResolver = {
   fromBearer(token: string): Promise<Resolved | null>;
 };
 
-export type RequestMeta = { ip: string | null; user_agent: string | null };
+export type RequestMeta = {
+  ip: string | null;
+  user_agent: string | null;
+  request_id: string | null;
+  /** `Idempotency-Key` header on job-creating POSTs (09 §9.3). */
+  idempotency_key?: string;
+};
 
 async function resolve(c: Context, resolver: ActorResolver): Promise<Resolved | null> {
   const bearer = c.req.header("authorization");
@@ -116,8 +122,12 @@ function remoteAddress(c: Context): string | null {
 /** Client address and agent for audit rows; `X-Forwarded-For` counts only behind a trusted proxy. */
 export function requestMeta(c: Context, trustProxy: boolean): RequestMeta {
   const forwarded = trustProxy ? c.req.header("x-forwarded-for")?.split(",")[0]?.trim() : undefined;
-  return {
+  const meta: RequestMeta = {
     ip: forwarded === undefined || forwarded === "" ? remoteAddress(c) : forwarded,
     user_agent: c.req.header("user-agent") ?? null,
+    request_id: c.get("requestId") ?? null,
   };
+  const key = c.req.header("idempotency-key");
+  if (key !== undefined) meta.idempotency_key = key;
+  return meta;
 }

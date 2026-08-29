@@ -11,6 +11,15 @@ import { SealedConfigError } from "./lib/sealed/index.ts";
 import type { KeyRing } from "./lib/sealed/index.ts";
 import { banner, disableUnreadableOwners, sweep } from "./lib/sealed/registry.ts";
 import type { Unreadable } from "./lib/sealed/registry.ts";
+import type { Logger } from "./lib/logger/index.ts";
+import type { AuditService } from "./modules/audit/audit.service.ts";
+import { createDispatcher } from "./modules/jobs/jobs.dispatcher.ts";
+import type { Dispatcher } from "./modules/jobs/jobs.dispatcher.ts";
+import { createJobEventHub } from "./modules/jobs/jobs.events.ts";
+import { createJobsRepository } from "./modules/jobs/jobs.repository.ts";
+import { registerRunners } from "./modules/jobs/jobs.runners.ts";
+import { createJobsService } from "./modules/jobs/jobs.service.ts";
+import type { JobsService } from "./modules/jobs/jobs.service.ts";
 import type { UsersService } from "./modules/users/users.service.ts";
 
 const RULE = "=".repeat(72);
@@ -67,6 +76,66 @@ export async function bootstrapAdmin(
   }
   const bootstrap = (): Promise<boolean> => users.bootstrap(config.TESTATE_ADMIN_USER, password);
   return { bootstrapped: userCount === 0 ? await bootstrap() : false, bootstrap };
+}
+
+export type JobsRuntime = { jobs: JobsService; dispatcher: Dispatcher };
+
+/** The jobs runtime (spec 16): repository, event hub, dispatcher, service, and this build's runners. */
+export function createJobsRuntime(
+  db: MetadataDb,
+  logger: Logger,
+  audit: AuditService,
+  config: Config,
+  now: () => Date
+): JobsRuntime {
+  const repo = createJobsRepository(db);
+  const hub = createJobEventHub();
+  const dispatcher = createDispatcher({
+    repo,
+    hub,
+    events: logger,
+    cap: config.TESTATE_JOB_CONCURRENCY,
+    now,
+  });
+  const jobs = createJobsService({
+    repo,
+    hub,
+    dispatcher,
+    db,
+    dataDir: config.TESTATE_DATA_DIR,
+    now,
+  });
+  registerRunners(dispatcher, { db, audit, now });
+  return { jobs, dispatcher };
+}
+
+export type Retention = { start(): void; stop(): void };
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Step 9 and the daily timer: sweep terminal jobs older than `retention.job_history_days` (16 §16.1). */
+export function createRetention(
+  logger: Logger,
+  sweep: () => (days: number) => { deleted: number; stubbed: number },
+  historyDays: () => Promise<number>
+): Retention {
+  let timer: ReturnType<typeof setInterval> | null = null;
+  const run = async (): Promise<void> => {
+    const swept = sweep()(await historyDays());
+    const event = logger.create("job");
+    event.add("op", { name: "retention:jobs", deleted: swept.deleted, stubbed: swept.stubbed });
+    event.emit();
+  };
+  return {
+    start() {
+      void run();
+      timer = setInterval(() => void run(), DAY_MS);
+    },
+    stop() {
+      if (timer !== null) clearInterval(timer);
+      timer = null;
+    },
+  };
 }
 
 /** Boot refusals print a framed message and exit 78 (configuration error), per 22 §22.2. */

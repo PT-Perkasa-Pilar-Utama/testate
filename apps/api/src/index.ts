@@ -11,7 +11,14 @@ import { join } from "node:path";
 import { Scalar } from "@scalar/hono-api-reference";
 import { Hono } from "hono";
 
-import { bootstrapAdmin, ownAddresses, refuse, sweepSealed } from "./boot.ts";
+import {
+  bootstrapAdmin,
+  createJobsRuntime,
+  createRetention,
+  ownAddresses,
+  refuse,
+  sweepSealed,
+} from "./boot.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import type { Config } from "./lib/config/index.ts";
 import { migrate, openMetadataDb } from "./lib/db/index.ts";
@@ -47,7 +54,6 @@ import { createImportsHandlers } from "./modules/imports/imports.handler.ts";
 import { createImportsService } from "./modules/imports/imports.service.ts";
 import { createV1 } from "./modules/index.ts";
 import { createJobsHandlers } from "./modules/jobs/jobs.handler.ts";
-import { createJobsService } from "./modules/jobs/jobs.service.ts";
 import { mountSpa, resolveWebSource, rewriteWebAssets } from "./modules/ops/ops.basepath.ts";
 import { createOpsHandlers } from "./modules/ops/ops.handler.ts";
 import { createResetHandler } from "./modules/ops/ops.reset.ts";
@@ -71,7 +77,14 @@ import { createUsersService } from "./modules/users/users.service.ts";
 
 const VERSION = "0.1.0";
 
-export type App = { fetch: Hono["fetch"]; port: number; close: () => void };
+export type App = {
+  fetch: Hono["fetch"];
+  port: number;
+  /** Step 10 of 22 §22.2: dispatcher and retention timer start once the listener is up. */
+  start: () => void;
+  /** 22 §22.4: drain running jobs (30 s), then close the sink and the database. */
+  close: () => Promise<void>;
+};
 
 function ensureDirs(config: Config): void {
   for (const sub of ["blobs", "logs", "uploads", "imports", "run"]) {
@@ -138,7 +151,11 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     now,
   });
   const { bootstrapped, bootstrap } = await bootstrapAdmin(usersRepo.count(), users, config);
-  const jobs = createJobsService();
+  const { jobs, dispatcher } = createJobsRuntime(db, logger, audit, config, now);
+  // Steps 8 and 9 of 22 §22.2: recover interrupted jobs, then sweep old ones.
+  const recovery = await jobs.recover();
+  const historyDays = async (): Promise<number> =>
+    (await settings.get()).retention.job_history_days;
   const data = createDataService();
   const states = createStatesService();
   const diffs = createDiffsService();
@@ -154,6 +171,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     netguard: { check: (input) => netguardCheck(input, denyList, self) },
     probe: createScaffoldProbe(),
     fileProbe: createScaffoldFileProbe(),
+    jobs,
     now,
   });
   const projects = createProjectsService({
@@ -202,9 +220,9 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
       trustProxy: config.TESTATE_TRUST_PROXY,
     }),
     users: createUsersHandlers(users, config.TESTATE_TRUST_PROXY),
-    projects: createProjectsHandlers(projects, prefix, config.TESTATE_TRUST_PROXY),
+    projects: createProjectsHandlers(projects, prefix, config.TESTATE_TRUST_PROXY, jobs),
     projectScope: requireProjectInScope(projectsRepo),
-    adapters: createAdaptersHandlers(adapters, prefix, config.TESTATE_TRUST_PROXY),
+    adapters: createAdaptersHandlers(adapters, prefix, config.TESTATE_TRUST_PROXY, jobs),
     data: createDataHandlers(data),
     imports: createImportsHandlers(
       createImportsService(),
@@ -246,6 +264,8 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     migrations_skipped: migration.skipped,
     reset_state_mounted: config.TESTATE_ENV !== "production",
     bootstrap_admin_created: bootstrapped,
+    jobs_interrupted: recovery.interrupted,
+    jobs_head_unknown: recovery.head_unknown,
     sealed_re_sealed: sealed.reSealed,
     sealed_unreadable: sealed.unreadable.length,
     sealed_banner: sealed.banner,
@@ -255,10 +275,20 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   bootEvent.emit();
   ready = true;
 
+  const retention = createRetention(logger, () => jobs.sweep, historyDays);
   return {
     fetch: app.fetch,
     port: config.PORT,
-    close: () => {
+    start: () => {
+      dispatcher.start();
+      retention.start();
+    },
+    close: async () => {
+      retention.stop();
+      const survivors = await dispatcher.drain(30_000);
+      const event = logger.create("shutdown");
+      event.add("op", { name: "shutdown", jobs_interrupted: survivors.length });
+      event.emit();
       logger.sink.close();
       db.close();
     },
@@ -276,11 +306,16 @@ async function bootOrRefuse(): Promise<App> {
 if (import.meta.main) {
   const app = await bootOrRefuse();
   const server = Bun.serve({ port: app.port, fetch: app.fetch });
-  // SCAFFOLD: the jobs card adds the drain from 22 §22.4 (pause dispatcher, cancel runners, wait 30 s).
+  app.start();
+  let stopping = false;
   const shutdown = (): void => {
+    if (stopping) return;
+    stopping = true;
     server.stop();
-    app.close();
-    process.exit(0);
+    void (async (): Promise<void> => {
+      await app.close();
+      process.exit(0);
+    })();
   };
   process.on("SIGTERM", shutdown);
   process.on("SIGINT", shutdown);

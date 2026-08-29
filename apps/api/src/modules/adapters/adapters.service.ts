@@ -15,14 +15,13 @@ import { AppError, conflict, forbidden, notFound } from "../../lib/http/index.ts
 import type { Check, Verdict } from "../../lib/netguard/index.ts";
 import type { KeyRing } from "../../lib/sealed/index.ts";
 import type { AuditService } from "../audit/audit.service.ts";
+import type { EnqueueInput, JobsService } from "../jobs/jobs.service.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import { validateConfig } from "./adapters.config.ts";
 import type { ValidatedConfig } from "./adapters.config.ts";
 import { createDeletionPlans } from "./adapters.deletion.ts";
 import type { AdapterDeletionPlan, DeletionAction } from "./adapters.deletion.ts";
 import {
-  deleteJob,
-  initJob,
   probeColumns,
   purposeOf,
   readonlySecretsOf,
@@ -87,6 +86,7 @@ export type AdaptersDeps = {
   netguard: { check(input: Check): Promise<Verdict> };
   probe: ProbeFn;
   fileProbe: FileProbeFn;
+  jobs: Pick<JobsService, "enqueue" | "replay">;
   now: () => Date;
 };
 
@@ -144,6 +144,22 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
       outcome: "succeeded",
       meta,
     });
+  /** A database adapter gets its init state through a snapshot job (05 §5.3 step 4). */
+  const initJob = async (
+    adapter: AdapterRecord,
+    actor: Actor,
+    meta: RequestMeta
+  ): Promise<Job | null> => {
+    if (adapter.kind !== "database") return null;
+    return deps.jobs.enqueue({
+      kind: "snapshot",
+      projectId: adapter.project_id,
+      adapterIds: [adapter.id],
+      payload: { init: true, adapter_id: adapter.id },
+      actor,
+      parentRequestId: meta.request_id,
+    });
+  };
   const failRetest = (id: string, cause: unknown): void => {
     if (!(cause instanceof AppError)) return;
     if (cause.code === "HOST_BLOCKED") repo.setStatus(id, "disabled", "policy", nowIso());
@@ -194,10 +210,7 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
         engine: adapter.engine,
         kind: adapter.kind,
       });
-      return {
-        adapter: toPublic(adapter),
-        init_job: adapter.kind === "database" ? initJob(adapter) : null,
-      };
+      return { adapter: toPublic(adapter), init_job: await initJob(adapter, actor, meta) };
     },
     async get(slug, id) {
       return toPublic(find(projectOf(slug).id, id));
@@ -231,7 +244,7 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
       );
       return {
         adapter: toPublic(updated),
-        init_job: change.newTarget && updated.kind === "database" ? initJob(updated) : null,
+        init_job: change.newTarget ? await initJob(updated, actor, meta) : null,
       };
     },
     async setMode(actor, slug, id, mode, meta) {
@@ -269,10 +282,25 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
       return plans.plan(find(projectOf(slug).id, id));
     },
     async remove(actor, slug, id, planId, action, meta) {
-      const adapter = find(projectOf(slug).id, id);
+      const project = projectOf(slug);
+      // A repeated Idempotency-Key after the row is gone still answers with the same job.
+      if (meta.idempotency_key !== undefined && repo.byId(id) === null) {
+        const replayed = await deps.jobs.replay(meta.idempotency_key, actor);
+        if (replayed !== null) return replayed;
+      }
+      const adapter = find(project.id, id);
       plans.consume(id, planId, action);
       record(actor, "adapter.deletion_requested", adapter, slug, meta, { plan_id: planId, action });
-      return deleteJob(adapter);
+      const request: EnqueueInput = {
+        kind: "adapter_delete",
+        projectId: adapter.project_id,
+        adapterIds: [adapter.id],
+        payload: { slug, adapter_id: adapter.id, name: adapter.name, action },
+        actor,
+        parentRequestId: meta.request_id,
+      };
+      if (meta.idempotency_key !== undefined) request.idempotencyKey = meta.idempotency_key;
+      return deps.jobs.enqueue(request);
     },
   };
 }

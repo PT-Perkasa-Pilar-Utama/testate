@@ -10,9 +10,11 @@ import {
 import * as v from "valibot";
 
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
-import { accepted, ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.ts";
+import { ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.ts";
 import type { Handler } from "../../lib/http/index.ts";
 import { firstQuery } from "../../lib/http/query.ts";
+import { respondWithJob } from "../jobs/jobs.handler.ts";
+import type { JobsService } from "../jobs/jobs.service.ts";
 import type { AdaptersFilter } from "./adapters.repository.ts";
 import type { AdapterPatch, AdaptersService } from "./adapters.service.ts";
 
@@ -61,7 +63,8 @@ export function toPatch(parsed: v.InferOutput<typeof adapterPatchSchema>): Adapt
 export function createAdaptersHandlers(
   service: AdaptersService,
   apiPrefix: string,
-  trustProxy: boolean
+  trustProxy: boolean,
+  jobs: JobsService
 ): AdaptersHandlers {
   const meta = (c: Parameters<Handler>[0]): ReturnType<typeof requestMeta> =>
     requestMeta(c, trustProxy);
@@ -110,7 +113,7 @@ export function createAdaptersHandlers(
         input.action,
         meta(c)
       );
-      return accepted(c, job, apiPrefix);
+      return respondWithJob(c, job, jobs, apiPrefix);
     },
   };
 }

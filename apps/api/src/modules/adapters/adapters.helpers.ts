@@ -1,8 +1,7 @@
-import type { Adapter, AdapterDraft, Job, ProbeOutcome } from "@testate/shared";
+import type { Adapter, AdapterDraft, ProbeOutcome } from "@testate/shared";
 
 import { AppError } from "../../lib/http/index.ts";
 import type { Check, Verdict } from "../../lib/netguard/index.ts";
-import { PROJECT_JOB_MOCK } from "../projects/projects.mock.ts";
 import type { Target } from "./adapters.config.ts";
 import type { AdapterRecord, ProbeColumns } from "./adapters.repository.ts";
 import type { Secrets } from "./adapters.secrets.ts";
@@ -64,33 +63,6 @@ export function probeColumns(outcome: ProbeOutcome, at: string): ProbeColumns {
     strategy: outcome.strategy,
     read_only_enforcement: outcome.read_only_enforcement,
     last_probe_at: at,
-  };
-}
-
-/** SCAFFOLD: the jobs card enqueues the init snapshot (05 §5.3 step 4); this is the queued shape. */
-export function initJob(adapter: AdapterRecord): Job {
-  return {
-    ...PROJECT_JOB_MOCK,
-    kind: "snapshot",
-    status: "queued",
-    project_id: adapter.project_id,
-    adapter_ids: [adapter.id],
-    progress: { init: true },
-    result: null,
-    finished_at: null,
-  };
-}
-
-/** SCAFFOLD: the jobs card enqueues adapter_delete (return to init, then remove the row, 05 §5.9). */
-export function deleteJob(adapter: AdapterRecord): Job {
-  return {
-    ...PROJECT_JOB_MOCK,
-    kind: "adapter_delete",
-    status: "queued",
-    project_id: adapter.project_id,
-    adapter_ids: [adapter.id],
-    result: null,
-    finished_at: null,
   };
 }
 

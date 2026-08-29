@@ -2,10 +2,12 @@ import { createProjectSchema, idSchema, updateProjectSchema } from "@testate/sha
 import * as v from "valibot";
 
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
-import { accepted, ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.ts";
+import { ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.ts";
 import type { Handler } from "../../lib/http/index.ts";
 import { firstQuery } from "../../lib/http/query.ts";
 import type { ProjectPatch, ProjectsListQuery } from "./projects.repository.ts";
+import { respondWithJob } from "../jobs/jobs.handler.ts";
+import type { JobsService } from "../jobs/jobs.service.ts";
 import type { CreateProjectInput, ProjectsService } from "./projects.service.ts";
 
 export type ProjectsHandlers = {
@@ -67,7 +69,8 @@ function toPatch(parsed: v.InferOutput<typeof updateProjectSchema>): ProjectPatc
 export function createProjectsHandlers(
   service: ProjectsService,
   apiPrefix: string,
-  trustProxy: boolean
+  trustProxy: boolean,
+  jobs: JobsService
 ): ProjectsHandlers {
   const meta = (c: Parameters<Handler>[0]): ReturnType<typeof requestMeta> =>
     requestMeta(c, trustProxy);
@@ -91,7 +94,7 @@ export function createProjectsHandlers(
     deleteProject: async (c) => {
       const input = await parseBody(c, deletionSchema);
       const job = await service.deleteProject(currentActor(c), param(c, "slug"), input, meta(c));
-      return accepted(c, job, apiPrefix);
+      return respondWithJob(c, job, jobs, apiPrefix);
     },
   };
 }

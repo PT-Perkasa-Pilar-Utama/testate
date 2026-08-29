@@ -1,11 +1,18 @@
 import type { JSX } from "@solidjs/web";
 import { For, Loading, Show } from "solid-js";
+import type { Job } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
-import { canCancel, createJobsPresenter } from "./jobs.presenter.ts";
+import {
+  canCancel,
+  createJobsPresenter,
+  createLiveJob,
+  describeProgress,
+} from "./jobs.presenter.ts";
+import type { JobsPresenter } from "./jobs.presenter.ts";
 
 const STATUS_VARIANT = {
   queued: "secondary",
@@ -17,6 +24,50 @@ const STATUS_VARIANT = {
   interrupted: "warning",
 } as const;
 
+/** One row; non-terminal jobs follow their event stream and refresh the list when they finish. */
+function JobRow(props: { presenter: JobsPresenter; job: Job }): JSX.Element {
+  const live = createLiveJob(
+    () => props.job,
+    () => props.presenter.refresh()
+  );
+  return (
+    <Row>
+      <Cell>{props.job.kind}</Cell>
+      <Cell>
+        <Badge variant={STATUS_VARIANT[live.status()]}>{live.status()}</Badge>
+      </Cell>
+      <Cell>
+        <Show
+          when={props.job.queue_position !== null}
+          fallback={
+            <span class="text-kumo-subtle text-xs">{describeProgress(live.progress())}</span>
+          }
+        >
+          queue #{props.job.queue_position}
+        </Show>
+      </Cell>
+      <Cell>
+        <Show when={props.job.error}>
+          {(error) => <code class="text-kumo-danger text-xs">{error().code}</code>}
+        </Show>
+      </Cell>
+      <Cell>{props.job.actor.label}</Cell>
+      <Cell>{props.job.created_at}</Cell>
+      <Cell>
+        <Show when={hasRole("qa") && canCancel(props.job)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void props.presenter.cancel(props.job.id)}
+          >
+            Cancel
+          </Button>
+        </Show>
+      </Cell>
+    </Row>
+  );
+}
+
 export default function JobsView(): JSX.Element {
   const presenter = createJobsPresenter();
   return (
@@ -24,7 +75,10 @@ export default function JobsView(): JSX.Element {
       <div class="flex items-start justify-between gap-4">
         <div class="grid gap-1.5">
           <h2 class="text-lg font-semibold">Jobs</h2>
-          <p class="text-kumo-subtle">Snapshots, checkouts, diffs, imports, and maintenance.</p>
+          <p class="text-kumo-subtle">
+            Snapshots, checkouts, diffs, imports, deletions, and maintenance. Running jobs update
+            live.
+          </p>
         </div>
         <Button variant="secondary" onClick={() => presenter.refresh()}>
           Refresh
@@ -36,7 +90,8 @@ export default function JobsView(): JSX.Element {
             <tr>
               <Head>Kind</Head>
               <Head>Status</Head>
-              <Head>Queue</Head>
+              <Head>Progress</Head>
+              <Head>Error</Head>
               <Head>By</Head>
               <Head>Created</Head>
               <Head />
@@ -44,28 +99,7 @@ export default function JobsView(): JSX.Element {
           </thead>
           <tbody>
             <For each={presenter.value()}>
-              {(job) => (
-                <Row>
-                  <Cell>{job.kind}</Cell>
-                  <Cell>
-                    <Badge variant={STATUS_VARIANT[job.status]}>{job.status}</Badge>
-                  </Cell>
-                  <Cell>{job.queue_position ?? ""}</Cell>
-                  <Cell>{job.actor.label}</Cell>
-                  <Cell>{job.created_at}</Cell>
-                  <Cell>
-                    <Show when={hasRole("qa") && canCancel(job)}>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => void presenter.cancel(job.id)}
-                      >
-                        Cancel
-                      </Button>
-                    </Show>
-                  </Cell>
-                </Row>
-              )}
+              {(job) => <JobRow presenter={presenter} job={job} />}
             </For>
           </tbody>
         </Table>
