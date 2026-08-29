@@ -25,6 +25,7 @@ export const stateAdapterSchema = v.object({
   byte_count: v.number(),
   warnings: v.array(engineWarningSchema),
 });
+export type StateAdapter = v.InferOutput<typeof stateAdapterSchema>;
 
 export const manifestTableSchema = v.object({
   schema: v.nullable(v.string()),
@@ -35,6 +36,7 @@ export const manifestTableSchema = v.object({
   sort: v.picklist(["primary-key", "row-hash"]),
   warnings: v.array(engineWarningSchema),
 });
+export type ManifestTable = v.InferOutput<typeof manifestTableSchema>;
 
 export const stateSchema = v.object({
   id: idSchema,
@@ -61,6 +63,7 @@ export const stateDetailSchema = v.object({
     v.object({ ...stateAdapterSchema.entries, tables: v.array(manifestTableSchema) })
   ),
 });
+export type StateDetail = v.InferOutput<typeof stateDetailSchema>;
 
 export const createStateSchema = v.object({
   name: stateNameSchema,

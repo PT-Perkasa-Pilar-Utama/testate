@@ -13,6 +13,7 @@ import { Hono } from "hono";
 
 import {
   bootstrapAdmin,
+  createEngineWiring,
   createJobsRuntime,
   createRetention,
   ownAddresses,
@@ -26,12 +27,11 @@ import { authenticate } from "./lib/http/auth.ts";
 import { errorResponse, notFound } from "./lib/http/index.ts";
 import { createLogger } from "./lib/logger/index.ts";
 import { check as netguardCheck, parseDenyList } from "./lib/netguard/index.ts";
+import type { Check } from "./lib/netguard/index.ts";
 import { mountOpenApi } from "./lib/openapi.ts";
 import { createPasswordHasher } from "./lib/password/index.ts";
 import { loadKeyRing } from "./lib/sealed/index.ts";
 import { createAdaptersHandlers } from "./modules/adapters/adapters.handler.ts";
-import { createScaffoldFileProbe, createScaffoldProbe } from "./modules/adapters/adapters.probe.ts";
-import { createAdaptersRepository } from "./modules/adapters/adapters.repository.ts";
 import { createAdaptersService } from "./modules/adapters/adapters.service.ts";
 import { createAgentHandlers } from "./modules/agent/agent.handler.ts";
 import { createAgentService } from "./modules/agent/agent.service.ts";
@@ -151,7 +151,12 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     now,
   });
   const { bootstrapped, bootstrap } = await bootstrapAdmin(usersRepo.count(), users, config);
-  const { jobs, dispatcher } = createJobsRuntime(db, logger, audit, config, now);
+  const settings = createSettingsService();
+  const denyList = parseDenyList((await settings.get()).netguard.deny);
+  const self = { addresses: ownAddresses(), port: config.PORT };
+  const netguard = { check: (input: Check) => netguardCheck(input, denyList, self) };
+  const wiring = createEngineWiring(config, ring, db, netguard, projectsRepo);
+  const { jobs, dispatcher } = createJobsRuntime(db, logger, audit, config, now, wiring);
   // Steps 8 and 9 of 22 §22.2: recover interrupted jobs, then sweep old ones.
   const recovery = await jobs.recover();
   const historyDays = async (): Promise<number> =>
@@ -160,17 +165,14 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   const states = createStatesService();
   const diffs = createDiffsService();
   const storage = createStorageService();
-  const settings = createSettingsService();
-  const denyList = parseDenyList((await settings.get()).netguard.deny);
-  const self = { addresses: ownAddresses(), port: config.PORT };
   const adapters = createAdaptersService({
-    repo: createAdaptersRepository(db),
+    repo: wiring.adapters,
     projects: projectsRepo,
     audit,
     ring,
-    netguard: { check: (input) => netguardCheck(input, denyList, self) },
-    probe: createScaffoldProbe(),
-    fileProbe: createScaffoldFileProbe(),
+    netguard,
+    probe: wiring.probe,
+    fileProbe: wiring.fileProbe,
     jobs,
     now,
   });

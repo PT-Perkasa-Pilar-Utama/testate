@@ -95,7 +95,7 @@ describe("adapter updates", () => {
     const adapter = await createSettled(harness, PG);
     const plan = await adapters.deletionPlan("shop", adapter.id);
     expect(plan.adapter.action).toBe("restore");
-    expect(plan.states_referencing).toBe(0);
+    expect(plan.states_referencing).toBe(1);
     await expect(
       adapters.remove(qa, "shop", adapter.id, plan.plan_id, "force", TEST_META)
     ).rejects.toMatchObject({ code: "CONFLICT", details: { action: "force" } });

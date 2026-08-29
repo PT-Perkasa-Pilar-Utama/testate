@@ -42,9 +42,11 @@ export type StateKind = v.InferOutput<typeof stateKindSchema>;
 
 export const STATE_STATUSES = ["creating", "ready", "failed"] as const;
 export const stateStatusSchema = v.picklist(STATE_STATUSES);
+export type StateStatus = v.InferOutput<typeof stateStatusSchema>;
 
 export const HEAD_STATUSES = ["none", "at_state", "unknown"] as const;
 export const headStatusSchema = v.picklist(HEAD_STATUSES);
+export type HeadStatus = v.InferOutput<typeof headStatusSchema>;
 
 export const JOB_KINDS = [
   "snapshot",

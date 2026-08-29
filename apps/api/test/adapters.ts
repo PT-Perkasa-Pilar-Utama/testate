@@ -1,6 +1,11 @@
 import type { Actor, Adapter, AdapterDraft } from "@testate/shared";
 import * as v from "valibot";
 
+import { createMemoryBlobStore } from "../src/lib/blobstore/index.ts";
+import type { BlobStore } from "../src/lib/blobstore/index.ts";
+import { createFakeEngine } from "../src/lib/engines/fake/engine.ts";
+import type { FakeDatabase, FakeEngineOptions } from "../src/lib/engines/fake/engine.ts";
+import type { DbEngine, EngineRegistry } from "../src/lib/engines/index.ts";
 import type { Check, Verdict } from "../src/lib/netguard/index.ts";
 import { loadKeyRing, open } from "../src/lib/sealed/index.ts";
 import type { KeyRing } from "../src/lib/sealed/index.ts";
@@ -12,6 +17,8 @@ import {
 import { createAdaptersRepository } from "../src/modules/adapters/adapters.repository.ts";
 import type { AdaptersRepository } from "../src/modules/adapters/adapters.repository.ts";
 import { createAdaptersService } from "../src/modules/adapters/adapters.service.ts";
+import { createStatesRepository } from "../src/modules/states/states.repository.ts";
+import type { StatesRepository } from "../src/modules/states/states.repository.ts";
 import { registerRunners } from "../src/modules/jobs/jobs.runners.ts";
 import type { AdaptersService } from "../src/modules/adapters/adapters.service.ts";
 import { secretsSchema } from "../src/modules/adapters/adapters.secrets.ts";
@@ -56,7 +63,38 @@ export type AdaptersHarness = {
   /** Hosts the stub policy blocks; mutate it to change verdicts mid-test. */
   blocked: Set<string>;
   runtime: JobsHarness;
+  /** Fake databases by name; the `shop` database starts with two tables. */
+  databases: Map<string, FakeDatabase>;
+  blobs: BlobStore;
+  states: StatesRepository;
+  projectsRepo: AccountsHarness["projectsRepo"];
+  db: AccountsHarness["db"];
 };
+
+/** A registry with one fake postgres engine; other engines are absent, as in the real build. */
+export function fakeRegistry(opts: FakeEngineOptions): EngineRegistry {
+  const engine: DbEngine = createFakeEngine(opts);
+  return {
+    get: (name) => (name === "postgres" ? engine : null),
+    require(name) {
+      if (name !== "postgres") throw new Error(`${name} has no engine in the test registry`);
+      return engine;
+    },
+  };
+}
+
+export function shopDatabase(): FakeDatabase {
+  return new Map([
+    [
+      "public.customers",
+      [
+        { id: 1, email: "a@x.io" },
+        { id: 2, email: "b@x.io" },
+      ],
+    ],
+    ["public.orders", [{ id: 1, customer_id: 1, total: "10.00" }]],
+  ]);
+}
 
 type Netguard = { check(input: Check): Promise<Verdict> };
 
@@ -122,10 +160,19 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
   const blocked = new Set<string>();
   const scaffold = createScaffoldProbe();
   const runtime = createJobsHarness(accounts.db, accounts.now);
+  const databases = new Map<string, FakeDatabase>([["shop", shopDatabase()]]);
+  const blobs = createMemoryBlobStore();
+  const states = createStatesRepository(accounts.db);
   registerRunners(runtime.dispatcher, {
     db: accounts.db,
     audit: accounts.audit,
     now: accounts.now,
+    engines: fakeRegistry({ databases }),
+    blobs,
+    ring,
+    adapters: repo,
+    states,
+    projects: accounts.projectsRepo,
   });
   runtime.dispatcher.start();
   const adapters = createAdaptersService({
@@ -155,5 +202,10 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     audit: accounts.audit,
     blocked,
     runtime,
+    databases,
+    blobs,
+    states,
+    projectsRepo: accounts.projectsRepo,
+    db: accounts.db,
   };
 }

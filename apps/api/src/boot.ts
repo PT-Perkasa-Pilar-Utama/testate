@@ -3,6 +3,7 @@
  * lives in the library or module it calls.
  */
 import { networkInterfaces } from "node:os";
+import { join } from "node:path";
 
 import { ConfigError } from "./lib/config/index.ts";
 import type { Config } from "./lib/config/index.ts";
@@ -18,6 +19,19 @@ import type { Dispatcher } from "./modules/jobs/jobs.dispatcher.ts";
 import { createJobEventHub } from "./modules/jobs/jobs.events.ts";
 import { createJobsRepository } from "./modules/jobs/jobs.repository.ts";
 import { registerRunners } from "./modules/jobs/jobs.runners.ts";
+import type { RunnerDeps } from "./modules/jobs/jobs.runners.ts";
+import { createLocalBlobStore } from "./lib/blobstore/index.ts";
+import { createEngineRegistry } from "./lib/engines/index.ts";
+import type { Netguard } from "./lib/engines/index.ts";
+import {
+  createEngineProbe,
+  createScaffoldFileProbe,
+  createScaffoldProbe,
+} from "./modules/adapters/adapters.probe.ts";
+import type { FileProbeFn, ProbeFn } from "./modules/adapters/adapters.probe.ts";
+import { createAdaptersRepository } from "./modules/adapters/adapters.repository.ts";
+import type { ProjectsRepository } from "./modules/projects/projects.repository.ts";
+import { createStatesRepository } from "./modules/states/states.repository.ts";
 import { createJobsService } from "./modules/jobs/jobs.service.ts";
 import type { JobsService } from "./modules/jobs/jobs.service.ts";
 import type { UsersService } from "./modules/users/users.service.ts";
@@ -86,7 +100,8 @@ export function createJobsRuntime(
   logger: Logger,
   audit: AuditService,
   config: Config,
-  now: () => Date
+  now: () => Date,
+  runners: EngineWiring
 ): JobsRuntime {
   const repo = createJobsRepository(db);
   const hub = createJobEventHub();
@@ -105,8 +120,34 @@ export function createJobsRuntime(
     dataDir: config.TESTATE_DATA_DIR,
     now,
   });
-  registerRunners(dispatcher, { db, audit, now });
+  registerRunners(dispatcher, { ...runners, db, audit, now });
   return { jobs, dispatcher };
+}
+
+export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now"> & {
+  probe: ProbeFn;
+  fileProbe: FileProbeFn;
+};
+
+/** The engine registry, blob store, and repositories the job runners share with the services (12 §12.9, 15 §15.2). */
+export function createEngineWiring(
+  config: Config,
+  ring: KeyRing,
+  db: MetadataDb,
+  netguard: Netguard,
+  projects: ProjectsRepository
+): EngineWiring {
+  const engines = createEngineRegistry(netguard);
+  return {
+    engines,
+    probe: createEngineProbe(engines, createScaffoldProbe()),
+    fileProbe: createScaffoldFileProbe(),
+    blobs: createLocalBlobStore(join(config.TESTATE_DATA_DIR, "blobs")),
+    ring,
+    adapters: createAdaptersRepository(db),
+    states: createStatesRepository(db),
+    projects,
+  };
 }
 
 export type Retention = { start(): void; stop(): void };

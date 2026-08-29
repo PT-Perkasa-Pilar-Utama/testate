@@ -1,5 +1,6 @@
 import type { Project } from "@testate/shared";
 import { headStatusSchema } from "@testate/shared";
+import type { HeadStatus } from "@testate/shared";
 import * as v from "valibot";
 
 import type { MetadataDb } from "../../lib/db/index.ts";
@@ -52,6 +53,8 @@ export type ProjectsRepository = {
   exists(id: string): boolean;
   insert(project: NewProject): Project;
   update(id: string, patch: ProjectPatch, at: string): void;
+  /** HEAD moves on snapshot and checkout; `unknown` after a failed restore (05 §5.4). */
+  setHead(id: string, stateId: string | null, status: HeadStatus, at: string): void;
   remove(id: string): void;
   usedBytes(projectId: string): number;
   instanceUsedBytes(): number;
@@ -155,6 +158,11 @@ export function createProjectsRepository(db: MetadataDb): ProjectsRepository {
         params.push(patch.quota_bytes);
       }
       db.query(`UPDATE projects SET ${sets.join(", ")} WHERE id = ?`).run(...params, id);
+    },
+    setHead(id, stateId, status, at) {
+      db.query(
+        "UPDATE projects SET head_state_id = ?, head_status = ?, head_changed_at = ?, updated_at = ? WHERE id = ?"
+      ).run(stateId, status, at, at, id);
     },
     remove(id) {
       db.query("DELETE FROM projects WHERE id = ?").run(id);

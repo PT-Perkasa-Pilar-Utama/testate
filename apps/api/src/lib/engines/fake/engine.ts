@@ -1,0 +1,244 @@
+import type { Introspection, JsonObject, ProbeResult, TableSchema } from "@testate/shared";
+import { jsonObjectSchema } from "@testate/shared";
+import * as v from "valibot";
+
+import { computeFingerprint } from "../pure/fingerprint.ts";
+import { EngineError, rowText, sameTable, tableKey } from "../types.ts";
+import type {
+  CheckoutProgress,
+  CheckoutResult,
+  ConnectionRef,
+  DbEngine,
+  EncodedRow,
+  RowChunk,
+  SnapshotManifest,
+} from "../types.ts";
+
+/** One in-memory database: rows per `schema.table`, keyed by the adapter's `database` name. */
+export type FakeDatabase = Map<string, JsonObject[]>;
+
+export type FakeEngineOptions = {
+  databases: Map<string, FakeDatabase>;
+  version?: string;
+  /** When set, every checkout fails with this engine error kind. */
+  failCheckout?: "schema_drift" | "checkout_blocked" | "unreachable";
+};
+
+const PROBE: Omit<ProbeResult, "version"> = {
+  engine: "postgres",
+  dialect: "postgres",
+  meets_floor: true,
+  floor: "13",
+  tier: "tabular",
+  capabilities: {
+    canTruncate: true,
+    canDisableTriggers: false,
+    canTerminateSessions: true,
+    supportsDeferrableConstraints: false,
+    transactionalRestore: true,
+    snapshotRead: "repeatable-read",
+    timeSeriesDeletes: false,
+  },
+  strategy: {
+    emptyMode: "truncate",
+    foreignKeyHandling: "dependency-order",
+    transactional: true,
+    triggerDisable: false,
+    locking: "table",
+  },
+  read_only_enforcement: "transaction",
+  table_count: 0,
+  size_estimate_bytes: 0,
+  atomicity_notice: "fake",
+  warnings: [],
+};
+
+/** Column names survive an emptied table, so a restore test does not read as schema drift. */
+const KNOWN_COLUMNS = new WeakMap<FakeDatabase, Map<string, string[]>>();
+
+function columnsOf(database: FakeDatabase | null, key: string, rows: JsonObject[]): string[] {
+  const known =
+    database === null ? null : (KNOWN_COLUMNS.get(database) ?? new Map<string, string[]>());
+  const first = rows[0];
+  const names = first === undefined ? (known?.get(key) ?? ["id"]) : Object.keys(first);
+  if (database !== null && known !== null) {
+    known.set(key, names);
+    KNOWN_COLUMNS.set(database, known);
+  }
+  return names;
+}
+
+function schemaOf(
+  key: string,
+  rows: JsonObject[],
+  database: FakeDatabase | null = null
+): TableSchema {
+  const dot = key.indexOf(".");
+  const columns = columnsOf(database, key, rows).map((name) => ({
+    name,
+    type: "text",
+    nullable: true,
+    has_default: false,
+    generated: false,
+    identity: false,
+    policy: { required_function: null, mask: null },
+  }));
+  return {
+    schema: dot === -1 ? null : key.slice(0, dot),
+    name: dot === -1 ? key : key.slice(dot + 1),
+    kind: "table",
+    row_estimate: rows.length,
+    columns,
+    primary_key: columns.some((column) => column.name === "id") ? ["id"] : null,
+    foreign_keys_out: [],
+    foreign_keys_in: [],
+    unique: [],
+    unsupported: [],
+    excluded: false,
+    display_column: null,
+  };
+}
+
+function introspection(database: FakeDatabase): Introspection {
+  const result: Introspection = {
+    tier: "tabular",
+    fingerprint: "",
+    tables: [...database.entries()].map(([key, rows]) => schemaOf(key, rows, database)),
+    views: [],
+    warnings: [],
+  };
+  result.fingerprint = computeFingerprint(result);
+  return result;
+}
+
+function encode(rows: JsonObject[]): EncodedRow[] {
+  return rows.map((row) => ({
+    key: { by: "primary-key", value: [v.parse(v.union([v.number(), v.string()]), row["id"])] },
+    json: rowText(JSON.stringify(row)),
+  }));
+}
+
+/**
+ * Map-backed engine for module tests (12 §12.9): snapshots read the map, checkouts replace it.
+ * Every other call answers `unsupported`.
+ */
+export function createFakeEngine(opts: FakeEngineOptions): DbEngine {
+  const version = opts.version ?? "16.3";
+  const databaseOf = (conn: ConnectionRef): FakeDatabase => {
+    const found = opts.databases.get(conn.config.database);
+    if (found === undefined)
+      throw new EngineError("unreachable", `${conn.config.database} is down`);
+    return found;
+  };
+  const unsupported = (): never => {
+    throw new EngineError("unsupported", "the fake engine has no query path");
+  };
+  return {
+    async probe(config) {
+      if (!opts.databases.has(config.database)) {
+        throw new EngineError("unreachable", `${config.database} is down`);
+      }
+      return { ...PROBE, version, table_count: opts.databases.get(config.database)?.size ?? 0 };
+    },
+    async introspect(conn) {
+      return introspection(databaseOf(conn));
+    },
+    snapshot(conn) {
+      const database = databaseOf(conn);
+      const live = introspection(database);
+      const manifest: SnapshotManifest = {
+        introspection: live,
+        fingerprint: live.fingerprint,
+        engineVersion: version,
+        consistency: "snapshot",
+        tables: live.tables.map((table) => ({
+          ref: { schema: table.schema, name: table.name },
+          rows: table.row_estimate,
+          bytes: 0,
+          sort: "primary-key",
+          warnings: [],
+        })),
+        warnings: [],
+      };
+      return {
+        manifest: Promise.resolve(manifest),
+        async *[Symbol.asyncIterator]() {
+          for (const table of live.tables) {
+            const rows = encode(database.get(tableKey(table)) ?? []);
+            const chunk: RowChunk = {
+              table: { schema: table.schema, name: table.name },
+              rows,
+              bytes: rows.reduce((total, row) => total + row.json.length, 0),
+            };
+            yield chunk;
+          }
+        },
+        async [Symbol.asyncDispose]() {
+          return;
+        },
+      };
+    },
+    checkout(conn, plan) {
+      const progress: CheckoutProgress[] = [];
+      const run = async (): Promise<CheckoutResult> => {
+        const database = databaseOf(conn);
+        if (opts.failCheckout !== undefined) {
+          throw new EngineError(opts.failCheckout, `fake checkout failed: ${opts.failCheckout}`);
+        }
+        const live = introspection(database);
+        if (
+          live.fingerprint !== plan.introspectionAtSnapshot.fingerprint &&
+          plan.onDrift === "fail"
+        ) {
+          throw new EngineError("schema_drift", "the live schema differs from the state");
+        }
+        const tables: CheckoutResult["tables"] = [];
+        for (const table of plan.tables) {
+          const ref = { schema: table.schema, name: table.name };
+          const rows: JsonObject[] = [];
+          for await (const row of plan.rows(ref))
+            rows.push(v.parse(jsonObjectSchema, JSON.parse(row.json)));
+          database.set(tableKey(ref), rows);
+          tables.push({ ref, rows: rows.length });
+          progress.push({
+            table: ref,
+            rows: rows.length,
+            tablesDone: tables.length,
+            tablesTotal: plan.tables.length,
+          });
+        }
+        return {
+          status: "restored",
+          strategy: PROBE.strategy,
+          tables,
+          skipped: { tables: [], columns: [] },
+          defaultedColumns: [],
+          counters: [],
+          lockWaitMs: 0,
+          batches: tables.length,
+          warnings: [],
+        };
+      };
+      const result = run();
+      return {
+        result,
+        async *[Symbol.asyncIterator]() {
+          await result.catch(() => undefined);
+          yield* progress;
+        },
+      };
+    },
+    repairCounters: async () => ({ counters: [] }),
+    async *readTable(conn, table) {
+      const database = databaseOf(conn);
+      const found = [...database.keys()].find((key) => sameTable(schemaOf(key, []), table));
+      const rows = encode(found === undefined ? [] : (database.get(found) ?? []));
+      yield { table, rows, bytes: 0 };
+    },
+    runQuery: async () => unsupported(),
+    listRunningQueries: async () => [],
+    cancelQuery: async () => undefined,
+    decodeRow: (row) => v.parse(jsonObjectSchema, JSON.parse(row)),
+    evict: async () => undefined,
+  };
+}

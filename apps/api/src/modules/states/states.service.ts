@@ -34,7 +34,10 @@ export type StatesService = {
 
 const ALL = [INIT_STATE_MOCK, STATE_MOCK, STASH_MOCK];
 
-/** SCAFFOLD: three states of the mock project. The states card wires snapshot, blobs, and the repository. */
+/**
+ * SCAFFOLD: the routes still answer with three mock states. The data is real already: init snapshots
+ * write `states`, `state_adapters`, and blobs through `states.snapshot.ts`; the states card lists them.
+ */
 export function createStatesService(): StatesService {
   const project = (slug: string): void => {
     if (slug !== "shop") throw notFound("project");

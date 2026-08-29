@@ -46,6 +46,7 @@ export const engineWarningSchema = v.object({
   column: v.optional(v.string()),
   message: v.string(),
 });
+export type EngineWarning = v.InferOutput<typeof engineWarningSchema>;
 
 export const apiErrorSchema = v.object({
   error: v.object({

@@ -1,5 +1,8 @@
 import type { Engine, FileProbeResult, JsonObject, ProbeResult } from "@testate/shared";
 
+import { toConnectionConfig } from "../../lib/engines/connection.ts";
+import type { EngineRegistry } from "../../lib/engines/index.ts";
+import { toAppError } from "../checkouts/checkouts.return-to-init.ts";
 import { TIER_OF_ENGINE } from "./adapters.config.ts";
 import { PROBE_MOCK } from "./adapters.mock.ts";
 import type { Secrets } from "./adapters.secrets.ts";
@@ -28,8 +31,21 @@ const FLOORS = new Map<Engine, Floor>([
 ]);
 const DEFAULT_FLOOR: Floor = { floor: "13", version: "16.3", dialect: "postgres" };
 
+/** Engines in the registry probe for real; the rest fall back to the scaffold floors (12 §12.2). */
+export function createEngineProbe(engines: EngineRegistry, fallback: ProbeFn): ProbeFn {
+  return async (engine, config, secrets) => {
+    const found = engines.get(engine);
+    if (found === null) return fallback(engine, config, secrets);
+    try {
+      return await found.probe(toConnectionConfig(engine, config, secrets));
+    } catch (cause: unknown) {
+      throw toAppError(cause, "");
+    }
+  };
+}
+
 /**
- * SCAFFOLD: no driver talks to a target yet. The address check in front of this runs for real; the
+ * SCAFFOLD: mysql, mariadb, and mongodb have no driver yet. The address check in front of this runs for real; the
  * probe answers a static capability set per engine so create, retest, and the SPA flow work end to end.
  */
 export function createScaffoldProbe(): ProbeFn {

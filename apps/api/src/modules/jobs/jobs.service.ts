@@ -2,7 +2,6 @@ import { rmSync } from "node:fs";
 import { join } from "node:path";
 import type { Actor, Job, JobKind, JsonObject } from "@testate/shared";
 import { TERMINAL_JOB_STATUSES } from "@testate/shared";
-import * as v from "valibot";
 
 import type { MetadataDb } from "../../lib/db/index.ts";
 import { AppError, conflict, forbidden, notFound } from "../../lib/http/index.ts";
@@ -249,11 +248,10 @@ export function createJobsService(deps: JobsDeps): JobsService {
             .query("UPDATE projects SET head_status = 'unknown', head_changed_at = ? WHERE id = ?")
             .run(nowIso(), job.project_id).changes;
         }
-        const stateId = v.safeParse(v.string(), job.payload["state_id"]);
-        if (STATE_KINDS.has(job.kind) && stateId.success) {
+        if (STATE_KINDS.has(job.kind)) {
           statesFailed += deps.db
-            .query("UPDATE states SET status = 'failed' WHERE id = ? AND status = 'creating'")
-            .run(stateId.output).changes;
+            .query("UPDATE states SET status = 'failed' WHERE job_id = ? AND status = 'creating'")
+            .run(job.id).changes;
         }
         deps.db.query("DELETE FROM blob_pins WHERE job_id = ?").run(job.id);
         rmSync(join(deps.dataDir, "uploads", job.id), { recursive: true, force: true });
