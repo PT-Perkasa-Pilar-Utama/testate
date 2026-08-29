@@ -88,7 +88,7 @@ function toDiff(
   const adapters = v.parse(summarySchema, JSON.parse(row.summary ?? "[]"));
   const target: Diff["target"] =
     row.target_state_id === null
-      ? { live: true, snapshot_state_id: row.live_state_id ?? "" }
+      ? { live: true, snapshot_state_id: row.live_state_id ?? null }
       : { id: row.target_state_id, name: row.target_name ?? "deleted state" };
   return {
     id: row.id,

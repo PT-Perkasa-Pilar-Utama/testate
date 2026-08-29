@@ -10,6 +10,7 @@ engines must be up (`docker compose up --wait`).
 | `coverage` | `e2e/coverage.e2e.ts`                 | Every `@story-N` tag names a PRD story; writes `.e2e/coverage.md`  |
 | `routes`   | `e2e/routes.e2e.ts`                   | Each screen renders or refuses per role; sidebar matches the role  |
 | `flows`    | `e2e/flows.e2e.ts`, `stories.e2e.ts`  | One test per user story that the dashboard can act on              |
+| `states`   | `e2e/states.e2e.ts`                   | Snapshot, checkout, and diff stories; serial, alone, after flows  |
 | `crawl`    | `e2e/buttons.e2e.ts`                  | Clicks every visible control per role; no 5xx, no console error    |
 
 Projects run in that order (`dependencies`), tests inside a project run on 3 workers.

@@ -70,11 +70,20 @@ function tablesOf(diff: Diff): Diff["adapters"][number]["tables"] {
 
 function hiddenStateOf(diff: Diff): string {
   if (!("live" in diff.target)) throw new Error("diff has no live target");
+  if (diff.target.snapshot_state_id === null) throw new Error("live diff has no snapshot yet");
   return diff.target.snapshot_state_id;
 }
 
 describe("diffs", () => {
   it("mocks match the contract", () => {
+    // A live diff has no snapshot state until its job starts (story 89).
+    expectContract(
+      diffSchema,
+      { ...DIFF_MOCK, status: "running", target: { live: true, snapshot_state_id: null } },
+      (clone) => {
+        clone["target"] = { live: true, snapshot_state_id: 7 };
+      }
+    );
     expectContract(diffSchema, DIFF_MOCK, (clone) => {
       clone["adapters"] = [{ tables: "many" }];
     });

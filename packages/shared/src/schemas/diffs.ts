@@ -26,7 +26,8 @@ export const diffSchema = v.object({
   base: v.object({ id: idSchema, name: v.string() }),
   target: v.union([
     v.object({ id: idSchema, name: v.string() }),
-    v.object({ live: v.literal(true), snapshot_state_id: idSchema }),
+    /** The live snapshot lands when the job starts; null until then. */
+    v.object({ live: v.literal(true), snapshot_state_id: v.nullable(idSchema) }),
   ]),
   expires_at: timestampSchema,
   adapters: v.array(

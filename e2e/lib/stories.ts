@@ -27,7 +27,6 @@ const NO_SCREEN: [number, number][] = [
   [78, 79],
   // 85: no engine reports blocking session ids yet, so the SPA has nothing to terminate.
   [85, 85],
-  [88, 92],
   [101, 105],
   [107, 107],
   [118, 120],

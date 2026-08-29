@@ -19,7 +19,7 @@ export class ApiError extends Error {
   }
 }
 
-type Query = Record<string, string | number | boolean | undefined>;
+export type Query = Record<string, string | number | boolean | undefined>;
 
 type RequestOptions<TSchema extends v.GenericSchema> = {
   query?: Query;

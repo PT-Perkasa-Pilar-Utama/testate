@@ -30,6 +30,7 @@ const SKIP = new Set([
   "Allow restores",
   "Retry",
   "Repair counters",
+  "New diff",
   "Take state",
   "Check out",
   "Protect",

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { demoAdapter, firstTable } from "./lib/api.ts";
 import { settle, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
@@ -120,6 +121,53 @@ test.describe("state stories", () => {
     await counters.getByRole("button", { name: "Repair counters" }).click();
     await expect(counters.getByText(/\d+ ok · 0 failed/)).toBeVisible();
     await counters.getByText("Close", { exact: true }).click();
+    expect(issues).toStrictEqual([]);
+  });
+  test("@story-88 @story-89 @story-90 @story-91 @story-92 compares the baseline with the live database after an insert, drills into the table, and exports", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const issues: Issue[] = [];
+    watch(page, issues);
+    const postgres = await demoAdapter({ engine: "postgres" });
+    const table = await firstTable(postgres.id);
+    await page.goto(`/projects/demo/adapters/${postgres.id}/tables/${encodeURIComponent(table)}`);
+    await settle(page);
+    await page.getByRole("switch", { name: "Write mode" }).click();
+    await page.getByRole("button", { name: "Insert row" }).click();
+    await page.getByLabel("email mode").selectOption("function");
+    await page.getByLabel("email function").selectOption("uuid_v7");
+    await page.getByRole("button", { name: "Insert", exact: true }).click();
+    await expect(page.locator("dialog[open]")).toHaveCount(0);
+    await page.goto("/projects/demo");
+    await settle(page);
+    await page.getByRole("tab", { name: "Diffs" }).click();
+    await page.getByRole("button", { name: "New diff" }).click();
+    const create = page.locator("dialog[open]");
+    await create.getByLabel("Base state").selectOption({ label: "seeded-baseline" });
+    await create.getByLabel("Target").selectOption({ label: "live database" });
+    await create.getByRole("button", { name: "Compare" }).click();
+    await expect(page.locator("dialog[open]")).toHaveCount(0);
+    const row = page.locator("tr", { hasText: "live database" }).first();
+    await expect(row.getByText("ready")).toBeVisible({ timeout: 90_000 });
+    await row.getByRole("button", { name: "Details" }).click();
+    const detail = page.locator("dialog[open]");
+    await expect(detail.getByText(/primary-key|row-hash/).first()).toBeVisible();
+    const customers = detail.locator("tr", { hasText: table.replace(/^public\./, "") }).first();
+    await expect(customers.getByRole("cell").nth(2)).toHaveText(/^[1-9]\d*$/);
+    await customers.getByRole("button", { name: "Rows" }).click();
+    const rows = page.locator("dialog[open]").last();
+    await expect(rows.getByText("added").first()).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("dialog[open]")).toHaveCount(1);
+    await page.keyboard.press("Escape");
+    await expect(page.locator("dialog[open]")).toHaveCount(0);
+    const csv = await row.getByRole("link", { name: "CSV" }).getAttribute("href");
+    const exported = await page.request.get(String(csv));
+    expect(exported.status()).toBe(200);
+    expect(exported.headers()["content-type"]).toContain("text/csv");
+    await row.getByRole("button", { name: "Delete" }).click();
+    await expect(page.locator("tr", { hasText: "live database" })).toHaveCount(0);
     expect(issues).toStrictEqual([]);
   });
 });

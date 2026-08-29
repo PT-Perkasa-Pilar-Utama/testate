@@ -121,7 +121,11 @@ export function createDiffsHandlers(
         lines.push(cells.map(csvCell).join(","));
       }
       c.header("Content-Disposition", `attachment; filename="diff-${param(c, "id")}.${format}"`);
-      return c.text(lines.join("\n"));
+      c.header(
+        "Content-Type",
+        format === "csv" ? "text/csv; charset=utf-8" : "application/x-ndjson; charset=utf-8"
+      );
+      return c.body(lines.join("\n"));
     },
     remove: async (c) => {
       await service.remove(currentActor(c), param(c, "slug"), param(c, "id"), meta(c));
