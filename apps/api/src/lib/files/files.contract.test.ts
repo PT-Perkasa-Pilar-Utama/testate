@@ -8,12 +8,12 @@ import type { FileSource } from "./index.ts";
 import { createS3Source } from "./s3.ts";
 import { createSftpSource } from "./sftp.ts";
 
-/** Contract tests against `deploy/compose.engines.yml` (minio 9000, sftp 22220, ftp 21210); skipped when absent. */
+/** Contract tests against `deploy/compose.engines.yml` (minio 9010, sftp 22220, ftp 21210); skipped when absent. */
 const S3 = {
   bucket: "exports",
   prefix: "contract",
   region: "us-east-1",
-  endpoint: "http://127.0.0.1:9000",
+  endpoint: "http://127.0.0.1:9010",
   virtual_hosted: false,
   accessKeyId: "testate",
   secretAccessKey: "testate-minio",

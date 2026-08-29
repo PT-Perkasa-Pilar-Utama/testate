@@ -25,7 +25,11 @@ export function createStorageRouter(h: StorageHandlers): Hono {
   router.get(
     `${P}/entries/preview`,
     requireRole("viewer"),
-    describe("storage", "Preview a file", previewPayloadSchema),
+    describe(
+      "storage",
+      "Preview a file (images and PDF answer with inline bytes)",
+      previewPayloadSchema
+    ),
     h.preview
   );
   router.get(

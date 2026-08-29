@@ -1,3 +1,5 @@
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import {
   importReportSchema,
@@ -10,7 +12,8 @@ import type { ImportReport, Mapping } from "@testate/shared";
 import * as v from "valibot";
 
 import { TEST_META } from "../../../test/accounts.ts";
-import { PG, createAdaptersHarness, createSettled } from "../../../test/adapters.ts";
+import { PG, S3, createAdaptersHarness, createSettled } from "../../../test/adapters.ts";
+import type { MemoryTree } from "../../lib/files/index.ts";
 import type { AdaptersHarness } from "../../../test/adapters.ts";
 import { expectContract } from "../../../test/contract.ts";
 import { detectDelimiter, parseCsv, readCsv } from "./imports.csv.ts";
@@ -262,6 +265,40 @@ describe("imports", () => {
         TEST_META
       )
     ).rejects.toMatchObject({ code: "ADAPTER_READ_ONLY" });
+  });
+
+  it("imports a CSV from a storage adapter and removes the fetched copy", async () => {
+    const h = await createHarness();
+    const s3 = await createSettled(h.harness, S3);
+    const tree: MemoryTree = new Map();
+    tree.set("drops/customers.csv", {
+      bytes: new TextEncoder().encode("Email\n C@X.IO \n"),
+      modified_at: "2026-08-28T00:00:00.000Z",
+    });
+    h.harness.trees.set("exports", tree);
+    const mapping = await h.imports.createMapping(h.harness.qa, h.adapterId, MAPPING);
+    const request: ImportRunRequest = {
+      adapter_id: h.adapterId,
+      mapping_id: mapping.id,
+      source: { adapter_id: s3.id, path: "drops/customers.csv" },
+      dry_run: false,
+      foreign_key_checks: true,
+    };
+    const job = await h.imports.run(h.harness.qa, "shop", request, TEST_META);
+    const done = await h.harness.runtime.jobs.wait(null, job.id, 5);
+    expect(done.error).toBeNull();
+    expect(v.parse(importReportSchema, done.result)).toMatchObject({ inserted: 1, failed: 0 });
+    expect(h.harness.databases.get("shop")?.get("public.customers")?.length).toBe(3);
+    expect(existsSync(join(h.harness.dataDir, "imports", "sources"))).toBe(true);
+    expect(readdirSync(join(h.harness.dataDir, "imports", "sources"))).toEqual([]);
+    await expect(
+      h.imports.run(
+        h.harness.qa,
+        "shop",
+        { ...request, source: { adapter_id: s3.id, path: "drops/nope.csv" } },
+        TEST_META
+      )
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
   it("builds a sample with a header, an example row, and a schema block", async () => {

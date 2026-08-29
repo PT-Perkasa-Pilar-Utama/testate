@@ -3,7 +3,8 @@ import type { Actor, JsonObject, JsonValue } from "@testate/shared";
 import * as v from "valibot";
 
 import { TEST_META } from "../../../test/accounts.ts";
-import { PG, createAdaptersHarness, createSettled } from "../../../test/adapters.ts";
+import { PG, S3, createAdaptersHarness, createSettled } from "../../../test/adapters.ts";
+import type { MemoryTree } from "../../lib/files/index.ts";
 import type { AdaptersHarness } from "../../../test/adapters.ts";
 import { createTestSettings } from "../../../test/settings.ts";
 import { createCheckoutsService } from "../checkouts/checkouts.service.ts";
@@ -221,6 +222,37 @@ describe("agent tools", () => {
       await h.runtime.readResource(uriAt(resources, 1), h.ctx)
     );
     expect(schema.tables.length).toBe(2);
+  });
+
+  it("lists and previews storage files, refusing binary previews", async () => {
+    const h = await createHarness();
+    const s3 = await createSettled(h.harness, S3);
+    const tree: MemoryTree = new Map();
+    tree.set("exports/a.csv", {
+      bytes: new TextEncoder().encode("id\n1\n"),
+      modified_at: "2026-08-28T00:00:00.000Z",
+    });
+    tree.set("logo.png", { bytes: new Uint8Array([1]), modified_at: "2026-08-28T00:00:00.000Z" });
+    h.harness.trees.set("exports", tree);
+    const listing = v.parse(
+      v.object({
+        entries: v.array(v.object({ path: v.string() })),
+        next_cursor: v.nullable(v.string()),
+      }),
+      await call(h, "list_files", { project: "shop", adapter: s3.id, path: "exports" })
+    );
+    expect(listing.entries.map((entry) => entry.path)).toEqual(["exports/a.csv"]);
+    expect(
+      await call(h, "preview_file", { project: "shop", adapter: "exports", path: "exports/a.csv" })
+    ).toEqual({
+      kind: "csv",
+      columns: ["id"],
+      rows: [["1"]],
+      truncated: false,
+    });
+    await expect(
+      call(h, "preview_file", { project: "shop", adapter: "exports", path: "logo.png" })
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
   });
 
   it("the rate limiter refuses the call past the per-minute budget and names the wait", () => {
