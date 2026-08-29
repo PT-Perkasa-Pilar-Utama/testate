@@ -7,6 +7,11 @@ const ROOT = join(import.meta.dirname, "..", "..");
 
 /** Stories the dashboard cannot show: CI, developer, operator, and agent stories live in API and boot tests. */
 const NON_UI: [number, number][] = [
+  [63, 63],
+  [70, 70],
+  [72, 73],
+  [83, 83],
+  [86, 86],
   [113, 117],
   [122, 130],
   [134, 139],
@@ -19,7 +24,9 @@ const NON_UI: [number, number][] = [
 const NO_SCREEN: [number, number][] = [
   [23, 31],
   [49, 60],
-  [61, 92],
+  [78, 81],
+  [85, 85],
+  [88, 92],
   [101, 105],
   [107, 107],
   [118, 120],

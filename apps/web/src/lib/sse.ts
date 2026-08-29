@@ -1,8 +1,8 @@
 import * as v from "valibot";
-import { jobSchema, jsonObjectSchema } from "@testate/shared";
+import { TERMINAL_JOB_STATUSES, jobSchema, jsonObjectSchema } from "@testate/shared";
 import type { Job, JsonObject } from "@testate/shared";
 
-const API = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/v1`;
+const API = `${(import.meta.env?.BASE_URL ?? "/").replace(/\/$/, "")}/api/v1`;
 
 export type JobEvent =
   | { kind: "progress"; progress: JsonObject }
@@ -24,4 +24,17 @@ export function subscribeJob(jobId: string, onEvent: (event: JobEvent) => void):
   });
   source.addEventListener("heartbeat", () => onEvent({ kind: "heartbeat" }));
   return () => source.close();
+}
+
+/** Runs `onDone` once with the terminal job: at once if it already ended, else after its stream says so. */
+export function followJob(job: Job, onDone: (job: Job) => void): void {
+  if (TERMINAL_JOB_STATUSES.includes(job.status)) {
+    onDone(job);
+    return;
+  }
+  const close = subscribeJob(job.id, (event) => {
+    if (event.kind !== "status" || !TERMINAL_JOB_STATUSES.includes(event.job.status)) return;
+    close();
+    onDone(event.job);
+  });
 }

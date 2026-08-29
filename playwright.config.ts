@@ -35,7 +35,7 @@ export default defineConfig({
   projects: [
     { name: "coverage", testMatch: /coverage\.e2e\.ts/ },
     { name: "routes", testMatch: /routes\.e2e\.ts/ },
-    { name: "flows", testMatch: /(flows|stories)\.e2e\.ts/, dependencies: ["routes"] },
+    { name: "flows", testMatch: /(flows|stories|states)\.e2e\.ts/, dependencies: ["routes"] },
     { name: "crawl", testMatch: /buttons\.e2e\.ts/, dependencies: ["flows"] },
   ],
   globalSetup: "./e2e/setup.ts",

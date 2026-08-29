@@ -10,7 +10,7 @@ import Input from "@/components/input.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
-import { formatBytes } from "../states/states.presenter.ts";
+import { formatBytes } from "../states/states.format.ts";
 import { createStoragePresenter } from "./storage.presenter.ts";
 import type { StoragePresenter } from "./storage.presenter.ts";
 

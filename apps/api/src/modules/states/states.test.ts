@@ -11,13 +11,21 @@ import {
   initIdOf,
   snapshotSettled,
 } from "../../../test/states-harness.ts";
-import { ARCHIVE_MANIFEST_MOCK, STATE_MOCK, TREE_MOCK } from "./states.mock.ts";
+import { ARCHIVE_MANIFEST_MOCK, STASH_MOCK, STATE_MOCK, TREE_MOCK } from "./states.mock.ts";
 
 describe("states", () => {
   it("mocks match the contract", () => {
     expectContract(stateSchema, STATE_MOCK, (clone) => {
       clone["name"] = "01991f00-0000-7000-8000-000000000031";
     });
+    // A write-session stash is taken inline and carries no job (story 76 via the grid).
+    expectContract(
+      stateSchema,
+      { ...STASH_MOCK, stash_reason: "write-session", job_id: null },
+      (clone) => {
+        clone["job_id"] = 7;
+      }
+    );
     expectContract(archiveManifestSchema, ARCHIVE_MANIFEST_MOCK, (clone) => {
       clone["adapters"] = [{ engine: "postgres" }];
     });

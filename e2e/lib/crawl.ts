@@ -29,6 +29,10 @@ const SKIP = new Set([
   "Make read-only",
   "Allow restores",
   "Retry",
+  "Take state",
+  "Check out",
+  "Protect",
+  "Unprotect",
 ]);
 /** Dialogs whose submit destroys shared demo data: cancelled after the form is exercised. */
 const DESTRUCTIVE = /delete|remove|reset|revoke|return to init/i;

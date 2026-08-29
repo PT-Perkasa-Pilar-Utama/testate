@@ -51,7 +51,8 @@ export const stateSchema = v.object({
   adapters: v.array(stateAdapterSchema),
   size_bytes: v.number(),
   actor: actorSchema,
-  job_id: idSchema,
+  /** Null for a write-session stash: it is taken inline, not by a job. */
+  job_id: v.nullable(idSchema),
   created_at: timestampSchema,
   updated_at: timestampSchema,
 });
