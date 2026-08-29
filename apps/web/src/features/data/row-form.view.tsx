@@ -17,8 +17,14 @@ function Field(props: {
   presenter: EditingPresenter;
   column: TableSchema["columns"][number];
   field: FieldDraft;
+  foreignKey: boolean;
 }): JSX.Element {
   const policed = (): boolean => props.column.policy.required_function !== null;
+  const listId = (): string => `lookup-${props.column.name}`;
+  const onValue = (text: string): void => {
+    props.presenter.setField(props.column.name, { text });
+    if (props.foreignKey) void props.presenter.lookup(props.column.name, text);
+  };
   return (
     <div class="grid gap-1.5 text-sm sm:grid-cols-[10rem_8rem_minmax(0,1fr)] sm:items-center">
       <span>
@@ -40,11 +46,19 @@ function Field(props: {
       <Show when={props.field.mode === "value"}>
         <Input
           size="sm"
+          list={props.foreignKey ? listId() : undefined}
           value={props.field.text}
-          onInput={(event) =>
-            props.presenter.setField(props.column.name, { text: event.currentTarget.value })
-          }
+          onInput={(event) => onValue(event.currentTarget.value)}
         />
+        <Show when={props.foreignKey}>
+          <datalist id={listId()}>
+            <For each={props.presenter.candidates()}>
+              {(candidate) => (
+                <option value={String(candidate.key[0] ?? "")}>{candidate.display}</option>
+              )}
+            </For>
+          </datalist>
+        </Show>
       </Show>
       <Show when={props.field.mode === "function"}>
         <div class="flex gap-2">
@@ -100,6 +114,9 @@ export default function RowForm(props: {
                   presenter={props.presenter}
                   column={column}
                   field={form().draft.get(column.name) ?? EMPTY}
+                  foreignKey={props.table.foreign_keys_out.some((fk) =>
+                    fk.columns.includes(column.name)
+                  )}
                 />
               )}
             </For>

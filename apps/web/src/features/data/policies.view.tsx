@@ -1,0 +1,201 @@
+import type { JSX } from "@solidjs/web";
+import { For, Loading, Show } from "solid-js";
+import type { ColumnPolicy } from "@testate/shared";
+
+import Badge from "@/components/badge.tsx";
+import Button from "@/components/button.tsx";
+import Dialog from "@/components/dialog.tsx";
+import Select from "@/components/select.tsx";
+import Switch from "@/components/switch.tsx";
+import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { href, navigate } from "@/lib/router.ts";
+import { hasRole } from "@/lib/session.ts";
+import {
+  FUNCTION_CHOICES,
+  MASK_CHOICES,
+  createPoliciesPresenter,
+  qualifiedName,
+} from "./policies.presenter.ts";
+import type { PoliciesPresenter } from "./policies.presenter.ts";
+
+function PolicyDialog(props: { presenter: PoliciesPresenter }): JSX.Element {
+  const onSubmit = (event: SubmitEvent): void => {
+    event.preventDefault();
+    void props.presenter.save();
+  };
+  return (
+    <Show when={props.presenter.draft()}>
+      {(draft) => (
+        <Dialog
+          open
+          onClose={() => props.presenter.close()}
+          title={`Policy for ${draft().table}.${draft().column}`}
+          description="A required function is applied to every form, grid, and import write; a mask hides the column from viewers and agents."
+        >
+          <form class="grid gap-4" onSubmit={onSubmit}>
+            <label class="grid gap-1.5 text-sm">
+              <span>Required function</span>
+              <Select
+                options={FUNCTION_CHOICES}
+                value={draft().fn}
+                onChange={(fn) => props.presenter.setDraft({ fn })}
+              />
+            </label>
+            <label class="grid gap-1.5 text-sm">
+              <span>Mask</span>
+              <Select
+                options={MASK_CHOICES}
+                value={draft().mask}
+                onChange={(mask) => props.presenter.setDraft({ mask })}
+              />
+            </label>
+            <Switch
+              label="Use as the table's display column for lookups"
+              checked={draft().display}
+              onChange={(display) => props.presenter.setDraft({ display })}
+            />
+            <div class="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => props.presenter.close()}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary">
+                Save
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+      )}
+    </Show>
+  );
+}
+
+function PolicyCell(props: {
+  presenter: PoliciesPresenter;
+  policy: ColumnPolicy | undefined;
+  table: string;
+  column: string;
+}): JSX.Element {
+  const editable = (): boolean =>
+    hasRole("qa") && (props.policy === undefined || !props.policy.locked || hasRole("admin"));
+  return (
+    <Cell>
+      <div class="flex flex-wrap items-center gap-1">
+        <Show when={props.policy} fallback={<span class="text-kumo-subtle">none</span>}>
+          {(policy) => (
+            <>
+              <Show when={policy().required_function}>
+                {(fn) => <Badge variant="info">fn {fn().name}</Badge>}
+              </Show>
+              <Show when={policy().mask}>
+                {(mask) => <Badge variant="warning">mask {mask()}</Badge>}
+              </Show>
+              <Show when={policy().display}>
+                <Badge variant="secondary">display</Badge>
+              </Show>
+              <Show when={policy().locked}>
+                <Badge variant="error">locked</Badge>
+              </Show>
+            </>
+          )}
+        </Show>
+        <Show when={editable()}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => props.presenter.open(props.table, props.column)}
+          >
+            {props.policy === undefined ? "Add" : "Edit"}
+          </Button>
+        </Show>
+        <Show when={props.policy !== undefined && editable()}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              const policy = props.policy;
+              if (policy !== undefined) void props.presenter.remove(policy);
+            }}
+          >
+            Remove
+          </Button>
+        </Show>
+        <Show when={props.policy !== undefined && hasRole("admin")}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              const policy = props.policy;
+              if (policy !== undefined) void props.presenter.setLock(policy, !policy.locked);
+            }}
+          >
+            {props.policy?.locked === true ? "Unlock" : "Lock"}
+          </Button>
+        </Show>
+      </div>
+    </Cell>
+  );
+}
+
+/** Column policies per table (06 §6.12): required function, mask, display column, admin lock. */
+export default function PoliciesView(props: { slug: string; id: string }): JSX.Element {
+  const presenter = createPoliciesPresenter(
+    () => props.slug,
+    () => props.id
+  );
+  const back = (): string => `/projects/${props.slug}/adapters/${props.id}`;
+  const onBack = (event: MouseEvent): void => {
+    event.preventDefault();
+    navigate(back());
+  };
+  const policyOf = (table: string, column: string): ColumnPolicy | undefined =>
+    presenter.policies.value().find((policy) => policy.table === table && policy.column === column);
+  return (
+    <section class="grid gap-4">
+      <h2 class="text-lg font-semibold">
+        <a class="text-kumo-subtle hover:underline" href={href(back())} onClick={onBack}>
+          adapter
+        </a>{" "}
+        / column policies
+      </h2>
+      <Loading fallback={<p class="text-kumo-subtle">Loading schema...</p>}>
+        <For each={presenter.schema.value().tables}>
+          {(table) => (
+            <div class="grid gap-2">
+              <h3 class="font-medium">
+                <code>{qualifiedName(table)}</code>
+              </h3>
+              <Table>
+                <thead>
+                  <tr>
+                    <Head>Column</Head>
+                    <Head>Type</Head>
+                    <Head>Policy</Head>
+                  </tr>
+                </thead>
+                <tbody>
+                  <For each={table.columns}>
+                    {(column) => (
+                      <Row>
+                        <Cell>
+                          <code>{column.name}</code>
+                        </Cell>
+                        <Cell>{column.type}</Cell>
+                        <PolicyCell
+                          presenter={presenter}
+                          policy={policyOf(qualifiedName(table), column.name)}
+                          table={qualifiedName(table)}
+                          column={column.name}
+                        />
+                      </Row>
+                    )}
+                  </For>
+                </tbody>
+              </Table>
+            </div>
+          )}
+        </For>
+        <PolicyDialog presenter={presenter} />
+      </Loading>
+    </section>
+  );
+}

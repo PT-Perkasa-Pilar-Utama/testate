@@ -3,6 +3,7 @@ import type { TableSchema } from "@testate/shared";
 
 import { cellText, filterText } from "./grid.presenter.ts";
 import { pkOf, toFormValue, valuesOf } from "./editing.presenter.ts";
+import { NONE, policyBody } from "./policies.presenter.ts";
 import { buildRequest } from "./query.presenter.ts";
 
 const MONGO = {
@@ -88,6 +89,19 @@ describe("data feature", () => {
     expect(valuesOf(draft, table, original)).toEqual({
       email: { kind: "value", value: "b@x.io" },
       name: { kind: "null" },
+    });
+  });
+
+  test("policyBody turns the none choices into nulls", () => {
+    expect(
+      policyBody({ table: "t", column: "c", fn: "hash_bcrypt", mask: NONE, display: true })
+    ).toEqual({ required_function: { name: "hash_bcrypt" }, mask: null, display: true });
+    expect(
+      policyBody({ table: "t", column: "c", fn: NONE, mask: "redact", display: false })
+    ).toEqual({
+      required_function: null,
+      mask: "redact",
+      display: false,
     });
   });
 });

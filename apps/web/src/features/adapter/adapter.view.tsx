@@ -137,6 +137,11 @@ function Actions(props: { presenter: AdapterPresenter; base: string }): JSX.Elem
           Query console
         </Button>
       </Show>
+      <Show when={adapter().tier === "tabular"}>
+        <Button size="sm" variant="secondary" onClick={() => navigate(`${props.base}/policies`)}>
+          Policies
+        </Button>
+      </Show>
       <Show when={hasRole("qa")}>
         <Button size="sm" variant="secondary" onClick={() => void props.presenter.retest()}>
           Retest

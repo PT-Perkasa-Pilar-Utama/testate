@@ -6,6 +6,8 @@ import * as v from "valibot";
 
 import { attempt, showToast } from "@/components/toast.tsx";
 import { editingModel } from "./editing.model.ts";
+import { policiesModel } from "./policies.model.ts";
+import type { LookupRow } from "./policies.model.ts";
 import type { FixtureOptions } from "./editing.model.ts";
 
 export type FunctionName = v.InferOutput<typeof functionNameSchema>;
@@ -42,6 +44,9 @@ export type EditingPresenter = {
   fixtureFor: (row: JsonObject, options: FixtureOptions) => Promise<void>;
   closeFixture: () => void;
   error: () => string | null;
+  /** FK candidates for a form field (story 142); the view feeds them to a datalist. */
+  candidates: () => LookupRow[];
+  lookup: (column: string, q: string) => Promise<void>;
 };
 
 const EMPTY_FIELD: FieldDraft = { mode: "value", text: "", fn: "now", input: "" };
@@ -136,6 +141,7 @@ export function createEditingPresenter(
   const [form, setForm] = createSignal<FormState | null>(null);
   const [fixture, setFixture] = createSignal<Fixture | null>(null);
   const [error, setError] = createSignal<string | null>(null);
+  const [candidates, setCandidates] = createSignal<LookupRow[]>([]);
   const edit = async (
     staticSlug: string,
     staticId: string,
@@ -262,5 +268,14 @@ export function createEditingPresenter(
     },
     closeFixture: () => setFixture(null),
     error,
+    candidates,
+    lookup: (column, q) => {
+      const staticSlug = slug();
+      const staticId = id();
+      const staticTable = tableName();
+      return attempt(async () => {
+        setCandidates(await policiesModel.lookup(staticSlug, staticId, staticTable, column, q));
+      });
+    },
   };
 }

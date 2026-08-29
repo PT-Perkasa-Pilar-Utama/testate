@@ -113,6 +113,10 @@ export const apiClient = {
     path: string,
     options: RequestOptions<TSchema>
   ): Promise<v.InferOutput<TSchema>> => request("POST", path, options),
+  put: <TSchema extends v.GenericSchema>(
+    path: string,
+    options: RequestOptions<TSchema>
+  ): Promise<v.InferOutput<TSchema>> => request("PUT", path, options),
   patch: <TSchema extends v.GenericSchema>(
     path: string,
     options: RequestOptions<TSchema>

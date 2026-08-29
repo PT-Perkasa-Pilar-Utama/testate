@@ -7,6 +7,7 @@ import Button from "@/components/button.tsx";
 import Toaster from "@/components/toast.tsx";
 import AdapterView from "@/features/adapter/adapter.view.tsx";
 import GridView from "@/features/data/grid.view.tsx";
+import PoliciesView from "@/features/data/policies.view.tsx";
 import QueryView from "@/features/data/query.view.tsx";
 import AuditView from "@/features/audit/audit.view.tsx";
 import { signOut } from "@/features/auth/auth.presenter.ts";
@@ -81,6 +82,9 @@ function Page(props: { match: RouteMatch | null }): JSX.Element {
       </Match>
       <Match when={name() === "query"}>
         <QueryView slug={param("slug")} id={param("id")} />
+      </Match>
+      <Match when={name() === "policies"}>
+        <PoliciesView slug={param("slug")} id={param("id")} />
       </Match>
       <Match when={name() === "jobs"}>
         <JobsView />
