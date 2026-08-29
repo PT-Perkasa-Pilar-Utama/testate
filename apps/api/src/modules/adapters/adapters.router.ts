@@ -3,7 +3,8 @@ import {
   adapterDeletionPlanSchema,
   adapterSchema,
   jobSchema,
-  probeResultSchema,
+  createAdapterResponseSchema,
+  probeOutcomeSchema,
 } from "@testate/shared";
 import * as v from "valibot";
 
@@ -24,13 +25,13 @@ export function createAdaptersRouter(h: AdaptersHandlers): Hono {
   router.post(
     `${P}/test`,
     requireRole("qa"),
-    describe("adapters", "Test a draft connection", probeResultSchema),
+    describe("adapters", "Test a draft connection", probeOutcomeSchema),
     h.testDraft
   );
   router.post(
     P,
     requireRole("qa"),
-    describe("adapters", "Create an adapter", v.unknown(), 201),
+    describe("adapters", "Create an adapter", createAdapterResponseSchema, 201),
     h.create
   );
   router.get(
@@ -42,7 +43,7 @@ export function createAdaptersRouter(h: AdaptersHandlers): Hono {
   router.patch(
     `${P}/:id`,
     requireRole("qa"),
-    describe("adapters", "Update an adapter", v.unknown()),
+    describe("adapters", "Update an adapter", createAdapterResponseSchema),
     h.update
   );
   router.post(
@@ -54,7 +55,7 @@ export function createAdaptersRouter(h: AdaptersHandlers): Hono {
   router.post(
     `${P}/:id/retest`,
     requireRole("qa"),
-    describe("adapters", "Re-probe a saved adapter", probeResultSchema),
+    describe("adapters", "Re-probe a saved adapter", probeOutcomeSchema),
     h.retest
   );
   router.get(

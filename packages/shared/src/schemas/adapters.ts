@@ -8,6 +8,7 @@ import {
   tierSchema,
 } from "../enums.ts";
 import { engineWarningSchema, idSchema, sealedSchema, timestampSchema } from "./common.ts";
+import { jobSchema } from "./jobs.ts";
 import { jsonObjectSchema } from "./json.ts";
 
 export const capabilitiesSchema = v.object({
@@ -53,6 +54,18 @@ export const probeResultSchema = v.object({
   warnings: v.array(engineWarningSchema),
 });
 export type ProbeResult = v.InferOutput<typeof probeResultSchema>;
+
+/** The Files tier and REST adapters have no engine to probe; the test reports reachability only. */
+export const fileProbeResultSchema = v.object({
+  engine: engineSchema,
+  tier: tierSchema,
+  reachable: v.literal(true),
+  warnings: v.array(engineWarningSchema),
+});
+export type FileProbeResult = v.InferOutput<typeof fileProbeResultSchema>;
+
+export const probeOutcomeSchema = v.union([probeResultSchema, fileProbeResultSchema]);
+export type ProbeOutcome = v.InferOutput<typeof probeOutcomeSchema>;
 
 export const adapterSchema = v.object({
   id: idSchema,
@@ -119,4 +132,8 @@ export const adapterDeletionPlanSchema = v.object({
 export const adapterDeletionSchema = v.object({
   plan_id: idSchema,
   action: deletionActionSchema,
+});
+export const createAdapterResponseSchema = v.object({
+  adapter: adapterSchema,
+  init_job: v.nullable(jobSchema),
 });

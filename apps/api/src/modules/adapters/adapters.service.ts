@@ -1,97 +1,278 @@
-import type { Adapter, AdapterDraft, AdapterMode, Job, ProbeResult } from "@testate/shared";
+import type {
+  Actor,
+  Adapter,
+  AdapterDraft,
+  AdapterMode,
+  Engine,
+  Job,
+  JsonObject,
+  ProbeOutcome,
+  Project,
+} from "@testate/shared";
 
+import type { RequestMeta } from "../../lib/http/auth.ts";
 import { AppError, conflict, forbidden, notFound } from "../../lib/http/index.ts";
-import { PROJECT_JOB_MOCK } from "../projects/projects.mock.ts";
+import type { Check, Verdict } from "../../lib/netguard/index.ts";
+import type { KeyRing } from "../../lib/sealed/index.ts";
+import type { AuditService } from "../audit/audit.service.ts";
+import type { ProjectsRepository } from "../projects/projects.repository.ts";
+import { validateConfig } from "./adapters.config.ts";
+import type { ValidatedConfig } from "./adapters.config.ts";
+import { createDeletionPlans } from "./adapters.deletion.ts";
+import type { AdapterDeletionPlan, DeletionAction } from "./adapters.deletion.ts";
 import {
-  ADAPTER_DELETION_PLAN_MOCK,
-  ADAPTER_MOCK,
-  MONGO_ADAPTER_MOCK,
-  PROBE_MOCK,
-  REST_ADAPTER_MOCK,
-  STORAGE_ADAPTER_MOCK,
-} from "./adapters.mock.ts";
+  deleteJob,
+  initJob,
+  probeColumns,
+  purposeOf,
+  readonlySecretsOf,
+  refusal,
+  toPublic,
+} from "./adapters.helpers.ts";
+import { applyPatch } from "./adapters.patch.ts";
+import type { AdapterPatch } from "./adapters.patch.ts";
+import type { FileProbeFn, ProbeFn } from "./adapters.probe.ts";
+import type { AdapterRecord, AdaptersFilter, AdaptersRepository } from "./adapters.repository.ts";
+import { CONFIG_COLUMN, READONLY_COLUMN, openSecrets, sealSecrets } from "./adapters.secrets.ts";
+import type { Secrets } from "./adapters.secrets.ts";
+
+export type { AdapterDeletionPlan, DeletionAction } from "./adapters.deletion.ts";
+export { PLAN_TTL_MS } from "./adapters.deletion.ts";
+export type { AdapterPatch } from "./adapters.patch.ts";
+export { mergeSecrets } from "./adapters.secrets.ts";
+
+export type AdapterWithJob = { adapter: Adapter; init_job: Job | null };
 
 export type AdaptersService = {
-  list(slug: string): Promise<Adapter[]>;
-  testDraft(draft: AdapterDraft): Promise<ProbeResult>;
-  create(slug: string, draft: AdapterDraft): Promise<{ adapter: Adapter; init_job: Job | null }>;
+  list(slug: string, filter: AdaptersFilter): Promise<Adapter[]>;
+  testDraft(slug: string, draft: AdapterDraft): Promise<ProbeOutcome>;
+  create(
+    actor: Actor,
+    slug: string,
+    draft: AdapterDraft,
+    meta: RequestMeta
+  ): Promise<AdapterWithJob>;
   get(slug: string, id: string): Promise<Adapter>;
-  update(slug: string, id: string): Promise<{ adapter: Adapter; init_job: Job | null }>;
-  setMode(slug: string, id: string, mode: AdapterMode, actorRole: string): Promise<Adapter>;
-  retest(slug: string, id: string): Promise<ProbeResult>;
-  deletionPlan(slug: string, id: string): Promise<typeof ADAPTER_DELETION_PLAN_MOCK>;
-  remove(slug: string, id: string, planId: string): Promise<Job>;
+  update(
+    actor: Actor,
+    slug: string,
+    id: string,
+    patch: AdapterPatch,
+    meta: RequestMeta
+  ): Promise<AdapterWithJob>;
+  setMode(
+    actor: Actor,
+    slug: string,
+    id: string,
+    mode: AdapterMode,
+    meta: RequestMeta
+  ): Promise<Adapter>;
+  retest(actor: Actor, slug: string, id: string, meta: RequestMeta): Promise<ProbeOutcome>;
+  deletionPlan(slug: string, id: string): Promise<AdapterDeletionPlan>;
+  remove(
+    actor: Actor,
+    slug: string,
+    id: string,
+    planId: string,
+    action: DeletionAction,
+    meta: RequestMeta
+  ): Promise<Job>;
 };
 
-const ALL = [ADAPTER_MOCK, MONGO_ADAPTER_MOCK, STORAGE_ADAPTER_MOCK, REST_ADAPTER_MOCK];
+export type AdaptersDeps = {
+  repo: AdaptersRepository;
+  projects: Pick<ProjectsRepository, "bySlug">;
+  audit: AuditService;
+  ring: KeyRing;
+  netguard: { check(input: Check): Promise<Verdict> };
+  probe: ProbeFn;
+  fileProbe: FileProbeFn;
+  now: () => Date;
+};
 
-/** SCAFFOLD: four adapters of the mock project. The adapters card wires probe, sealing, and the repository. */
-export function createAdaptersService(): AdaptersService {
-  const find = (slug: string, id: string): Adapter => {
-    const adapter = ALL.find((item) => item.id === id);
-    if (adapter === undefined) throw notFound("adapter");
+export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
+  const { repo, audit, ring } = deps;
+  const plans = createDeletionPlans(repo, deps.now);
+  const nowIso = (): string => deps.now().toISOString();
+
+  const projectOf = (slug: string): Project => {
+    const project = deps.projects.bySlug(slug);
+    if (project === null) throw notFound("project");
+    return project;
+  };
+  const find = (projectId: string, id: string): AdapterRecord => {
+    const adapter = repo.byId(id);
+    if (adapter === null || adapter.project_id !== projectId) throw notFound("adapter");
     return adapter;
   };
+  const probe = async (
+    engine: Engine,
+    validated: ValidatedConfig,
+    secrets: Secrets
+  ): Promise<ProbeOutcome> => {
+    const verdict = await deps.netguard.check({
+      ...validated.target,
+      purpose: purposeOf(validated.kind),
+    });
+    if (!verdict.allowed) throw refusal(verdict, validated.target);
+    if (validated.kind !== "database") return deps.fileProbe(engine, validated.config, secrets);
+    const result = await deps.probe(engine, validated.config, secrets);
+    if (!result.meets_floor) {
+      throw new AppError("ENGINE_UNSUPPORTED", `${engine} ${result.version} is below the floor`, {
+        floor: result.floor,
+        version: result.version,
+      });
+    }
+    return result;
+  };
+  const record = (
+    actor: Actor,
+    action: string,
+    adapter: AdapterRecord,
+    slug: string,
+    meta: RequestMeta,
+    details: JsonObject = {}
+  ): void =>
+    audit.record({
+      actor,
+      action,
+      target_type: "adapter",
+      target_id: adapter.id,
+      project: { id: adapter.project_id, slug },
+      adapter: { id: adapter.id, name: adapter.name },
+      details,
+      outcome: "succeeded",
+      meta,
+    });
+  const failRetest = (id: string, cause: unknown): void => {
+    if (!(cause instanceof AppError)) return;
+    if (cause.code === "HOST_BLOCKED") repo.setStatus(id, "disabled", "policy", nowIso());
+    else repo.setStatus(id, "error", cause.message, nowIso());
+  };
+
   return {
-    async list(_slug) {
-      return ALL;
+    async list(slug, filter) {
+      return repo.list(projectOf(slug).id, filter).map(toPublic);
     },
-    async testDraft(draft) {
-      if (draft.engine === "mongodb")
-        return {
-          ...PROBE_MOCK,
-          engine: "mongodb",
-          dialect: "mongodb",
-          tier: "document",
-          floor: "6.0",
-        };
-      return PROBE_MOCK;
+    async testDraft(slug, draft) {
+      projectOf(slug);
+      return probe(
+        draft.engine,
+        validateConfig(draft.engine, draft.kind, draft.config, draft.secrets),
+        draft.secrets
+      );
     },
-    async create(slug, draft) {
-      if (ALL.some((item) => item.name.toLowerCase() === draft.name.toLowerCase())) {
+    async create(actor, slug, draft, meta) {
+      const project = projectOf(slug);
+      if (repo.byName(project.id, draft.name) !== null)
         throw conflict("adapter name is taken", { name: draft.name });
-      }
-      const initJob =
-        draft.kind === "database"
-          ? { ...PROJECT_JOB_MOCK, kind: "snapshot" as const, status: "queued" as const }
-          : null;
+      const validated = validateConfig(draft.engine, draft.kind, draft.config, draft.secrets);
+      const outcome = await probe(draft.engine, validated, draft.secrets);
+      const id = Bun.randomUUIDv7();
+      const readonly = readonlySecretsOf(draft);
+      repo.insert({
+        id,
+        project_id: project.id,
+        kind: draft.kind,
+        engine: draft.engine,
+        name: draft.name,
+        mode: draft.kind === "database" ? draft.mode : "read_only",
+        config_public: validated.config,
+        config_sealed: await sealSecrets(ring, id, CONFIG_COLUMN, draft.secrets),
+        readonly_config_sealed:
+          readonly === null ? null : await sealSecrets(ring, id, READONLY_COLUMN, readonly),
+        excluded_tables: draft.excluded_tables ?? [],
+        restore_mode: draft.restore_mode ?? "atomic",
+        lock_timeout_ms: draft.lock_timeout_ms ?? 60000,
+        target_hash: validated.targetHash,
+        has_secrets: Object.keys(draft.secrets).length > 0,
+        created_at: nowIso(),
+      });
+      repo.setProbe(id, probeColumns(outcome, nowIso()), nowIso());
+      const adapter = find(project.id, id);
+      record(actor, "adapter.created", adapter, slug, meta, {
+        engine: adapter.engine,
+        kind: adapter.kind,
+      });
       return {
-        adapter: { ...ADAPTER_MOCK, name: draft.name, kind: draft.kind, engine: draft.engine },
-        init_job: initJob,
+        adapter: toPublic(adapter),
+        init_job: adapter.kind === "database" ? initJob(adapter) : null,
       };
     },
     async get(slug, id) {
-      return find(slug, id);
+      return toPublic(find(projectOf(slug).id, id));
     },
-    async update(slug, id) {
-      return { adapter: find(slug, id), init_job: null };
+    async update(actor, slug, id, patch, meta) {
+      const project = projectOf(slug);
+      const current = find(project.id, id);
+      if (
+        patch.name !== undefined &&
+        patch.name !== current.name &&
+        repo.byName(project.id, patch.name) !== null
+      ) {
+        throw conflict("adapter name is taken", { name: patch.name });
+      }
+      const change = await applyPatch(
+        { ring, nowIso, probe: (validated, secrets) => probe(current.engine, validated, secrets) },
+        current,
+        patch
+      );
+      repo.updateConfig(id, change.columns, nowIso());
+      if (change.outcome !== null)
+        repo.setProbe(id, probeColumns(change.outcome, nowIso()), nowIso());
+      const updated = find(project.id, id);
+      record(
+        actor,
+        change.credentialReplaced ? "adapter.credential_replaced" : "adapter.updated",
+        updated,
+        slug,
+        meta,
+        { fields: Object.keys(patch).join(",") }
+      );
+      return {
+        adapter: toPublic(updated),
+        init_job: change.newTarget && updated.kind === "database" ? initJob(updated) : null,
+      };
     },
-    async setMode(slug, id, mode, actorRole) {
-      const adapter = find(slug, id);
+    async setMode(actor, slug, id, mode, meta) {
+      const adapter = find(projectOf(slug).id, id);
       if (adapter.kind !== "database")
         throw new AppError("VALIDATION_ERROR", "only database adapters have a mode");
-      if (mode === "sandbox" && actorRole !== "admin") throw forbidden("loosening requires admin");
-      return { ...adapter, mode };
+      if (mode === "sandbox" && actor.role !== "admin") throw forbidden("loosening requires admin");
+      repo.setMode(id, mode, nowIso());
+      const ended = mode === "read_only" ? repo.endWriteSessions(id, nowIso()) : 0;
+      record(
+        actor,
+        mode === "sandbox" ? "adapter.mode_loosened" : "adapter.mode_tightened",
+        adapter,
+        slug,
+        meta,
+        { write_sessions_ended: ended }
+      );
+      return toPublic(find(adapter.project_id, id));
     },
-    async retest(slug, id) {
-      find(slug, id);
-      return PROBE_MOCK;
+    async retest(actor, slug, id, meta) {
+      const adapter = find(projectOf(slug).id, id);
+      const secrets = await openSecrets(ring, id, CONFIG_COLUMN, adapter.config_sealed);
+      const validated = validateConfig(adapter.engine, adapter.kind, adapter.config, secrets);
+      try {
+        const outcome = await probe(adapter.engine, validated, secrets);
+        repo.setProbe(id, probeColumns(outcome, nowIso()), nowIso());
+        record(actor, "adapter.updated", adapter, slug, meta, { retest: "ok" });
+        return outcome;
+      } catch (cause: unknown) {
+        failRetest(id, cause);
+        throw cause;
+      }
     },
     async deletionPlan(slug, id) {
-      find(slug, id);
-      return ADAPTER_DELETION_PLAN_MOCK;
+      return plans.plan(find(projectOf(slug).id, id));
     },
-    async remove(slug, id, planId) {
-      find(slug, id);
-      if (planId !== ADAPTER_DELETION_PLAN_MOCK.plan_id) throw conflict("deletion plan is stale");
-      return {
-        ...PROJECT_JOB_MOCK,
-        kind: "adapter_delete",
-        status: "queued",
-        finished_at: null,
-        result: null,
-        adapter_ids: [id],
-      };
+    async remove(actor, slug, id, planId, action, meta) {
+      const adapter = find(projectOf(slug).id, id);
+      plans.consume(id, planId, action);
+      record(actor, "adapter.deletion_requested", adapter, slug, meta, { plan_id: planId, action });
+      return deleteJob(adapter);
     },
   };
 }

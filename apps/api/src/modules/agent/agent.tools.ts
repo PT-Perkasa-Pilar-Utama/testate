@@ -70,7 +70,7 @@ export function createAgentTools(deps: AgentToolDeps): ToolRunner {
       // SCAFFOLD: the agent card threads the token's project scope into these reads (23 §23.1).
       list_projects: async () =>
         json(await deps.projects.list(null, { limit: 200, sort: "name", order: "asc" })),
-      list_adapters: async (args) => json(await deps.adapters.list(text(args, "project"))),
+      list_adapters: async (args) => json(await deps.adapters.list(text(args, "project"), {})),
       ...tableTools(deps.data),
       page_rows: async (args) =>
         json(await deps.data.rows(text(args, "adapter"), text(args, "table"))),

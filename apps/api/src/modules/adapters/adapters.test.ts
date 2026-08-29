@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { adapterDeletionPlanSchema, adapterSchema, probeResultSchema } from "@testate/shared";
 
+import { TEST_META } from "../../../test/accounts.ts";
+import { PG, S3, createAdaptersHarness, storedSecrets } from "../../../test/adapters.ts";
 import { expectContract } from "../../../test/contract.ts";
 import {
   ADAPTER_DELETION_PLAN_MOCK,
@@ -8,7 +10,6 @@ import {
   PROBE_MOCK,
   STORAGE_ADAPTER_MOCK,
 } from "./adapters.mock.ts";
-import { createAdaptersService } from "./adapters.service.ts";
 
 describe("adapters", () => {
   it("mocks match the contract", () => {
@@ -26,21 +27,135 @@ describe("adapters", () => {
     });
   });
 
-  it("lets qa tighten but only admin loosen the mode", async () => {
-    const service = createAdaptersService();
-    const tightened = await service.setMode("shop", ADAPTER_MOCK.id, "read_only", "qa");
-    expect(tightened.mode).toBe("read_only");
-    await expect(service.setMode("shop", ADAPTER_MOCK.id, "sandbox", "qa")).rejects.toThrow(
-      "forbidden"
-    );
-    const loosened = await service.setMode("shop", ADAPTER_MOCK.id, "sandbox", "admin");
-    expect(loosened.mode).toBe("sandbox");
+  it("creates a database adapter with sealed secrets, probe columns, and an init job", async () => {
+    const harness = await createAdaptersHarness();
+    const { adapter, init_job } = await harness.adapters.create(harness.qa, "shop", PG, TEST_META);
+    expect(adapter.tier).toBe("tabular");
+    expect(adapter.mode).toBe("sandbox");
+    expect(adapter.engine_version).toBe("16.3");
+    expect(adapter.credential).toMatchObject({
+      set: true,
+      key_fingerprint: harness.ring.activeKid,
+    });
+    expect(adapter.readonly_credential).toStrictEqual({ set: false });
+    expect(JSON.stringify(adapter)).not.toContain("pg-secret");
+    expect(init_job?.kind).toBe("snapshot");
+    expect(await storedSecrets(harness, adapter.id)).toStrictEqual({ password: "pg-secret" });
   });
 
-  it("refuses a mode on a storage adapter", async () => {
-    const service = createAdaptersService();
+  it("forces storage adapters read-only with no init job and marks REST secrets as header names", async () => {
+    const { adapters, qa } = await createAdaptersHarness();
+    const s3 = await adapters.create(qa, "shop", S3, TEST_META);
+    expect(s3.adapter.mode).toBe("read_only");
+    expect(s3.adapter.tier).toBe("files");
+    expect(s3.init_job).toBeNull();
+    const rest = await adapters.create(
+      qa,
+      "shop",
+      {
+        kind: "rest",
+        engine: "http",
+        name: "shop-api",
+        mode: "sandbox",
+        config: { base_url: "https://api.sit.internal" },
+        secrets: { Authorization: "Bearer x" },
+      },
+      TEST_META
+    );
+    expect(rest.adapter.config["secret_header_names"]).toStrictEqual(["Authorization"]);
+    expect(rest.adapter.credential.set).toBe(true);
+    const bare = await adapters.create(
+      qa,
+      "shop",
+      {
+        kind: "rest",
+        engine: "http",
+        name: "public-api",
+        mode: "sandbox",
+        config: { base_url: "https://api.sit.internal/v2" },
+        secrets: {},
+      },
+      TEST_META
+    );
+    expect(bare.adapter.credential).toStrictEqual({ set: false });
+  });
+
+  it("refuses a kind that does not match the engine, unknown or missing secrets, and a taken name", async () => {
+    const { adapters, qa } = await createAdaptersHarness();
     await expect(
-      service.setMode("shop", STORAGE_ADAPTER_MOCK.id, "sandbox", "admin")
-    ).rejects.toThrow("only database adapters have a mode");
+      adapters.create(qa, "shop", { ...PG, kind: "storage" }, TEST_META)
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(
+      adapters.create(qa, "shop", { ...PG, secrets: { token: "x" } }, TEST_META)
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR", details: { key: "token" } });
+    await expect(
+      adapters.create(qa, "shop", { ...PG, secrets: {} }, TEST_META)
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(
+      adapters.create(qa, "shop", { ...PG, config: { host: "x" } }, TEST_META)
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await adapters.create(qa, "shop", PG, TEST_META);
+    await expect(
+      adapters.create(qa, "shop", { ...PG, name: "Orders-DB" }, TEST_META)
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
+  it("checks the address before probing and refuses engines below the floor", async () => {
+    const { adapters, qa, blocked } = await createAdaptersHarness();
+    blocked.add("pg.prod.internal");
+    await expect(
+      adapters.testDraft("shop", { ...PG, config: { ...PG.config, host: "pg.prod.internal" } })
+    ).rejects.toMatchObject({ code: "HOST_BLOCKED", details: { reason: "policy" } });
+    await expect(
+      adapters.testDraft("shop", { ...PG, config: { ...PG.config, host: "gone.invalid" } })
+    ).rejects.toMatchObject({ code: "ADAPTER_UNREACHABLE" });
+    await expect(
+      adapters.testDraft("shop", { ...PG, config: { ...PG.config, database: "ancient" } })
+    ).rejects.toMatchObject({ code: "ENGINE_UNSUPPORTED", details: { floor: "13" } });
+    await expect(adapters.testDraft("shop", PG)).resolves.toMatchObject({ meets_floor: true });
+    await expect(adapters.testDraft("shop", S3)).resolves.toMatchObject({
+      reachable: true,
+      tier: "files",
+    });
+    await expect(
+      adapters.create(
+        qa,
+        "shop",
+        { ...PG, config: { ...PG.config, host: "pg.prod.internal" } },
+        TEST_META
+      )
+    ).rejects.toMatchObject({ code: "HOST_BLOCKED" });
+  });
+
+  it("lists by project with filters and hides other projects", async () => {
+    const { adapters, qa } = await createAdaptersHarness();
+    await adapters.create(qa, "shop", PG, TEST_META);
+    await adapters.create(qa, "shop", S3, TEST_META);
+    expect((await adapters.list("shop", {})).map((a) => a.name)).toStrictEqual([
+      "exports",
+      "orders-db",
+    ]);
+    expect((await adapters.list("shop", { kind: "storage" })).map((a) => a.name)).toStrictEqual([
+      "exports",
+    ]);
+    expect((await adapters.list("shop", { engine: "mysql" })).length).toBe(0);
+    await expect(adapters.list("nope", {})).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("lets qa tighten, only admin loosen, and refuses a mode on storage adapters", async () => {
+    const { adapters, qa, admin } = await createAdaptersHarness();
+    const { adapter } = await adapters.create(qa, "shop", PG, TEST_META);
+    const tightened = await adapters.setMode(qa, "shop", adapter.id, "read_only", TEST_META);
+    expect(tightened.mode).toBe("read_only");
+    await expect(
+      adapters.setMode(qa, "shop", adapter.id, "sandbox", TEST_META)
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect((await adapters.setMode(admin, "shop", adapter.id, "sandbox", TEST_META)).mode).toBe(
+      "sandbox"
+    );
+    const s3 = await adapters.create(qa, "shop", S3, TEST_META);
+    await expect(
+      adapters.setMode(admin, "shop", s3.adapter.id, "sandbox", TEST_META)
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
   });
 });

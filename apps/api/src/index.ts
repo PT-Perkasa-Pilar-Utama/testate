@@ -11,16 +11,20 @@ import { join } from "node:path";
 import { Scalar } from "@scalar/hono-api-reference";
 import { Hono } from "hono";
 
-import { ConfigError, apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
+import { bootstrapAdmin, ownAddresses, refuse, sweepSealed } from "./boot.ts";
+import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import type { Config } from "./lib/config/index.ts";
 import { migrate, openMetadataDb } from "./lib/db/index.ts";
 import { authenticate } from "./lib/http/auth.ts";
 import { errorResponse, notFound } from "./lib/http/index.ts";
 import { createLogger } from "./lib/logger/index.ts";
+import { check as netguardCheck, parseDenyList } from "./lib/netguard/index.ts";
 import { mountOpenApi } from "./lib/openapi.ts";
 import { createPasswordHasher } from "./lib/password/index.ts";
-import { SealedConfigError, loadKeyRing } from "./lib/sealed/index.ts";
+import { loadKeyRing } from "./lib/sealed/index.ts";
 import { createAdaptersHandlers } from "./modules/adapters/adapters.handler.ts";
+import { createScaffoldFileProbe, createScaffoldProbe } from "./modules/adapters/adapters.probe.ts";
+import { createAdaptersRepository } from "./modules/adapters/adapters.repository.ts";
 import { createAdaptersService } from "./modules/adapters/adapters.service.ts";
 import { createAgentHandlers } from "./modules/agent/agent.handler.ts";
 import { createAgentService } from "./modules/agent/agent.service.ts";
@@ -64,7 +68,6 @@ import { createToolsService } from "./modules/tools/tools.service.ts";
 import { createUsersHandlers } from "./modules/users/users.handler.ts";
 import { createUsersRepository } from "./modules/users/users.repository.ts";
 import { createUsersService } from "./modules/users/users.service.ts";
-import type { UsersService } from "./modules/users/users.service.ts";
 
 const VERSION = "0.1.0";
 
@@ -74,25 +77,6 @@ function ensureDirs(config: Config): void {
   for (const sub of ["blobs", "logs", "uploads", "imports", "run"]) {
     mkdirSync(join(config.TESTATE_DATA_DIR, sub), { recursive: true });
   }
-}
-
-type Bootstrap = { bootstrapped: boolean; bootstrap: (() => Promise<boolean>) | null };
-
-/** Step 7 of 22 §22.2: the first admin comes from the environment while `users` is empty. */
-async function bootstrapAdmin(
-  userCount: number,
-  users: UsersService,
-  config: Config
-): Promise<Bootstrap> {
-  const password = config.TESTATE_ADMIN_PASSWORD;
-  if (password === undefined) {
-    if (userCount > 0) return { bootstrapped: false, bootstrap: null };
-    throw new ConfigError([
-      { variable: "TESTATE_ADMIN_PASSWORD", message: "required while the users table is empty" },
-    ]);
-  }
-  const bootstrap = (): Promise<boolean> => users.bootstrap(config.TESTATE_ADMIN_USER, password);
-  return { bootstrapped: userCount === 0 ? await bootstrap() : false, bootstrap };
 }
 
 /** Runs the boot sequence and returns the Hono app. Throws a named error on any refusal. */
@@ -120,6 +104,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   // Migrations live next to this entry in both layouts: src/db/migrations and dist/db/migrations.
   const migrationsDir = join(import.meta.dir, "db", "migrations");
   const migration = migrate(db, migrationsDir);
+  const sealed = await sweepSealed(ring, db, config);
   const prefix = apiPrefix(config);
   const webSource = resolveWebSource(import.meta.dir);
   const web =
@@ -158,8 +143,19 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   const states = createStatesService();
   const diffs = createDiffsService();
   const storage = createStorageService();
-  const adapters = createAdaptersService();
   const settings = createSettingsService();
+  const denyList = parseDenyList((await settings.get()).netguard.deny);
+  const self = { addresses: ownAddresses(), port: config.PORT };
+  const adapters = createAdaptersService({
+    repo: createAdaptersRepository(db),
+    projects: projectsRepo,
+    audit,
+    ring,
+    netguard: { check: (input) => netguardCheck(input, denyList, self) },
+    probe: createScaffoldProbe(),
+    fileProbe: createScaffoldFileProbe(),
+    now,
+  });
   const projects = createProjectsService({
     repo: projectsRepo,
     audit,
@@ -208,7 +204,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     users: createUsersHandlers(users, config.TESTATE_TRUST_PROXY),
     projects: createProjectsHandlers(projects, prefix, config.TESTATE_TRUST_PROXY),
     projectScope: requireProjectInScope(projectsRepo),
-    adapters: createAdaptersHandlers(adapters, prefix),
+    adapters: createAdaptersHandlers(adapters, prefix, config.TESTATE_TRUST_PROXY),
     data: createDataHandlers(data),
     imports: createImportsHandlers(
       createImportsService(),
@@ -250,6 +246,9 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     migrations_skipped: migration.skipped,
     reset_state_mounted: config.TESTATE_ENV !== "production",
     bootstrap_admin_created: bootstrapped,
+    sealed_re_sealed: sealed.reSealed,
+    sealed_unreadable: sealed.unreadable.length,
+    sealed_banner: sealed.banner,
     web_files: web?.files ?? 0,
     web_rewritten: web?.rewritten ?? 0,
   });
@@ -266,15 +265,11 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   };
 }
 
-/** Boot refusals print a framed message and exit 78 (configuration error), per 22 §22.2. */
 async function bootOrRefuse(): Promise<App> {
   try {
     return await boot(Bun.env);
   } catch (cause: unknown) {
-    if (!(cause instanceof ConfigError) && !(cause instanceof SealedConfigError)) throw cause;
-    const line = "=".repeat(72);
-    process.stderr.write(`${line}\nTestate refused to start\n${cause.message}\n${line}\n`);
-    process.exit(78);
+    return refuse(cause);
   }
 }
 

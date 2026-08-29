@@ -1,10 +1,15 @@
 import type { JSX } from "@solidjs/web";
-import { For, Loading, Match, Switch } from "solid-js";
-import type { Entry, Introspection, RestRequest } from "@testate/shared";
+import { For, Loading, Match, Show, Switch } from "solid-js";
+import type { Adapter, Entry, Introspection, RestRequest } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
+import Banner from "@/components/banner.tsx";
+import Button from "@/components/button.tsx";
+import Dialog from "@/components/dialog.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { hasRole } from "@/lib/session.ts";
 import { createAdapterPresenter } from "./adapter.presenter.ts";
+import type { AdapterPresenter } from "./adapter.presenter.ts";
 
 function TablesView(props: { schema: Introspection }): JSX.Element {
   return (
@@ -93,6 +98,92 @@ function RequestsView(props: { requests: RestRequest[] }): JSX.Element {
   );
 }
 
+const STATUS_VARIANT = { ok: "success", error: "error", disabled: "secondary" } as const;
+
+function Actions(props: { presenter: AdapterPresenter }): JSX.Element {
+  const adapter = (): Adapter => props.presenter.adapter.value();
+  const fingerprint = (): string => {
+    const credential = adapter().credential;
+    return credential.set ? credential.key_fingerprint : "";
+  };
+  return (
+    <div class="flex flex-wrap items-center gap-2">
+      <Badge variant={STATUS_VARIANT[adapter().status]}>
+        {adapter().status_message === null
+          ? adapter().status
+          : `${adapter().status}: ${adapter().status_message}`}
+      </Badge>
+      <Show when={adapter().credential.set}>
+        <Badge variant="outline">sealed · {fingerprint()}</Badge>
+      </Show>
+      <Show when={hasRole("qa")}>
+        <Button size="sm" variant="secondary" onClick={() => void props.presenter.retest()}>
+          Retest
+        </Button>
+      </Show>
+      <Show when={hasRole("qa") && adapter().kind === "database" && adapter().mode === "sandbox"}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => void props.presenter.setMode("read_only")}
+        >
+          Make read-only
+        </Button>
+      </Show>
+      <Show
+        when={hasRole("admin") && adapter().kind === "database" && adapter().mode === "read_only"}
+      >
+        <Button size="sm" variant="outline" onClick={() => void props.presenter.setMode("sandbox")}>
+          Allow restores
+        </Button>
+      </Show>
+      <Show when={hasRole("qa")}>
+        <Button size="sm" variant="destructive" onClick={() => void props.presenter.openDelete()}>
+          Delete
+        </Button>
+      </Show>
+    </div>
+  );
+}
+
+function DeleteDialog(props: { presenter: AdapterPresenter; name: string }): JSX.Element {
+  const onSubmit = (event: SubmitEvent): void => {
+    event.preventDefault();
+    void props.presenter.confirmDelete();
+  };
+  return (
+    <Show when={props.presenter.plan()}>
+      {(plan) => (
+        <Dialog
+          open
+          onClose={() => props.presenter.closeDelete()}
+          title={`Delete ${props.name}`}
+          description="A database adapter returns to its init state first; the adapter row goes only after that succeeds or is skipped."
+        >
+          <form class="grid gap-4" onSubmit={onSubmit}>
+            <Banner variant="alert">
+              Plan: {plan().adapter.action}
+              {plan().adapter.reason === undefined ? "" : ` (${plan().adapter.reason})`} ·{" "}
+              {plan().states_referencing} state(s) reference this adapter · expires{" "}
+              {plan().expires_at}
+            </Banner>
+            <div class="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => props.presenter.closeDelete()}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="destructive">
+                {plan().adapter.action === "skip"
+                  ? "Delete without restore"
+                  : "Return to init and delete"}
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+      )}
+    </Show>
+  );
+}
+
 export default function AdapterView(props: { slug: string; id: string }): JSX.Element {
   const presenter = createAdapterPresenter(
     () => props.slug,
@@ -101,12 +192,18 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
   return (
     <section class="grid gap-6">
       <Loading fallback={<p class="text-kumo-subtle">Loading adapter...</p>}>
-        <div class="grid gap-1.5">
-          <h2 class="text-lg font-semibold">{presenter.adapter.value().name}</h2>
-          <p class="text-kumo-subtle">
-            {presenter.adapter.value().engine} · {presenter.adapter.value().tier} tier ·{" "}
-            {presenter.adapter.value().mode}
-          </p>
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div class="grid gap-1.5">
+            <h2 class="text-lg font-semibold">{presenter.adapter.value().name}</h2>
+            <p class="text-kumo-subtle">
+              {presenter.adapter.value().engine}
+              {presenter.adapter.value().engine_version === null
+                ? ""
+                : ` ${presenter.adapter.value().engine_version}`}{" "}
+              · {presenter.adapter.value().tier} tier · {presenter.adapter.value().mode}
+            </p>
+          </div>
+          <Actions presenter={presenter} />
         </div>
         <Switch>
           <Match when={presenter.tables()}>{(schema) => <TablesView schema={schema()} />}</Match>
@@ -115,6 +212,7 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
             {(requests) => <RequestsView requests={requests()} />}
           </Match>
         </Switch>
+        <DeleteDialog presenter={presenter} name={presenter.adapter.value().name} />
       </Loading>
     </section>
   );

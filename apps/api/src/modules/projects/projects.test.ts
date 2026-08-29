@@ -5,7 +5,7 @@ import type { Actor } from "@testate/shared";
 
 import { TEST_META, actorOf, createAccounts } from "../../../test/accounts.ts";
 import { expectContract } from "../../../test/contract.ts";
-import { createAdaptersService } from "../adapters/adapters.service.ts";
+import { ADAPTER_MOCK } from "../adapters/adapters.mock.ts";
 import { createJobsService } from "../jobs/jobs.service.ts";
 import { createSettingsService } from "../settings/settings.service.ts";
 import { PROJECT_JOB_MOCK, PROJECT_MOCK, QUOTA_MOCK } from "./projects.mock.ts";
@@ -52,7 +52,7 @@ async function setup(): Promise<Harness> {
     repo: accounts.projectsRepo,
     audit: accounts.audit,
     settings: createSettingsService(),
-    adapters: createAdaptersService(),
+    adapters: { list: async () => [ADAPTER_MOCK] },
     jobs: createJobsService(),
     now: accounts.now,
   });

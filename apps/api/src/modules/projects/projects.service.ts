@@ -117,7 +117,7 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
     return project;
   };
   const summaries = async (slug: string): Promise<AdapterSummary[]> =>
-    (await deps.adapters.list(slug)).map((adapter) => ({
+    (await deps.adapters.list(slug, {})).map((adapter) => ({
       id: adapter.id,
       name: adapter.name,
       kind: adapter.kind,
