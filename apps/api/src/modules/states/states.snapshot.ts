@@ -22,7 +22,7 @@ export type SnapshotDeps = {
   ring: KeyRing;
   adapters: AdaptersRepository;
   states: StatesRepository;
-  projects: Pick<ProjectsRepository, "setHead" | "byId">;
+  projects: Pick<ProjectsRepository, "setHead" | "byId" | "usedBytes">;
   audit: AuditService;
   now: () => Date;
 };
@@ -132,6 +132,23 @@ export async function snapshotAdapter(
   }
 }
 
+/**
+ * Project quota at job start (15 §15.8): a full project takes no new state.
+ * ponytail: no instance ceiling and no re-check before the first blob write — the ceiling lives
+ * in settings, which is still a scaffold; add both when the settings card lands.
+ */
+function assertQuota(projects: SnapshotDeps["projects"], projectId: string): void {
+  const project = projects.byId(projectId);
+  if (project === null || project.quota_bytes === null) return;
+  const used = projects.usedBytes(projectId);
+  if (used >= project.quota_bytes) {
+    throw new AppError("QUOTA_EXCEEDED", "the project is at its storage quota", {
+      used_bytes: used,
+      quota_bytes: project.quota_bytes,
+    });
+  }
+}
+
 /** `init`, then `init-<adapter>`, then a suffixed name, so a re-created adapter never collides (05 §5.8). */
 function initName(states: StatesRepository, projectId: string, adapter: AdapterRecord): string {
   const candidates = [
@@ -167,6 +184,7 @@ export function createInitSnapshotRunner(deps: SnapshotDeps): JobRunner {
       created_at: at,
     });
     try {
+      assertQuota(deps.projects, adapter.project_id);
       const manifest = await snapshotAdapter(deps, adapter, job.id, signal, (done, table) =>
         progress({ phase: "snapshot", adapter_id: adapter.id, tables_done: done, table })
       );

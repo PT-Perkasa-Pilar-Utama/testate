@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import * as v from "valibot";
 
 import { decodeChunks } from "../../lib/snapshot/codec.ts";
-import { PG, createAdaptersHarness, createSettled } from "../../../test/adapters.ts";
+import { PG, PROJECT_ID, createAdaptersHarness, createSettled } from "../../../test/adapters.ts";
 import type { AdaptersHarness } from "../../../test/adapters.ts";
 import type { InitManifest } from "./states.repository.ts";
 import { TEST_META } from "../../../test/accounts.ts";
@@ -89,6 +89,16 @@ describe("init snapshot job", () => {
     await createSettled(harness, PG);
     const second = await createSettled(harness, { ...PG, name: "billing-db" });
     expect(requireInit(harness, second.id).state_name).toBe("init-billing-db");
+  });
+
+  it("refuses a new state when the project is at its quota", async () => {
+    const harness = await createAdaptersHarness();
+    harness.projectsRepo.update(PROJECT_ID, { quota_bytes: 0 }, "2026-08-29T00:00:00.000Z");
+    const created = await createUnsettled(harness, PG);
+    const job = await harness.runtime.jobs.wait(null, created.jobId, 5);
+    expect(job.status).toBe("failed");
+    expect(job.error?.code).toBe("QUOTA_EXCEEDED");
+    expect(harness.states.latestInit(created.adapterId)).toBeNull();
   });
 
   it("fails the state and the job when the database is unreachable, leaving no pins", async () => {

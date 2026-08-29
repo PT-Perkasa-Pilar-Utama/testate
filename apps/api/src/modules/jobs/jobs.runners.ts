@@ -12,7 +12,7 @@ import type { Dispatcher, JobRunner, JobRunnerContext } from "./jobs.dispatcher.
 export type RunnerDeps = ReturnToInitDeps & {
   db: MetadataDb;
   audit: AuditService;
-  projects: Pick<ProjectsRepository, "setHead" | "byId">;
+  projects: Pick<ProjectsRepository, "setHead" | "byId" | "usedBytes">;
   now: () => Date;
 };
 
