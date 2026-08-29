@@ -14,6 +14,8 @@ import type { RequestMeta } from "../../lib/http/auth.ts";
 import { CONFIG_COLUMN, openSecrets } from "../adapters/adapters.secrets.ts";
 import type { AdapterRecord } from "../adapters/adapters.repository.ts";
 import type { AuditService } from "../audit/audit.service.ts";
+import { idempotentRequest, replayWith } from "../jobs/jobs.idempotency.ts";
+import type { IdempotentRequest } from "../jobs/jobs.idempotency.ts";
 import type { EnqueueInput, JobsService } from "../jobs/jobs.service.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import { preflight } from "./checkouts.preflight.ts";
@@ -59,7 +61,7 @@ export type CheckoutsService = {
 export type CheckoutsDeps = RestoreDeps & {
   repo: CheckoutsRepository;
   projects: Pick<ProjectsRepository, "bySlug" | "setHead">;
-  jobs: Pick<JobsService, "enqueue">;
+  jobs: Pick<JobsService, "enqueue" | "replay">;
   audit: AuditService;
   now: () => Date;
 };
@@ -135,7 +137,8 @@ export function createCheckoutsService(deps: CheckoutsDeps): CheckoutsService {
     force: boolean,
     retry: boolean,
     actor: Actor,
-    meta: RequestMeta
+    meta: RequestMeta,
+    idempotency?: IdempotentRequest
   ): Promise<Job> => {
     const request: EnqueueInput = {
       kind: "checkout",
@@ -151,7 +154,8 @@ export function createCheckoutsService(deps: CheckoutsDeps): CheckoutsService {
       actor,
       parentRequestId: meta.request_id,
     };
-    if (meta.idempotency_key !== undefined) request.idempotencyKey = meta.idempotency_key;
+    // A retry of a failed checkout is a new job, never a replay of the first one.
+    if (idempotency !== undefined) request.idempotency = idempotency;
     return deps.jobs.enqueue(request);
   };
 
@@ -167,6 +171,18 @@ export function createCheckoutsService(deps: CheckoutsDeps): CheckoutsService {
     },
     async create(actor, slug, input, meta) {
       const project = projectOf(slug);
+      // A retry under the same key answers with the first job and checkout; without this it would
+      // insert a second checkout row and then find the key already spent (09 §9.3).
+      const idempotency = idempotentRequest(meta, "checkout", {
+        state_id: input.state_id ?? null,
+        state_name: input.state_name ?? null,
+        force: input.force,
+        adapter_ids: input.adapter_ids ?? null,
+      });
+      const replayed = await replayWith(deps.jobs, idempotency, actor, (jobId) =>
+        repo.byJobId(project.id, jobId)
+      );
+      if (replayed !== null) return { checkout: replayed.row, job: replayed.job };
       const state = stateOf(project, input);
       const adapters = targets(project, state, input.adapter_ids);
       const id = Bun.randomUUIDv7();
@@ -192,7 +208,8 @@ export function createCheckoutsService(deps: CheckoutsDeps): CheckoutsService {
           input.force,
           false,
           actor,
-          meta
+          meta,
+          idempotency
         );
       } catch (cause: unknown) {
         repo.finish(id, "failed", deps.now().toISOString());
@@ -217,6 +234,7 @@ export function createCheckoutsService(deps: CheckoutsDeps): CheckoutsService {
       const failed = checkout.adapters.filter((adapter) => RETRIABLE.has(adapter.result));
       if (failed.length === 0) throw conflict("nothing to retry");
       const ids = failed.map((adapter) => adapter.adapter_id);
+      // A retry of the same checkout under one key is one job, however often the client asks.
       const job = await enqueue(
         project,
         checkout.id,
@@ -225,7 +243,8 @@ export function createCheckoutsService(deps: CheckoutsDeps): CheckoutsService {
         checkout.force,
         true,
         actor,
-        meta
+        meta,
+        idempotentRequest(meta, "checkout", { retry_of: checkout.id })
       );
       repo.resetAdapters(checkout.id, ids, job.id);
       const updated = find(project, checkout.id);

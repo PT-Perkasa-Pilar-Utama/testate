@@ -7,6 +7,7 @@ import type { MetadataDb } from "../../lib/db/index.ts";
 import { AppError, conflict, forbidden, notFound } from "../../lib/http/index.ts";
 import { sha256 } from "../../lib/password/index.ts";
 import type { Dispatcher, Heartbeat } from "./jobs.dispatcher.ts";
+import type { IdempotentRequest } from "./jobs.idempotency.ts";
 import type { JobEvent, JobEventHub } from "./jobs.events.ts";
 import type { JobsListQuery, JobsRepository } from "./jobs.repository.ts";
 import { toJob } from "./jobs.repository.ts";
@@ -18,8 +19,11 @@ export type EnqueueInput = {
   payload: JsonObject;
   actor: Actor;
   parentRequestId: string | null;
-  idempotencyKey?: string;
+  idempotency?: IdempotentRequest;
 };
+
+/** What a key lookup found: the hashes to record, and the job the key already made. */
+type KeyLookup = { keyHash: string; bodyHash: string; existing: Job | null };
 
 export type JobsFilter = Omit<JobsListQuery, "scope" | "includeInstance">;
 
@@ -27,8 +31,12 @@ export type RecoveryReport = { interrupted: number; head_unknown: number; states
 
 export type JobsService = {
   enqueue(input: EnqueueInput): Promise<Job>;
-  /** The job an unexpired `Idempotency-Key` already created for this actor, if any (16 §16.1). */
-  replay(idempotencyKey: string, actor: Actor): Promise<Job | null>;
+  /**
+   * The job an unexpired `Idempotency-Key` already created for this actor, if any. Services call
+   * this before they write anything, so a retry answers with the first job instead of a second one.
+   * The same key under a different request conflicts, exactly as it does in `enqueue`.
+   */
+  replay(request: IdempotentRequest, actor: Actor): Promise<Job | null>;
   get(scope: string[] | null, id: string): Promise<Job>;
   list(
     actor: Actor,
@@ -91,16 +99,13 @@ export function createJobsService(deps: JobsDeps): JobsService {
     return toJob(job);
   };
 
-  const idempotent = (
-    input: EnqueueInput
-  ): { keyHash: string; bodyHash: string; existing: Job | null } | null => {
-    if (input.idempotencyKey === undefined) return null;
-    const keyHash = sha256(input.idempotencyKey);
-    const bodyHash = sha256(JSON.stringify({ kind: input.kind, payload: input.payload }));
-    const found = repo.findIdempotency(keyHash, input.actor.id);
+  const recorded = (request: IdempotentRequest, actor: Actor): KeyLookup => {
+    const keyHash = sha256(request.key);
+    const bodyHash = sha256(JSON.stringify({ kind: request.kind, body: request.body }));
+    const found = repo.findIdempotency(keyHash, actor.id);
     if (found === null) return { keyHash, bodyHash, existing: null };
     if (found.expires_at <= nowIso()) {
-      repo.deleteIdempotency(keyHash, input.actor.id);
+      repo.deleteIdempotency(keyHash, actor.id);
       return { keyHash, bodyHash, existing: null };
     }
     if (found.body_hash !== bodyHash)
@@ -135,7 +140,8 @@ export function createJobsService(deps: JobsDeps): JobsService {
 
   return {
     async enqueue(input) {
-      const idem = idempotent(input);
+      const idem =
+        input.idempotency === undefined ? null : recorded(input.idempotency, input.actor);
       if (idem?.existing) return idem.existing;
       const claimed = repo.claimedAdapterIds();
       const busy = input.adapterIds.find((id) => claimed.has(id));
@@ -165,11 +171,8 @@ export function createJobsService(deps: JobsDeps): JobsService {
       dispatcher.poke();
       return toJob(job);
     },
-    async replay(idempotencyKey, actor) {
-      const found = repo.findIdempotency(sha256(idempotencyKey), actor.id);
-      if (found === null || found.expires_at <= nowIso()) return null;
-      const job = repo.byId(found.job_id);
-      return job === null ? null : toJob(job);
+    async replay(request, actor) {
+      return recorded(request, actor).existing;
     },
     async get(scope, id) {
       return visible(scope, id);

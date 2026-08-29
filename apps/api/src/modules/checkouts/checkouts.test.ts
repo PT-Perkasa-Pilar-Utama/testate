@@ -114,6 +114,23 @@ describe("checkouts", () => {
     expect(forced.force).toBe(true);
   });
 
+  it("replays the first job and checkout when a request repeats its Idempotency-Key", async () => {
+    const h = await createCheckoutsHarness();
+    await createSettled(h.harness, PG);
+    const meta = { ...TEST_META, idempotency_key: "pipeline-1" };
+    const body = { state_name: "init", force: false };
+    const first = await h.checkouts.create(h.harness.qa, "shop", body, meta);
+    // A retry would otherwise insert a second checkout row and then spend the key on it.
+    const again = await h.checkouts.create(h.harness.qa, "shop", body, meta);
+    expect(again.job.id).toBe(first.job.id);
+    expect(again.checkout.id).toBe(first.checkout.id);
+    expect((await h.checkouts.list("shop", { limit: 10 })).length).toBe(1);
+    await expect(
+      h.checkouts.create(h.harness.qa, "shop", { state_name: "init", force: true }, meta)
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await settled(h, first);
+  });
+
   it("refuses read-only adapters and states that are not ready", async () => {
     const h = await createCheckoutsHarness();
     const adapter = await createSettled(h.harness, PG);

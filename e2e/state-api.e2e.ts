@@ -2,7 +2,6 @@ import { expect, test } from "@playwright/test";
 
 import {
   apiContext,
-  createPostgresAdapter,
   demoAdapter,
   blobCount,
   refusedOf,
@@ -34,31 +33,29 @@ test.describe("state and job contract stories", () => {
     await qa.dispose();
   });
 
-  test("@story-115 a repeated Idempotency-Key replays the first job instead of a second", async () => {
+  test("@story-115 a repeated Idempotency-Key returns the first job, not a second one", async () => {
     test.setTimeout(180_000);
     const qa = await apiContext("qa");
-    const adapter = await createPostgresAdapter(qa, `idem-${STAMP}`);
-    await waitForIdle(qa, adapter.id);
-    const plan: { data: { plan_id: string } } = await (
-      await qa.get(`projects/demo/adapters/${adapter.id}/deletion-plan`)
+    const postgres = await demoAdapter({ engine: "postgres" });
+    const headers = { "Idempotency-Key": `idem-${STAMP}` };
+    const name = `api-idem-${STAMP}`;
+    const first = await takeState(qa, name, postgres.id, headers);
+    // The retry a CI pipeline makes after a timeout: the same job, the same state, no second run.
+    const again = await takeState(qa, name, postgres.id, headers);
+    expect(again.job.id).toBe(first.job.id);
+    expect(again.stateId).toBe(first.stateId);
+    const states: { data: { name: string }[] } = await (
+      await qa.get("projects/demo/states?limit=200")
     ).json();
-    // `skip` leaves the shared database alone; only the adapter row goes.
-    const body = {
-      data: { plan_id: plan.data.plan_id, action: "skip" },
-      headers: { "Idempotency-Key": `idem-${STAMP}` },
-    };
-    const first = await qa.post(`projects/demo/adapters/${adapter.id}/deletion`, body);
-    expect(first.status()).toBe(202);
-    const job: { data: { id: string } } = await first.json();
+    expect(states.data.filter((state) => state.name === name).length).toBe(1);
 
-    const repeat = await qa.post(`projects/demo/adapters/${adapter.id}/deletion`, body);
-    const same: { data: { id: string } } = await repeat.json();
-    expect(same.data.id).toBe(job.data.id);
-    const jobs: { data: { id: string; kind: string }[] } = await (
-      await qa.get("jobs?kind=adapter_delete&limit=100")
-    ).json();
-    expect(jobs.data.filter((row) => row.id === job.data.id).length).toBe(1);
-    await waitForJob(qa, job.data.id);
+    const different = await qa.post("projects/demo/states", {
+      data: { name: `${name}-other`, adapter_ids: [postgres.id] },
+      headers,
+    });
+    expect(different.status()).toBe(409);
+    const failure: { error: { code: string } } = await different.json();
+    expect(failure.error.code).toBe("CONFLICT");
     await qa.dispose();
   });
 

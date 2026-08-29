@@ -4,6 +4,7 @@ import type { RequestMeta } from "../../lib/http/auth.ts";
 import { conflict, forbidden, notFound } from "../../lib/http/index.ts";
 import type { AdaptersService } from "../adapters/adapters.service.ts";
 import type { AuditService } from "../audit/audit.service.ts";
+import { idempotentRequest } from "../jobs/jobs.idempotency.ts";
 import type { EnqueueInput, JobsService } from "../jobs/jobs.service.ts";
 import type { ProjectPatch, ProjectsListQuery, ProjectsRepository } from "./projects.repository.ts";
 
@@ -232,8 +233,18 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
       };
     },
     async deleteProject(actor, slug, input, meta) {
-      if (meta.idempotency_key !== undefined && repo.bySlug(slug) === null) {
-        const replayed = await deps.jobs.replay(meta.idempotency_key, actor);
+      // A repeated Idempotency-Key answers with the first job, before the plan is consumed again.
+      const idempotency = idempotentRequest(meta, "project_delete", {
+        slug,
+        confirm_slug: input.confirm_slug,
+        plan_id: input.plan_id,
+        adapters: input.adapters.map((item) => ({
+          adapter_id: item.adapter_id,
+          action: item.action,
+        })),
+      });
+      if (idempotency !== undefined) {
+        const replayed = await deps.jobs.replay(idempotency, actor);
         if (replayed !== null) return replayed;
       }
       const project = find(slug);
@@ -269,7 +280,7 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
         actor,
         parentRequestId: meta.request_id,
       };
-      if (meta.idempotency_key !== undefined) request.idempotencyKey = meta.idempotency_key;
+      if (idempotency !== undefined) request.idempotency = idempotency;
       return deps.jobs.enqueue(request);
     },
   };

@@ -1,4 +1,9 @@
+import type { Actor, Job, JsonObject } from "@testate/shared";
+
+import type { RequestMeta } from "../../lib/http/auth.ts";
 import { conflict } from "../../lib/http/index.ts";
+import { idempotentRequest } from "../jobs/jobs.idempotency.ts";
+import type { EnqueueInput, JobsService } from "../jobs/jobs.service.ts";
 import type { AdapterRecord, AdaptersRepository } from "./adapters.repository.ts";
 
 export type DeletionAction = "restore" | "force" | "skip";
@@ -13,6 +18,16 @@ export type AdapterDeletionPlan = {
   };
   states_referencing: number;
 };
+
+/** The client's deletion request, hashed under its `Idempotency-Key` so a retry replays it. */
+export function deletionBody(
+  slug: string,
+  adapterId: string,
+  planId: string,
+  action: DeletionAction
+): JsonObject {
+  return { slug, adapter_id: adapterId, plan_id: planId, action };
+}
 
 export type DeletionPlans = {
   plan(adapter: AdapterRecord): AdapterDeletionPlan;
@@ -59,4 +74,47 @@ export function createDeletionPlans(
       plans.delete(planId);
     },
   };
+}
+
+export type RemoveDeps = {
+  jobs: Pick<JobsService, "enqueue" | "replay">;
+  plans: DeletionPlans;
+  /** Looked up only after the replay check: a retry runs when the adapter row is already gone. */
+  adapterOf: () => AdapterRecord;
+  record: (adapter: AdapterRecord, details: JsonObject) => void;
+};
+
+/**
+ * The delete job for one adapter (11 §11.6). A repeated `Idempotency-Key` answers with the first
+ * job, before the adapter is looked up or its plan consumed a second time.
+ */
+export async function enqueueDeletion(
+  deps: RemoveDeps,
+  slug: string,
+  id: string,
+  planId: string,
+  action: DeletionAction,
+  actor: Actor,
+  meta: RequestMeta
+): Promise<Job> {
+  const idempotency = idempotentRequest(
+    meta,
+    "adapter_delete",
+    deletionBody(slug, id, planId, action)
+  );
+  const replayed = idempotency === undefined ? null : await deps.jobs.replay(idempotency, actor);
+  if (replayed !== null) return replayed;
+  const adapter = deps.adapterOf();
+  deps.plans.consume(adapter.id, planId, action);
+  deps.record(adapter, { plan_id: planId, action });
+  const request: EnqueueInput = {
+    kind: "adapter_delete",
+    projectId: adapter.project_id,
+    adapterIds: [adapter.id],
+    payload: { slug, adapter_id: adapter.id, name: adapter.name, action },
+    actor,
+    parentRequestId: meta.request_id,
+  };
+  if (idempotency !== undefined) request.idempotency = idempotency;
+  return deps.jobs.enqueue(request);
 }

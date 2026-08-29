@@ -38,6 +38,8 @@ export type AdapterCounters = { adapter_id: string; counters: CounterResult[] };
 export type CheckoutsRepository = {
   insert(checkout: NewCheckout): void;
   byId(projectId: string, id: string): Checkout | null;
+  /** The checkout a job belongs to; a replayed `Idempotency-Key` answers with it (09 §9.3). */
+  byJobId(projectId: string, jobId: string): Checkout | null;
   list(projectId: string, filter: CheckoutsFilter): Checkout[];
   setStash(id: string, stashStateId: string): void;
   /** The job id lands after `enqueue`; the row itself exists before it (09 §9.2). */
@@ -206,6 +208,14 @@ export function createCheckoutsRepository(db: MetadataDb): CheckoutsRepository {
     },
     byId(projectId, id) {
       const row = db.query(`${SELECT} WHERE c.project_id = ? AND c.id = ?`).get(projectId, id);
+      if (row === null) return null;
+      const parsed = v.parse(checkoutRow, row);
+      return toCheckout(parsed, adaptersOf([parsed.id]).get(parsed.id) ?? []);
+    },
+    byJobId(projectId, jobId) {
+      const row = db
+        .query(`${SELECT} WHERE c.project_id = ? AND c.job_id = ? LIMIT 1`)
+        .get(projectId, jobId);
       if (row === null) return null;
       const parsed = v.parse(checkoutRow, row);
       return toCheckout(parsed, adaptersOf([parsed.id]).get(parsed.id) ?? []);

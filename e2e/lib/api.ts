@@ -203,28 +203,6 @@ export async function waitForIdle(qa: APIRequestContext, adapterId: string): Pro
   throw new Error(`adapter ${adapterId} never went idle`);
 }
 
-export type ThrowawayAdapter = { id: string; initJobId: string | null };
-
-/** A second Postgres adapter on the demo database, for tests that must create and delete one. */
-export async function createPostgresAdapter(
-  qa: APIRequestContext,
-  name: string
-): Promise<ThrowawayAdapter> {
-  const response = await qa.post("projects/demo/adapters", {
-    data: {
-      kind: "database",
-      engine: "postgres",
-      name,
-      config: { host: "127.0.0.1", port: 54320, database: "shop", user: "testate" },
-      secrets: { password: "testate" },
-    },
-  });
-  if (response.status() !== 201) throw new Error(`create ${name}: ${await response.text()}`);
-  const body: { data: { adapter: { id: string }; init_job: { id: string } | null } } =
-    await response.json();
-  return { id: body.data.adapter.id, initJobId: body.data.init_job?.id ?? null };
-}
-
 /** Files in the local blob store; an unchanged table must not add one (05 §5.10). */
 export function blobCount(): number {
   const dir = join(E2E_DIR, "data", "blobs");

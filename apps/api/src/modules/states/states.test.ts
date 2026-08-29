@@ -71,6 +71,22 @@ describe("states", () => {
     expect((await h.states.list("shop", { ...LIST, name: "init" })).length).toBe(1);
   });
 
+  it("replays the first job and state when a request repeats its Idempotency-Key", async () => {
+    const h = await createStatesHarness();
+    await createSettled(h.harness, PG);
+    const meta = { ...TEST_META, idempotency_key: "nightly-1" };
+    const first = await h.states.snapshot(h.harness.qa, "shop", { name: "nightly" }, meta);
+    // A retry would otherwise be refused as a duplicate name, or take a second snapshot.
+    const again = await h.states.snapshot(h.harness.qa, "shop", { name: "nightly" }, meta);
+    expect(again.job.id).toBe(first.job.id);
+    expect(again.state.id).toBe(first.state.id);
+    expect((await h.states.list("shop", { ...LIST, name: "nightly" })).length).toBe(1);
+    await expect(
+      h.states.snapshot(h.harness.qa, "shop", { name: "other" }, meta)
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await h.harness.runtime.dispatcher.drain(100);
+  });
+
   it("refuses a duplicate name, an unknown adapter, and a project without database adapters", async () => {
     const h = await createStatesHarness();
     await expect(h.states.snapshot(h.harness.qa, "shop", { name: "a" }, TEST_META)).rejects.toThrow(

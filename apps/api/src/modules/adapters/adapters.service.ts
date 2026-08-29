@@ -15,11 +15,12 @@ import { AppError, conflict, forbidden, notFound } from "../../lib/http/index.ts
 import type { Check, Verdict } from "../../lib/netguard/index.ts";
 import type { KeyRing } from "../../lib/sealed/index.ts";
 import type { AuditService } from "../audit/audit.service.ts";
-import type { EnqueueInput, JobsService } from "../jobs/jobs.service.ts";
+import type { JobsService } from "../jobs/jobs.service.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import { validateConfig } from "./adapters.config.ts";
 import type { ValidatedConfig } from "./adapters.config.ts";
-import { createDeletionPlans } from "./adapters.deletion.ts";
+import { createDeletionPlans, enqueueDeletion } from "./adapters.deletion.ts";
+import type { RemoveDeps } from "./adapters.deletion.ts";
 import type { AdapterDeletionPlan, DeletionAction } from "./adapters.deletion.ts";
 import {
   probeColumns,
@@ -286,25 +287,15 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
     },
     recheckDenyList: () => recheckDenyList({ repo, ring, netguard: deps.netguard, now: deps.now }),
     async remove(actor, slug, id, planId, action, meta) {
-      const project = projectOf(slug);
-      // A repeated Idempotency-Key after the row is gone still answers with the same job.
-      if (meta.idempotency_key !== undefined && repo.byId(id) === null) {
-        const replayed = await deps.jobs.replay(meta.idempotency_key, actor);
-        if (replayed !== null) return replayed;
-      }
-      const adapter = find(project.id, id);
-      plans.consume(id, planId, action);
-      record(actor, "adapter.deletion_requested", adapter, slug, meta, { plan_id: planId, action });
-      const request: EnqueueInput = {
-        kind: "adapter_delete",
-        projectId: adapter.project_id,
-        adapterIds: [adapter.id],
-        payload: { slug, adapter_id: adapter.id, name: adapter.name, action },
-        actor,
-        parentRequestId: meta.request_id,
+      const projectId = projectOf(slug).id;
+      const removal: RemoveDeps = {
+        jobs: deps.jobs,
+        plans,
+        adapterOf: () => find(projectId, id),
+        record: (adapter, details) =>
+          record(actor, "adapter.deletion_requested", adapter, slug, meta, details),
       };
-      if (meta.idempotency_key !== undefined) request.idempotencyKey = meta.idempotency_key;
-      return deps.jobs.enqueue(request);
+      return enqueueDeletion(removal, slug, id, planId, action, actor, meta);
     },
   };
 }

@@ -59,6 +59,8 @@ export type StateRows = {
   /** `diff` states never list (08 §8); stashes only on request. */
   list(projectId: string, filter: StatesFilter): State[];
   byIdOrName(projectId: string, idOrName: string): State | null;
+  /** The state a job created; a replayed `Idempotency-Key` answers with it (09 §9.3). */
+  byJobId(projectId: string, jobId: string): State | null;
   detail(projectId: string, idOrName: string): StateDetail | null;
   update(id: string, patch: StatePatch, at: string): void;
   /** Deletes the state, decrements blob references, and names the blobs left with none (15 §15.4). */
@@ -147,6 +149,14 @@ function createStateRows(db: MetadataDb): StateRows {
     byIdOrName(projectId, idOrName) {
       const row = oneRow(projectId, idOrName);
       return row === null ? null : toState(row, adaptersOf([row.id]).get(row.id) ?? []);
+    },
+    byJobId(projectId, jobId) {
+      const found = db
+        .query(`${STATE_SELECT} WHERE s.project_id = ? AND s.job_id = ? LIMIT 1`)
+        .get(projectId, jobId);
+      if (found === null) return null;
+      const row = v.parse(stateRowSchema, found);
+      return toState(row, adaptersOf([row.id]).get(row.id) ?? []);
     },
     detail(projectId, idOrName) {
       const row = oneRow(projectId, idOrName);

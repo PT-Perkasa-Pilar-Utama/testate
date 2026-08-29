@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { Actor, Job } from "@testate/shared";
+import type { Actor, Job, JsonObject } from "@testate/shared";
 import * as v from "valibot";
 
 import { createAccounts } from "../../../test/accounts.ts";
@@ -7,6 +7,7 @@ import { createJobsHarness } from "../../../test/jobs.ts";
 import type { JobsHarness } from "../../../test/jobs.ts";
 import { QA_ACTOR } from "../../lib/mock/fixtures.ts";
 import type { JobRunner } from "./jobs.dispatcher.ts";
+import type { IdempotentRequest } from "./jobs.idempotency.ts";
 import type { JobEvent } from "./jobs.events.ts";
 import type { EnqueueInput } from "./jobs.service.ts";
 
@@ -177,14 +178,24 @@ describe("jobs runtime", () => {
 
   it("returns the same job for a repeated Idempotency-Key and refuses a different body", async () => {
     const h = await setup();
-    const first = await h.jobs.enqueue(input({ idempotencyKey: "k1" }));
-    const again = await h.jobs.enqueue(input({ idempotencyKey: "k1" }));
+    const key = (body: JsonObject): IdempotentRequest => ({ key: "k1", kind: "snapshot", body });
+    const asked = key({ name: "nightly" });
+    // The payload carries a fresh id every attempt; the hash follows the client's body instead.
+    const first = await h.jobs.enqueue(input({ idempotency: asked, payload: { n: 1 } }));
+    const again = await h.jobs.enqueue(input({ idempotency: asked, payload: { n: 2 } }));
     expect(again.id).toBe(first.id);
+    // The same lookup before any write answers with that job, and never a second one.
+    expect((await h.jobs.replay(asked, { ...QA_ACTOR }))?.id).toBe(first.id);
+    expect(await h.jobs.replay({ ...asked, key: "k2" }, { ...QA_ACTOR })).toBeNull();
+    await expect(h.jobs.replay(key({ name: "other" }), { ...QA_ACTOR })).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
+
     await expect(
-      h.jobs.enqueue(input({ idempotencyKey: "k1", payload: { n: 2 } }))
+      h.jobs.enqueue(input({ idempotency: key({ name: "different" }) }))
     ).rejects.toMatchObject({ code: "CONFLICT" });
     const other = await h.jobs.enqueue(
-      input({ idempotencyKey: "k1", actor: { ...QA_ACTOR, id: h.admin.id }, adapterIds: ["b1"] })
+      input({ idempotency: asked, actor: { ...QA_ACTOR, id: h.admin.id }, adapterIds: ["b1"] })
     );
     expect(other.id).not.toBe(first.id);
   });

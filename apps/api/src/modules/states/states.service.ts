@@ -15,6 +15,7 @@ import { AppError, conflict, notFound } from "../../lib/http/index.ts";
 import type { RequestMeta } from "../../lib/http/auth.ts";
 import type { AdaptersRepository } from "../adapters/adapters.repository.ts";
 import type { AuditService } from "../audit/audit.service.ts";
+import { idempotentRequest, replayWith } from "../jobs/jobs.idempotency.ts";
 import type { EnqueueInput, JobsService } from "../jobs/jobs.service.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import type { ImportsRepository } from "../imports/imports.repository.ts";
@@ -60,7 +61,7 @@ export type StatesDeps = {
   repo: StatesRepository;
   projects: Pick<ProjectsRepository, "bySlug" | "usedBytes">;
   adapters: Pick<AdaptersRepository, "list" | "byId">;
-  jobs: Pick<JobsService, "enqueue">;
+  jobs: Pick<JobsService, "enqueue" | "replay">;
   blobs: BlobStore;
   uploads: Pick<ImportsRepository, "upload">;
   audit: AuditService;
@@ -194,6 +195,18 @@ export function createStatesService(deps: StatesDeps): StatesService {
     },
     async snapshot(actor, slug, input, meta) {
       const project = projectOf(slug);
+      // A retry under the same key answers with the first job and its state; the name check below
+      // would otherwise refuse the retry as a duplicate name (09 §9.3).
+      const idempotency = idempotentRequest(meta, "snapshot", {
+        name: input.name,
+        notes: input.notes ?? null,
+        tags: input.tags ?? [],
+        adapter_ids: input.adapter_ids ?? null,
+      });
+      const replayed = await replayWith(deps.jobs, idempotency, actor, (jobId) =>
+        repo.byJobId(project.id, jobId)
+      );
+      if (replayed !== null) return { state: replayed.row, job: replayed.job };
       assertNameFree(project, input.name);
       assertQuota(deps.projects, project);
       const ids = adapterIds(project, input.adapter_ids);
@@ -219,7 +232,7 @@ export function createStatesService(deps: StatesDeps): StatesService {
         actor,
         parentRequestId: meta.request_id,
       };
-      if (meta.idempotency_key !== undefined) request.idempotencyKey = meta.idempotency_key;
+      if (idempotency !== undefined) request.idempotency = idempotency;
       let job: Job;
       try {
         job = await deps.jobs.enqueue(request);

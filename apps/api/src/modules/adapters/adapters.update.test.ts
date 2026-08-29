@@ -104,16 +104,18 @@ describe("adapter updates", () => {
     await expect(
       adapters.remove(qa, "shop", adapter.id, plan.plan_id, "restore", TEST_META)
     ).rejects.toMatchObject({ code: "CONFLICT" });
-    const late = await adapters.deletionPlan("shop", adapter.id);
-    advance(PLAN_TTL_MS + 1);
-    await expect(
-      adapters.remove(qa, "shop", adapter.id, late.plan_id, "restore", TEST_META)
-    ).rejects.toMatchObject({ code: "CONFLICT" });
+    // A read-only adapter plans `skip`, and outlives the delete job above: the stale-plan check
+    // below needs an adapter that is still there when the plan expires.
     const s3 = await adapters.create(qa, "shop", S3, TEST_META);
     expect((await adapters.deletionPlan("shop", s3.adapter.id)).adapter).toMatchObject({
       action: "skip",
       reason: "read_only",
     });
+    const late = await adapters.deletionPlan("shop", s3.adapter.id);
+    advance(PLAN_TTL_MS + 1);
+    await expect(
+      adapters.remove(qa, "shop", s3.adapter.id, late.plan_id, "skip", TEST_META)
+    ).rejects.toMatchObject({ code: "CONFLICT" });
   });
 
   it("replays a deletion for a repeated Idempotency-Key after the row is gone", async () => {
