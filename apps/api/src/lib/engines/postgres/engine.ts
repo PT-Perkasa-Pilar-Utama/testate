@@ -13,6 +13,7 @@ import { probe } from "./probe.ts";
 import { cancelQuery, createCancelChannel, listRunningQueries, runQuery } from "./query.ts";
 import { readTable, snapshot, swallow } from "./reader.ts";
 import { checkout, resetCounters } from "./restore.ts";
+import { importRows } from "./import.ts";
 import { pageRows } from "./rows.ts";
 import { writeRows } from "./write.ts";
 
@@ -87,6 +88,10 @@ export function createPostgresEngine(netguard: Netguard): DbEngine {
     async pageRows(conn, query) {
       const sql = await pools.acquire(conn);
       return guarded("rows", () => pageRows(sql, query, conn.config.schemas));
+    },
+    async importRows(conn, table, rows, opts) {
+      const sql = await pools.acquire(conn);
+      return guarded("import", () => importRows(sql, table, rows, opts, conn.config.schemas));
     },
     async writeRows(conn, table, ops, opts) {
       const sql = await pools.acquire(conn);

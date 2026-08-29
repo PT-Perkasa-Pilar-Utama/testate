@@ -259,6 +259,18 @@ CREATE TABLE diff_tables (
   PRIMARY KEY (diff_id, adapter_id, table_name)
 );
 
+CREATE TABLE uploads (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects (id) ON DELETE CASCADE,
+  file_name TEXT NOT NULL,
+  path TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('csv', 'xlsx', 'tar')),
+  purpose TEXT NOT NULL CHECK (purpose IN ('import', 'archive')),
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
 CREATE TABLE import_mappings (
   id TEXT PRIMARY KEY,
   adapter_id TEXT NOT NULL REFERENCES adapters (id) ON DELETE CASCADE,

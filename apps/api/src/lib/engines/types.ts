@@ -135,6 +135,19 @@ export type RowOpResult = { kind: RowOp["kind"]; pk: JsonObject; row: RowText | 
 
 export type WriteOptions = { foreignKeyChecks: boolean; signal?: AbortSignal };
 
+/** One import batch (19 §19.3): rows already transformed; the mode decides the statement. */
+export type ImportOptions = {
+  mode: "append" | "upsert" | "replace";
+  keyColumns: string[];
+  foreignKeyChecks: boolean;
+  /** `replace` empties the table before the first batch only. */
+  firstBatch: boolean;
+  signal?: AbortSignal;
+};
+
+export type ImportRowFailure = { index: number; message: string };
+export type ImportBatchResult = { inserted: number; updated: number; failures: ImportRowFailure[] };
+
 export type RowsPageResult = {
   rows: RowText[];
   columns: { name: string; type: string }[];
@@ -209,6 +222,13 @@ export type DbEngine = {
     ops: RowOp[],
     opts: WriteOptions
   ): Promise<RowOpResult[]>;
+  /** A batch failure is retried row by row so the failing rows are named (19 §19.3 step 5). */
+  importRows(
+    conn: ConnectionRef,
+    table: TableRef,
+    rows: RowValues[],
+    opts: ImportOptions
+  ): Promise<ImportBatchResult>;
   runQuery(conn: ConnectionRef, query: EngineQuery, opts: QueryOptions): Promise<QueryResult>;
   listRunningQueries(conn: ConnectionRef): Promise<RunningQuery[]>;
   cancelQuery(conn: ConnectionRef, queryId: string): Promise<void>;

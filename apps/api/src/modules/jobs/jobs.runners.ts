@@ -10,6 +10,9 @@ import type { ReturnToInitDeps } from "../checkouts/checkouts.return-to-init.ts"
 import type { HookRunner } from "../hooks/hooks.service.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import { createDiffRunner } from "../diffs/diffs.job.ts";
+import { createImportRunner } from "../imports/imports.job.ts";
+import type { ImportsRepository } from "../imports/imports.repository.ts";
+import type { PoliciesRepository } from "../data/data.policies.ts";
 import type { DiffsRepository } from "../diffs/diffs.repository.ts";
 import { createStateDeleteRunner } from "../states/states.delete.ts";
 import { createSnapshotRunner } from "../states/states.snapshot.ts";
@@ -20,6 +23,9 @@ export type RunnerDeps = ReturnToInitDeps & {
   hooks: HookRunner;
   checkouts: CheckoutsRepository;
   diffs: DiffsRepository;
+  imports: ImportsRepository;
+  policies: PoliciesRepository;
+  dataDir: string;
   audit: AuditService;
   projects: Pick<ProjectsRepository, "setHead" | "byId" | "usedBytes">;
   now: () => Date;
@@ -130,4 +136,5 @@ export function registerRunners(dispatcher: Dispatcher, deps: RunnerDeps): void 
   dispatcher.registerKind("state_delete", createStateDeleteRunner(deps));
   dispatcher.registerKind("checkout", createCheckoutRunner(deps));
   dispatcher.registerKind("diff", createDiffRunner(deps));
+  dispatcher.registerKind("import", createImportRunner(deps));
 }

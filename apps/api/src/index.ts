@@ -13,15 +13,13 @@ import { Hono } from "hono";
 
 import {
   bootstrapAdmin,
-  createEngineWiring,
-  createIntegrations,
   createJobsRuntime,
   createNetguard,
-  createStateServices,
   createRetention,
   refuse,
   sweepSealed,
 } from "./boot.ts";
+import { createEngineWiring, createIntegrations, createStateServices } from "./wiring.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import type { Config } from "./lib/config/index.ts";
 import { migrate, openMetadataDb } from "./lib/db/index.ts";
@@ -47,7 +45,6 @@ import { createDataHandlers } from "./modules/data/data.handler.ts";
 import { createDiffsHandlers } from "./modules/diffs/diffs.handler.ts";
 import { createHooksHandlers } from "./modules/hooks/hooks.handler.ts";
 import { createImportsHandlers } from "./modules/imports/imports.handler.ts";
-import { createImportsService } from "./modules/imports/imports.service.ts";
 import { createV1 } from "./modules/index.ts";
 import { createJobsHandlers } from "./modules/jobs/jobs.handler.ts";
 import { mountSpa, resolveWebSource, rewriteWebAssets } from "./modules/ops/ops.basepath.ts";
@@ -157,7 +154,8 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   const recovery = await jobs.recover();
   const historyDays = async (): Promise<number> =>
     (await settings.get()).retention.job_history_days;
-  const core = createStateServices(wiring, projectsRepo, jobs, audit, settings, now);
+  const maxUpload = config.TESTATE_MAX_UPLOAD_MB * 1024 * 1024;
+  const core = createStateServices(wiring, projectsRepo, jobs, audit, settings, maxUpload, now);
   const storage = createStorageService();
   const adapters = createAdaptersService({
     repo: wiring.adapters,
@@ -220,11 +218,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     projectScope: requireProjectInScope(projectsRepo),
     adapters: createAdaptersHandlers(adapters, prefix, config.TESTATE_TRUST_PROXY, jobs),
     data: createDataHandlers(core.data, config.TESTATE_TRUST_PROXY),
-    imports: createImportsHandlers(
-      createImportsService(),
-      prefix,
-      config.TESTATE_MAX_UPLOAD_MB * 1024 * 1024
-    ),
+    imports: createImportsHandlers(core.imports, prefix, config.TESTATE_TRUST_PROXY),
     states: createStatesHandlers(core.states, prefix, config.TESTATE_TRUST_PROXY),
     checkouts: createCheckoutsHandlers(core.checkouts, prefix, config.TESTATE_TRUST_PROXY, jobs),
     diffs: createDiffsHandlers(core.diffs, prefix, config.TESTATE_TRUST_PROXY),

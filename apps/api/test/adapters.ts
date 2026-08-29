@@ -21,6 +21,10 @@ import { createCheckoutsRepository } from "../src/modules/checkouts/checkouts.re
 import type { CheckoutsRepository } from "../src/modules/checkouts/checkouts.repository.ts";
 import { createDiffsRepository } from "../src/modules/diffs/diffs.repository.ts";
 import type { DiffsRepository } from "../src/modules/diffs/diffs.repository.ts";
+import { createPoliciesRepository } from "../src/modules/data/data.policies.ts";
+import type { PoliciesRepository } from "../src/modules/data/data.policies.ts";
+import { createImportsRepository } from "../src/modules/imports/imports.repository.ts";
+import type { ImportsRepository } from "../src/modules/imports/imports.repository.ts";
 import { createHooksRepository } from "../src/modules/hooks/hooks.repository.ts";
 import { createHooksService } from "../src/modules/hooks/hooks.service.ts";
 import type { HooksService } from "../src/modules/hooks/hooks.service.ts";
@@ -92,6 +96,9 @@ export type AdaptersHarness = {
   states: StatesRepository;
   checkouts: CheckoutsRepository;
   diffs: DiffsRepository;
+  imports: ImportsRepository;
+  policies: PoliciesRepository;
+  dataDir: string;
   engines: EngineRegistry;
   rest: RestService;
   requests: RestRepository;
@@ -196,6 +203,9 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
   const states = createStatesRepository(accounts.db);
   const checkouts = createCheckoutsRepository(accounts.db);
   const diffs = createDiffsRepository(accounts.db);
+  const imports = createImportsRepository(accounts.db);
+  const policies = createPoliciesRepository(accounts.db);
+  const dataDir = runtime.dataDir;
   const failCounters = { current: false };
   const engines = fakeRegistry({ databases, failCounters });
   const requests = createRestRepository(accounts.db);
@@ -228,6 +238,9 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     states,
     checkouts,
     diffs,
+    imports,
+    policies,
+    dataDir,
     hooks,
     projects: accounts.projectsRepo,
   });
@@ -264,6 +277,9 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     states,
     checkouts,
     diffs,
+    imports,
+    policies,
+    dataDir,
     engines,
     rest,
     requests,
