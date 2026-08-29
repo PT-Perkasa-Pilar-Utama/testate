@@ -15,6 +15,7 @@ import {
   bootstrapAdmin,
   createEngineWiring,
   createJobsRuntime,
+  statesDeps,
   createRetention,
   ownAddresses,
   refuse,
@@ -162,7 +163,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   const historyDays = async (): Promise<number> =>
     (await settings.get()).retention.job_history_days;
   const data = createDataService();
-  const states = createStatesService();
+  const states = createStatesService(statesDeps(wiring, projectsRepo, jobs, audit, now));
   const diffs = createDiffsService();
   const storage = createStorageService();
   const adapters = createAdaptersService({
@@ -231,7 +232,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
       prefix,
       config.TESTATE_MAX_UPLOAD_MB * 1024 * 1024
     ),
-    states: createStatesHandlers(states, prefix),
+    states: createStatesHandlers(states, prefix, config.TESTATE_TRUST_PROXY),
     checkouts: createCheckoutsHandlers(createCheckoutsService(), prefix),
     diffs: createDiffsHandlers(diffs, prefix),
     storage: createStorageHandlers(storage),

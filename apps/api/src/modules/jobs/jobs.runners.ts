@@ -6,7 +6,8 @@ import type { AuditService } from "../audit/audit.service.ts";
 import { returnToInit } from "../checkouts/checkouts.return-to-init.ts";
 import type { ReturnToInitDeps } from "../checkouts/checkouts.return-to-init.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
-import { createInitSnapshotRunner } from "../states/states.snapshot.ts";
+import { createStateDeleteRunner } from "../states/states.delete.ts";
+import { createSnapshotRunner } from "../states/states.snapshot.ts";
 import type { Dispatcher, JobRunner, JobRunnerContext } from "./jobs.dispatcher.ts";
 
 export type RunnerDeps = ReturnToInitDeps & {
@@ -117,5 +118,6 @@ export function registerRunners(dispatcher: Dispatcher, deps: RunnerDeps): void 
 
   dispatcher.registerKind("project_delete", projectDelete);
   dispatcher.registerKind("adapter_delete", adapterDelete);
-  dispatcher.registerKind("snapshot", createInitSnapshotRunner(deps));
+  dispatcher.registerKind("snapshot", createSnapshotRunner(deps));
+  dispatcher.registerKind("state_delete", createStateDeleteRunner(deps));
 }

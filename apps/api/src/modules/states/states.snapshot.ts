@@ -12,7 +12,7 @@ import type { AdaptersRepository } from "../adapters/adapters.repository.ts";
 import type { AdapterRecord } from "../adapters/adapters.repository.ts";
 import { CONFIG_COLUMN, openSecrets } from "../adapters/adapters.secrets.ts";
 import type { AuditService } from "../audit/audit.service.ts";
-import type { JobRunner } from "../jobs/jobs.dispatcher.ts";
+import type { JobRunner, JobRunnerContext } from "../jobs/jobs.dispatcher.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import type { AdapterManifest, StatesRepository } from "./states.repository.ts";
 
@@ -28,6 +28,8 @@ export type SnapshotDeps = {
 };
 
 const initPayload = v.object({ init: v.literal(true), adapter_id: v.string() });
+const manualPayload = v.object({ state_id: v.string(), adapter_ids: v.array(v.string()) });
+const payloadSchema = v.union([initPayload, manualPayload]);
 
 type TableStream = { table: TableRef; rows: AsyncIterable<EncodedRow> };
 type Cursor = { next: IteratorResult<RowChunk> };
@@ -162,16 +164,16 @@ function initName(states: StatesRepository, projectId: string, adapter: AdapterR
   return free;
 }
 
-/** The `snapshot` job for `{ init: true }` payloads: one adapter, protected, HEAD moves to it (08 §8.4). */
-export function createInitSnapshotRunner(deps: SnapshotDeps): JobRunner {
-  return async ({ job, signal, progress }) => {
-    const payload = v.parse(initPayload, job.payload);
+type Target = { stateId: string; name: string; kind: "init" | "manual"; adapters: AdapterRecord[] };
+
+/** Init payloads create their protected state here; manual ones were created by the service (08 §8.3). */
+function resolveTarget(deps: SnapshotDeps, job: JobRunnerContext["job"]): Target {
+  const payload = v.parse(payloadSchema, job.payload);
+  if ("init" in payload) {
     const adapter = deps.adapters.byId(payload.adapter_id);
     if (adapter === null) throw notFound("adapter");
-    const actor: Actor = job.actor;
     const stateId = Bun.randomUUIDv7();
     const name = initName(deps.states, adapter.project_id, adapter);
-    const at = deps.now().toISOString();
     deps.states.insert({
       id: stateId,
       project_id: adapter.project_id,
@@ -180,41 +182,80 @@ export function createInitSnapshotRunner(deps: SnapshotDeps): JobRunner {
       protected: true,
       parent_state_id: null,
       job_id: job.id,
-      actor,
-      created_at: at,
+      actor: job.actor,
+      created_at: deps.now().toISOString(),
     });
+    return { stateId, name, kind: "init", adapters: [adapter] };
+  }
+  const state = deps.states.byIdOrName(job.project_id ?? "", payload.state_id);
+  if (state === null) throw notFound("state");
+  const adapters = payload.adapter_ids.map((id) => deps.adapters.byId(id));
+  const missing = adapters.findIndex((adapter) => adapter === null);
+  if (missing !== -1) throw notFound("adapter");
+  return {
+    stateId: state.id,
+    name: state.name,
+    kind: "manual",
+    adapters: adapters.flatMap((a) => (a === null ? [] : [a])),
+  };
+}
+
+/**
+ * The `snapshot` job: every adapter at one instant each, blobs pinned, manifests committed in one
+ * transaction, HEAD moved to the state (08 §8.3, 15 §15.3).
+ * ponytail: adapters run one after another — the spec wants them parallel under the job cap;
+ * switch to Promise.all once the dispatcher exposes a per-job budget.
+ * SCAFFOLD: `after_snapshot` hooks run once the hooks card lands.
+ */
+export function createSnapshotRunner(deps: SnapshotDeps): JobRunner {
+  return async ({ job, signal, progress }) => {
+    const target = resolveTarget(deps, job);
+    const projectId = target.adapters[0]?.project_id ?? job.project_id ?? "";
+    const actor: Actor = job.actor;
     try {
-      assertQuota(deps.projects, adapter.project_id);
-      const manifest = await snapshotAdapter(deps, adapter, job.id, signal, (done, table) =>
-        progress({ phase: "snapshot", adapter_id: adapter.id, tables_done: done, table })
-      );
-      const size = deps.states.commitManifest(stateId, [manifest], deps.now().toISOString());
-      deps.projects.setHead(adapter.project_id, stateId, "at_state", deps.now().toISOString());
+      assertQuota(deps.projects, projectId);
+      const manifests: AdapterManifest[] = [];
+      for (const adapter of target.adapters) {
+        manifests.push(
+          await snapshotAdapter(deps, adapter, job.id, signal, (done, table) =>
+            progress({
+              phase: "snapshot",
+              adapter_id: adapter.id,
+              adapters_done: manifests.length,
+              tables_done: done,
+              table,
+            })
+          )
+        );
+      }
+      const size = deps.states.commitManifest(target.stateId, manifests, deps.now().toISOString());
+      deps.projects.setHead(projectId, target.stateId, "at_state", deps.now().toISOString());
       deps.audit.record({
         actor,
         action: "state.created",
         target_type: "state",
-        target_id: stateId,
-        project: {
-          id: adapter.project_id,
-          slug: deps.projects.byId(adapter.project_id)?.slug ?? "",
+        target_id: target.stateId,
+        project: { id: projectId, slug: deps.projects.byId(projectId)?.slug ?? "" },
+        details: {
+          kind: target.kind,
+          name: target.name,
+          adapters: manifests.length,
+          size_bytes: size,
         },
-        adapter: { id: adapter.id, name: adapter.name },
-        details: { kind: "init", name, tables: manifest.tables.length, size_bytes: size },
         outcome: "succeeded",
       });
       return {
         status: "succeeded",
         result: {
-          state_id: stateId,
-          name,
-          tables: manifest.tables.length,
-          rows: manifest.row_count,
+          state_id: target.stateId,
+          name: target.name,
+          adapters: manifests.length,
+          rows: manifests.reduce((total, manifest) => total + manifest.row_count, 0),
           size_bytes: size,
         },
       };
     } catch (cause: unknown) {
-      deps.states.setStatus(stateId, "failed", deps.now().toISOString());
+      deps.states.setStatus(target.stateId, "failed", deps.now().toISOString());
       throw cause;
     } finally {
       deps.states.releasePins(job.id);

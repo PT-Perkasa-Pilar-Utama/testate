@@ -8,6 +8,14 @@ import type { DataService } from "../data/data.service.ts";
 import type { DiffsService } from "../diffs/diffs.service.ts";
 import type { ProjectsService } from "../projects/projects.service.ts";
 import type { StatesService } from "../states/states.service.ts";
+import type { StatesFilter } from "../states/states.repository.ts";
+
+const AGENT_STATES_FILTER: StatesFilter = {
+  limit: 50,
+  sort: "created_at",
+  order: "desc",
+  includeStash: false,
+};
 import type { StorageService } from "../storage/storage.service.ts";
 import type { ToolRunner } from "./agent.service.ts";
 
@@ -86,7 +94,8 @@ export function createAgentTools(deps: AgentToolDeps): ToolRunner {
         ),
       extract_fixture: async (args) =>
         json(await deps.data.fixture(AGENT_ACTOR, text(args, "adapter"), text(args, "table"))),
-      list_states: async (args) => json(await deps.states.list(text(args, "project"), false)),
+      list_states: async (args) =>
+        json(await deps.states.list(text(args, "project"), AGENT_STATES_FILTER)),
       get_state: async (args) =>
         json(await deps.states.get(text(args, "project"), text(args, "state"))),
       diff_summary: async (args) =>

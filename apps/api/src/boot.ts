@@ -32,6 +32,7 @@ import type { FileProbeFn, ProbeFn } from "./modules/adapters/adapters.probe.ts"
 import { createAdaptersRepository } from "./modules/adapters/adapters.repository.ts";
 import type { ProjectsRepository } from "./modules/projects/projects.repository.ts";
 import { createStatesRepository } from "./modules/states/states.repository.ts";
+import type { StatesDeps } from "./modules/states/states.service.ts";
 import { createJobsService } from "./modules/jobs/jobs.service.ts";
 import type { JobsService } from "./modules/jobs/jobs.service.ts";
 import type { UsersService } from "./modules/users/users.service.ts";
@@ -148,6 +149,17 @@ export function createEngineWiring(
     states: createStatesRepository(db),
     projects,
   };
+}
+
+/** The states service sits on the shared wiring plus the jobs and audit services (05 §5.8). */
+export function statesDeps(
+  wiring: EngineWiring,
+  projects: ProjectsRepository,
+  jobs: JobsService,
+  audit: AuditService,
+  now: () => Date
+): StatesDeps {
+  return { repo: wiring.states, projects, adapters: wiring.adapters, jobs, audit, now };
 }
 
 export type Retention = { start(): void; stop(): void };

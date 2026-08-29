@@ -69,6 +69,7 @@ export type AdaptersHarness = {
   states: StatesRepository;
   projectsRepo: AccountsHarness["projectsRepo"];
   db: AccountsHarness["db"];
+  now: () => Date;
 };
 
 /** A registry with one fake postgres engine; other engines are absent, as in the real build. */
@@ -207,5 +208,6 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     states,
     projectsRepo: accounts.projectsRepo,
     db: accounts.db,
+    now: accounts.now,
   };
 }
