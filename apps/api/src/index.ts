@@ -16,6 +16,7 @@ import {
   createJobsRuntime,
   createNetguard,
   createRetention,
+  preMigrationCopy,
   refuse,
   serve,
   sweepSealed,
@@ -111,6 +112,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     slowMs: config.TESTATE_LOG_SLOW_MS,
     stacks: config.TESTATE_LOG_STACKS,
   });
+  const rollbackCopy = preMigrationCopy(config.TESTATE_DATA_DIR, bootId);
   const db = openMetadataDb(join(config.TESTATE_DATA_DIR, "metadata.db"));
   // Migrations live next to this entry in both layouts: src/db/migrations and dist/db/migrations.
   const migrationsDir = join(import.meta.dir, "db", "migrations");
@@ -271,6 +273,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     name: "boot",
     migrations_applied: migration.applied,
     migrations_skipped: migration.skipped,
+    pre_migration_copy: rollbackCopy !== null,
     reset_state_mounted: config.TESTATE_ENV !== "production",
     bootstrap_admin_created: bootstrapped,
     jobs_interrupted: recovery.interrupted,

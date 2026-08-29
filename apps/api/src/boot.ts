@@ -3,7 +3,9 @@
  * lives in the library or module it calls.
  */
 import type { App } from "./index.ts";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { networkInterfaces } from "node:os";
+import { join } from "node:path";
 
 import { ConfigError } from "./lib/config/index.ts";
 import { SETTINGS_DEFAULTS } from "./modules/settings/settings.service.ts";
@@ -56,6 +58,30 @@ export function ownAddresses(): string[] {
   return Object.values(networkInterfaces())
     .flat()
     .flatMap((iface) => (iface === undefined ? [] : [iface.address]));
+}
+
+/** How many pre-migration copies of the metadata database stay on the volume (22 §22.2). */
+const KEEP_COPIES = 3;
+
+/**
+ * Step 3: copy `metadata.db` to `run/metadata-<boot_id>.db` before migrations run, so an upgrade
+ * can roll back (22 §22.2). The first boot has nothing to copy. Boot ids sort by time, so the
+ * oldest copies are the first ones off the list.
+ */
+export function preMigrationCopy(dataDir: string, bootId: string): string | null {
+  const source = join(dataDir, "metadata.db");
+  if (!existsSync(source)) return null;
+  const dir = join(dataDir, "run");
+  mkdirSync(dir, { recursive: true });
+  const target = join(dir, `metadata-${bootId}.db`);
+  copyFileSync(source, target);
+  const copies = readdirSync(dir)
+    .filter((name) => name.startsWith("metadata-") && name.endsWith(".db"))
+    .sort();
+  for (const name of copies.slice(0, Math.max(0, copies.length - KEEP_COPIES))) {
+    rmSync(join(dir, name), { force: true });
+  }
+  return target;
 }
 
 /** Step 5: re-seal under the active key; refuse or declare loss per 17 §17.5–17.6. */
