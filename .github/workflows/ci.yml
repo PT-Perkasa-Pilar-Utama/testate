@@ -86,7 +86,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: start the compose engines
         run: |
-          docker compose -f deploy/compose.engines.yml up -d --wait postgres mysql mariadb mongo minio minio-init sftp ftp
+          docker compose -f deploy/compose.engines.yml up -d --wait postgres postgres-old mysql mariadb mongo minio minio-init sftp ftp
       - run: bun run e2e
       - uses: actions/upload-artifact@v4
         if: always()

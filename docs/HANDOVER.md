@@ -131,9 +131,9 @@ b9131cd test(e2e): cover the contract and agent stories over the API
 
 **In flight:** nothing. The tree was clean when this was written; `git status` should agree.
 
-**Worth knowing:** CI runs `complete-check` and the smoke boot only — Playwright never runs there,
-because the engines live in `deploy/compose.engines.yml`. The 150-story suite is a local gate. A CI
-job would need those services (and now a `postgres-old` container for story 20).
+**Worth knowing:** the `e2e` job in `.github/workflows/ci.yml` runs the whole suite after `check`,
+starting the compose engines by name. A new container has to be added to that list as well as to
+`deploy/compose.engines.yml` — `postgres-old` (story 20) is there now.
 
 **Remaining ponytails, in order:** the deferrable-constraint check per constraint
 (`postgres/write.ts`); backup file naming in the content-addressed store; `readTable` snapshotting
