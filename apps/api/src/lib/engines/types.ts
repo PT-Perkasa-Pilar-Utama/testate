@@ -25,7 +25,18 @@ export type PostgresConfig = {
   schemas?: string[];
 };
 
-export type ConnectionConfig = PostgresConfig;
+/** MariaDB is a dialect the probe reports; the config carries the adapter's engine name (ADR 0001). */
+export type MysqlConfig = {
+  engine: "mysql" | "mariadb";
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+  ssl: "disable" | "prefer" | "require";
+};
+
+export type ConnectionConfig = PostgresConfig | MysqlConfig;
 
 export type ConnectionRef = { connectionId: string; config: ConnectionConfig };
 

@@ -1,4 +1,3 @@
-import type { TableRef } from "@testate/shared";
 import { jsonObjectSchema } from "@testate/shared";
 import * as v from "valibot";
 
@@ -6,41 +5,50 @@ import { preciseNumbersAsText } from "../pure/display.ts";
 import { EngineError, sameTable } from "../types.ts";
 import type {
   CheckoutRun,
-  ConnectionRef,
   DbEngine,
   DisplayRow,
   RowText,
+  SnapshotOptions,
   SnapshotRun,
 } from "../types.ts";
+import { createCancelChannel } from "../postgres/query.ts";
+import type { Netguard } from "../postgres/pool.ts";
 import { guarded } from "./errors.ts";
 import { introspect } from "./introspect.ts";
-import { connect, createPoolManager } from "./pool.ts";
-import type { Netguard } from "./pool.ts";
-import { probe } from "./probe.ts";
-import { cancelQuery, createCancelChannel, listRunningQueries, runQuery } from "./query.ts";
-import { readTable, snapshot, swallow } from "./reader.ts";
+import { connect, createMysqlPoolManager } from "./pool.ts";
+import { dialectOf, probe } from "./probe.ts";
+import { cancelQuery, listRunningQueries, runQuery } from "./query.ts";
+import { snapshot, swallow } from "./reader.ts";
 import { checkout, resetCounters } from "./restore.ts";
-import { importRows } from "./import.ts";
 import { pageRows } from "./rows.ts";
-import { writeRows } from "./write.ts";
+import { importRows, writeRows } from "./write.ts";
 
-/** Schemas only exist on the postgres config; the union narrows here once. */
-function schemasOf(config: ConnectionRef["config"]): string[] | undefined {
-  return config.engine === "postgres" ? config.schemas : undefined;
-}
-
-/** Big integers and decimals stay text so the SPA never rounds them (12 §12.4). */
 export function decodeRow(row: RowText): DisplayRow {
   return v.parse(jsonObjectSchema, JSON.parse(preciseNumbersAsText(row)));
 }
 
-export function createPostgresEngine(netguard: Netguard): DbEngine {
-  const pools = createPoolManager(netguard);
+const versionRow = v.object({ v: v.string() });
+
+/** MySQL and MariaDB share one engine; the dialect decides the timeout variable (ADR 0001). */
+export function createMysqlEngine(netguard: Netguard): DbEngine {
+  const pools = createMysqlPoolManager(netguard);
   const cancel = createCancelChannel();
+  const dialects = new Map<string, "mysql" | "mariadb">();
+  const dialectFor = async (
+    connectionId: string,
+    sql: Awaited<ReturnType<typeof pools.acquire>>
+  ): Promise<"mysql" | "mariadb"> => {
+    const known = dialects.get(connectionId);
+    if (known !== undefined) return known;
+    const version = v.parse(versionRow, (await sql.unsafe("SELECT VERSION() AS v"))[0]).v;
+    const dialect = dialectOf(version).name;
+    dialects.set(connectionId, dialect);
+    return dialect;
+  };
   return {
     async probe(config) {
-      if (config.engine !== "postgres")
-        throw new EngineError("unsupported", `${config.engine} is not postgres`);
+      if (config.engine === "postgres")
+        throw new EngineError("unsupported", "postgres is not mysql");
       const sql = await connect(config, netguard, 2);
       try {
         return await guarded("probe", () => probe(sql));
@@ -50,10 +58,9 @@ export function createPostgresEngine(netguard: Netguard): DbEngine {
     },
     async introspect(conn, excluded) {
       const sql = await pools.acquire(conn);
-      return guarded("introspect", () => introspect(sql, excluded, schemasOf(conn.config)));
+      return guarded("introspect", () => introspect(sql, excluded));
     },
     snapshot(conn, opts): SnapshotRun {
-      // Acquiring the pool is the only async prelude; the run reserves its own connection when drained.
       const pending = (async (): Promise<SnapshotRun> =>
         snapshot(await pools.acquire(conn), opts))();
       void swallow(pending);
@@ -85,33 +92,44 @@ export function createPostgresEngine(netguard: Netguard): DbEngine {
     },
     async repairCounters(conn, tables) {
       const sql = await pools.acquire(conn);
-      return { counters: await guarded("counters", () => resetCounters(sql, tables)) };
+      const live = await introspect(sql, []);
+      return { counters: await guarded("counters", () => resetCounters(sql, tables, live)) };
     },
-    // ponytail: readTable snapshots every table and keeps one — fine for the grid on small
-    // databases; give it its own cursor before the data card pages large tables.
     async *readTable(conn, table, opts) {
       const sql = await pools.acquire(conn);
-      const live = await introspect(sql, [], schemasOf(conn.config));
-      const found = live.tables.find((item) => sameTable(item, table));
-      if (found === undefined)
+      const live = await introspect(sql, []);
+      if (!live.tables.some((item) => sameTable(item, { schema: null, name: table.name }))) {
         throw new EngineError("batch_failed", `table ${table.name} not found`);
-      yield* readTable(sql, found, opts.chunkRows);
+      }
+      const options: SnapshotOptions = { excludeTables: [] };
+      if (opts.chunkRows !== undefined) options.chunkRows = opts.chunkRows;
+      const run = snapshot(sql, options);
+      for await (const chunk of run) {
+        if (chunk.table.name === table.name) yield chunk;
+      }
     },
     async pageRows(conn, query) {
       const sql = await pools.acquire(conn);
-      return guarded("rows", () => pageRows(sql, query, schemasOf(conn.config)));
-    },
-    async importRows(conn, table, rows, opts) {
-      const sql = await pools.acquire(conn);
-      return guarded("import", () => importRows(sql, table, rows, opts, schemasOf(conn.config)));
+      return guarded("rows", () => pageRows(sql, query));
     },
     async writeRows(conn, table, ops, opts) {
       const sql = await pools.acquire(conn);
-      return guarded("edit", () => writeRows(sql, table, ops, opts, schemasOf(conn.config)));
+      return guarded("edit", () => writeRows(sql, table, ops, opts));
+    },
+    async importRows(conn, table, rows, opts) {
+      const sql = await pools.acquire(conn);
+      return guarded("import", () => importRows(sql, table, rows, opts));
     },
     async runQuery(conn, query, opts) {
       const sql = await pools.acquire(conn);
-      return runQuery(sql, conn.connectionId, cancel, query, opts);
+      return runQuery(
+        sql,
+        await dialectFor(conn.connectionId, sql),
+        conn.connectionId,
+        cancel,
+        query,
+        opts
+      );
     },
     async listRunningQueries(conn) {
       const sql = await pools.acquire(conn);
@@ -122,8 +140,9 @@ export function createPostgresEngine(netguard: Netguard): DbEngine {
       await guarded("cancel", () => cancelQuery(sql, conn.connectionId, cancel, queryId));
     },
     decodeRow,
-    evict: (connectionId) => pools.evict(connectionId),
+    evict: (connectionId) => {
+      dialects.delete(connectionId);
+      return pools.evict(connectionId);
+    },
   };
 }
-
-export type { TableRef };

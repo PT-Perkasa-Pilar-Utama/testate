@@ -43,6 +43,6 @@ describe("toConnectionConfig", () => {
     expect(() =>
       toConnectionConfig("postgres", {}, { connection_string: "postgres://a:b@h/" })
     ).toThrow("needs a host and a database");
-    expect(() => toConnectionConfig("mysql", { host: "h" }, {})).toThrow("has no engine");
+    expect(() => toConnectionConfig("mongodb", { host: "h" }, {})).toThrow("has no engine");
   });
 });

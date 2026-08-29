@@ -1,6 +1,7 @@
 import type { Engine } from "@testate/shared";
 
 import type { Netguard } from "./postgres/pool.ts";
+import { createMysqlEngine } from "./mysql/engine.ts";
 import { createPostgresEngine } from "./postgres/engine.ts";
 import { EngineError } from "./types.ts";
 import type { DbEngine } from "./types.ts";
@@ -18,9 +19,14 @@ export type EngineRegistry = {
   require(engine: Engine): DbEngine;
 };
 
-/** SCAFFOLD: postgres only; the mysql and mongodb cards register theirs here (12 §12.9). */
+/** SCAFFOLD: the mongodb card registers its engine here (12 §12.9). */
 export function createEngineRegistry(netguard: Netguard): EngineRegistry {
-  const engines = new Map<Engine, DbEngine>([["postgres", createPostgresEngine(netguard)]]);
+  const mysql = createMysqlEngine(netguard);
+  const engines = new Map<Engine, DbEngine>([
+    ["postgres", createPostgresEngine(netguard)],
+    ["mysql", mysql],
+    ["mariadb", mysql],
+  ]);
   return {
     get: (engine) => engines.get(engine) ?? null,
     require(engine) {

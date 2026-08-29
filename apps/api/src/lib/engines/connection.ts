@@ -4,11 +4,16 @@ import * as v from "valibot";
 import { EngineError } from "./types.ts";
 import type { ConnectionConfig } from "./types.ts";
 
-const DEFAULT_PORT = 5432;
+const DEFAULT_PORTS = { postgres: 5432, mysql: 3306, mariadb: 3306 } as const;
+type SqlEngine = keyof typeof DEFAULT_PORTS;
+
+function isSqlEngine(engine: Engine): engine is SqlEngine {
+  return engine === "postgres" || engine === "mysql" || engine === "mariadb";
+}
 
 const fieldsSchema = v.object({
   host: v.string(),
-  port: v.optional(v.number(), DEFAULT_PORT),
+  port: v.optional(v.number()),
   database: v.string(),
   user: v.string(),
   ssl: v.optional(v.picklist(["disable", "prefer", "require"]), "prefer"),
@@ -24,24 +29,25 @@ const SSL_MODES = new Map<string, ConnectionConfig["ssl"]>([
 ]);
 
 /** `postgres://user:pass@host:port/db?sslmode=` into the same shape the field form gives. */
-function fromUrl(text: string): ConnectionConfig {
+function fromUrl(engine: SqlEngine, text: string): ConnectionConfig {
   let url: URL;
   try {
     url = new URL(text);
   } catch {
     throw new EngineError("auth_failed", "connection string is not a URL");
   }
-  if (!/^postgres(ql)?:$/.test(url.protocol)) {
-    throw new EngineError("unsupported", `${url.protocol} is not a postgres URL`);
+  const expected = engine === "postgres" ? /^postgres(ql)?:$/ : /^(mysql|mariadb):$/;
+  if (!expected.test(url.protocol)) {
+    throw new EngineError("unsupported", `${url.protocol} is not a ${engine} URL`);
   }
   const database = decodeURIComponent(url.pathname.replace(/^\//, ""));
   if (url.hostname === "" || database === "") {
     throw new EngineError("auth_failed", "connection string needs a host and a database");
   }
   return {
-    engine: "postgres",
+    engine,
     host: decodeURIComponent(url.hostname),
-    port: url.port === "" ? DEFAULT_PORT : Number(url.port),
+    port: url.port === "" ? DEFAULT_PORTS[engine] : Number(url.port),
     database,
     user: decodeURIComponent(url.username),
     password: decodeURIComponent(url.password),
@@ -58,15 +64,27 @@ export function toConnectionConfig(
   config: JsonObject,
   secrets: Readonly<Record<string, string>>
 ): ConnectionConfig {
-  if (engine !== "postgres") throw new EngineError("unsupported", `${engine} has no engine`);
+  if (!isSqlEngine(engine)) throw new EngineError("unsupported", `${engine} has no engine`);
   const connectionString = secrets["connection_string"];
-  if (connectionString !== undefined) return fromUrl(connectionString);
+  if (connectionString !== undefined) return fromUrl(engine, connectionString);
   const fields = v.safeParse(fieldsSchema, config);
   if (!fields.success) throw new EngineError("auth_failed", "adapter config is incomplete");
+  const port = fields.output.port ?? DEFAULT_PORTS[engine];
+  if (engine !== "postgres") {
+    return {
+      engine,
+      host: fields.output.host,
+      port,
+      database: fields.output.database,
+      user: fields.output.user,
+      password: secrets["password"] ?? "",
+      ssl: fields.output.ssl,
+    };
+  }
   const out: ConnectionConfig = {
     engine: "postgres",
     host: fields.output.host,
-    port: fields.output.port,
+    port,
     database: fields.output.database,
     user: fields.output.user,
     password: secrets["password"] ?? "",

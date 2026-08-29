@@ -49,7 +49,7 @@ export function createEngineProbe(engines: EngineRegistry, fallback: ProbeFn): P
 }
 
 /**
- * SCAFFOLD: mysql, mariadb, and mongodb have no driver yet. The address check in front of this runs for real; the
+ * SCAFFOLD: mongodb has no driver yet. The address check in front of this runs for real; the
  * probe answers a static capability set per engine so create, retest, and the SPA flow work end to end.
  */
 export function createScaffoldProbe(): ProbeFn {
