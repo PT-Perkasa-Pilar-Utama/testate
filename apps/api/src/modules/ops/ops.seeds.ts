@@ -25,6 +25,8 @@ export type SeedDeps = {
   states: Pick<StatesService, "snapshot">;
   /** Init snapshots run as jobs; the seeded state waits for them (16 §16.1 exclusivity). */
   jobs: Pick<JobsService, "wait">;
+  /** Writes a sample file into the seeded storage adapter so the import wizard has a source (story 51). */
+  sample: (path: string, body: string) => Promise<void>;
   /** The bootstrap admin's row; seeds act as it. */
   admin: () => { id: string; username: string; role: Actor["role"] } | null;
 };
@@ -36,6 +38,23 @@ const META: RequestMeta = { ip: "", user_agent: "seed", request_id: null };
 const INIT_WAIT_SECONDS = 60;
 
 /** MinIO's liveness endpoint: a REST target that is not the API itself, which 18 §18.3 refuses. */
+export const SAMPLE_CSV_PATH = "imports/customers.csv";
+const SAMPLE_CSV = "email,balance,big\nseed-1@x.io,1.5,1\nseed-2@x.io,2.5,2\n";
+
+/** The dev sample writer: the compose MinIO bucket the `exports` adapter reads. */
+export function devSampleWriter(): SeedDeps["sample"] {
+  const client = new Bun.S3Client({
+    endpoint: "http://127.0.0.1:9010",
+    region: "us-east-1",
+    bucket: "exports",
+    accessKeyId: "testate",
+    secretAccessKey: "testate-minio",
+  });
+  return async (path, body) => {
+    await client.write(path, body);
+  };
+}
+
 export const REST_HEALTH_URL = "http://127.0.0.1:9010/minio/health/live";
 
 /** Adapters at the compose engines from `deploy/compose.engines.yml`, ports offset as documented there. */
@@ -120,6 +139,11 @@ async function devSeed(deps: SeedDeps, admin: Actor): Promise<SeedCounts> {
   if (counts.adapters > 0) {
     await deps.states.snapshot(admin, project.slug, { name: "seeded-baseline" }, META);
     counts.states = 1;
+  }
+  try {
+    await deps.sample(SAMPLE_CSV_PATH, SAMPLE_CSV);
+  } catch (cause: unknown) {
+    counts.warnings.push(`exports: ${cause instanceof Error ? cause.message : String(cause)}`);
   }
   return counts;
 }

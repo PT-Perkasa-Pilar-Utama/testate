@@ -26,7 +26,10 @@ export async function fetchStorageSource(
     const dir = join(deps.dataDir, "imports", "sources", Bun.randomUUIDv7());
     mkdirSync(dir, { recursive: true });
     const target = join(dir, `source.${extension}`);
-    await Bun.write(target, new Response(await source.read(path)));
+    // Bun.write(path, Response(stream)) stalls on a pull stream; a file writer drains it chunk by chunk.
+    const writer = Bun.file(target).writer();
+    for await (const chunk of await source.read(path)) writer.write(chunk);
+    await writer.end();
     return { path: target, uploadId: null };
   } finally {
     await source.close();

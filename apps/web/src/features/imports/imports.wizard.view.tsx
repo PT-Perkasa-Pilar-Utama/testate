@@ -9,6 +9,7 @@ import Select from "@/components/select.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { TRANSFORMS, tableKey } from "./imports.helpers.ts";
 import ReportPanel from "./imports.report.view.tsx";
+import SourceStep from "./imports.source.view.tsx";
 import type { WizardPresenter } from "./imports.wizard.presenter.ts";
 
 const MODE_OPTIONS = [
@@ -20,65 +21,6 @@ const TRANSFORM_OPTIONS = TRANSFORMS.map((value) => ({
   value,
   label: value === "" ? "as is" : value,
 }));
-
-function SourceStep(props: { presenter: WizardPresenter }): JSX.Element {
-  const onFile = (event: Event & { currentTarget: HTMLInputElement }): void => {
-    const file = event.currentTarget.files?.[0];
-    if (file !== undefined) void props.presenter.upload(file);
-  };
-  return (
-    <div class="grid gap-3">
-      <Show when={props.presenter.source() === null}>
-        <label class="grid gap-1.5 text-sm">
-          <span>CSV or XLSX file</span>
-          <input type="file" accept=".csv,.xlsx,text/csv" onChange={onFile} />
-        </label>
-      </Show>
-      <Show when={props.presenter.preview()}>
-        {(preview) => (
-          <div class="grid gap-2">
-            <Show when={preview().sheets}>
-              {(sheets) => (
-                <label class="grid gap-1.5 text-sm">
-                  <span>Sheet</span>
-                  <Select
-                    options={sheets().map((name) => ({ value: name, label: name }))}
-                    value={
-                      props.presenter.draft().sheet === ""
-                        ? (sheets()[0] ?? "")
-                        : props.presenter.draft().sheet
-                    }
-                    onChange={(sheet) => void props.presenter.setSheet(sheet)}
-                  />
-                </label>
-              )}
-            </Show>
-            <p class="text-kumo-subtle text-sm">
-              Detected {preview().detected.encoding}, header row {preview().detected.header_row}
-              {preview().typed_cells ? ", typed cells" : ""}
-            </p>
-            <Table>
-              <thead>
-                <tr>
-                  <For each={preview().columns}>{(column) => <Head>{column}</Head>}</For>
-                </tr>
-              </thead>
-              <tbody>
-                <For each={preview().rows.slice(0, 5)}>
-                  {(row) => (
-                    <Row>
-                      <For each={row}>{(cell) => <Cell>{JSON.stringify(cell)}</Cell>}</For>
-                    </Row>
-                  )}
-                </For>
-              </tbody>
-            </Table>
-          </div>
-        )}
-      </Show>
-    </div>
-  );
-}
 
 function MappingStep(props: { presenter: WizardPresenter }): JSX.Element {
   const fileColumns = (): { value: string; label: string }[] => [

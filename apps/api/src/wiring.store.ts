@@ -6,7 +6,7 @@ import type { Dispatcher } from "./modules/jobs/jobs.dispatcher.ts";
 import type { JobsService } from "./modules/jobs/jobs.service.ts";
 import type { HealthDeps } from "./modules/ops/ops.service.ts";
 import type { ResetDeps } from "./modules/ops/ops.reset.ts";
-import { createSeeds } from "./modules/ops/ops.seeds.ts";
+import { createSeeds, devSampleWriter } from "./modules/ops/ops.seeds.ts";
 import type { SeedDeps } from "./modules/ops/ops.seeds.ts";
 import type { ProjectsRepository } from "./modules/projects/projects.repository.ts";
 import type { UsersRepository } from "./modules/users/users.repository.ts";
@@ -108,6 +108,7 @@ export function resetDeps(
       states: services.states,
       jobs: services.jobs,
       admin: () => services.usersRepo.byUsername(config.TESTATE_ADMIN_USER),
+      sample: devSampleWriter(),
     }),
   };
 }

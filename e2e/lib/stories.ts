@@ -32,10 +32,8 @@ const NON_UI: [number, number][] = [
  * diffs, imports, and hooks but offer no actions). E2E cannot cover them until those cards land.
  */
 const NO_SCREEN: [number, number][] = [
-  // 15: needs a failing restore; 51: no storage-source picker in the wizard; 140: grid cells do
-  // not link foreign keys yet.
+  // 15: needs a failing restore; 140: grid cells do not link foreign keys yet.
   [15, 15],
-  [51, 51],
   [140, 140],
   [23, 31],
   [78, 79],

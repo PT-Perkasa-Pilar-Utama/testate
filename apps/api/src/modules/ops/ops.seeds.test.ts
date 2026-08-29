@@ -15,6 +15,7 @@ type Calls = {
 /** Service stubs that count calls; the adapter named in `refuse` fails like an unreachable engine. */
 function stubDeps(calls: Calls, refuse: string | null): SeedDeps {
   return {
+    sample: async () => undefined,
     users: {
       create: async (_actor, input) => {
         calls.users.push(input.username);

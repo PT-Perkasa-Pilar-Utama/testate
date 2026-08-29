@@ -37,9 +37,11 @@ export type WizardPresenter = {
   busy: () => boolean;
   error: () => string | null;
   databases: Refreshable<Adapter[]>;
+  storages: Refreshable<Adapter[]>;
   start: (source?: Source) => void;
   close: () => void;
   upload: (file: File) => Promise<void>;
+  useStorage: (adapterId: string, path: string) => Promise<void>;
   setSheet: (sheet: string) => Promise<void>;
   setAdapter: (id: string) => Promise<void>;
   setTable: (table: string) => void;
@@ -79,6 +81,9 @@ export function createWizardPresenter(slug: () => string, onDone: () => void): W
     (await adaptersModel.list(slug())).filter(
       (adapter) => adapter.kind === "database" && adapter.tier === "tabular"
     )
+  );
+  const storages = createRefreshable(async () =>
+    (await adaptersModel.list(slug())).filter((adapter) => adapter.kind === "storage")
   );
   const guarded = async (task: () => Promise<void>): Promise<void> => {
     setBusy(true);
@@ -120,6 +125,7 @@ export function createWizardPresenter(slug: () => string, onDone: () => void): W
     busy,
     error,
     databases,
+    storages,
     start: (initial) => {
       reset();
       setOpen(true);
@@ -135,6 +141,12 @@ export function createWizardPresenter(slug: () => string, onDone: () => void): W
       guarded(async () => {
         const uploaded = await importsModel.upload(slug(), file);
         const next: Source = { kind: "upload", upload_id: uploaded.upload_id };
+        setSource(next);
+        await loadPreview(next, "");
+      }),
+    useStorage: (adapterId, path) =>
+      guarded(async () => {
+        const next: Source = { kind: "storage", adapter_id: adapterId, path };
         setSource(next);
         await loadPreview(next, "");
       }),

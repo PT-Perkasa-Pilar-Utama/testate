@@ -217,4 +217,35 @@ test.describe("qa gap stories", () => {
     await page.getByRole("switch", { name: "Write mode" }).click();
     expect(issues).toStrictEqual([]);
   });
+  test("@story-51 the import wizard reads a file straight from a storage adapter", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const issues: Issue[] = [];
+    watch(page, issues);
+    const storage = await demoAdapter({ kind: "storage" });
+    const postgres = await demoAdapter({ engine: "postgres" });
+    const table = await tableNamed(postgres.id, "customers");
+    await page.goto("/projects/demo");
+    await settle(page);
+    await page.getByRole("tab", { name: "Imports" }).click();
+    await page.getByRole("button", { name: "New import" }).click();
+    const wizard = page.locator("dialog[open]");
+    await wizard.getByRole("tab", { name: "From a storage adapter" }).click();
+    await wizard.getByLabel("Storage adapter").selectOption({ label: storage.name });
+    await wizard.getByLabel("Path").fill("imports/customers.csv");
+    await wizard.getByRole("button", { name: "Load file" }).click();
+    await expect(wizard.getByRole("columnheader", { name: "email" })).toBeVisible({
+      timeout: 60_000,
+    });
+    await wizard.getByLabel("Database adapter").selectOption({ label: postgres.name });
+    await wizard.getByLabel("Table").selectOption(table);
+    await wizard.getByLabel("Mapping name").fill(`storage-${STAMP}`);
+    await wizard.getByRole("button", { name: "Dry run" }).click();
+    await expect(wizard.getByText(/Dry run: .*skipped 2 · failed 0/)).toBeVisible({
+      timeout: 90_000,
+    });
+    await page.keyboard.press("Escape");
+    expect(issues).toStrictEqual([]);
+  });
 });
