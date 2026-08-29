@@ -69,7 +69,7 @@ export default function ProjectView(props: { slug: string }): JSX.Element {
           <StatesView slug={props.slug} onChanged={() => presenter.project.refresh()} />
         </Match>
         <Match when={presenter.tab() === "checkouts"}>
-          <CheckoutsView slug={props.slug} />
+          <CheckoutsView slug={props.slug} onChanged={() => presenter.project.refresh()} />
         </Match>
         <Match when={presenter.tab() === "diffs"}>
           <DiffsView slug={props.slug} />

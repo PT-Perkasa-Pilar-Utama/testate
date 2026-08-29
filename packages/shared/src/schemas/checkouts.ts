@@ -105,3 +105,4 @@ export const countersSchema = v.object({
     })
   ),
 });
+export type Counters = v.InferOutput<typeof countersSchema>;

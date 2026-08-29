@@ -29,6 +29,7 @@ const SKIP = new Set([
   "Make read-only",
   "Allow restores",
   "Retry",
+  "Repair counters",
   "Take state",
   "Check out",
   "Protect",

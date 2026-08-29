@@ -1,12 +1,15 @@
 import type { JSX } from "@solidjs/web";
-import { For, Loading, createEffect } from "solid-js";
+import { For, Loading, Show, createEffect } from "solid-js";
 import type { Checkout } from "@testate/shared";
 import { TERMINAL_JOB_STATUSES } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
+import Button from "@/components/button.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { hasRole } from "@/lib/session.ts";
 import { subscribeJob } from "@/lib/sse.ts";
-import { createCheckoutsPresenter } from "./checkouts.presenter.ts";
+import { CountersDialog, DetailDialog, RESULT_VARIANT } from "./checkouts.dialogs.view.tsx";
+import { createCheckoutsPresenter, retriable } from "./checkouts.presenter.ts";
 
 const STATUS_VARIANT = {
   running: "info",
@@ -32,8 +35,14 @@ function Follow(props: { checkout: Checkout; onDone: () => void }): null {
   return null;
 }
 
-export default function CheckoutsView(props: { slug: string }): JSX.Element {
-  const presenter = createCheckoutsPresenter(() => props.slug);
+export default function CheckoutsView(props: {
+  slug: string;
+  onChanged?: () => void;
+}): JSX.Element {
+  const presenter = createCheckoutsPresenter(
+    () => props.slug,
+    () => props.onChanged?.()
+  );
   return (
     <Loading fallback={<p class="text-kumo-subtle">Loading checkouts...</p>}>
       <Table>
@@ -45,6 +54,7 @@ export default function CheckoutsView(props: { slug: string }): JSX.Element {
             <Head>Adapters</Head>
             <Head>By</Head>
             <Head>Started</Head>
+            <Head>Actions</Head>
           </tr>
         </thead>
         <tbody>
@@ -58,17 +68,53 @@ export default function CheckoutsView(props: { slug: string }): JSX.Element {
                   <Badge variant={STATUS_VARIANT[checkout.status]}>{checkout.status}</Badge>
                 </Cell>
                 <Cell>
-                  {checkout.adapters
-                    .map((adapter) => `${adapter.name}: ${adapter.result}`)
-                    .join(", ")}
+                  <span class="inline-flex flex-wrap gap-1">
+                    <For each={checkout.adapters}>
+                      {(adapter) => (
+                        <Badge variant={RESULT_VARIANT[adapter.result]}>
+                          {adapter.name}: {adapter.result}
+                        </Badge>
+                      )}
+                    </For>
+                  </span>
                 </Cell>
                 <Cell>{checkout.actor.label}</Cell>
                 <Cell>{checkout.created_at}</Cell>
+                <Cell>
+                  <div class="flex flex-wrap justify-end gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => presenter.openDetail(checkout)}
+                    >
+                      Details
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => void presenter.openCounters(checkout)}
+                    >
+                      Counters
+                    </Button>
+                    <Show when={hasRole("qa")}>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={!retriable(checkout)}
+                        onClick={() => void presenter.retry(checkout)}
+                      >
+                        Retry
+                      </Button>
+                    </Show>
+                  </div>
+                </Cell>
               </Row>
             )}
           </For>
         </tbody>
       </Table>
+      <DetailDialog presenter={presenter} />
+      <CountersDialog presenter={presenter} />
     </Loading>
   );
 }
