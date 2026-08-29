@@ -7,9 +7,14 @@ import {
   bootEnv,
   bootEvents,
   bootFails,
+  call,
+  draftFor,
+  killDuringSnapshot,
   newKey,
   preMigrationCopies,
   sealS3Credentials,
+  seedProject,
+  waitIdle,
 } from "./lib/boot.ts";
 
 // Every test spawns its own API on its own port and data dir; they must not overlap.
@@ -91,4 +96,68 @@ test("@story-125 @story-126 @story-127 rotates a key, refuses an unopenable stor
   const event = bootEvents(dir).at(-1);
   expect(event?.op.sealed_unreadable).toBeGreaterThan(0);
   expect(await declared.stop()).toBe(0);
+});
+
+const FIXED_HOSTS = ["169.254.169.254", "metadata.google.internal"];
+
+type Settings = { data: { netguard: { fixed: string[] }; disabled_adapters?: string[] } };
+type Failure = { error: { code: string; details: { reason: string; matched: string } } };
+type AdapterRow = { data: { id: string; status: string } };
+
+test("@story-32 @story-33 fixed targets stay blocked and a deny-list change disables its adapters", async () => {
+  test.setTimeout(180_000);
+  const dir = bootDir("netguard");
+  const booted = await bootApi(bootEnv(dir, newKey(), 3105));
+  const session = await adminSession(booted.base);
+  const adapterId = await seedProject(session, "guard");
+  await waitIdle(session);
+
+  // 32: the fixed list is not the admin deny list, and an empty deny list does not lift it.
+  const settings = await call<Settings>(session, "GET", "settings");
+  expect(settings.json.data.netguard.fixed).toEqual(expect.arrayContaining(FIXED_HOSTS));
+  for (const host of FIXED_HOSTS) {
+    const attempt = await call<Failure>(
+      session,
+      "POST",
+      "projects/guard/adapters/test",
+      draftFor(host)
+    );
+    expect(attempt.status).toBe(422);
+    expect(attempt.json.error.code).toBe("HOST_BLOCKED");
+    expect(attempt.json.error.details.reason).toBe("fixed");
+  }
+
+  // 33: the change re-checks every adapter and disables the ones the list now blocks.
+  const patched = await call<Settings>(session, "PATCH", "settings", {
+    netguard: { deny: ["127.0.0.1:54320"] },
+  });
+  expect(patched.json.data.disabled_adapters).toStrictEqual([adapterId]);
+  const adapter = await call<AdapterRow>(session, "GET", `projects/guard/adapters/${adapterId}`);
+  expect(adapter.json.data.status).toBe("disabled");
+  expect(await booted.stop()).toBe(0);
+});
+
+test("@story-107 a job killed with the instance comes back interrupted", async () => {
+  test.setTimeout(180_000);
+  const dir = bootDir("restart");
+  const key = newKey();
+  const first = await bootApi(bootEnv(dir, key, 3106));
+  const session = await adminSession(first.base);
+  const adapterId = await seedProject(session, "restart");
+  await waitIdle(session);
+  // SIGKILL runs no shutdown hook, so the job row stays `running` on disk.
+  const jobId = await killDuringSnapshot(session, first, "restart", adapterId);
+
+  const second = await bootApi(bootEnv(dir, key, 3106));
+  expect(bootEvents(dir).at(-1)?.op.jobs_interrupted).toBeGreaterThan(0);
+  const back = await adminSession(second.base);
+  const job = await call<{ data: { status: string } }>(back, "GET", `jobs/${jobId}`);
+  expect(job.json.data.status).toBe("interrupted");
+  const states = await call<{ data: { name: string; status: string }[] }>(
+    back,
+    "GET",
+    "projects/restart/states?limit=10"
+  );
+  expect(states.json.data.map((state) => state.status)).toContain("failed");
+  expect(await second.stop()).toBe(0);
 });

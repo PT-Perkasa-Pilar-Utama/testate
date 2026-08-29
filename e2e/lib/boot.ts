@@ -134,6 +134,8 @@ export type BootEvent = {
     sealed_re_sealed: number;
     sealed_unreadable: number;
     pre_migration_copy: boolean;
+    jobs_interrupted: number;
+    jobs_head_unknown: number;
   };
 };
 
@@ -174,15 +176,25 @@ async function post(session: AdminSession, path: string, body: PasswordChange): 
   });
 }
 
-/** Logs the bootstrap admin in and rotates its temporary password (09 §9.2). */
-export async function adminSession(base: string): Promise<AdminSession> {
-  const login = await fetch(`${base}/api/v1/auth/login`, {
+async function login(base: string, password: string): Promise<string | null> {
+  const response = await fetch(`${base}/api/v1/auth/login`, {
     method: "POST",
     headers: { "content-type": "application/json", "X-Testate-Request": "1" },
-    body: JSON.stringify({ username: "admin", password: FIRST }),
+    body: JSON.stringify({ username: "admin", password }),
   });
-  if (!login.ok) throw new Error(`boot login: ${login.status} ${await login.text()}`);
-  const cookie = (login.headers.getSetCookie().at(0) ?? "").split(";")[0] ?? "";
+  if (!response.ok) return null;
+  return (response.headers.getSetCookie().at(0) ?? "").split(";")[0] ?? "";
+}
+
+/**
+ * Signs the bootstrap admin in. A fresh instance forces the temporary password out of the way
+ * (09 §9.2); an instance this suite already visited answers to the rotated one.
+ */
+export async function adminSession(base: string): Promise<AdminSession> {
+  const rotated = await login(base, FINAL);
+  if (rotated !== null) return { base, cookie: rotated };
+  const cookie = await login(base, FIRST);
+  if (cookie === null) throw new Error(`boot login refused both passwords`);
   const session = { base, cookie };
   const changed = await post(session, "auth/password", { current: FIRST, next: FINAL });
   if (changed.status !== 204) throw new Error(`boot password: ${changed.status}`);
@@ -213,4 +225,116 @@ export async function sealS3Credentials(session: AdminSession): Promise<void> {
     }),
   });
   if (!response.ok) throw new Error(`seal settings: ${response.status} ${await response.text()}`);
+}
+
+export type Reply<T> = { status: number; json: T };
+
+/** What a request body may hold: JSON, or nothing at all. */
+export type RequestBody =
+  | string
+  | number
+  | boolean
+  | null
+  | RequestBody[]
+  | { [key: string]: RequestBody };
+
+/** One request on a spawned instance as the signed-in admin; the caller names the payload type. */
+export async function call<T>(
+  session: AdminSession,
+  method: string,
+  path: string,
+  body?: RequestBody
+): Promise<Reply<T>> {
+  const response = await fetch(`${session.base}/api/v1/${path}`, {
+    method,
+    headers: {
+      "content-type": "application/json",
+      "X-Testate-Request": "1",
+      cookie: session.cookie,
+    },
+    body: body === undefined ? null : JSON.stringify(body),
+  });
+  const text = await response.text();
+  // A 204 answers with no body; every other route answers JSON.
+  const json: T = text === "" ? JSON.parse("null") : JSON.parse(text);
+  return { status: response.status, json };
+}
+
+export type PostgresDraft = {
+  kind: "database";
+  engine: "postgres";
+  name: string;
+  config: { host: string; port: number; database: string; user: string };
+  secrets: { password: string };
+};
+
+/** A draft against the compose Postgres, with the host under test. */
+export function draftFor(host: string, name = "probe"): PostgresDraft {
+  return {
+    kind: "database",
+    engine: "postgres",
+    name,
+    config: { host, port: 54320, database: "shop", user: "testate" },
+    secrets: { password: "testate" },
+  };
+}
+
+/** A project with one Postgres adapter on a spawned instance; loopback is lifted first. */
+export async function seedProject(session: AdminSession, slug: string): Promise<string> {
+  await call(session, "PATCH", "settings", { netguard: { deny: [] } });
+  const project = await call<unknown>(session, "POST", "projects", { slug, name: slug });
+  if (project.status !== 201) throw new Error(`project ${slug}: ${JSON.stringify(project.json)}`);
+  const created = await call<{ data: { adapter: { id: string } } }>(
+    session,
+    "POST",
+    `projects/${slug}/adapters`,
+    draftFor("127.0.0.1", "shop")
+  );
+  if (created.status !== 201) throw new Error(`adapter: ${JSON.stringify(created.json)}`);
+  return created.json.data.adapter.id;
+}
+
+/** Waits until the instance runs no job, so the next step starts on an idle dispatcher. */
+export async function waitIdle(session: AdminSession): Promise<void> {
+  for (let attempt = 0; attempt < 240; attempt += 1) {
+    const jobs = await call<{ data: unknown[] }>(
+      session,
+      "GET",
+      "jobs?status=running&status=queued&limit=50"
+    );
+    if (jobs.json.data.length === 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error("the instance never went idle");
+}
+
+/**
+ * Starts a snapshot and kills the instance while the job runs, so the next boot finds a `running`
+ * row. A snapshot of the demo database is quick, so this retries until it catches one mid-flight.
+ */
+export async function killDuringSnapshot(
+  session: AdminSession,
+  booted: Booted,
+  slug: string,
+  adapterId: string
+): Promise<string> {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const started = await call<{ data: { job: { id: string } } }>(
+      session,
+      "POST",
+      `projects/${slug}/states`,
+      { name: `killed-${attempt}`, adapter_ids: [adapterId] }
+    );
+    const jobId = started.json.data.job.id;
+    for (let poll = 0; poll < 60; poll += 1) {
+      const job = await call<{ data: { status: string } }>(session, "GET", `jobs/${jobId}`);
+      if (job.json.data.status === "running") {
+        await booted.stop("SIGKILL");
+        return jobId;
+      }
+      if (job.json.data.status !== "queued") break;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+  }
+  throw new Error("no snapshot job stayed running long enough to interrupt");
 }
