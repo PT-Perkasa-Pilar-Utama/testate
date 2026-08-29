@@ -10,12 +10,8 @@ const ROOT = join(import.meta.dirname, "..", "..");
  * `agent.e2e.ts`); what stays here needs an injected failure, a second boot, or a clock.
  */
 const NON_UI: [number, number][] = [
-  // 15, 78, 85 need a failing restore, real schema drift, or a lock another client holds; the
-  // API and job tests inject those. (85: the engines name blockers and the checkout details
-  // offer Terminate blockers; the fake-engine test covers the path.)
+  // 15 needs a restore that fails against a real engine; the API and job tests inject that.
   [15, 15],
-  [78, 78],
-  [85, 85],
   // Session expiry needs a clock, the engine minimum an old server, the host key a second SSH
   // identity; the API and boot tests hold those.
   [8, 8],
@@ -23,9 +19,6 @@ const NON_UI: [number, number][] = [
   [97, 97],
   // 50: XLSX typed cells are engine-tested; Playwright runs on Node without the Bun writer.
   [50, 50],
-  [63, 63],
-  [72, 73],
-  [83, 83],
 ];
 
 /**

@@ -50,7 +50,7 @@ export default defineConfig({
     { name: "adapter", testMatch: /adapter\.e2e\.ts/, dependencies: ["state-api"] },
     { name: "crawl", testMatch: /buttons\.e2e\.ts/, dependencies: ["adapter"] },
     // Boot stories spawn API processes of their own; run them last so they never starve a browser.
-    { name: "boot", testMatch: /boot\.e2e\.ts/, dependencies: ["crawl"] },
+    { name: "boot", testMatch: /(boot|engine|types)\.e2e\.ts/, dependencies: ["crawl"] },
   ],
   globalSetup: "./e2e/setup.ts",
   outputDir: join(E2E_DIR, "results"),

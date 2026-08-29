@@ -1,21 +1,23 @@
 import { expect, test } from "@playwright/test";
 
 import {
-  adminSession,
   bootApi,
   bootDir,
   bootEnv,
   bootEvents,
   bootFails,
+  newKey,
+  preMigrationCopies,
+} from "./lib/boot.ts";
+import {
+  adminSession,
   call,
   draftFor,
   killDuringSnapshot,
-  newKey,
-  preMigrationCopies,
   sealS3Credentials,
   seedProject,
   waitIdle,
-} from "./lib/boot.ts";
+} from "./lib/instance.ts";
 
 // Every test spawns its own API on its own port and data dir; they must not overlap.
 test.describe.configure({ mode: "serial" });
