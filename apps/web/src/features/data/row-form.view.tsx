@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { For, Show } from "solid-js";
+import { For, Show, createSignal } from "solid-js";
 import type { TableSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
@@ -7,7 +7,7 @@ import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
-import { FIELD_MODES, FUNCTION_OPTIONS } from "./editing.presenter.ts";
+import { FIELD_MODES, FUNCTION_OPTIONS, MAX_COPIES } from "./editing.presenter.ts";
 import type { EditingPresenter, FieldDraft } from "./editing.presenter.ts";
 
 const MODE_OPTIONS = FIELD_MODES.map((mode) => ({ value: mode, label: mode }));
@@ -89,9 +89,10 @@ export default function RowForm(props: {
   presenter: EditingPresenter;
   table: TableSchema;
 }): JSX.Element {
+  const [copies, setCopies] = createSignal("1");
   const onSubmit = (event: SubmitEvent): void => {
     event.preventDefault();
-    void props.presenter.submitForm();
+    void props.presenter.submitForm({ copies: Number.parseInt(copies(), 10) });
   };
   return (
     <Show when={props.presenter.form()}>
@@ -123,7 +124,32 @@ export default function RowForm(props: {
             <Show when={props.presenter.error()}>
               {(message) => <Banner variant="error">{message()}</Banner>}
             </Show>
-            <div class="flex justify-end gap-2">
+            <div class="flex flex-wrap items-center justify-end gap-2">
+              <Show when={form().kind === "insert"}>
+                <label class="flex items-center gap-2 text-sm">
+                  <span>Copies</span>
+                  <Input
+                    size="sm"
+                    type="number"
+                    min="1"
+                    max={String(MAX_COPIES)}
+                    value={copies()}
+                    onInput={(event) => setCopies(event.currentTarget.value)}
+                  />
+                </label>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() =>
+                    void props.presenter.submitForm({
+                      copies: Number.parseInt(copies(), 10),
+                      more: true,
+                    })
+                  }
+                >
+                  Insert and add another
+                </Button>
+              </Show>
               <Button type="button" variant="ghost" onClick={() => props.presenter.closeForm()}>
                 Cancel
               </Button>

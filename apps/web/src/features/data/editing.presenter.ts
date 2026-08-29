@@ -38,7 +38,8 @@ export type EditingPresenter = {
   openUpdate: (row: JsonObject) => void;
   closeForm: () => void;
   setField: (column: string, patch: Partial<FieldDraft>) => void;
-  submitForm: () => Promise<void>;
+  /** `copies` inserts the same draft up to 50 times (story 143); `more` keeps the form open. */
+  submitForm: (options?: { copies?: number; more?: boolean }) => Promise<void>;
   remove: (row: JsonObject) => Promise<void>;
   fixture: () => Fixture | null;
   fixtureFor: (row: JsonObject, options: FixtureOptions) => Promise<void>;
@@ -50,6 +51,8 @@ export type EditingPresenter = {
 };
 
 const EMPTY_FIELD: FieldDraft = { mode: "value", text: "", fn: "now", input: "" };
+/** One row-edits call takes at most 50 edits (06 §6.6). */
+export const MAX_COPIES = 50;
 
 /** Text from the form to the typed FormValue (24 §24.2): numbers and JSON stay typed, the rest is text. */
 export function toFormValue(field: FieldDraft, columnType: string): FormValue {
@@ -219,7 +222,7 @@ export function createEditingPresenter(
         draft.set(column, { ...field, ...patch });
         return { ...current, draft };
       }),
-    submitForm: () => {
+    submitForm: (options = {}) => {
       const staticSlug = slug();
       const staticId = id();
       const staticTable = tableName();
@@ -228,15 +231,18 @@ export function createEditingPresenter(
       const state = form();
       if (schema === null || staticOpen === null || state === null) return Promise.resolve();
       const values = valuesOf(state.draft, schema, state.kind === "update" ? state.original : null);
+      const copies = Math.min(Math.max(options.copies ?? 1, 1), MAX_COPIES);
       const edits: JsonObject[] =
         state.kind === "insert"
-          ? [{ kind: "insert", values }]
+          ? Array.from({ length: copies }, () => ({ kind: "insert", values }))
           : [{ kind: "update", pk: state.pk, values }];
+      const keepOpen = options.more === true && state.kind === "insert";
       setError(null);
       return attempt(async () => {
         try {
           await edit(staticSlug, staticId, staticTable, staticOpen.id, edits);
-          setForm(null);
+          if (keepOpen) setForm({ kind: "insert", draft: draftOf(schema, null) });
+          else setForm(null);
         } catch (cause: unknown) {
           setError(cause instanceof Error ? cause.message : String(cause));
         }
