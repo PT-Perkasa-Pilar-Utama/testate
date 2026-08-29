@@ -52,6 +52,8 @@ export type AuditListQuery = {
   from?: string;
   to?: string;
   outcome?: "succeeded" | "failed" | "partial";
+  /** Rows limited to these project ids for scoped tokens; null means every row (09 §9.5). */
+  scope?: string[] | null;
 };
 
 export type AuditPage = { rows: AuditRow[]; nextCursor: string | null };
@@ -118,6 +120,10 @@ function conditions(query: AuditListQuery): Condition[] {
     const value = query[filter.key];
     if (value === undefined || value === "") continue;
     found.push({ sql: filter.sql, params: [filter.like === true ? `${value}%` : String(value)] });
+  }
+  if (query.scope !== undefined && query.scope !== null) {
+    const marks = query.scope.map(() => "?").join(",");
+    found.push({ sql: `project_id IN (${marks === "" ? "NULL" : marks})`, params: query.scope });
   }
   if (query.cursor !== undefined) {
     const after = decodeCursor(query.cursor);

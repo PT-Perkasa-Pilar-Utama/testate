@@ -46,6 +46,7 @@ export type AuthDeps = {
   audit: AuditService;
   password: PasswordHasher;
   now: () => Date;
+  projectExists: (id: string) => boolean;
 };
 
 const HOUR = 60 * 60 * 1000;
@@ -85,7 +86,12 @@ export function createAuthService(deps: AuthDeps): AuthService {
   const { users, repo, audit, password } = deps;
   const nowMs = (): number => deps.now().getTime();
   const nowIso = (): string => deps.now().toISOString();
-  const tokens = createTokenService({ repo, audit, now: deps.now });
+  const tokens = createTokenService({
+    repo,
+    audit,
+    now: deps.now,
+    projectExists: deps.projectExists,
+  });
 
   const failLogin = (user: UserRecord, meta: RequestMeta): void => {
     const count = user.failed_login_count + 1;

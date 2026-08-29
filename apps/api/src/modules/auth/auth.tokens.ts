@@ -25,7 +25,13 @@ export type TokenService = {
   revokeToken(actor: Actor, id: string, meta: RequestMeta): Promise<void>;
 };
 
-export type TokenDeps = { repo: AuthRepository; audit: AuditService; now: () => Date };
+export type TokenDeps = {
+  repo: AuthRepository;
+  audit: AuditService;
+  now: () => Date;
+  /** Project existence check for `project_ids` (02 §2.7). */
+  projectExists: (id: string) => boolean;
+};
 
 const DAY = 24 * 60 * 60 * 1000;
 const TOUCH_INTERVAL_MS = 60 * 1000;
@@ -85,7 +91,8 @@ export function createTokenService(deps: TokenDeps): TokenService {
       const agent = input.kind === "agent";
       const role: Role = agent ? "viewer" : (input.role ?? "viewer");
       if (RANK[role] > RANK[actor.role]) throw forbidden("role");
-      // SCAFFOLD: the projects card checks each project id against the projects table (02 §2.7).
+      const unknown = (input.project_ids ?? []).find((id) => !deps.projectExists(id));
+      if (unknown !== undefined) throw notFound("project");
       const secret = `tst_${randomSecret()}`;
       const record = repo.insertToken({
         id: Bun.randomUUIDv7(),

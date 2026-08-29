@@ -67,7 +67,9 @@ function tableTools(data: DataService): TableTools {
 export function createAgentTools(deps: AgentToolDeps): ToolRunner {
   const tools = new Map<string, Tool>(
     Object.entries({
-      list_projects: async () => json(await deps.projects.list()),
+      // SCAFFOLD: the agent card threads the token's project scope into these reads (23 §23.1).
+      list_projects: async () =>
+        json(await deps.projects.list(null, { limit: 200, sort: "name", order: "asc" })),
       list_adapters: async (args) => json(await deps.adapters.list(text(args, "project"))),
       ...tableTools(deps.data),
       page_rows: async (args) =>

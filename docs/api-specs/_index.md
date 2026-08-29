@@ -19,7 +19,7 @@ Legend: `OK` implemented and tested · `WIP` in progress · `TODO` not started �
 | Authentication | `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `POST /auth/password`, `GET/DELETE /auth/sessions` | OK |
 | Tokens | `GET /tokens`, `POST /tokens`, `DELETE /tokens/{id}` | OK |
 | Users | `GET /users`, `POST /users`, `GET /users/{id}`, `PATCH /users/{id}`, `POST .../disable`, `POST .../enable`, `DELETE /users/{id}`, `POST .../reset-password` | OK |
-| Projects | `GET /projects`, `POST /projects`, `GET /projects/{slug}`, `PATCH`, `GET .../head`, `GET .../quota`, `GET .../deletion-plan`, `POST .../deletion` | SCAFFOLD |
+| Projects | `GET /projects`, `POST /projects`, `GET /projects/{slug}`, `PATCH`, `GET .../head`, `GET .../quota`, `GET .../deletion-plan`, `POST .../deletion` | OK |
 | Adapters | `GET .../adapters`, `POST .../adapters/test`, `POST .../adapters`, `GET .../adapters/{id}`, `PATCH`, `POST .../mode`, `POST .../retest`, `GET .../deletion-plan`, `POST .../deletion` | SCAFFOLD |
 | Data | `GET .../schema`, `GET .../tables/{table}/rows`, `GET .../lookup`, `POST .../write-sessions`, `PATCH/DELETE .../write-sessions/{sid}`, `POST .../row-edits`, `POST .../query`, `POST .../query/export`, `GET .../queries`, `DELETE .../queries/{query_id}`, saved queries, `GET .../query-history`, policies, `POST .../fixture` | SCAFFOLD |
 | Imports | `POST .../uploads`, `POST .../imports/preview`, mappings, `POST .../imports`, `GET .../imports`, `GET .../imports/{run_id}`, `GET .../rejected`, `GET .../tables/{table}/sample` | SCAFFOLD |

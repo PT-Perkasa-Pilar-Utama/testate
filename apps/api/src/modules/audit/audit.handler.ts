@@ -25,8 +25,11 @@ const listQuery = v.object({
 
 const TEXT_KEYS = ["cursor", "project_id", "actor", "action", "from", "to"] as const;
 
-export function toListQuery(parsed: v.InferOutput<typeof listQuery>): AuditListQuery {
-  const query: AuditListQuery = { limit: parsed.limit?.[0] ?? 50 };
+export function toListQuery(
+  parsed: v.InferOutput<typeof listQuery>,
+  scope: string[] | null
+): AuditListQuery {
+  const query: AuditListQuery = { limit: parsed.limit?.[0] ?? 50, scope };
   for (const key of TEXT_KEYS) {
     const value = parsed[key]?.[0];
     if (value !== undefined) query[key] = value;
@@ -39,12 +42,12 @@ export function toListQuery(parsed: v.InferOutput<typeof listQuery>): AuditListQ
 export function createAuditHandlers(service: AuditService): AuditHandlers {
   return {
     list: async (c) => {
-      const query = toListQuery(parseQuery(c, listQuery));
+      const query = toListQuery(parseQuery(c, listQuery), c.get("projectScope"));
       const page = await service.list(query);
       return okPage(c, page.rows, page.nextCursor, query.limit);
     },
     exportCsv: async (c) => {
-      const query = toListQuery(parseQuery(c, listQuery));
+      const query = toListQuery(parseQuery(c, listQuery), c.get("projectScope"));
       c.header("Content-Type", "text/csv; charset=utf-8");
       c.header("Content-Disposition", 'attachment; filename="audit.csv"');
       return c.body(await service.exportCsv(query), 200);

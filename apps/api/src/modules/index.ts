@@ -6,6 +6,7 @@
  * Do NOT add handlers or logic here.
  */
 import { Hono } from "hono";
+import type { MiddlewareHandler } from "hono";
 
 import type { Handler } from "../lib/http/index.ts";
 import type { AdaptersHandlers } from "./adapters/adapters.handler.ts";
@@ -51,6 +52,8 @@ export type V1Deps = {
   auth: AuthHandlers;
   users: UsersHandlers;
   projects: ProjectsHandlers;
+  /** 404 for `/projects/:slug/**` outside a scoped token's projects (09 §9.5). */
+  projectScope: MiddlewareHandler;
   adapters: AdaptersHandlers;
   data: DataHandlers;
   imports: ImportsHandlers;
@@ -69,6 +72,8 @@ export type V1Deps = {
 
 export function createV1(deps: V1Deps): Hono {
   const v1 = new Hono();
+  v1.use("/projects/:slug", deps.projectScope);
+  v1.use("/projects/:slug/*", deps.projectScope);
   v1.route("/", createOpsRouter(deps.ops, deps.resetState));
   v1.route("/", createAuthRouter(deps.auth));
   v1.route("/", createUsersRouter(deps.users));

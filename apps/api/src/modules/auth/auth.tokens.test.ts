@@ -7,7 +7,16 @@ const PROJECT = "01991f00-0000-7000-8000-000000000010";
 
 describe("api tokens", () => {
   it("creates a standard token that resolves to its role and scope", async () => {
-    const { auth, admin } = await createAccounts();
+    const { auth, admin, projectsRepo, now } = await createAccounts();
+    projectsRepo.insert({
+      id: PROJECT,
+      slug: "shop",
+      name: "Shop",
+      description: null,
+      quota_bytes: null,
+      created_by: admin.id,
+      created_at: now().toISOString(),
+    });
     const { token, record } = await auth.createToken(
       admin,
       { name: "ci-shop", kind: "standard", role: "qa", project_ids: [PROJECT] },
@@ -110,5 +119,16 @@ describe("api tokens", () => {
       (row) => row.action
     );
     expect(actions).toStrictEqual(["token.revoked", "token.created"]);
+  });
+
+  it("refuses project ids that do not exist", async () => {
+    const { auth, admin } = await createAccounts();
+    await expect(
+      auth.createToken(
+        admin,
+        { name: "ci", kind: "standard", role: "qa", project_ids: [PROJECT] },
+        TEST_META
+      )
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });

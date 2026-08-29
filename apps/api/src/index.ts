@@ -48,6 +48,8 @@ import { mountSpa, resolveWebSource, rewriteWebAssets } from "./modules/ops/ops.
 import { createOpsHandlers } from "./modules/ops/ops.handler.ts";
 import { createResetHandler } from "./modules/ops/ops.reset.ts";
 import { createProjectsHandlers } from "./modules/projects/projects.handler.ts";
+import { createProjectsRepository } from "./modules/projects/projects.repository.ts";
+import { requireProjectInScope } from "./modules/projects/projects.scope.ts";
 import { createProjectsService } from "./modules/projects/projects.service.ts";
 import { createRestHandlers } from "./modules/rest/rest.handler.ts";
 import { createRestService } from "./modules/rest/rest.service.ts";
@@ -134,7 +136,15 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   const audit = createAuditService({ repo: createAuditRepository(db), now });
   const usersRepo = createUsersRepository(db);
   const authRepo = createAuthRepository(db);
-  const auth = createAuthService({ users: usersRepo, repo: authRepo, audit, password, now });
+  const projectsRepo = createProjectsRepository(db);
+  const auth = createAuthService({
+    users: usersRepo,
+    repo: authRepo,
+    audit,
+    password,
+    now,
+    projectExists: (id) => projectsRepo.exists(id),
+  });
   const users = createUsersService({
     repo: usersRepo,
     sessions: { revokeAll: (id) => authRepo.deleteUserSessions(id) },
@@ -149,7 +159,15 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   const diffs = createDiffsService();
   const storage = createStorageService();
   const adapters = createAdaptersService();
-  const projects = createProjectsService();
+  const settings = createSettingsService();
+  const projects = createProjectsService({
+    repo: projectsRepo,
+    audit,
+    settings,
+    adapters,
+    jobs,
+    now,
+  });
   let ready = false;
 
   const handlers = {
@@ -188,7 +206,8 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
       trustProxy: config.TESTATE_TRUST_PROXY,
     }),
     users: createUsersHandlers(users, config.TESTATE_TRUST_PROXY),
-    projects: createProjectsHandlers(projects, prefix),
+    projects: createProjectsHandlers(projects, prefix, config.TESTATE_TRUST_PROXY),
+    projectScope: requireProjectInScope(projectsRepo),
     adapters: createAdaptersHandlers(adapters, prefix),
     data: createDataHandlers(data),
     imports: createImportsHandlers(
@@ -204,7 +223,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     hooks: createHooksHandlers(createHooksService()),
     jobs: createJobsHandlers(jobs),
     audit: createAuditHandlers(audit),
-    settings: createSettingsHandlers(createSettingsService(), prefix),
+    settings: createSettingsHandlers(settings, prefix),
     tools: createToolsHandlers(createToolsService()),
     agent: createAgentHandlers(
       createAgentService(VERSION),

@@ -28,14 +28,12 @@ const ALL = [ADAPTER_MOCK, MONGO_ADAPTER_MOCK, STORAGE_ADAPTER_MOCK, REST_ADAPTE
 /** SCAFFOLD: four adapters of the mock project. The adapters card wires probe, sealing, and the repository. */
 export function createAdaptersService(): AdaptersService {
   const find = (slug: string, id: string): Adapter => {
-    if (slug !== "shop") throw notFound("project");
     const adapter = ALL.find((item) => item.id === id);
     if (adapter === undefined) throw notFound("adapter");
     return adapter;
   };
   return {
-    async list(slug) {
-      if (slug !== "shop") throw notFound("project");
+    async list(_slug) {
       return ALL;
     },
     async testDraft(draft) {
@@ -50,7 +48,6 @@ export function createAdaptersService(): AdaptersService {
       return PROBE_MOCK;
     },
     async create(slug, draft) {
-      if (slug !== "shop") throw notFound("project");
       if (ALL.some((item) => item.name.toLowerCase() === draft.name.toLowerCase())) {
         throw conflict("adapter name is taken", { name: draft.name });
       }
