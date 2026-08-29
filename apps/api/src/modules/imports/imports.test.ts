@@ -1,5 +1,3 @@
-import { existsSync, readdirSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 import {
   importReportSchema,
@@ -8,14 +6,16 @@ import {
   previewSchema,
   uploadSchema,
 } from "@testate/shared";
-import type { ImportReport, Mapping } from "@testate/shared";
 import * as v from "valibot";
 
 import { TEST_META } from "../../../test/accounts.ts";
-import { PG, S3, createAdaptersHarness, createSettled } from "../../../test/adapters.ts";
-import type { MemoryTree } from "../../lib/files/index.ts";
-import type { AdaptersHarness } from "../../../test/adapters.ts";
 import { expectContract } from "../../../test/contract.ts";
+import {
+  MAPPING,
+  createImportsHarness,
+  runToReport,
+  uploadCsv,
+} from "../../../test/imports-harness.ts";
 import { detectDelimiter, parseCsv, readCsv } from "./imports.csv.ts";
 import {
   IMPORT_REPORT_MOCK,
@@ -24,67 +24,7 @@ import {
   PREVIEW_MOCK,
   UPLOAD_MOCK,
 } from "./imports.mock.ts";
-import { createImportsService } from "./imports.service.ts";
-import type { ImportRunRequest, ImportsService, MappingBody } from "./imports.service.ts";
 import { applyTransforms } from "./imports.transforms.ts";
-
-type Harness = { harness: AdaptersHarness; imports: ImportsService; adapterId: string };
-
-async function createHarness(): Promise<Harness> {
-  const harness = await createAdaptersHarness();
-  const adapter = await createSettled(harness, PG);
-  const imports = createImportsService({
-    repo: harness.imports,
-    adapters: harness.repo,
-    policies: harness.policies,
-    projects: harness.projectsRepo,
-    engines: harness.engines,
-    ring: harness.ring,
-    files: harness.files,
-    jobs: harness.runtime.jobs,
-    audit: harness.audit,
-    dataDir: harness.dataDir,
-    maxUploadBytes: 1024 * 1024,
-    now: harness.now,
-  });
-  return { harness, imports, adapterId: adapter.id };
-}
-
-const MAPPING: MappingBody = {
-  name: "customers",
-  target: "public.customers",
-  columns: [
-    { source: "Email", target: "email", transforms: [{ kind: "trim" }, { kind: "lowercase" }] },
-  ],
-  key_columns: ["email"],
-  mode: "upsert",
-  options: {},
-};
-
-async function uploadCsv(h: Harness, text: string): Promise<string> {
-  const upload = await h.imports.upload("shop", new File([text], "customers.csv"), "import");
-  return upload.upload_id;
-}
-
-async function runToReport(
-  h: Harness,
-  mapping: Mapping,
-  uploadId: string,
-  extra: { dry_run?: boolean; mode?: "append" | "upsert" | "replace" } = {}
-): Promise<ImportReport> {
-  const request: ImportRunRequest = {
-    adapter_id: h.adapterId,
-    mapping_id: mapping.id,
-    source: { upload_id: uploadId },
-    dry_run: extra.dry_run ?? false,
-    foreign_key_checks: true,
-  };
-  if (extra.mode !== undefined) request.mode = extra.mode;
-  const job = await h.imports.run(h.harness.qa, "shop", request, TEST_META);
-  const done = await h.harness.runtime.jobs.wait(null, job.id, 5);
-  expect(done.error).toBeNull();
-  return v.parse(importReportSchema, done.result);
-}
 
 describe("imports", () => {
   it("mocks match the contract", () => {
@@ -136,7 +76,7 @@ describe("imports", () => {
   });
 
   it("validates mappings against the live schema and column policies", async () => {
-    const h = await createHarness();
+    const h = await createImportsHarness();
     await expect(
       h.imports.createMapping(h.harness.qa, h.adapterId, {
         ...MAPPING,
@@ -179,7 +119,7 @@ describe("imports", () => {
   });
 
   it("previews an upload, dry-runs without writing, and reports row errors", async () => {
-    const h = await createHarness();
+    const h = await createImportsHarness();
     const mapping = await h.imports.createMapping(h.harness.qa, h.adapterId, MAPPING);
     const uploadId = await uploadCsv(h, "Email\n C@X.IO \n\nfail@x.io\n");
     const preview = await h.imports.preview("shop", { source: { upload_id: uploadId } });
@@ -200,7 +140,7 @@ describe("imports", () => {
   });
 
   it("upserts by key, writes rejected rows with reasons, and re-imports them", async () => {
-    const h = await createHarness();
+    const h = await createImportsHarness();
     const mapping = await h.imports.createMapping(h.harness.qa, h.adapterId, MAPPING);
     const report = await runToReport(
       h,
@@ -237,7 +177,7 @@ describe("imports", () => {
   });
 
   it("replace stashes first, empties the table, and refuses real runs on read-only adapters", async () => {
-    const h = await createHarness();
+    const h = await createImportsHarness();
     const mapping = await h.imports.createMapping(h.harness.qa, h.adapterId, {
       ...MAPPING,
       mode: "append",
@@ -265,50 +205,5 @@ describe("imports", () => {
         TEST_META
       )
     ).rejects.toMatchObject({ code: "ADAPTER_READ_ONLY" });
-  });
-
-  it("imports a CSV from a storage adapter and removes the fetched copy", async () => {
-    const h = await createHarness();
-    const s3 = await createSettled(h.harness, S3);
-    const tree: MemoryTree = new Map();
-    tree.set("drops/customers.csv", {
-      bytes: new TextEncoder().encode("Email\n C@X.IO \n"),
-      modified_at: "2026-08-28T00:00:00.000Z",
-    });
-    h.harness.trees.set("exports", tree);
-    const mapping = await h.imports.createMapping(h.harness.qa, h.adapterId, MAPPING);
-    const request: ImportRunRequest = {
-      adapter_id: h.adapterId,
-      mapping_id: mapping.id,
-      source: { adapter_id: s3.id, path: "drops/customers.csv" },
-      dry_run: false,
-      foreign_key_checks: true,
-    };
-    const job = await h.imports.run(h.harness.qa, "shop", request, TEST_META);
-    const done = await h.harness.runtime.jobs.wait(null, job.id, 5);
-    expect(done.error).toBeNull();
-    expect(v.parse(importReportSchema, done.result)).toMatchObject({ inserted: 1, failed: 0 });
-    expect(h.harness.databases.get("shop")?.get("public.customers")?.length).toBe(3);
-    expect(existsSync(join(h.harness.dataDir, "imports", "sources"))).toBe(true);
-    expect(readdirSync(join(h.harness.dataDir, "imports", "sources"))).toEqual([]);
-    await expect(
-      h.imports.run(
-        h.harness.qa,
-        "shop",
-        { ...request, source: { adapter_id: s3.id, path: "drops/nope.csv" } },
-        TEST_META
-      )
-    ).rejects.toMatchObject({ code: "NOT_FOUND" });
-  });
-
-  it("builds a sample with a header, an example row, and a schema block", async () => {
-    const h = await createHarness();
-    const sample = await h.imports.sample(h.adapterId, "public.customers", "csv", undefined);
-    const lines = sample.body.trim().split("\n");
-    expect(lines[0]).toBe("id,email");
-    expect(lines[2]).toBe("# column, type, nullable, default, foreign key, required");
-    await expect(
-      h.imports.sample(h.adapterId, "public.customers", "xlsx", undefined)
-    ).rejects.toMatchObject({ code: "ENGINE_UNSUPPORTED" });
   });
 });

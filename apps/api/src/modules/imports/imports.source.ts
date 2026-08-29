@@ -16,15 +16,16 @@ export async function fetchStorageSource(
   adapterId: string,
   path: string
 ): Promise<SourceFile> {
-  if (!/\.csv$/i.test(path))
-    throw new AppError("ENGINE_UNSUPPORTED", "only CSV sources are supported in this build", {
+  const extension = /\.(csv|tsv|txt|xlsx)$/i.exec(path)?.[1]?.toLowerCase();
+  if (extension === undefined)
+    throw new AppError("VALIDATION_ERROR", "the source must be a csv, tsv, txt, or xlsx file", {
       reason: "type",
     });
   const { source } = await deps.files.resolve(project.id, adapterId, null);
   try {
     const dir = join(deps.dataDir, "imports", "sources", Bun.randomUUIDv7());
     mkdirSync(dir, { recursive: true });
-    const target = join(dir, "source.csv");
+    const target = join(dir, `source.${extension}`);
     await Bun.write(target, new Response(await source.read(path)));
     return { path: target, uploadId: null };
   } finally {

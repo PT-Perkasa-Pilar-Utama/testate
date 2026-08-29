@@ -2,6 +2,7 @@ import type { Actor, AdapterDraft } from "@testate/shared";
 
 import type { RequestMeta } from "../../lib/http/auth.ts";
 import type { AdaptersService } from "../adapters/adapters.service.ts";
+import type { JobsService } from "../jobs/jobs.service.ts";
 import type { ProjectsService } from "../projects/projects.service.ts";
 import type { StatesService } from "../states/states.service.ts";
 import type { UsersService } from "../users/users.service.ts";
@@ -22,6 +23,8 @@ export type SeedDeps = {
   projects: Pick<ProjectsService, "create">;
   adapters: Pick<AdaptersService, "create">;
   states: Pick<StatesService, "snapshot">;
+  /** Init snapshots run as jobs; the seeded state waits for them (16 §16.1 exclusivity). */
+  jobs: Pick<JobsService, "wait">;
   /** The bootstrap admin's row; seeds act as it. */
   admin: () => { id: string; username: string; role: Actor["role"] } | null;
   /** The API's own base URL for the REST adapter (the health endpoint). */
@@ -32,6 +35,7 @@ export type SeedDeps = {
 export const DEV_PASSWORDS = { qa: "qa-password-1234", viewer: "viewer-password-1234" } as const;
 
 const META: RequestMeta = { ip: "", user_agent: "seed", request_id: null };
+const INIT_WAIT_SECONDS = 60;
 
 /** Adapters at the compose engines from `deploy/compose.engines.yml`, ports offset as documented there. */
 export function devAdapters(selfUrl: string): AdapterDraft[] {
@@ -102,7 +106,8 @@ async function devSeed(deps: SeedDeps, admin: Actor): Promise<SeedCounts> {
   counts.projects = 1;
   for (const draft of devAdapters(deps.selfUrl)) {
     try {
-      await deps.adapters.create(admin, project.slug, draft, META);
+      const { init_job } = await deps.adapters.create(admin, project.slug, draft, META);
+      if (init_job !== null) await deps.jobs.wait(null, init_job.id, INIT_WAIT_SECONDS);
       counts.adapters += 1;
     } catch (cause: unknown) {
       counts.warnings.push(

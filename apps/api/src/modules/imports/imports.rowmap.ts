@@ -4,7 +4,7 @@ import type * as v from "valibot";
 
 import type { RowValues } from "../../lib/engines/index.ts";
 import { AppError } from "../../lib/http/index.ts";
-import type { ReadOptions } from "./imports.csv.ts";
+import type { TableOptions } from "./imports.table.ts";
 import { TransformError, applyTransforms } from "./imports.transforms.ts";
 import { validateImportRow } from "./imports.validate.ts";
 
@@ -49,12 +49,14 @@ export function toValues(row: JsonObject): RowValues {
 type ParseOptions = v.InferOutput<typeof parseOptionsSchema>;
 
 /** Request options win over the mapping's (07 §7.4). */
-export function readOptionsOf(request: ParseOptions, mapping: ParseOptions): ReadOptions {
-  const options: ReadOptions = {};
+export function readOptionsOf(request: ParseOptions, mapping: ParseOptions): TableOptions {
+  const options: TableOptions = {};
   const delimiter = request.delimiter ?? mapping.delimiter;
   if (delimiter !== undefined) options.delimiter = delimiter;
   const headerRow = request.header_row ?? mapping.header_row;
   if (headerRow !== undefined) options.headerRow = headerRow;
+  const sheet = request.sheet ?? mapping.sheet;
+  if (sheet !== undefined) options.sheet = sheet;
   return options;
 }
 

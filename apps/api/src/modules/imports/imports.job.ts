@@ -16,7 +16,8 @@ import type { HookRunResult, HookRunner } from "../hooks/hooks.service.ts";
 import type { JobRunner } from "../jobs/jobs.dispatcher.ts";
 import type { SnapshotDeps } from "../states/states.snapshot.ts";
 import { takeStash } from "../states/states.stash.ts";
-import { csvLine, readCsv } from "./imports.csv.ts";
+import { csvLine } from "./imports.csv.ts";
+import { readTable } from "./imports.table.ts";
 import { classify, readOptionsOf, toValues } from "./imports.rowmap.ts";
 import type { Rejected } from "./imports.rowmap.ts";
 import type { ImportsRepository, RunCounts } from "./imports.repository.ts";
@@ -148,10 +149,10 @@ async function process(
   deps: ImportJobDeps,
   prepared: Prepared,
   payload: v.InferOutput<typeof importPayloadSchema>,
-  text: string,
+  bytes: Uint8Array,
   progress: (value: JsonObject) => void
 ): Promise<{ counts: RunCounts; rejected: Rejected[]; columns: string[] }> {
-  const parsed = readCsv(text, readOptionsOf(payload.options, prepared.mapping.options));
+  const parsed = readTable(bytes, readOptionsOf(payload.options, prepared.mapping.options));
   const counts: RunCounts = { inserted: 0, updated: 0, skipped: 0, failed: 0, duration_ms: 0 };
   const rejected: Rejected[] = [];
   let batch: Batch = { rows: [], numbers: [], sources: [] };
@@ -237,8 +238,8 @@ export function createImportRunner(deps: ImportJobDeps): JobRunner {
         });
         deps.imports.setStash(payload.run_id, stashId);
       }
-      const text = await Bun.file(payload.source_path).text();
-      const { counts, rejected, columns } = await process(deps, prepared, payload, text, progress);
+      const bytes = new Uint8Array(await Bun.file(payload.source_path).arrayBuffer());
+      const { counts, rejected, columns } = await process(deps, prepared, payload, bytes, progress);
       counts.duration_ms = Date.now() - startedAt;
       const rejectedPath = payload.dry_run
         ? null

@@ -126,9 +126,14 @@ export function createImportsHandlers(
         query.format[0] ?? "csv",
         firstQuery(query.mapping_id)
       );
-      c.header("Content-Type", "text/csv; charset=utf-8");
+      c.header(
+        "Content-Type",
+        sample.fileName.endsWith(".xlsx")
+          ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          : "text/csv; charset=utf-8"
+      );
       c.header("Content-Disposition", `attachment; filename="${sample.fileName}"`);
-      return c.body(sample.body, 200);
+      return c.body(new Blob([sample.body]).stream(), 200);
     },
   };
 }

@@ -6,9 +6,11 @@ import type * as v from "valibot";
 
 import { AppError } from "../../lib/http/index.ts";
 import type { AdapterRecord } from "../adapters/adapters.repository.ts";
-import { readCsv } from "./imports.csv.ts";
+import { writeXlsx } from "../../lib/xlsx/index.ts";
+import { parseCsv } from "./imports.csv.ts";
 import { isFetchedSource } from "./imports.job.ts";
-import type { ReadOptions } from "./imports.csv.ts";
+import { readTable } from "./imports.table.ts";
+import type { TableOptions } from "./imports.table.ts";
 import type { ImportsRepository, UploadRecord } from "./imports.repository.ts";
 import { sampleCsv } from "./imports.sample.ts";
 
@@ -32,10 +34,18 @@ export type FileOps = {
     table: string,
     format: "csv" | "xlsx",
     mapping: Mapping | null
-  ): Promise<{ fileName: string; body: string }>;
+  ): Promise<{ fileName: string; body: string | Uint8Array }>;
 };
 
 const UPLOAD_TTL_MS = 60 * 60 * 1000;
+
+function tableOptionsOf(options: PreviewRequest["options"]): TableOptions {
+  const table: TableOptions = {};
+  if (options?.delimiter !== undefined) table.delimiter = options.delimiter;
+  if (options?.header_row !== undefined) table.headerRow = options.header_row;
+  if (options?.sheet !== undefined) table.sheet = options.sheet;
+  return table;
+}
 const PREVIEW_ROWS = 20;
 
 function typeOf(name: string): Upload["type"] {
@@ -88,30 +98,26 @@ export function createFileOps(deps: FileDeps): FileOps {
     },
     async preview(project, request) {
       const { path, uploadId } = await deps.sourcePath(project, request.source);
-      const text = await Bun.file(path).text();
+      const bytes = new Uint8Array(await Bun.file(path).arrayBuffer());
       if (uploadId === null && isFetchedSource(path))
         rmSync(dirname(path), { recursive: true, force: true });
-      const options: ReadOptions = {};
-      if (request.options?.delimiter !== undefined) options.delimiter = request.options.delimiter;
-      if (request.options?.header_row !== undefined) options.headerRow = request.options.header_row;
-      const parsed = readCsv(text, options);
-      return {
+      const parsed = readTable(bytes, tableOptionsOf(request.options));
+      const preview: Preview = {
         columns: parsed.columns,
         rows: parsed.rows.slice(0, PREVIEW_ROWS),
-        detected: { delimiter: parsed.delimiter, encoding: "utf-8", header_row: parsed.headerRow },
+        detected: { encoding: "utf-8", header_row: parsed.headerRow },
         typed_cells: false,
       };
+      if (parsed.delimiter !== undefined) preview.detected.delimiter = parsed.delimiter;
+      if (parsed.sheets !== undefined) preview.sheets = parsed.sheets;
+      return preview;
     },
     async sample(adapter, table, format, mapping) {
+      const csv = sampleCsv(await deps.tableOf(adapter, table), mapping);
       if (format === "xlsx") {
-        throw new AppError("ENGINE_UNSUPPORTED", "xlsx samples are not available in this build", {
-          reason: "format",
-        });
+        return { fileName: `sample-${table}.xlsx`, body: writeXlsx("sample", parseCsv(csv, ",")) };
       }
-      return {
-        fileName: `sample-${table}.csv`,
-        body: sampleCsv(await deps.tableOf(adapter, table), mapping),
-      };
+      return { fileName: `sample-${table}.csv`, body: csv };
     },
   };
 }

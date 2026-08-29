@@ -82,7 +82,7 @@ export function storageDeps(
   return { projects, files: wiring.files, hostKeys: wiring.hostKeys, audit, now };
 }
 
-export type SeedServices = Pick<SeedDeps, "users" | "projects" | "adapters" | "states"> & {
+export type SeedServices = Pick<SeedDeps, "users" | "projects" | "adapters" | "states" | "jobs"> & {
   usersRepo: Pick<UsersRepository, "byUsername">;
 };
 
@@ -106,6 +106,7 @@ export function resetDeps(
       projects: services.projects,
       adapters: services.adapters,
       states: services.states,
+      jobs: services.jobs,
       admin: () => services.usersRepo.byUsername(config.TESTATE_ADMIN_USER),
       selfUrl: config.TESTATE_PUBLIC_URL ?? `http://127.0.0.1:${config.PORT}`,
     }),

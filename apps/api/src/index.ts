@@ -212,6 +212,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
               projects,
               adapters,
               states: core.states,
+              jobs,
               usersRepo,
             })
           ),

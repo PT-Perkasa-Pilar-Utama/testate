@@ -1,10 +1,16 @@
 import { describe, expect, it } from "bun:test";
-import type { Adapter, AdapterDraft, Project, User } from "@testate/shared";
+import type { Adapter, AdapterDraft, Job, Project, User } from "@testate/shared";
 
 import { createSeeds, devAdapters } from "./ops.seeds.ts";
 import type { SeedDeps } from "./ops.seeds.ts";
 
-type Calls = { users: string[]; projects: string[]; adapters: string[]; states: string[] };
+type Calls = {
+  users: string[];
+  projects: string[];
+  adapters: string[];
+  states: string[];
+  waits: string[];
+};
 
 /** Service stubs that count calls; the adapter named in `refuse` fails like an unreachable engine. */
 function stubDeps(calls: Calls, refuse: string | null): SeedDeps {
@@ -28,7 +34,11 @@ function stubDeps(calls: Calls, refuse: string | null): SeedDeps {
         if (draft.name === refuse) throw new Error("connection refused");
         calls.adapters.push(draft.name);
         // SAFETY: the seed ignores the created adapter.
-        return { adapter: { id: draft.name } as Adapter, init_job: null };
+        return {
+          // SAFETY: the seed uses only the ids of the created adapter and its init job.
+          adapter: { id: draft.name } as Adapter,
+          init_job: { id: `init-${draft.name}` } as Job,
+        };
       },
     },
     states: {
@@ -38,6 +48,13 @@ function stubDeps(calls: Calls, refuse: string | null): SeedDeps {
         return { state: { id: "s1" }, job: { id: "j1" } } as Awaited<
           ReturnType<SeedDeps["states"]["snapshot"]>
         >;
+      },
+    },
+    jobs: {
+      wait: async (_scope, id) => {
+        calls.waits.push(id);
+        // SAFETY: the seed reads nothing back from the awaited job.
+        return { id } as Awaited<ReturnType<SeedDeps["jobs"]["wait"]>>;
       },
     },
     admin: () => ({ id: "u1", username: "admin", role: "admin" }),
@@ -53,7 +70,7 @@ function targetOf(draft: AdapterDraft): string {
 
 describe("reset seeds", () => {
   it("dev seeds users, the demo project, the compose adapters, and one state; a refused adapter is a warning", async () => {
-    const calls: Calls = { users: [], projects: [], adapters: [], states: [] };
+    const calls: Calls = { users: [], projects: [], adapters: [], states: [], waits: [] };
     const seed = createSeeds(stubDeps(calls, "shop-mongo"));
     const counts = await seed("dev");
     expect(calls.users).toEqual(["qa", "viewer"]);
@@ -66,6 +83,13 @@ describe("reset seeds", () => {
       "self-health",
     ]);
     expect(calls.states).toEqual(["seeded-baseline"]);
+    expect(calls.waits).toEqual([
+      "init-shop-postgres",
+      "init-shop-mysql",
+      "init-shop-mariadb",
+      "init-exports",
+      "init-self-health",
+    ]);
     expect(counts).toEqual({
       users: 3,
       projects: 1,
@@ -76,7 +100,7 @@ describe("reset seeds", () => {
   });
 
   it("qa seeds nothing beyond the bootstrap admin, and the dev adapters name the compose ports", async () => {
-    const calls: Calls = { users: [], projects: [], adapters: [], states: [] };
+    const calls: Calls = { users: [], projects: [], adapters: [], states: [], waits: [] };
     const counts = await createSeeds(stubDeps(calls, null))("qa");
     expect(counts).toEqual({ users: 1, projects: 0, adapters: 0, states: 0, warnings: [] });
     expect(calls.adapters).toEqual([]);

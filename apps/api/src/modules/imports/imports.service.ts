@@ -63,7 +63,7 @@ export type ImportsService = {
     table: string,
     format: "csv" | "xlsx",
     mappingId: string | undefined
-  ): Promise<{ fileName: string; body: string }>;
+  ): Promise<{ fileName: string; body: string | Uint8Array }>;
 };
 
 export type ImportsDeps = {
@@ -134,15 +134,14 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
     if (Date.parse(upload.expires_at) <= deps.now().getTime()) throw notFound("upload");
     return upload;
   };
-  /** SCAFFOLD: XLSX needs a reader dependency (decision pending). */
   const sourcePath = async (
     project: Project,
     source: ImportRunRequest["source"]
   ): Promise<SourceFile> => {
     if ("upload_id" in source) {
       const upload = liveUpload(project, source.upload_id);
-      if (upload.type !== "csv")
-        throw new AppError("ENGINE_UNSUPPORTED", "only CSV sources are supported in this build", {
+      if (upload.type === "tar")
+        throw new AppError("VALIDATION_ERROR", "an archive is not an import source", {
           reason: "type",
         });
       return { path: upload.path, uploadId: upload.upload_id };
