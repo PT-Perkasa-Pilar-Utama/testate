@@ -1,6 +1,9 @@
 import type { Checkout, JsonObject } from "@testate/shared";
 import * as v from "valibot";
 
+import { runLanes } from "../../lib/async/lanes.ts";
+import { laneOf } from "../states/states.snapshot.ts";
+
 import { notFound } from "../../lib/http/index.ts";
 import type { AuditService } from "../audit/audit.service.ts";
 import type { AdapterRecord } from "../adapters/adapters.repository.ts";
@@ -50,16 +53,12 @@ async function restoreAll(
   const manifests = new Map(
     deps.states.manifestsOf(payload.state_id).map((manifest) => [manifest.adapter_id, manifest])
   );
-  const results: Checkout["adapters"][number]["result"][] = [];
-  for (const adapter of adapters) {
+  const covered = adapters.filter((adapter) => manifests.has(adapter.id));
+  let finished = 0;
+  return runLanes(covered, laneOf, deps.adapterLanes ?? 1, async (adapter) => {
     const manifest = manifests.get(adapter.id);
-    if (manifest === undefined) continue;
-    progress({
-      phase: "restore",
-      adapter_id: adapter.id,
-      done: results.length,
-      total: adapters.length,
-    });
+    if (manifest === undefined) throw notFound("manifest");
+    progress({ phase: "restore", adapter_id: adapter.id, done: finished, total: covered.length });
     const outcome = await restoreFromManifest(deps, adapter, manifest, {
       force: payload.force,
       signal,
@@ -72,9 +71,9 @@ async function restoreAll(
         }),
     });
     deps.checkouts.setAdapterResult(checkoutId, adapter.id, outcome);
-    results.push(outcome.result);
-  }
-  return results;
+    finished += 1;
+    return outcome.result;
+  });
 }
 
 /** HEAD moves to the state only when every adapter restored; otherwise it is unknown (13 §13.2 step 6). */
@@ -113,7 +112,7 @@ function hookContextOf(deps: CheckoutJobDeps, job: JobRecord, stateId: string): 
  * The `checkout` job (13 §13.2): stash, `before_checkout` hooks (abort fails the job before any
  * restore), restore each adapter, record results, `after_checkout` hooks (abort marks it partial),
  * move HEAD.
- * ponytail: adapters restore one after another; parallel under the cap needs a per-job budget.
+ * Adapters on distinct targets restore in parallel up to `adapterLanes`; one target stays sequential.
  */
 export function createCheckoutRunner(deps: CheckoutJobDeps): JobRunner {
   return async ({ job, signal, progress }) => {

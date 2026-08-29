@@ -30,6 +30,8 @@ export type RunnerDeps = ReturnToInitDeps & {
   audit: AuditService;
   projects: Pick<ProjectsRepository, "setHead" | "byId" | "usedBytes">;
   now: () => Date;
+  /** Snapshot and checkout lanes: adapters on distinct targets run this many at once. */
+  adapterLanes?: number;
 };
 
 const actionSchema = v.picklist(["restore", "force", "skip"]);

@@ -1,6 +1,8 @@
 import type { Actor, ManifestTable, TableRef } from "@testate/shared";
 import * as v from "valibot";
 
+import { runLanes } from "../../lib/async/lanes.ts";
+
 import type { BlobStore } from "../../lib/blobstore/index.ts";
 import { toConnectionConfig } from "../../lib/engines/connection.ts";
 import { sameTable } from "../../lib/engines/index.ts";
@@ -28,7 +30,14 @@ export type SnapshotDeps = {
   audit: AuditService;
   hooks: HookRunner;
   now: () => Date;
+  /** Adapters on distinct targets run in this many lanes at once; same target stays sequential. */
+  adapterLanes?: number;
 };
+
+/** Two adapters on one database share a lane (13 §13.3: never two restores on one target). */
+export function laneOf(adapter: AdapterRecord): string {
+  return adapter.target_hash ?? adapter.id;
+}
 
 const initPayload = v.object({ init: v.literal(true), adapter_id: v.string() });
 const manualPayload = v.object({ state_id: v.string(), adapter_ids: v.array(v.string()) });
@@ -238,8 +247,7 @@ async function afterSnapshot(
 /**
  * The `snapshot` job: every adapter at one instant each, blobs pinned, manifests committed in one
  * transaction, HEAD moved to the state (08 §8.3, 15 §15.3).
- * ponytail: adapters run one after another — the spec wants them parallel under the job cap;
- * switch to Promise.all once the dispatcher exposes a per-job budget.
+ * Adapters on distinct targets run in parallel up to `adapterLanes`; one target stays sequential.
  * `after_snapshot` hooks run after HEAD moved; an `abort` failure marks the job partial (13 §13.5).
  */
 export function createSnapshotRunner(deps: SnapshotDeps): JobRunner {
@@ -249,20 +257,25 @@ export function createSnapshotRunner(deps: SnapshotDeps): JobRunner {
     const actor: Actor = job.actor;
     try {
       assertQuota(deps.projects, projectId);
-      const manifests: AdapterManifest[] = [];
-      for (const adapter of target.adapters) {
-        manifests.push(
-          await snapshotAdapter(deps, adapter, job.id, signal, (done, table) =>
+      let finished = 0;
+      const manifests: AdapterManifest[] = await runLanes(
+        target.adapters,
+        laneOf,
+        deps.adapterLanes ?? 1,
+        async (adapter) => {
+          const manifest = await snapshotAdapter(deps, adapter, job.id, signal, (done, table) =>
             progress({
               phase: "snapshot",
               adapter_id: adapter.id,
-              adapters_done: manifests.length,
+              adapters_done: finished,
               tables_done: done,
               table,
             })
-          )
-        );
-      }
+          );
+          finished += 1;
+          return manifest;
+        }
+      );
       const size = deps.states.commitManifest(target.stateId, manifests, deps.now().toISOString());
       // A stash never moves HEAD (05 §5.8).
       if (MOVES_HEAD.has(target.kind)) {

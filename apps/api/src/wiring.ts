@@ -85,6 +85,7 @@ export function createEngineWiring(
   const now = (): Date => new Date();
   return {
     engines,
+    adapterLanes: config.TESTATE_JOB_CONCURRENCY,
     probe: createEngineProbe(engines, createScaffoldProbe()),
     fileProbe: createFileProbe(openFileSource, createHttpProbe(createScaffoldFileProbe())),
     hostKeys,
