@@ -235,6 +235,47 @@ test.describe("state stories", () => {
     await page.keyboard.press("Escape");
     expect(issues).toStrictEqual([]);
   });
+  test("@story-79 a checkout of a partial state leaves the adapters it does not cover untouched and says so", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const issues: Issue[] = [];
+    watch(page, issues);
+    const postgres = await demoAdapter({ engine: "postgres" });
+    const name = `partial-${STAMP}`;
+    await page.goto("/projects/demo");
+    await settle(page);
+    await page.getByRole("tab", { name: "States" }).click();
+    await page.getByRole("button", { name: "Take state" }).click();
+    const take = page.locator("dialog[open]");
+    await take.getByLabel("Name").fill(name);
+    // Ticking one adapter turns the default "every adapter" into that subset (story 62).
+    await take.locator("fieldset label", { hasText: postgres.name }).locator("input").click();
+    await take.getByRole("button", { name: "Take" }).click();
+    const row = page.locator("tr", { hasText: name });
+    await expect(row.getByText("ready")).toBeVisible({ timeout: 60_000 });
+    await expect(row).toContainText(postgres.name);
+    await expect(row).not.toContainText("shop-mongo");
+    await row.getByRole("button", { name: "Check out" }).click();
+    const dialog = page.locator("dialog[open]");
+    await expect(dialog.getByText("not in state").first()).toBeVisible({ timeout: 30_000 });
+    await dialog.getByRole("button", { name: "Check out" }).click();
+    await expect(page.locator("dialog[open]")).toHaveCount(0);
+    await page.getByRole("tab", { name: "Checkouts" }).click();
+    const history = page.locator("tr", { hasText: name }).first();
+    await expect(history.getByText("succeeded")).toBeVisible({ timeout: 90_000 });
+    await expect(history.getByText(`${postgres.name}: restored`)).toBeVisible();
+    // Untouched adapters are not checkout rows: the preflight said so, the history stays honest.
+    await expect(history).not.toContainText("shop-mongo");
+    await page.getByRole("tab", { name: "States" }).click();
+    await row.getByRole("button", { name: "Delete" }).click();
+    await expect(async () => {
+      await page.locator("dialog[open]").getByRole("button", { name: "Delete state" }).click();
+      await expect(page.locator("dialog[open]")).toHaveCount(0, { timeout: 3_000 });
+    }).toPass({ timeout: 90_000 });
+    await expect(page.locator("tr", { hasText: name })).toHaveCount(0, { timeout: 60_000 });
+    expect(issues).toStrictEqual([]);
+  });
 });
 
 test.describe("viewer state stories", () => {

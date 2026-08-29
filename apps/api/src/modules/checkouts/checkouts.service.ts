@@ -159,13 +159,11 @@ export function createCheckoutsService(deps: CheckoutsDeps): CheckoutsService {
     async preflight(slug, input) {
       const project = projectOf(slug);
       const state = stateOf(project, input);
-      return preflight(
-        deps,
-        state,
-        deps.states.manifestsOf(state.id),
-        input.adapter_ids,
-        input.force
-      );
+      const manifests = deps.states.manifestsOf(state.id);
+      const outside = deps.adapters
+        .list(project.id, { kind: "database" })
+        .filter((adapter) => !manifests.some((manifest) => manifest.adapter_id === adapter.id));
+      return preflight(deps, state, manifests, outside, input.adapter_ids, input.force);
     },
     async create(actor, slug, input, meta) {
       const project = projectOf(slug);

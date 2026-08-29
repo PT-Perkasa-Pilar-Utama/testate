@@ -83,6 +83,18 @@ describe("checkouts", () => {
     ]);
   });
 
+  it("a preflight names the project adapters a partial state leaves untouched (story 79)", async () => {
+    const h = await createCheckoutsHarness();
+    await createSettled(h.harness, PG);
+    const other = await createSettled(h.harness, { ...PG, name: "second" });
+    const preflight = await h.checkouts.preflight("shop", { state_name: "init", force: false });
+    expect(preflight.adapters.find((adapter) => adapter.adapter_id === other.id)).toMatchObject({
+      included: false,
+      removed: false,
+      locking_notice: "Not in this state; left untouched.",
+    });
+  });
+
   it("skips a drifted adapter unless forced, and sets HEAD unknown on a partial result", async () => {
     const h = await createCheckoutsHarness();
     await createSettled(h.harness, PG);

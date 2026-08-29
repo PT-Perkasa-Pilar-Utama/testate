@@ -39,10 +39,8 @@ const NON_UI: [number, number][] = [
  * Stories whose screen does not exist in the SPA yet (the project tabs list states, checkouts,
  * diffs, imports, and hooks but offer no actions). E2E cannot cover them until those cards land.
  */
-const NO_SCREEN: [number, number][] = [
-  // 79: a partial-state checkout; the preflight shows "not in state" but no story test takes one yet.
-  [79, 79],
-];
+/** Stories whose screen does not exist in the SPA yet; empty since 2026-08-29. */
+const NO_SCREEN: [number, number][] = [];
 
 function inRanges(id: number, ranges: [number, number][]): boolean {
   return ranges.some(([from, to]) => id >= from && id <= to);

@@ -65,15 +65,39 @@ async function preflightAdapter(
   }
 }
 
+const UNTOUCHED_STRATEGY = {
+  emptyMode: "truncate",
+  foreignKeyHandling: "not-applicable",
+  transactional: false,
+  triggerDisable: false,
+  locking: "table",
+} as const;
+
+/** A project adapter the state does not cover: reported as untouched, never probed (story 79). */
+function untouched(adapter: AdapterRecord): PreflightAdapter {
+  return {
+    adapter_id: adapter.id,
+    name: adapter.name,
+    engine: adapter.engine,
+    included: false,
+    removed: false,
+    drift: null,
+    strategy: UNTOUCHED_STRATEGY,
+    atomic: false,
+    locking_notice: "Not in this state; left untouched.",
+  };
+}
+
 /** Removed adapters and adapters outside the request are reported, never probed (13 §13.1). */
 export async function preflight(
   deps: RestoreDeps,
   state: State,
   manifests: AdapterManifest[],
+  outside: AdapterRecord[],
   requested: string[] | undefined,
   force: boolean
 ): Promise<Preflight> {
-  const adapters: PreflightAdapter[] = [];
+  const adapters: PreflightAdapter[] = outside.map(untouched);
   for (const manifest of manifests) {
     const adapter = deps.adapters.byId(manifest.adapter_id);
     const wanted = requested === undefined || requested.includes(manifest.adapter_id);
