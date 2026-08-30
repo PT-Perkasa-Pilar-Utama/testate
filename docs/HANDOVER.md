@@ -151,6 +151,13 @@ b9131cd test(e2e): cover the contract and agent stories over the API
 
 **In flight:** nothing. The tree was clean when this was written; `git status` should agree.
 
+**The UI target is GitHub.** The user said so on 2026-08-30, reading the UI/UX review. Reach for
+GitHub patterns before inventing one: a neutral surface with a single accent, borders rather than
+shadows, dense tables that still breathe, one button hierarchy used everywhere, empty states that
+name the next action, inline validation, a delete dialog that lists what it destroys, a visible
+focus ring, breadcrumbs carrying the real object name. `docs/review/ui-ux.md` and
+`docs/review/interface.md` list what breaks this today.
+
 **README:** it opens with what Testate does, one screenshot per capability, then the status, how to
 run it, the limits, then operating it. Password recovery is not in it: it lives in the deployment
 plan, and the user cut it from the README as out of place. The banner is `docs/assets/hero.svg`,
