@@ -7,7 +7,7 @@ import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
 import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { ENGINE_OPTIONS } from "./adapters.fields.ts";
@@ -152,53 +152,63 @@ export default function AdaptersView(props: { slug: string }): JSX.Element {
             </tr>
           </thead>
           <tbody>
-            <For each={presenter.value()}>
-              {(adapter) => (
-                <Row>
-                  <Cell>
-                    <a
-                      class="text-kumo-info hover:underline"
-                      href={href(path(adapter.id))}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        navigate(path(adapter.id));
-                      }}
-                    >
-                      {adapter.name}
-                    </a>
-                  </Cell>
-                  <Cell>
-                    {adapter.engine}
-                    {adapter.engine_version === null ? "" : ` ${adapter.engine_version}`}
-                  </Cell>
-                  <Cell>
-                    <Badge variant="outline">{adapter.tier}</Badge>
-                  </Cell>
-                  <Cell>
-                    <Badge variant={adapter.mode === "read_only" ? "info" : "secondary"}>
-                      {adapter.mode}
-                    </Badge>
-                  </Cell>
-                  <Cell>
-                    <Show
-                      when={adapter.credential.set}
-                      fallback={<span class="text-kumo-subtle">none</span>}
-                    >
-                      <code>
-                        {adapter.credential.set ? adapter.credential.key_fingerprint : ""}
-                      </code>
-                    </Show>
-                  </Cell>
-                  <Cell>
-                    <Badge variant={STATUS_VARIANT[adapter.status]}>
-                      {adapter.status_message === null
-                        ? adapter.status
-                        : `${adapter.status}: ${adapter.status_message}`}
-                    </Badge>
-                  </Cell>
-                </Row>
-              )}
-            </For>
+            <Show
+              when={presenter.value().length > 0}
+              fallback={
+                <EmptyRow>
+                  No adapters yet. Connect the databases behind the system under test to snapshot
+                  them.
+                </EmptyRow>
+              }
+            >
+              <For each={presenter.value()}>
+                {(adapter) => (
+                  <Row>
+                    <Cell>
+                      <a
+                        class="text-kumo-info hover:underline"
+                        href={href(path(adapter.id))}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          navigate(path(adapter.id));
+                        }}
+                      >
+                        {adapter.name}
+                      </a>
+                    </Cell>
+                    <Cell>
+                      {adapter.engine}
+                      {adapter.engine_version === null ? "" : ` ${adapter.engine_version}`}
+                    </Cell>
+                    <Cell>
+                      <Badge variant="outline">{adapter.tier}</Badge>
+                    </Cell>
+                    <Cell>
+                      <Badge variant={adapter.mode === "read_only" ? "info" : "secondary"}>
+                        {adapter.mode}
+                      </Badge>
+                    </Cell>
+                    <Cell>
+                      <Show
+                        when={adapter.credential.set}
+                        fallback={<span class="text-kumo-subtle">none</span>}
+                      >
+                        <code>
+                          {adapter.credential.set ? adapter.credential.key_fingerprint : ""}
+                        </code>
+                      </Show>
+                    </Cell>
+                    <Cell>
+                      <Badge variant={STATUS_VARIANT[adapter.status]}>
+                        {adapter.status_message === null
+                          ? adapter.status
+                          : `${adapter.status}: ${adapter.status_message}`}
+                      </Badge>
+                    </Cell>
+                  </Row>
+                )}
+              </For>
+            </Show>
           </tbody>
         </Table>
       </Loading>

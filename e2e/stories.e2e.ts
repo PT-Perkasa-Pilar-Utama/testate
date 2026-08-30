@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { demoAdapter, firstTable } from "./lib/api.ts";
-import { settle, watch } from "./lib/crawl.ts";
+import { openTab, settle, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
@@ -27,6 +27,10 @@ test.describe("qa stories", () => {
     await settle(page);
     await expect(page.getByRole("heading", { name: `E2E ${STAMP}` })).toBeVisible();
     await expect(page.getByText("HEAD:")).toBeVisible();
+    // A new project is every table's empty case: it used to be a header row over blank space.
+    await expect(page.getByText("No adapters yet.")).toBeVisible();
+    await openTab(page, "Checkouts");
+    await expect(page.getByText("No checkouts yet.")).toBeVisible();
     expect(issues).toStrictEqual([]);
   });
 

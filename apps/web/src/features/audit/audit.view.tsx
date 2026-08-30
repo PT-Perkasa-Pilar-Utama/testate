@@ -1,9 +1,9 @@
 import type { JSX } from "@solidjs/web";
 import { formatWhen } from "@/lib/format.ts";
-import { For, Loading } from "solid-js";
+import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
 import { createAuditPresenter } from "./audit.presenter.ts";
 
 const OUTCOME_VARIANT = { succeeded: "success", failed: "error", partial: "warning" } as const;
@@ -29,28 +29,37 @@ export default function AuditView(): JSX.Element {
             </tr>
           </thead>
           <tbody>
-            <For each={presenter.value()}>
-              {(row) => (
-                <Row>
-                  <Cell>{formatWhen(row.created_at)}</Cell>
-                  <Cell>{row.actor.label}</Cell>
-                  <Cell>
-                    <code>{row.action}</code>
-                  </Cell>
-                  <Cell>
-                    {row.target_type} {row.target_id}
-                  </Cell>
-                  <Cell>{row.project?.slug ?? ""}</Cell>
-                  <Cell>
-                    <Badge
-                      variant={row.outcome === null ? "secondary" : OUTCOME_VARIANT[row.outcome]}
-                    >
-                      {row.outcome ?? "n/a"}
-                    </Badge>
-                  </Cell>
-                </Row>
-              )}
-            </For>
+            <Show
+              when={presenter.value().length > 0}
+              fallback={
+                <EmptyRow>
+                  Nothing in the audit log yet. Every login and every change lands here.
+                </EmptyRow>
+              }
+            >
+              <For each={presenter.value()}>
+                {(row) => (
+                  <Row>
+                    <Cell>{formatWhen(row.created_at)}</Cell>
+                    <Cell>{row.actor.label}</Cell>
+                    <Cell>
+                      <code>{row.action}</code>
+                    </Cell>
+                    <Cell>
+                      {row.target_type} {row.target_id}
+                    </Cell>
+                    <Cell>{row.project?.slug ?? ""}</Cell>
+                    <Cell>
+                      <Badge
+                        variant={row.outcome === null ? "secondary" : OUTCOME_VARIANT[row.outcome]}
+                      >
+                        {row.outcome ?? "n/a"}
+                      </Badge>
+                    </Cell>
+                  </Row>
+                )}
+              </For>
+            </Show>
           </tbody>
         </Table>
       </Loading>

@@ -8,7 +8,7 @@ import Button, { buttonClass } from "@/components/button.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Switch from "@/components/switch.tsx";
 import Tabs from "@/components/tabs.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { createPreflightPresenter } from "../checkouts/preflight.presenter.ts";
 import PreflightDialog from "../checkouts/preflight.view.tsx";
@@ -152,40 +152,53 @@ export default function StatesView(props: { slug: string; onChanged?: () => void
               </tr>
             </thead>
             <tbody>
-              <For each={presenter.value()}>
-                {(state) => (
-                  <Row>
-                    <Cell>
-                      <span class="inline-flex flex-wrap items-center gap-2">
-                        {state.name}
-                        <Show when={state.protected}>
-                          <Badge variant="warning">protected</Badge>
-                        </Show>
-                        <For each={state.tags}>{(tag) => <Badge variant="info">{tag}</Badge>}</For>
-                      </span>
-                    </Cell>
-                    <Cell>
-                      <Badge variant={state.kind === "init" ? "primary" : "outline"}>
-                        {state.kind}
-                      </Badge>
-                    </Cell>
-                    <Cell>
-                      <Badge variant={STATUS_VARIANT[state.status]}>{state.status}</Badge>
-                    </Cell>
-                    <Cell>{state.adapters.map((adapter) => adapter.adapter_name).join(", ")}</Cell>
-                    <Cell>{formatBytes(state.size_bytes)}</Cell>
-                    <Cell>{state.actor.label}</Cell>
-                    <Cell>{formatWhen(state.created_at)}</Cell>
-                    <Cell>
-                      <RowActions
-                        presenter={presenter}
-                        state={state}
-                        checkout={(target) => preflight.open(target)}
-                      />
-                    </Cell>
-                  </Row>
-                )}
-              </For>
+              <Show
+                when={presenter.value().length > 0}
+                fallback={
+                  <EmptyRow>
+                    No states yet. Take one to keep what the databases hold right now.
+                  </EmptyRow>
+                }
+              >
+                <For each={presenter.value()}>
+                  {(state) => (
+                    <Row>
+                      <Cell>
+                        <span class="inline-flex flex-wrap items-center gap-2">
+                          {state.name}
+                          <Show when={state.protected}>
+                            <Badge variant="warning">protected</Badge>
+                          </Show>
+                          <For each={state.tags}>
+                            {(tag) => <Badge variant="info">{tag}</Badge>}
+                          </For>
+                        </span>
+                      </Cell>
+                      <Cell>
+                        <Badge variant={state.kind === "init" ? "primary" : "outline"}>
+                          {state.kind}
+                        </Badge>
+                      </Cell>
+                      <Cell>
+                        <Badge variant={STATUS_VARIANT[state.status]}>{state.status}</Badge>
+                      </Cell>
+                      <Cell>
+                        {state.adapters.map((adapter) => adapter.adapter_name).join(", ")}
+                      </Cell>
+                      <Cell>{formatBytes(state.size_bytes)}</Cell>
+                      <Cell>{state.actor.label}</Cell>
+                      <Cell>{formatWhen(state.created_at)}</Cell>
+                      <Cell>
+                        <RowActions
+                          presenter={presenter}
+                          state={state}
+                          checkout={(target) => preflight.open(target)}
+                        />
+                      </Cell>
+                    </Row>
+                  )}
+                </For>
+              </Show>
             </tbody>
           </Table>
           <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />

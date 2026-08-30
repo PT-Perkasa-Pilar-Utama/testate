@@ -10,7 +10,7 @@ import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
 import LayerCard from "@/components/layer-card.tsx";
 import Select from "@/components/select.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
 import { KIND_OPTIONS, ROLE_OPTIONS, createTokensPresenter } from "./tokens.presenter.ts";
 import type { TokensPresenter } from "./tokens.presenter.ts";
 
@@ -137,40 +137,49 @@ export default function TokensView(): JSX.Element {
             </tr>
           </thead>
           <tbody>
-            <For each={presenter.value()}>
-              {(token) => (
-                <Row>
-                  <Cell>{token.name}</Cell>
-                  <Cell>
-                    <Badge variant={token.kind === "agent" ? "info" : "outline"}>
-                      {token.kind}
-                    </Badge>
-                  </Cell>
-                  <Cell>{token.role}</Cell>
-                  <Cell>
-                    <code>{token.prefix}</code>
-                  </Cell>
-                  <Cell>{token.last_used_at ?? "never"}</Cell>
-                  <Cell>{token.expires_at ?? "no expiry"}</Cell>
-                  <Cell>
-                    <Badge variant={token.revoked_at === null ? "success" : "secondary"}>
-                      {token.revoked_at === null ? "active" : "revoked"}
-                    </Badge>
-                  </Cell>
-                  <Cell>
-                    <Show when={token.revoked_at === null}>
-                      <Button
-                        size="xs"
-                        variant="destructive"
-                        onClick={() => presenter.askRevoke(token)}
-                      >
-                        Revoke
-                      </Button>
-                    </Show>
-                  </Cell>
-                </Row>
-              )}
-            </For>
+            <Show
+              when={presenter.value().length > 0}
+              fallback={
+                <EmptyRow>
+                  No tokens yet. Create one for CI, or for an agent that may only read.
+                </EmptyRow>
+              }
+            >
+              <For each={presenter.value()}>
+                {(token) => (
+                  <Row>
+                    <Cell>{token.name}</Cell>
+                    <Cell>
+                      <Badge variant={token.kind === "agent" ? "info" : "outline"}>
+                        {token.kind}
+                      </Badge>
+                    </Cell>
+                    <Cell>{token.role}</Cell>
+                    <Cell>
+                      <code>{token.prefix}</code>
+                    </Cell>
+                    <Cell>{token.last_used_at ?? "never"}</Cell>
+                    <Cell>{token.expires_at ?? "no expiry"}</Cell>
+                    <Cell>
+                      <Badge variant={token.revoked_at === null ? "success" : "secondary"}>
+                        {token.revoked_at === null ? "active" : "revoked"}
+                      </Badge>
+                    </Cell>
+                    <Cell>
+                      <Show when={token.revoked_at === null}>
+                        <Button
+                          size="xs"
+                          variant="destructive"
+                          onClick={() => presenter.askRevoke(token)}
+                        >
+                          Revoke
+                        </Button>
+                      </Show>
+                    </Cell>
+                  </Row>
+                )}
+              </For>
+            </Show>
           </tbody>
         </Table>
         <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />

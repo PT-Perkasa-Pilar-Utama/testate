@@ -5,7 +5,7 @@ import type { Job } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import {
   canCancel,
@@ -99,9 +99,19 @@ export default function JobsView(): JSX.Element {
             </tr>
           </thead>
           <tbody>
-            <For each={presenter.value()}>
-              {(job) => <JobRow presenter={presenter} job={job} />}
-            </For>
+            <Show
+              when={presenter.value().length > 0}
+              fallback={
+                <EmptyRow>
+                  No jobs yet. Snapshots, checkouts, diffs and imports all run as jobs and show up
+                  here.
+                </EmptyRow>
+              }
+            >
+              <For each={presenter.value()}>
+                {(job) => <JobRow presenter={presenter} job={job} />}
+              </For>
+            </Show>
           </tbody>
         </Table>
       </Loading>

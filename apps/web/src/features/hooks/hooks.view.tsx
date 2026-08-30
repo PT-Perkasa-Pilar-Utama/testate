@@ -7,7 +7,7 @@ import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Select from "@/components/select.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { createHooksPresenter } from "./hooks.presenter.ts";
 import type { HooksPresenter } from "./hooks.presenter.ts";
@@ -121,71 +121,80 @@ export default function HooksView(props: { slug: string }): JSX.Element {
             </tr>
           </thead>
           <tbody>
-            <For each={presenter.value()}>
-              {(hook) => (
-                <Row>
-                  <Cell>{hook.position}</Cell>
-                  <Cell>
-                    <code>{hook.trigger}</code>
-                  </Cell>
-                  <Cell>{hook.request.name}</Cell>
-                  <Cell>{hook.fail_policy}</Cell>
-                  <Cell>
-                    <Badge variant={hook.enabled ? "success" : "secondary"}>
-                      {hook.enabled ? "on" : "off"}
-                    </Badge>
-                  </Cell>
-                  <Cell>
-                    <Show when={hasRole("qa")}>
-                      <div class="flex flex-wrap justify-end gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => void presenter.move(hook, -1)}
-                        >
-                          Move up
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => void presenter.move(hook, 1)}
-                        >
-                          Move down
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() =>
-                            void presenter.setPolicy(
-                              hook,
-                              hook.fail_policy === "abort" ? "continue" : "abort"
-                            )
-                          }
-                        >
-                          {hook.fail_policy === "abort"
-                            ? "Continue on failure"
-                            : "Abort on failure"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => void presenter.setEnabled(hook, !hook.enabled)}
-                        >
-                          {hook.enabled ? "Disable" : "Enable"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => void presenter.remove(hook)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </Show>
-                  </Cell>
-                </Row>
-              )}
-            </For>
+            <Show
+              when={presenter.value().length > 0}
+              fallback={
+                <EmptyRow>
+                  No hooks yet. Attach a saved request to run before or after a checkout.
+                </EmptyRow>
+              }
+            >
+              <For each={presenter.value()}>
+                {(hook) => (
+                  <Row>
+                    <Cell>{hook.position}</Cell>
+                    <Cell>
+                      <code>{hook.trigger}</code>
+                    </Cell>
+                    <Cell>{hook.request.name}</Cell>
+                    <Cell>{hook.fail_policy}</Cell>
+                    <Cell>
+                      <Badge variant={hook.enabled ? "success" : "secondary"}>
+                        {hook.enabled ? "on" : "off"}
+                      </Badge>
+                    </Cell>
+                    <Cell>
+                      <Show when={hasRole("qa")}>
+                        <div class="flex flex-wrap justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => void presenter.move(hook, -1)}
+                          >
+                            Move up
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => void presenter.move(hook, 1)}
+                          >
+                            Move down
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() =>
+                              void presenter.setPolicy(
+                                hook,
+                                hook.fail_policy === "abort" ? "continue" : "abort"
+                              )
+                            }
+                          >
+                            {hook.fail_policy === "abort"
+                              ? "Continue on failure"
+                              : "Abort on failure"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => void presenter.setEnabled(hook, !hook.enabled)}
+                          >
+                            {hook.enabled ? "Disable" : "Enable"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => void presenter.remove(hook)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </Show>
+                    </Cell>
+                  </Row>
+                )}
+              </For>
+            </Show>
           </tbody>
         </Table>
       </Loading>

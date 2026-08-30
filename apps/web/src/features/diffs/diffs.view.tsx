@@ -4,7 +4,7 @@ import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
 import Button, { buttonClass } from "@/components/button.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { CreateDialog, DetailDialog, RowsDialog } from "./diffs.dialogs.view.tsx";
 import { changedRows, createDiffsPresenter, targetLabel } from "./diffs.presenter.ts";
@@ -36,46 +36,56 @@ export default function DiffsView(props: { slug: string }): JSX.Element {
             </tr>
           </thead>
           <tbody>
-            <For each={presenter.value()}>
-              {(diff) => (
-                <Row>
-                  <Cell>{diff.base.name}</Cell>
-                  <Cell>{targetLabel(diff.target)}</Cell>
-                  <Cell>
-                    <Badge variant={STATUS_VARIANT[diff.status]}>{diff.status}</Badge>
-                  </Cell>
-                  <Cell>{changedRows(diff)}</Cell>
-                  <Cell>{formatWhen(diff.expires_at)}</Cell>
-                  <Cell>
-                    <div class="flex flex-wrap justify-end gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={diff.status !== "ready"}
-                        onClick={() => void presenter.openDetail(diff)}
-                      >
-                        Details
-                      </Button>
-                      <a class={LINK} href={presenter.exportUrl(diff, "csv")}>
-                        CSV
-                      </a>
-                      <a class={LINK} href={presenter.exportUrl(diff, "jsonl")}>
-                        JSON
-                      </a>
-                      <Show when={hasRole("qa")}>
+            <Show
+              when={presenter.value().length > 0}
+              fallback={
+                <EmptyRow>
+                  No diffs yet. Compare two states, or a state against what the databases hold now,
+                  to see what a test run changed.
+                </EmptyRow>
+              }
+            >
+              <For each={presenter.value()}>
+                {(diff) => (
+                  <Row>
+                    <Cell>{diff.base.name}</Cell>
+                    <Cell>{targetLabel(diff.target)}</Cell>
+                    <Cell>
+                      <Badge variant={STATUS_VARIANT[diff.status]}>{diff.status}</Badge>
+                    </Cell>
+                    <Cell>{changedRows(diff)}</Cell>
+                    <Cell>{formatWhen(diff.expires_at)}</Cell>
+                    <Cell>
+                      <div class="flex flex-wrap justify-end gap-1">
                         <Button
                           size="sm"
-                          variant="destructive"
-                          onClick={() => void presenter.remove(diff)}
+                          variant="ghost"
+                          disabled={diff.status !== "ready"}
+                          onClick={() => void presenter.openDetail(diff)}
                         >
-                          Delete
+                          Details
                         </Button>
-                      </Show>
-                    </div>
-                  </Cell>
-                </Row>
-              )}
-            </For>
+                        <a class={LINK} href={presenter.exportUrl(diff, "csv")}>
+                          CSV
+                        </a>
+                        <a class={LINK} href={presenter.exportUrl(diff, "jsonl")}>
+                          JSON
+                        </a>
+                        <Show when={hasRole("qa")}>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => void presenter.remove(diff)}
+                          >
+                            Delete
+                          </Button>
+                        </Show>
+                      </div>
+                    </Cell>
+                  </Row>
+                )}
+              </For>
+            </Show>
           </tbody>
         </Table>
       </Loading>

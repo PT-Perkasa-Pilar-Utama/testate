@@ -5,7 +5,7 @@ import { For, Loading, Show } from "solid-js";
 import Badge from "@/components/badge.tsx";
 import Button, { buttonClass } from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { countsLabel, createImportsPresenter } from "./imports.presenter.ts";
 import ReportPanel from "./imports.report.view.tsx";
@@ -43,50 +43,59 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
             </tr>
           </thead>
           <tbody>
-            <For each={presenter.value()}>
-              {(run) => (
-                <Row>
-                  <Cell>
-                    <code>{run.id.slice(-8)}</code>
-                  </Cell>
-                  <Cell>{run.mode}</Cell>
-                  <Cell>
-                    <Badge variant={run.dry_run ? "info" : "outline"}>
-                      {run.dry_run ? "yes" : "no"}
-                    </Badge>
-                  </Cell>
-                  <Cell>{countsLabel(run)}</Cell>
-                  <Cell>{run.actor.label}</Cell>
-                  <Cell>{formatWhen(run.created_at)}</Cell>
-                  <Cell>
-                    <div class="flex flex-wrap justify-end gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={run.counts === null}
-                        onClick={() => void presenter.openReport(run)}
-                      >
-                        Report
-                      </Button>
-                      <Show when={run.rejected_available}>
-                        <a class={LINK} href={presenter.rejectedUrl(run.id)}>
-                          Rejected rows
-                        </a>
-                        <Show when={hasRole("qa")}>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => wizard.start({ kind: "rejected", run_id: run.id })}
-                          >
-                            Re-import rejected
-                          </Button>
+            <Show
+              when={presenter.value().length > 0}
+              fallback={
+                <EmptyRow>
+                  No imports yet. Load a CSV or XLSX into a table, with a dry run first.
+                </EmptyRow>
+              }
+            >
+              <For each={presenter.value()}>
+                {(run) => (
+                  <Row>
+                    <Cell>
+                      <code>{run.id.slice(-8)}</code>
+                    </Cell>
+                    <Cell>{run.mode}</Cell>
+                    <Cell>
+                      <Badge variant={run.dry_run ? "info" : "outline"}>
+                        {run.dry_run ? "yes" : "no"}
+                      </Badge>
+                    </Cell>
+                    <Cell>{countsLabel(run)}</Cell>
+                    <Cell>{run.actor.label}</Cell>
+                    <Cell>{formatWhen(run.created_at)}</Cell>
+                    <Cell>
+                      <div class="flex flex-wrap justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={run.counts === null}
+                          onClick={() => void presenter.openReport(run)}
+                        >
+                          Report
+                        </Button>
+                        <Show when={run.rejected_available}>
+                          <a class={LINK} href={presenter.rejectedUrl(run.id)}>
+                            Rejected rows
+                          </a>
+                          <Show when={hasRole("qa")}>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => wizard.start({ kind: "rejected", run_id: run.id })}
+                            >
+                              Re-import rejected
+                            </Button>
+                          </Show>
                         </Show>
-                      </Show>
-                    </div>
-                  </Cell>
-                </Row>
-              )}
-            </For>
+                      </div>
+                    </Cell>
+                  </Row>
+                )}
+              </For>
+            </Show>
           </tbody>
         </Table>
       </Loading>

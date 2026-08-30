@@ -7,7 +7,7 @@ import { TERMINAL_JOB_STATUSES } from "@testate/shared";
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
 import LoadMore from "@/components/load-more.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { subscribeJob } from "@/lib/sse.ts";
 import { CountersDialog, DetailDialog, RESULT_VARIANT } from "./checkouts.dialogs.view.tsx";
@@ -60,59 +60,69 @@ export default function CheckoutsView(props: {
           </tr>
         </thead>
         <tbody>
-          <For each={presenter.value()}>
-            {(checkout) => (
-              <Row>
-                <Follow checkout={checkout} onDone={() => presenter.refresh()} />
-                <Cell>{checkout.state.name}</Cell>
-                <Cell>{checkout.purpose}</Cell>
-                <Cell>
-                  <Badge variant={STATUS_VARIANT[checkout.status]}>{checkout.status}</Badge>
-                </Cell>
-                <Cell>
-                  <span class="inline-flex flex-wrap gap-1">
-                    <For each={checkout.adapters}>
-                      {(adapter) => (
-                        <Badge variant={RESULT_VARIANT[adapter.result]}>
-                          {adapter.name}: {adapter.result}
-                        </Badge>
-                      )}
-                    </For>
-                  </span>
-                </Cell>
-                <Cell>{checkout.actor.label}</Cell>
-                <Cell>{formatWhen(checkout.created_at)}</Cell>
-                <Cell>
-                  <div class="flex flex-wrap justify-end gap-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => presenter.openDetail(checkout)}
-                    >
-                      Details
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => void presenter.openCounters(checkout)}
-                    >
-                      Counters
-                    </Button>
-                    <Show when={hasRole("qa")}>
+          <Show
+            when={presenter.value().length > 0}
+            fallback={
+              <EmptyRow>
+                No checkouts yet. Check out a state to put every database in this project back to
+                it.
+              </EmptyRow>
+            }
+          >
+            <For each={presenter.value()}>
+              {(checkout) => (
+                <Row>
+                  <Follow checkout={checkout} onDone={() => presenter.refresh()} />
+                  <Cell>{checkout.state.name}</Cell>
+                  <Cell>{checkout.purpose}</Cell>
+                  <Cell>
+                    <Badge variant={STATUS_VARIANT[checkout.status]}>{checkout.status}</Badge>
+                  </Cell>
+                  <Cell>
+                    <span class="inline-flex flex-wrap gap-1">
+                      <For each={checkout.adapters}>
+                        {(adapter) => (
+                          <Badge variant={RESULT_VARIANT[adapter.result]}>
+                            {adapter.name}: {adapter.result}
+                          </Badge>
+                        )}
+                      </For>
+                    </span>
+                  </Cell>
+                  <Cell>{checkout.actor.label}</Cell>
+                  <Cell>{formatWhen(checkout.created_at)}</Cell>
+                  <Cell>
+                    <div class="flex flex-wrap justify-end gap-1">
                       <Button
                         size="sm"
-                        variant="secondary"
-                        disabled={!retriable(checkout)}
-                        onClick={() => void presenter.retry(checkout)}
+                        variant="ghost"
+                        onClick={() => presenter.openDetail(checkout)}
                       >
-                        Retry
+                        Details
                       </Button>
-                    </Show>
-                  </div>
-                </Cell>
-              </Row>
-            )}
-          </For>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => void presenter.openCounters(checkout)}
+                      >
+                        Counters
+                      </Button>
+                      <Show when={hasRole("qa")}>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={!retriable(checkout)}
+                          onClick={() => void presenter.retry(checkout)}
+                        >
+                          Retry
+                        </Button>
+                      </Show>
+                    </div>
+                  </Cell>
+                </Row>
+              )}
+            </For>
+          </Show>
         </tbody>
       </Table>
       <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
