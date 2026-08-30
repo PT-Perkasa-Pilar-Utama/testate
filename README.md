@@ -11,6 +11,9 @@ Testate is a self-hosted tool for QA teams. It takes data-only snapshots ("state
 | Files    | S3, SFTP, FTP              | view, download                                        |
 | REST     | any HTTP API               | saved requests, hooks around checkouts                |
 
+REST is an adapter kind rather than a data tier: it stores saved requests and the hooks that run
+around a checkout, and reports the files tier internally.
+
 ## Status
 
 Sprint 0. The API, the SPA, the deploy files, and the CI pipeline exist and pass the full gate. Every module answers with typed mock data behind the real HTTP contract; engine drivers land card by card. `docs/api-specs/_index.md` tracks each operation.
@@ -61,6 +64,19 @@ either can reset it, and the other's work goes without a warning. Worse is two p
 the same database — Testate sees two unrelated adapters, so their jobs are not kept apart and each
 has its own idea of the starting point. Give a database one project and one tester at a time. When
 you point an adapter at a database another project already tracks, the connection test says so.
+
+Testate needs three things from a database: a protocol it can speak, a consistent read across every
+table, and permission to empty and refill them inside one transaction. Firebase, Firestore, DynamoDB
+and their kind offer none of those — they are reached through an SDK, not a database connection, so
+they cannot be added at all. Hosted PostgreSQL and MySQL are fine, whoever runs them: Supabase, Neon,
+RDS, Cloud SQL. On Supabase use the direct connection rather than the pooler, with a role that owns
+the tables, or the reset has no permission to empty them.
+
+Microservices are untested, and everything above stacks up there. Each service owns a database, the
+services reference each other by id, and Testate resets one database at a time with no shared
+transaction and no order between them. Two services sharing a database hit the problem above.
+Nothing clears the caches in between. Treat it as unsupported for now: if you try it anyway, put
+every database in one project and pause the services with checkout hooks.
 
 Finally, Testate resets databases and nothing else. Caches, queues, and whatever a running service
 holds in memory are left alone, so a service can go on serving rows the database no longer has.
