@@ -7,7 +7,7 @@ import { healthAdminSchema } from "@testate/shared";
 
 import { createMemoryBlobStore } from "../../lib/blobstore/index.ts";
 import { migrate, openMetadataDb } from "../../lib/db/index.ts";
-import { health } from "./ops.service.ts";
+import { health, restBaseUrls, sharesOrigin } from "./ops.service.ts";
 import type { HealthDeps } from "./ops.service.ts";
 
 function deps(overrides: Partial<HealthDeps> = {}): HealthDeps {
@@ -27,7 +27,7 @@ function deps(overrides: Partial<HealthDeps> = {}): HealthDeps {
     extraKeys: 0,
     sinkDegraded: () => false,
     dispatcher: () => ({ alive: true, running: 0, queued: 0, lastTickAt: null }),
-    originShared: false,
+    originShared: () => false,
     ...overrides,
   };
 }
@@ -69,6 +69,32 @@ describe("health", () => {
 
     expect(report.status).toBe("down");
     expect(report.checks.data_dir.status).toBe("down");
+  });
+});
+
+describe("the own-hostname check", () => {
+  const adapters = [
+    { engine: "http", config: { base_url: "https://shop.sit.internal/api" } },
+    { engine: "postgres", config: { host: "db.sit.internal" } },
+    { engine: "http", config: { timeout_ms: 30000 } },
+  ];
+
+  it("reads the base url of every REST adapter and nothing else", () => {
+    expect(restBaseUrls(adapters)).toEqual(["https://shop.sit.internal/api"]);
+  });
+
+  it("is true only when the public url shares a hostname with a REST target", () => {
+    const urls = restBaseUrls(adapters);
+    expect(sharesOrigin("https://shop.sit.internal", urls)).toBe(true);
+    expect(sharesOrigin("https://testate.sit.internal", urls)).toBe(false);
+    expect(sharesOrigin(undefined, urls)).toBe(false);
+    expect(sharesOrigin("not a url", urls)).toBe(false);
+  });
+
+  it("reaches the health report", async () => {
+    const report = await health(deps({ originShared: () => true }));
+
+    expect(report.origin_shared).toBe(true);
   });
 });
 

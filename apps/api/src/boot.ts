@@ -225,6 +225,13 @@ export function createRetention(
   };
 }
 
+/** Step 2 of 22 §22.2: the data dir and the subdirectories every later step writes into. */
+export function ensureDirs(config: Config): void {
+  for (const sub of ["blobs", "logs", "uploads", "imports", "run"]) {
+    mkdirSync(join(config.TESTATE_DATA_DIR, sub), { recursive: true });
+  }
+}
+
 /** Boot refusals print a framed message and exit 78 (configuration error), per 22 §22.2. */
 export function refuse(cause: unknown): never {
   if (!(cause instanceof ConfigError) && !(cause instanceof SealedConfigError)) throw cause;

@@ -6,7 +6,6 @@
  */
 import "./lib/http/context.ts";
 
-import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { Scalar } from "@scalar/hono-api-reference";
 import { Hono } from "hono";
@@ -17,6 +16,7 @@ import {
   createNetguard,
   createRetention,
   preMigrationCopy,
+  ensureDirs,
   refuse,
   resetAdminPassword,
   serve,
@@ -30,7 +30,6 @@ import {
 } from "./wiring.ts";
 import { bootStore, lazyJobs, opsDeps, resetDeps, storageDeps } from "./wiring.store.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
-import type { Config } from "./lib/config/index.ts";
 import { migrate, openMetadataDb } from "./lib/db/index.ts";
 import { authenticate } from "./lib/http/auth.ts";
 import { errorResponse, notFound } from "./lib/http/index.ts";
@@ -84,12 +83,6 @@ export type App = {
   /** 22 §22.4: drain running jobs (30 s), then close the sink and the database. */
   close: () => Promise<void>;
 };
-
-function ensureDirs(config: Config): void {
-  for (const sub of ["blobs", "logs", "uploads", "imports", "run"]) {
-    mkdirSync(join(config.TESTATE_DATA_DIR, sub), { recursive: true });
-  }
-}
 
 /** Runs the boot sequence and returns the Hono app. Throws a named error on any refusal. */
 export async function boot(env: Readonly<Record<string, string | undefined>>): Promise<App> {
@@ -200,10 +193,11 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     now,
   });
   let ready = false;
+  const live = { jobs, adapters: wiring.adapters };
 
   const handlers = {
     ops: createOpsHandlers(
-      opsDeps(config, db, VERSION, bootId, bootedAt, storeTarget, wiring.blobs, ring, logger, jobs),
+      opsDeps(config, db, VERSION, bootId, bootedAt, storeTarget, wiring.blobs, ring, logger, live),
       () => ready
     ),
     // The reset route exists only outside production: registration, not authorization, is the gate (07 §7.8).
