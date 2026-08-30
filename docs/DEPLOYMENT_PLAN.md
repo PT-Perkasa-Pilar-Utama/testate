@@ -38,8 +38,38 @@ Boot stops before any write and prints a framed message with the variable and th
 | `TESTATE_SECRETS_ACTIVE_KEY is not set` | Generate a key, set it, restart |
 | `TESTATE_DATA_DIR is not writable` | Fix the volume owner (`uid 1000`, user `bun`) |
 | `TESTATE_ADMIN_PASSWORD is missing while the users table is empty` | Set it for the first boot |
+| `TESTATE_ADMIN_PASSWORD: required by TESTATE_ADMIN_PASSWORD_RESET` | Set the new password, or unset the reset flag |
+| `TESTATE_ADMIN_USER: no user named <name>` | Name an account that exists; the reset never creates one |
+| `TESTATE_ADMIN_USER: <name> is not an admin` | Name an admin; the reset never promotes an account |
 | `TESTATE_STORE=s3 needs TESTATE_S3_BUCKET and TESTATE_S3_ACCESS_KEY_ID` | Complete the S3 block or unset `TESTATE_STORE` |
 | `no stored sealed value opens with the configured key(s)` | See [KEY_ROTATION.md](KEY_ROTATION.md) |
+
+## Forgotten password
+
+An admin resets any other account under **Users**: the account gets a temporary password, must
+change it at the next login, loses every session it had, and leaves its lockout behind. Hand the
+temporary password over out of band — Testate sends no mail.
+
+Nobody can reset the last admin, and nothing may delete or demote it. That account recovers through
+the environment instead:
+
+```bash
+# .env, on the host that runs the container
+TESTATE_ADMIN_USER=admin              # the account to recover; the default
+TESTATE_ADMIN_PASSWORD=<a new one>    # what it becomes
+TESTATE_ADMIN_PASSWORD_RESET=true
+
+docker compose -f deploy/docker-compose.yml up -d --force-recreate
+docker compose -f deploy/docker-compose.yml logs --tail 20 testate   # the banner names the account
+```
+
+Sign in with that password, change it when asked, then **remove `TESTATE_ADMIN_PASSWORD_RESET` and
+`TESTATE_ADMIN_PASSWORD` and restart**. While the flag is set, every restart resets that password
+again to whatever the environment holds.
+
+This grants nothing the environment did not already have: whoever edits `.env` also holds the
+volume. It refuses rather than guessing — an unknown name, or a name that is not an admin, stops the
+boot with exit 78 and changes nothing.
 
 ## Health
 
@@ -86,6 +116,7 @@ One JSON line per request or job in `/data/logs/testate-YYYY-MM-DD.jsonl`, mirro
 - [ ] TLS at the proxy; `TESTATE_TRUST_PROXY=true`
 - [ ] `TESTATE_PUBLIC_URL` set; health does not report `origin_shared`
 - [ ] Key stored in the secret manager; rotation runbook read
-- [ ] Bootstrap password removed from `.env`
+- [ ] Bootstrap password removed from `.env`; `TESTATE_ADMIN_PASSWORD_RESET` unset
+- [ ] A second admin account exists, so a forgotten password needs no restart
 - [ ] Volume backed up on a schedule; restore rehearsed once
 - [ ] Target databases reachable from the container; sandbox adapters use a dedicated database user
