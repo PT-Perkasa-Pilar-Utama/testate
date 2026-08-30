@@ -125,7 +125,10 @@ export function createAuthService(deps: AuthDeps): AuthService {
 
   const openSession = (user: UserRecord, meta: RequestMeta): string => {
     const secret = randomSecret();
-    const created = nowIso();
+    // One clock read: the window is measured from created_at, and a millisecond between two reads
+    // made the session last 12 hours and a millisecond.
+    const at = deps.now();
+    const created = at.toISOString();
     repo.insertSession({
       id: Bun.randomUUIDv7(),
       user_id: user.id,
@@ -133,7 +136,7 @@ export function createAuthService(deps: AuthDeps): AuthService {
       ip: meta.ip,
       user_agent: meta.user_agent,
       last_seen_at: created,
-      expires_at: sessionExpiry(nowMs(), created),
+      expires_at: sessionExpiry(at.getTime(), created),
       created_at: created,
     });
     return secret;

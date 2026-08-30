@@ -31,7 +31,7 @@ test.describe("admin gap stories", () => {
     await page.context().clearCookies();
     await page.goto("/projects");
     await settle(page);
-    await expect(page.getByRole("heading", { name: "Sign in to Testate" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Sign in", exact: true })).toBeVisible();
     await page.getByLabel("Username").fill(`fresh-${STAMP}`);
     await page.getByLabel("Password").fill("fresh-temporary-1234");
     await page.locator('form button[type="submit"]').click();

@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
 
@@ -8,7 +9,7 @@ import Button from "@/components/button.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { Cell, EmptyRow, Head, Row, Table } from "@/components/table.tsx";
 import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { createProjectsPresenter } from "./projects.presenter.ts";
@@ -64,17 +65,17 @@ export default function ProjectsView(): JSX.Element {
   const presenter = createProjectsPresenter();
   return (
     <section class="grid gap-6">
-      <div class="flex items-start justify-between gap-4">
-        <div class="grid gap-1.5">
-          <h2 class="text-lg font-semibold">Projects</h2>
-          <p class="text-kumo-subtle">Each project owns its adapters and states.</p>
-        </div>
-        <Show when={hasRole("qa")}>
-          <Button variant="primary" onClick={() => presenter.openCreate()}>
-            New project
-          </Button>
-        </Show>
-      </div>
+      <PageHeader
+        title="Projects"
+        description="Each project owns its adapters and states."
+        actions={
+          <Show when={hasRole("qa")}>
+            <Button variant="primary" onClick={() => presenter.openCreate()}>
+              New project
+            </Button>
+          </Show>
+        }
+      />
       <Loading fallback={<p class="text-kumo-subtle">Loading projects...</p>}>
         <Table>
           <thead>
@@ -86,33 +87,42 @@ export default function ProjectsView(): JSX.Element {
             </tr>
           </thead>
           <tbody>
-            <For each={presenter.value()}>
-              {(project) => (
-                <Row>
-                  <Cell>
-                    <a
-                      class="text-kumo-info hover:underline"
-                      href={href(`/projects/${project.slug}`)}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        navigate(`/projects/${project.slug}`);
-                      }}
-                    >
-                      {project.name}
-                    </a>
-                  </Cell>
-                  <Cell>
-                    <code>{project.slug}</code>
-                  </Cell>
-                  <Cell>
-                    <Badge variant={project.head.status === "at_state" ? "success" : "warning"}>
-                      {project.head.state_name ?? project.head.status}
-                    </Badge>
-                  </Cell>
-                  <Cell>{formatWhen(project.updated_at)}</Cell>
-                </Row>
-              )}
-            </For>
+            <Show
+              when={presenter.value().length > 0}
+              fallback={
+                <EmptyRow>
+                  No projects yet. A project owns the databases of one system under test.
+                </EmptyRow>
+              }
+            >
+              <For each={presenter.value()}>
+                {(project) => (
+                  <Row>
+                    <Cell>
+                      <a
+                        class="font-semibold text-kumo-link hover:underline"
+                        href={href(`/projects/${project.slug}`)}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          navigate(`/projects/${project.slug}`);
+                        }}
+                      >
+                        {project.name}
+                      </a>
+                    </Cell>
+                    <Cell>
+                      <code class="text-kumo-subtle">{project.slug}</code>
+                    </Cell>
+                    <Cell>
+                      <Badge variant={project.head.status === "at_state" ? "success" : "warning"}>
+                        {project.head.state_name ?? project.head.status}
+                      </Badge>
+                    </Cell>
+                    <Cell>{formatWhen(project.updated_at)}</Cell>
+                  </Row>
+                )}
+              </For>
+            </Show>
           </tbody>
         </Table>
         <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />

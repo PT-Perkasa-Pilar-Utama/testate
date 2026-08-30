@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
 
@@ -51,10 +52,7 @@ export default function AuditView(): JSX.Element {
   const presenter = createAuditPresenter();
   return (
     <section class="grid gap-6">
-      <div class="grid gap-1.5">
-        <h2 class="text-lg font-semibold">Audit log</h2>
-        <p class="text-kumo-subtle">Every write, by whom, and how it ended.</p>
-      </div>
+      <PageHeader title="Audit log" description="Every write, by whom, and how it ended." />
       <Filters presenter={presenter} />
       <Loading fallback={<p class="text-kumo-subtle">Loading audit rows...</p>}>
         <Table>

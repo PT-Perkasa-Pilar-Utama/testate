@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Match, Show, Switch } from "solid-js";
 import type { Adapter, Entry, Introspection, RestRequest } from "@testate/shared";
@@ -237,19 +238,15 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
   return (
     <section class="grid gap-6">
       <Loading fallback={<p class="text-kumo-subtle">Loading adapter...</p>}>
-        <div class="flex flex-wrap items-start justify-between gap-4">
-          <div class="grid gap-1.5">
-            <h2 class="text-lg font-semibold">{presenter.adapter.value().name}</h2>
-            <p class="text-kumo-subtle">
-              {presenter.adapter.value().engine}
-              {presenter.adapter.value().engine_version === null
-                ? ""
-                : ` ${presenter.adapter.value().engine_version}`}{" "}
-              · {presenter.adapter.value().tier} tier · {presenter.adapter.value().mode}
-            </p>
-          </div>
-          <Actions presenter={presenter} base={base()} />
-        </div>
+        <PageHeader
+          title={presenter.adapter.value().name}
+          description={`${presenter.adapter.value().engine}${
+            presenter.adapter.value().engine_version === null
+              ? ""
+              : ` ${presenter.adapter.value().engine_version}`
+          } · ${presenter.adapter.value().tier} tier · ${presenter.adapter.value().mode}`}
+          actions={<Actions presenter={presenter} base={base()} />}
+        />
         <Switch>
           <Match when={presenter.tables()}>
             {(schema) => <TablesView schema={schema()} base={base()} />}

@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import PageHeader from "@/components/page-header.tsx";
 import { For, Loading, Show } from "solid-js";
 import type { User } from "@testate/shared";
 
@@ -151,15 +152,15 @@ export default function UsersView(): JSX.Element {
   const presenter = createUsersPresenter();
   return (
     <section class="grid gap-6">
-      <div class="flex items-start justify-between gap-4">
-        <div class="grid gap-1.5">
-          <h2 class="text-lg font-semibold">Users</h2>
-          <p class="text-kumo-subtle">Accounts on this instance. Roles are cumulative.</p>
-        </div>
-        <Button variant="primary" onClick={() => presenter.openCreate()}>
-          New user
-        </Button>
-      </div>
+      <PageHeader
+        title="Users"
+        description="Accounts on this instance. Roles are cumulative."
+        actions={
+          <Button variant="primary" onClick={() => presenter.openCreate()}>
+            New user
+          </Button>
+        }
+      />
       <Loading fallback={<p class="text-kumo-subtle">Loading users...</p>}>
         <Table>
           <thead>

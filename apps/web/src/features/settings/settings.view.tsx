@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import PageHeader from "@/components/page-header.tsx";
 import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
@@ -150,12 +151,10 @@ export default function SettingsView(): JSX.Element {
   const presenter = createSettingsPresenter();
   return (
     <section class="grid gap-6">
-      <div class="grid gap-1.5">
-        <h2 class="text-lg font-semibold">Settings</h2>
-        <p class="text-kumo-subtle">
-          Instance defaults. Values set by the environment cannot be edited here.
-        </p>
-      </div>
+      <PageHeader
+        title="Settings"
+        description="Instance defaults. Values set by the environment cannot be edited here."
+      />
       <Loading fallback={<p class="text-kumo-subtle">Loading settings...</p>}>
         <LayerCard class="flex flex-wrap items-center gap-3 px-5 py-4">
           <span class="text-sm">Snapshot store</span>

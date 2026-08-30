@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
 import type { Job } from "@testate/shared";
@@ -73,18 +74,15 @@ export default function JobsView(): JSX.Element {
   const presenter = createJobsPresenter();
   return (
     <section class="grid gap-6">
-      <div class="flex items-start justify-between gap-4">
-        <div class="grid gap-1.5">
-          <h2 class="text-lg font-semibold">Jobs</h2>
-          <p class="text-kumo-subtle">
-            Snapshots, checkouts, diffs, imports, deletions, and maintenance. Running jobs update
-            live.
-          </p>
-        </div>
-        <Button variant="secondary" onClick={() => presenter.refresh()}>
-          Refresh
-        </Button>
-      </div>
+      <PageHeader
+        title="Jobs"
+        description="Snapshots, checkouts, diffs, imports, deletions, and maintenance. Running jobs update live."
+        actions={
+          <Button size="sm" variant="secondary" onClick={() => presenter.refresh()}>
+            Refresh
+          </Button>
+        }
+      />
       <Loading fallback={<p class="text-kumo-subtle">Loading jobs...</p>}>
         <Table>
           <thead>

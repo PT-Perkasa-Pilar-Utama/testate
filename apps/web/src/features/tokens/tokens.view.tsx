@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import PageHeader from "@/components/page-header.tsx";
 import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
@@ -109,18 +110,15 @@ export default function TokensView(): JSX.Element {
   const presenter = createTokensPresenter();
   return (
     <section class="grid gap-6">
-      <div class="flex items-start justify-between gap-4">
-        <div class="grid gap-1.5">
-          <h2 class="text-lg font-semibold">API tokens</h2>
-          <p class="text-kumo-subtle">
-            Personal tokens act as their role; agent tokens are viewer-only and reach the MCP
-            endpoint alone.
-          </p>
-        </div>
-        <Button variant="primary" onClick={() => presenter.openCreate()}>
-          New token
-        </Button>
-      </div>
+      <PageHeader
+        title="API tokens"
+        description="Personal tokens act as their role; agent tokens are viewer-only and reach the MCP endpoint alone."
+        actions={
+          <Button variant="primary" onClick={() => presenter.openCreate()}>
+            New token
+          </Button>
+        }
+      />
       <CreatedBanner presenter={presenter} />
       <Loading fallback={<p class="text-kumo-subtle">Loading tokens...</p>}>
         <Table>

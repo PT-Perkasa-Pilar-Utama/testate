@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import PageHeader from "@/components/page-header.tsx";
 import { Loading } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
@@ -10,10 +11,7 @@ export default function HealthView(): JSX.Element {
   const presenter = createHealthPresenter();
   return (
     <section class="grid gap-6">
-      <div class="grid gap-1.5">
-        <h2 class="text-lg font-semibold">Health</h2>
-        <p class="text-kumo-subtle">Liveness of this Testate instance.</p>
-      </div>
+      <PageHeader title="Health" description="Liveness of this Testate instance." />
       <LayerCard class="px-5 py-4">
         <Loading fallback={<p class="text-kumo-subtle">Checking...</p>}>
           <div class="flex items-center gap-3">

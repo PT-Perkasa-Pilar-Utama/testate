@@ -3,7 +3,17 @@ import { expect, test } from "@playwright/test";
 import { adapterScreens, demoAdapter, demoAdapters, firstTable } from "./lib/api.ts";
 import { settle, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
-import { ROLES, SCREENS, allows, hiddenNavFor, navFor, outcomeOf, statePath } from "./lib/roles.ts";
+import {
+  PASSWORDS,
+  ROLES,
+  SCREENS,
+  USERNAMES,
+  allows,
+  hiddenNavFor,
+  navFor,
+  outcomeOf,
+  statePath,
+} from "./lib/roles.ts";
 
 const FORBIDDEN = "Your role cannot open this page.";
 
@@ -50,6 +60,44 @@ for (const role of ROLES) {
     });
   });
 }
+
+/** The sign-in screen itself: what it says when it refuses, and where it sends you after. */
+test.describe("signing in", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test("@story-1 refuses a wrong password in the app's own words, not the browser's", async ({
+    page,
+  }) => {
+    await page.goto("/login");
+    await settle(page);
+    await page.getByLabel("Username").fill(USERNAMES.qa);
+    await page.getByLabel("Password").fill("not-the-password");
+    await page.locator('form button[type="submit"]').click();
+    await expect(page.getByRole("status")).toBeVisible();
+    await expect(page).toHaveURL(/\/login$/);
+  });
+
+  test("@story-6 sends you to the page you asked for, not the front page", async ({ page }) => {
+    await page.goto("/jobs");
+    await settle(page);
+    await page.getByLabel("Username").fill(USERNAMES.qa);
+    await page.getByLabel("Password").fill(PASSWORDS.qa);
+    await page.locator('form button[type="submit"]').click();
+    await expect(page.getByRole("heading", { name: "Jobs" })).toBeVisible();
+    await expect(page).toHaveURL(/\/jobs$/);
+  });
+
+  test("@story-6 reaches both fields and the button with the keyboard alone", async ({ page }) => {
+    await page.goto("/login");
+    await settle(page);
+    await page.getByLabel("Username").focus();
+    await expect(page.getByLabel("Username")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByLabel("Password")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.locator('form button[type="submit"]')).toBeFocused();
+  });
+});
 
 /** Adapter sub-screens per role: the page renders and the role-gated controls match the role. */
 for (const role of ROLES) {

@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import PageHeader from "@/components/page-header.tsx";
 import { For, Show } from "solid-js";
 
 import Button from "@/components/button.tsx";
@@ -125,10 +126,7 @@ export default function ToolsView(): JSX.Element {
   const presenter = createToolsPresenter();
   return (
     <section class="grid gap-6">
-      <div class="grid gap-1.5">
-        <h2 class="text-lg font-semibold">Tools</h2>
-        <p class="text-kumo-subtle">Generators for test data and credentials.</p>
-      </div>
+      <PageHeader title="Tools" description="Generators for test data and credentials." />
       <HashCard presenter={presenter} />
       <RandomCard presenter={presenter} />
       <UuidCard presenter={presenter} />

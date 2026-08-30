@@ -82,6 +82,7 @@ test.describe("README screens", () => {
       page.locator("tr", { hasText: "live database" }).first().getByText("ready")
     ).toBeVisible({ timeout: 90_000 });
 
+    await shoot("/projects", "projects");
     await shoot("/projects/demo", "adapters", "Adapters");
     await shoot("/projects/demo", "states", "States");
     await shoot("/projects/demo", "checkouts", "Checkouts");

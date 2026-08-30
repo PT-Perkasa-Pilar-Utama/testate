@@ -3,7 +3,6 @@ import { Loading, Match, Show, Switch } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
-import LayerCard from "@/components/layer-card.tsx";
 import Meter from "@/components/meter.tsx";
 import Tabs from "@/components/tabs.tsx";
 import { hasRole } from "@/lib/session.ts";
@@ -23,7 +22,12 @@ export default function ProjectView(props: { slug: string }): JSX.Element {
       <Loading fallback={<p class="text-kumo-subtle">Loading project...</p>}>
         <div class="flex items-start justify-between gap-4">
           <div class="grid gap-1.5">
-            <h2 class="text-lg font-semibold">{presenter.project.value().name}</h2>
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="text-xl font-semibold text-kumo-strong">
+                {presenter.project.value().name}
+              </h2>
+              <code class="text-kumo-subtle">{props.slug}</code>
+            </div>
             <p class="text-kumo-subtle">
               {presenter.project.value().description ?? "No description."}
             </p>
@@ -41,20 +45,18 @@ export default function ProjectView(props: { slug: string }): JSX.Element {
               </Button>
             </Show>
             <Show when={hasRole("admin")}>
-              <Button size="sm" variant="destructive" onClick={() => void presenter.openDelete()}>
+              <Button size="sm" variant="secondary" onClick={() => void presenter.openDelete()}>
                 Delete
               </Button>
             </Show>
           </div>
         </div>
-        <LayerCard class="grid gap-2 px-5 py-4">
-          <Meter
-            value={presenter.usedPercent()}
-            max={100}
-            label="Snapshot quota"
-            detail={`${presenter.usedPercent()}% used`}
-          />
-        </LayerCard>
+        <Meter
+          value={presenter.usedPercent()}
+          max={100}
+          label="Snapshot quota"
+          detail={`${presenter.usedPercent()}% used`}
+        />
       </Loading>
       <Tabs
         items={PROJECT_TABS}

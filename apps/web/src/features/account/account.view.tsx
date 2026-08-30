@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
 
@@ -62,12 +63,10 @@ export default function AccountView(): JSX.Element {
   const presenter = createAccountPresenter();
   return (
     <section class="grid gap-6">
-      <div class="grid gap-1.5">
-        <h2 class="text-lg font-semibold">Account</h2>
-        <p class="text-kumo-subtle">
-          Signed in as {actor()?.label ?? ""} ({actor()?.role ?? ""}).
-        </p>
-      </div>
+      <PageHeader
+        title="Account"
+        description={`Signed in as ${actor()?.label ?? ""} (${actor()?.role ?? ""}).`}
+      />
       <PasswordCard presenter={presenter} />
       <LayerCard class="grid gap-3 px-5 py-4">
         <h3 class="font-medium">Sessions</h3>

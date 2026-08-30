@@ -15,14 +15,16 @@ export default function ChangePasswordView(): JSX.Element {
     void presenter.submit();
   };
   return (
-    <section class="mx-auto mt-16 w-full max-w-sm">
-      <LayerCard class="grid gap-5 px-6 py-6">
-        <div class="grid gap-1">
-          <h1 class="text-lg font-semibold">Choose a new password</h1>
-          <p class="text-kumo-subtle text-sm">Your password was set by an administrator.</p>
-        </div>
+    // The same shape as the sign-in screen it follows.
+    <section class="mx-auto grid w-full max-w-[340px] gap-6 pt-16">
+      <div class="grid justify-items-center gap-2 text-center">
+        <span class="text-2xl font-semibold text-kumo-strong">Testate</span>
+        <p class="text-kumo-subtle">Your password was set by an administrator</p>
+      </div>
+      <LayerCard class="grid gap-4 px-6 py-5">
+        <h1 class="text-base font-semibold text-kumo-strong">Choose a new password</h1>
         <form class="grid gap-4" onSubmit={onSubmit}>
-          <label class="grid gap-1.5 text-sm">
+          <label class="grid gap-1.5 text-base">
             <span>Current password</span>
             <Input
               type="password"
@@ -32,7 +34,7 @@ export default function ChangePasswordView(): JSX.Element {
               onInput={(event) => presenter.setCurrent(event.currentTarget.value)}
             />
           </label>
-          <label class="grid gap-1.5 text-sm">
+          <label class="grid gap-1.5 text-base">
             <span>New password</span>
             <Input
               type="password"
