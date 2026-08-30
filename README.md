@@ -49,6 +49,18 @@ Even then, Testate takes and restores them one after another, not as a single tr
 servers. Each database is consistent on its own; the set is not guaranteed to line up, and one
 restore can fail while another succeeds. Keep the app idle while you snapshot or reset.
 
+Testate also has to reach every database it resets, and it runs in a container. A database on
+another server needs a route, an open firewall, and a login. A database installed straight onto the
+same machine needs the same care: inside the container `127.0.0.1` means the container, so point the
+adapter at `host.docker.internal` (the compose file carries the line, commented out) and let the
+database listen on that interface. Cannot reach it, cannot add it — and you are back to the problem
+above.
+
+Finally, Testate resets databases and nothing else. Caches, queues, and whatever a running service
+holds in memory are left alone, so a service can go on serving rows the database no longer has.
+Attach a saved request to the `before_checkout` and `after_checkout` hooks to pause a service and
+clear its cache around the reset.
+
 ## Develop
 
 Requires [Bun](https://bun.sh) 1.4.

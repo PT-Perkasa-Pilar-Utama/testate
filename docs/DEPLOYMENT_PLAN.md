@@ -29,6 +29,25 @@ Open the public URL. Sign in as `TESTATE_ADMIN_USER` with `TESTATE_ADMIN_PASSWOR
 
 Set `TESTATE_BASE_PATH=/testate` (leading slash, no trailing slash). Boot rewrites the SPA assets and serves everything under that path; the API answers at `/testate/api/v1`; the session cookie carries `Path=/testate`. `deploy/nginx.conf` is the matching proxy block. Two instances on one host need two base paths.
 
+## Reaching the databases
+
+Testate connects out to every database it tracks, from inside the container. Three things have to
+line up before an adapter connects:
+
+| Where the database runs | Adapter host | Also needed |
+| --- | --- | --- |
+| Another server | its address or DNS name | a route and an open firewall between the two |
+| On this machine, in a container | the service name on a shared compose network | put both on the same network |
+| On this machine, installed natively | `host.docker.internal` | uncomment `extra_hosts` in `deploy/docker-compose.yml`; the database must listen on that interface, not only on localhost |
+
+`127.0.0.1` inside the container means the container, never the host. The deny list blocks
+`127.0.0.0/8` and `::1/128` by default so an adapter cannot point back at Testate itself; leave it
+that way and use the host address instead. Link-local and cloud-metadata addresses are blocked
+permanently and cannot be lifted.
+
+A database Testate cannot reach cannot be added, so a checkout will reset the databases it does have
+and leave that one behind. Check the connection from the adapter dialog before you rely on a reset.
+
 ## Boot refusals
 
 Boot stops before any write and prints a framed message with the variable and the fix. Exit code 78. Common ones:

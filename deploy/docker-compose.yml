@@ -10,6 +10,11 @@ services:
     volumes:
       - testate-data:/data
     restart: unless-stopped
+    # A database installed on the host rather than in a container: point the adapter at
+    # host.docker.internal, never 127.0.0.1, which in here means this container. The database
+    # must also listen on that interface, and the deny list keeps loopback blocked on purpose.
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
     read_only: true
     tmpfs:
       - /tmp
