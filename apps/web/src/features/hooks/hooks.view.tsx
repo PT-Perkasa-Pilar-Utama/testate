@@ -100,7 +100,7 @@ function CreateDialog(props: { presenter: HooksPresenter }): JSX.Element {
 export default function HooksView(props: { slug: string }): JSX.Element {
   const presenter = createHooksPresenter(() => props.slug);
   return (
-    <div class="grid gap-4">
+    <div class="grid gap-3">
       <Show when={hasRole("qa")}>
         <div class="flex justify-end">
           <Button variant="primary" onClick={() => presenter.openCreate()}>

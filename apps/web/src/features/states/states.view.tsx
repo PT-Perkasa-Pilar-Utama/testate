@@ -9,7 +9,7 @@ import { Menu, MenuItem, MenuLink } from "@/components/menu.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Switch from "@/components/switch.tsx";
 import Tabs from "@/components/tabs.tsx";
-import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, EmptyRow, TableFooter } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { createPreflightPresenter } from "../checkouts/preflight.presenter.ts";
 import PreflightDialog from "../checkouts/preflight.view.tsx";
@@ -117,13 +117,14 @@ export default function StatesView(props: { slug: string; onChanged?: () => void
     }
   );
   return (
-    <div class="grid gap-4">
+    <div class="grid gap-3">
       <div class="flex items-center justify-between gap-4">
         <Tabs
           items={VIEWS}
           value={presenter.view()}
           onChange={(view) => presenter.setView(view)}
           label="States view"
+          variant="segmented"
         />
         <div class="flex items-center gap-4">
           <Switch
@@ -150,7 +151,7 @@ export default function StatesView(props: { slug: string; onChanged?: () => void
                 <Head>Kind</Head>
                 <Head>Status</Head>
                 <Head>Adapters</Head>
-                <Head>Size</Head>
+                <Head numeric>Size</Head>
                 <Head>By</Head>
                 <Head>Taken</Head>
                 <Head>Actions</Head>
@@ -190,9 +191,9 @@ export default function StatesView(props: { slug: string; onChanged?: () => void
                       <Cell>
                         {state.adapters.map((adapter) => adapter.adapter_name).join(", ")}
                       </Cell>
-                      <Cell>{formatBytes(state.size_bytes)}</Cell>
-                      <Cell>{state.actor.label}</Cell>
-                      <Cell>{formatWhen(state.created_at)}</Cell>
+                      <Cell numeric>{formatBytes(state.size_bytes)}</Cell>
+                      <Cell class="whitespace-nowrap">{state.actor.label}</Cell>
+                      <Cell class="whitespace-nowrap">{formatWhen(state.created_at)}</Cell>
                       <Cell>
                         <RowActions
                           presenter={presenter}
@@ -206,7 +207,9 @@ export default function StatesView(props: { slug: string; onChanged?: () => void
               </Show>
             </tbody>
           </Table>
-          <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
+          <TableFooter shown={presenter.value().length} noun="states" hasMore={presenter.hasMore()}>
+            <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
+          </TableFooter>
         </Show>
       </Loading>
       <TakeDialog presenter={presenter} />

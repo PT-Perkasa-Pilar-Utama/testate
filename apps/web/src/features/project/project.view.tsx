@@ -18,7 +18,7 @@ import { PROJECT_TABS, createProjectPresenter } from "./project.presenter.ts";
 export default function ProjectView(props: { slug: string }): JSX.Element {
   const presenter = createProjectPresenter(() => props.slug);
   return (
-    <section class="grid gap-6">
+    <section class="grid gap-5">
       <Loading fallback={<p class="text-kumo-subtle">Loading project...</p>}>
         <div class="flex items-start justify-between gap-4">
           <div class="grid gap-1.5">
@@ -51,12 +51,14 @@ export default function ProjectView(props: { slug: string }): JSX.Element {
             </Show>
           </div>
         </div>
-        <Meter
-          value={presenter.usedPercent()}
-          max={100}
-          label="Snapshot quota"
-          detail={`${presenter.usedPercent()}% used`}
-        />
+        <div class="max-w-md">
+          <Meter
+            value={presenter.usedPercent()}
+            max={100}
+            label="Snapshot quota"
+            detail={`${presenter.usedPercent()}% used`}
+          />
+        </div>
       </Loading>
       <Tabs
         items={PROJECT_TABS}

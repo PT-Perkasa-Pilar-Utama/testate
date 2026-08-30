@@ -11,7 +11,7 @@ import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
 import LayerCard from "@/components/layer-card.tsx";
 import Select from "@/components/select.tsx";
-import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, EmptyRow, TableFooter } from "@/components/table.tsx";
 import { KIND_OPTIONS, ROLE_OPTIONS, createTokensPresenter } from "./tokens.presenter.ts";
 import type { TokensPresenter } from "./tokens.presenter.ts";
 
@@ -180,7 +180,9 @@ export default function TokensView(): JSX.Element {
             </Show>
           </tbody>
         </Table>
-        <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
+        <TableFooter shown={presenter.value().length} noun="tokens" hasMore={presenter.hasMore()}>
+          <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
+        </TableFooter>
       </Loading>
       <CreateDialog presenter={presenter} />
       <ConfirmDialog

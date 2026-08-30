@@ -21,7 +21,7 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
     () => presenter.refresh()
   );
   return (
-    <div class="grid gap-4">
+    <div class="grid gap-3">
       <Show when={hasRole("qa")}>
         <div class="flex justify-end">
           <Button variant="primary" onClick={() => wizard.start()}>
@@ -64,8 +64,8 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
                       </Badge>
                     </Cell>
                     <Cell>{countsLabel(run)}</Cell>
-                    <Cell>{run.actor.label}</Cell>
-                    <Cell>{formatWhen(run.created_at)}</Cell>
+                    <Cell class="whitespace-nowrap">{run.actor.label}</Cell>
+                    <Cell class="whitespace-nowrap">{formatWhen(run.created_at)}</Cell>
                     <Cell>
                       <div class="flex flex-wrap justify-end gap-1">
                         <Button

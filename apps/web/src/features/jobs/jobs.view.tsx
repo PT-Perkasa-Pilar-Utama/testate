@@ -53,8 +53,8 @@ function JobRow(props: { presenter: JobsPresenter; job: Job }): JSX.Element {
           {(error) => <code class="text-kumo-danger text-xs">{error().code}</code>}
         </Show>
       </Cell>
-      <Cell>{props.job.actor.label}</Cell>
-      <Cell>{formatWhen(props.job.created_at)}</Cell>
+      <Cell class="whitespace-nowrap">{props.job.actor.label}</Cell>
+      <Cell class="whitespace-nowrap">{formatWhen(props.job.created_at)}</Cell>
       <Cell>
         <Show when={hasRole("qa") && canCancel(props.job)}>
           <Button

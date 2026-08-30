@@ -9,7 +9,7 @@ import Button from "@/components/button.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
-import { Cell, EmptyRow, Head, Row, Table } from "@/components/table.tsx";
+import { Cell, EmptyRow, Head, Row, Table, TableFooter } from "@/components/table.tsx";
 import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { createProjectsPresenter } from "./projects.presenter.ts";
@@ -118,14 +118,16 @@ export default function ProjectsView(): JSX.Element {
                         {project.head.state_name ?? project.head.status}
                       </Badge>
                     </Cell>
-                    <Cell>{formatWhen(project.updated_at)}</Cell>
+                    <Cell class="whitespace-nowrap">{formatWhen(project.updated_at)}</Cell>
                   </Row>
                 )}
               </For>
             </Show>
           </tbody>
         </Table>
-        <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
+        <TableFooter shown={presenter.value().length} noun="projects" hasMore={presenter.hasMore()}>
+          <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
+        </TableFooter>
       </Loading>
       <CreateDialog presenter={presenter} />
     </section>

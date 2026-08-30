@@ -131,7 +131,7 @@ export default function AdaptersView(props: { slug: string }): JSX.Element {
   const presenter = createAdaptersPresenter(() => props.slug);
   const path = (id: string): string => `/projects/${props.slug}/adapters/${id}`;
   return (
-    <div class="grid gap-4">
+    <div class="grid gap-3">
       <Show when={hasRole("qa")}>
         <div class="flex justify-end">
           <Button variant="primary" onClick={() => presenter.openCreate()}>

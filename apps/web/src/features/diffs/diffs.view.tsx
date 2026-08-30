@@ -15,7 +15,7 @@ const LINK = buttonClass("ghost", "sm");
 export default function DiffsView(props: { slug: string }): JSX.Element {
   const presenter = createDiffsPresenter(() => props.slug);
   return (
-    <div class="grid gap-4">
+    <div class="grid gap-3">
       <Show when={hasRole("qa")}>
         <div class="flex justify-end">
           <Button variant="primary" onClick={() => presenter.openCreate()}>
@@ -30,7 +30,7 @@ export default function DiffsView(props: { slug: string }): JSX.Element {
               <Head>Base</Head>
               <Head>Target</Head>
               <Head>Status</Head>
-              <Head>Changed rows</Head>
+              <Head numeric>Changed rows</Head>
               <Head>Expires</Head>
               <Head>Actions</Head>
             </tr>
@@ -53,8 +53,8 @@ export default function DiffsView(props: { slug: string }): JSX.Element {
                     <Cell>
                       <Badge variant={STATUS_VARIANT[diff.status]}>{diff.status}</Badge>
                     </Cell>
-                    <Cell>{changedRows(diff)}</Cell>
-                    <Cell>{formatWhen(diff.expires_at)}</Cell>
+                    <Cell numeric>{changedRows(diff)}</Cell>
+                    <Cell class="whitespace-nowrap">{formatWhen(diff.expires_at)}</Cell>
                     <Cell>
                       <div class="flex flex-wrap justify-end gap-1">
                         <Button

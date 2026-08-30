@@ -7,7 +7,7 @@ import { TERMINAL_JOB_STATUSES } from "@testate/shared";
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
 import LoadMore from "@/components/load-more.tsx";
-import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, EmptyRow, TableFooter } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { subscribeJob } from "@/lib/sse.ts";
 import { CountersDialog, DetailDialog, RESULT_VARIANT } from "./checkouts.dialogs.view.tsx";
@@ -89,8 +89,8 @@ export default function CheckoutsView(props: {
                       </For>
                     </span>
                   </Cell>
-                  <Cell>{checkout.actor.label}</Cell>
-                  <Cell>{formatWhen(checkout.created_at)}</Cell>
+                  <Cell class="whitespace-nowrap">{checkout.actor.label}</Cell>
+                  <Cell class="whitespace-nowrap">{formatWhen(checkout.created_at)}</Cell>
                   <Cell>
                     <div class="flex flex-wrap justify-end gap-1">
                       <Button
@@ -125,7 +125,9 @@ export default function CheckoutsView(props: {
           </Show>
         </tbody>
       </Table>
-      <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
+      <TableFooter shown={presenter.value().length} noun="checkouts" hasMore={presenter.hasMore()}>
+        <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
+      </TableFooter>
       <DetailDialog presenter={presenter} />
       <CountersDialog presenter={presenter} />
     </Loading>

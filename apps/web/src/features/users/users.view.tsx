@@ -11,7 +11,7 @@ import LoadMore from "@/components/load-more.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, TableFooter } from "@/components/table.tsx";
 import { ROLE_OPTIONS, createUsersPresenter } from "./users.presenter.ts";
 import type { UsersPresenter } from "./users.presenter.ts";
 
@@ -204,7 +204,9 @@ export default function UsersView(): JSX.Element {
             </For>
           </tbody>
         </Table>
-        <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
+        <TableFooter shown={presenter.value().length} noun="users" hasMore={presenter.hasMore()}>
+          <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
+        </TableFooter>
       </Loading>
       <CreateDialog presenter={presenter} />
       <ResetDialog presenter={presenter} />

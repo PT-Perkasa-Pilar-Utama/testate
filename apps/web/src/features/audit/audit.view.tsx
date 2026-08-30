@@ -7,7 +7,7 @@ import Badge from "@/components/badge.tsx";
 import Input from "@/components/input.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Select from "@/components/select.tsx";
-import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, EmptyRow, TableFooter } from "@/components/table.tsx";
 import { OUTCOMES, createAuditPresenter } from "./audit.presenter.ts";
 import type { AuditPresenter } from "./audit.presenter.ts";
 
@@ -78,8 +78,8 @@ export default function AuditView(): JSX.Element {
               <For each={presenter.value()}>
                 {(row) => (
                   <Row>
-                    <Cell>{formatWhen(row.created_at)}</Cell>
-                    <Cell>{row.actor.label}</Cell>
+                    <Cell class="whitespace-nowrap">{formatWhen(row.created_at)}</Cell>
+                    <Cell class="whitespace-nowrap">{row.actor.label}</Cell>
                     <Cell>
                       <code>{row.action}</code>
                     </Cell>
@@ -100,7 +100,9 @@ export default function AuditView(): JSX.Element {
             </Show>
           </tbody>
         </Table>
-        <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
+        <TableFooter shown={presenter.value().length} noun="rows" hasMore={presenter.hasMore()}>
+          <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
+        </TableFooter>
       </Loading>
     </section>
   );
