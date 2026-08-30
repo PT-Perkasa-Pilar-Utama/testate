@@ -117,6 +117,44 @@ describe.skipIf(!(await reachable()))("postgres engine (contract)", () => {
     expect(next[0].id).toBe(4);
   });
 
+  // A self-reference longer than one insert batch: the children in the first statement point at
+  // parents the second statement has not inserted yet, so the keys have to wait for the commit.
+  test("checkout restores a self-referencing table that spans more than one batch", async () => {
+    // In the fixture schema, so the next test's FIXTURE clears it even if this one fails.
+    await admin.unsafe(FIXTURE);
+    await admin.unsafe(`
+      CREATE TABLE contract.nodes (
+        id bigint PRIMARY KEY,
+        parent_id bigint REFERENCES contract.nodes(id) DEFERRABLE INITIALLY IMMEDIATE
+      );
+      INSERT INTO contract.nodes (id, parent_id)
+        SELECT g, CASE WHEN g = 1500 THEN NULL ELSE g + 1 END FROM generate_series(1, 1500) AS g;
+    `);
+    const run = engine.snapshot(conn, { excludeTables: [] });
+    const saved = await collect(run);
+    const manifest = await run.manifest;
+    await admin.unsafe("DELETE FROM contract.nodes");
+    const checkout = engine.checkout(conn, {
+      tables: planTables(manifest),
+      introspectionAtSnapshot: manifest.introspection,
+      rows: rowsFrom(saved),
+      onDrift: "fail",
+      lockTimeoutMs: 5000,
+      restoreMode: "atomic",
+    });
+    for await (const item of checkout) void item;
+    const result = await checkout.result;
+    expect(result.status).toBe("restored");
+    expect(result.tables.map((table) => `${table.ref.name}:${table.rows}`).sort()).toEqual([
+      "customers:2",
+      "nodes:1500",
+      "notes:3",
+      "orders:3",
+    ]);
+    const after = await admin.unsafe("SELECT COUNT(*)::int AS n FROM contract.nodes");
+    expect(after[0]).toEqual({ n: 1500 });
+  });
+
   test("checkout refuses on schema drift and leaves the database untouched", async () => {
     await admin.unsafe(FIXTURE);
     const run = engine.snapshot(conn, { excludeTables: [] });

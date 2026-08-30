@@ -230,8 +230,15 @@ async function restoreAll(
   await conn.unsafe("SET LOCAL TIME ZONE 'UTC'");
   const prepared = await prepare(sql, conn, plan);
   const { targets, result } = prepared;
-  if (result.strategy.triggerDisable)
+  if (result.strategy.triggerDisable) {
     await conn.unsafe("SET LOCAL session_replication_role = replica");
+  } else {
+    // Triggers stay on, so every foreign key is checked at the end of each statement, and a table
+    // longer than one batch has children pointing at parents the next statement has not inserted
+    // yet. Deferring moves the check to COMMIT (13 §13.6 step 2); non-deferrable keys are
+    // unaffected, so this is a no-op on a schema without them.
+    await conn.unsafe("SET CONSTRAINTS ALL DEFERRED");
+  }
   result.lockWaitMs = await emptyTables(conn, prepared);
   for (const [index, table] of targets.entries()) {
     const ref: TableRef = { schema: table.schema, name: table.name };
