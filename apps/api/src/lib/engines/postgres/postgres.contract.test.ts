@@ -48,6 +48,28 @@ describe.skipIf(!(await reachable()))("postgres engine (contract)", () => {
     ]);
   });
 
+  // Cancelling is an ordinary button, and it used to end the whole process: the manifest promise
+  // rejected alongside the stream with nobody waiting on it yet.
+  test("cancelling a snapshot mid-stream leaves no rejection loose", async () => {
+    await admin.unsafe(FIXTURE);
+    const controller = new AbortController();
+    let loose = 0;
+    const count = (): void => {
+      loose += 1;
+    };
+    process.on("unhandledRejection", count);
+    const run = engine.snapshot(conn, {
+      excludeTables: [],
+      chunkRows: 1,
+      signal: controller.signal,
+    });
+    controller.abort();
+    await expect(collect(run)).rejects.toThrow(/cancel/i);
+    await Bun.sleep(50);
+    process.off("unhandledRejection", count);
+    expect(loose).toBe(0);
+  });
+
   test("decodeRow keeps big integers and wide decimals as text", async () => {
     await admin.unsafe(FIXTURE);
     const run = engine.snapshot(conn, { excludeTables: [] });

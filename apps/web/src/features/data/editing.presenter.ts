@@ -146,6 +146,8 @@ export function createEditingPresenter(
   const [fixture, setFixture] = createSignal<Fixture | null>(null);
   const [error, setError] = createSignal<string | null>(null);
   const [candidates, setCandidates] = createSignal<LookupRow[]>([]);
+  /** Counts lookups so a late answer to an old query cannot overwrite the newest one. */
+  let lookups = 0;
   const edit = async (
     staticSlug: string,
     staticId: string,
@@ -280,8 +282,13 @@ export function createEditingPresenter(
       const staticSlug = slug();
       const staticId = id();
       const staticTable = tableName();
+      // Typing fires a lookup per keystroke and the answers can arrive out of order, so an older
+      // one used to land last and empty the list under the newest query.
+      lookups += 1;
+      const mine = lookups;
       return attempt(async () => {
-        setCandidates(await policiesModel.lookup(staticSlug, staticId, staticTable, column, q));
+        const found = await policiesModel.lookup(staticSlug, staticId, staticTable, column, q);
+        if (mine === lookups) setCandidates(found);
       });
     },
   };

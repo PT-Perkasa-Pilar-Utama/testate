@@ -108,10 +108,7 @@ test.describe("qa gap stories", () => {
     const body = await answer.text();
     expect(answer.status(), body).toBe(200);
     expect(body, body).toMatch(/"key":\[/);
-    // The options render after the response, and a loaded machine can take a while over it.
-    await expect(page.locator("dialog[open] datalist option").first()).toBeAttached({
-      timeout: 15_000,
-    });
+    await expect(page.locator("dialog[open] datalist option").first()).toBeAttached();
     await page.locator("dialog[open]").getByRole("button", { name: "Cancel" }).click();
     await page.getByRole("switch", { name: "Write mode" }).click();
     expect(issues).toStrictEqual([]);

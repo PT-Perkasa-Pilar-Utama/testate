@@ -58,8 +58,13 @@ export function createMongodbEngine(netguard: Netguard): DbEngine {
         return snapshot(handle, topology, opts);
       })();
       void swallow(pending);
+      // The manifest is a second chain off `pending`: the job drains the stream first and reads
+      // this afterwards, so a refused connection would reject it with nobody waiting, and Bun ends
+      // the process on an unhandled rejection.
+      const manifest = (async () => (await pending).manifest)();
+      void swallow(manifest);
       return {
-        manifest: (async () => (await pending).manifest)(),
+        manifest,
         async *[Symbol.asyncIterator]() {
           yield* await pending;
         },
@@ -79,8 +84,10 @@ export function createMongodbEngine(netguard: Netguard): DbEngine {
         return checkout(handle, topology, plan);
       })();
       void swallow(pending);
+      const result = (async () => (await pending).result)();
+      void swallow(result);
       return {
-        result: (async () => (await pending).result)(),
+        result,
         async *[Symbol.asyncIterator]() {
           yield* await pending;
         },

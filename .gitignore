@@ -8,6 +8,8 @@ apps/api/dist
 
 # runtime data (metadata.db, blobs, logs, uploads, run/)
 /data/
+# a dev server started from apps/api leaves its instance here
+apps/api/data/
 *.db
 *.db-shm
 *.db-wal
