@@ -135,7 +135,7 @@ function RunPanel(props: { presenter: RestPresenter }): JSX.Element {
               <For each={props.presenter.runs.value()}>
                 {(run) => (
                   <li class="flex items-center gap-2">
-                    <Badge variant={statusVariant(run)}>{run.status_code ?? "—"}</Badge>
+                    <Badge variant={statusVariant(run)}>{run.status_code ?? "-"}</Badge>
                     <span class="text-kumo-subtle">
                       {run.created_at} · {run.duration_ms} ms
                       {run.error === null ? "" : ` · ${run.error}`}

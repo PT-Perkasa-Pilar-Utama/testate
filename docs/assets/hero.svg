@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-label="Testate. Git for your test database. Snapshot it, break it, put it back in seconds. Four states run down a line and a checkout carries the database back to the one you keep. PostgreSQL, MySQL, MariaDB, MongoDB, S3, SFTP, self-hosted in one container.">
+  <defs>
+    <radialGradient id="wash" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#7DD3C0" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#7DD3C0" stop-opacity="0"/>
+    </radialGradient>
+    <style>
+      .sans { font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="900" fill="#F8FAFC"/>
+  <circle cx="1010" cy="120" r="380" fill="url(#wash)"/>
+  <rect x="0.5" y="0.5" width="1199" height="899" fill="none" stroke="#E2E8F0"/>
+
+  <!-- Mark: a commit line with the state you return to -->
+  <g transform="translate(96 92)">
+    <rect width="96" height="96" rx="22" fill="#0B1F2A"/>
+    <g fill="none" stroke="#7DD3C0" stroke-width="6" stroke-linecap="round">
+      <line x1="31" y1="66" x2="31" y2="24"/>
+      <path d="M31 46 C31 35 55 43 55 32"/>
+    </g>
+    <circle cx="31" cy="66" r="6" fill="#7DD3C0"/>
+    <circle cx="55" cy="32" r="6" fill="#7DD3C0"/>
+    <circle cx="31" cy="24" r="8.5" fill="#10B981"/>
+    <circle cx="31" cy="24" r="3.5" fill="#0B1F2A"/>
+  </g>
+
+  <text class="sans" x="216" y="160" font-size="66" font-weight="700" letter-spacing="-1.5">
+    <tspan fill="#0B1F2A">Test</tspan><tspan fill="#10B981">ate</tspan>
+  </text>
+
+  <text class="sans" x="96" y="320" font-size="64" font-weight="700" fill="#0B1F2A" letter-spacing="-1.2">
+    Git for your test database.
+  </text>
+  <text class="sans" x="96" y="382" font-size="32" font-weight="500" fill="#475569">
+    Snapshot it, break it, put it back in seconds.
+  </text>
+
+  <!-- Four states down a line; a checkout carries the database back to the green one -->
+  <g transform="translate(96 470)">
+    <line x1="60" y1="40" x2="940" y2="40" stroke="#CBD5E1" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="353" cy="40" r="11" fill="#94A3B8"/>
+    <circle cx="646" cy="40" r="11" fill="#94A3B8"/>
+    <circle cx="940" cy="40" r="16" fill="#94A3B8"/>
+    <path d="M934 128 C700 208 240 208 66 132" fill="none" stroke="#10B981" stroke-width="5"
+          stroke-linecap="round" stroke-dasharray="12 12"/>
+    <path d="M84 118 L62 130 L74 152" fill="none" stroke="#10B981" stroke-width="5"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="60" cy="40" r="18" fill="#10B981"/>
+    <circle cx="60" cy="40" r="7" fill="#F8FAFC"/>
+    <text class="sans" x="60" y="-4" font-size="24" font-weight="600" fill="#0B1F2A" text-anchor="middle">
+      the state you keep
+    </text>
+    <text class="sans" x="940" y="-4" font-size="24" font-weight="500" fill="#64748B" text-anchor="middle">
+      today's mess
+    </text>
+    <text class="sans" x="500" y="212" font-size="26" font-weight="600" fill="#10B981" text-anchor="middle">
+      one checkout
+    </text>
+  </g>
+
+  <line x1="96" y1="762" x2="1104" y2="762" stroke="#E2E8F0" stroke-width="2"/>
+  <text class="sans" x="96" y="812" font-size="24" font-weight="500" fill="#64748B">
+    PostgreSQL · MySQL · MariaDB · MongoDB · S3 · SFTP
+  </text>
+  <text class="sans" x="96" y="850" font-size="24" font-weight="500" fill="#64748B">
+    Self-hosted. One container, one volume.
+  </text>
+</svg>

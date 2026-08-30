@@ -186,3 +186,9 @@ async function afterClick(
   const here = page.url().replace(/^https?:\/\/[^/]+/, "");
   return { dialog: null, outcome: here === path ? "no-op" : "navigated" };
 }
+
+/** Opens a project tab when one is named, then waits for the screen to settle. */
+export async function openTab(page: Page, tab: string | undefined): Promise<void> {
+  if (tab !== undefined) await page.getByRole("tab", { name: tab }).click();
+  await settle(page);
+}

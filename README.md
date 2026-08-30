@@ -1,4 +1,4 @@
-![Testate: git for your test database. Runs in Docker on the DEV, SIT, or UAT server next to your main service and database; a reverse proxy exposes it to admins, viewers, testers, CI/CD, and AI agents](docs/assets/hero-square.svg)
+![Testate: git for your test database. Snapshot it, break it, put it back in seconds. Works with PostgreSQL, MySQL, MariaDB, MongoDB, S3 and SFTP, self-hosted in one container](docs/assets/hero.svg)
 
 **Git for your test database. Reset the database, not the developer.**
 
@@ -13,9 +13,51 @@ Testate is a self-hosted tool for QA teams. It takes data-only snapshots ("state
 
 REST adapters hold no data of their own. They store the requests you save and the hooks that run around a checkout.
 
+## What you get
+
+**Point it at the databases behind the system under test.** Each adapter reports its engine and
+version, what your login is allowed to do, and whether the database is safe to reset. Object storage
+and REST endpoints sit in the same list.
+
+![The adapters tab, listing every adapter in the project with its engine, tier, mode and status](docs/assets/screens/adapters.png)
+
+**Snapshot them.** A state is data only, taken across every database in the project at once, and it
+says who took it and what it cost.
+
+![The states tab, listing snapshots with kind, status, adapters, size and author](docs/assets/screens/states.png)
+
+**Put them back.** A checkout restores the state you pick and reports what happened per database.
+
+![The checkouts tab, listing restores with per-adapter results and a retry action](docs/assets/screens/checkouts.png)
+
+**See what a test run changed.** Diff two states, or a state against the live database, and drill
+into the rows.
+
+![A diff opened, listing added, removed and changed rows per table across four databases](docs/assets/screens/diffs.png)
+
+**Read and edit the rows.** Filter, page by keyset, follow a foreign key, or turn on write mode and
+edit a row with the types the column actually has.
+
+![The data grid for a table, with filters, write mode and typed columns](docs/assets/screens/grid.png)
+
+**Run your own SQL.** A read-only console with saved queries, so the check you run after every
+reset is one click away.
+
+![The query console, running a read-only SELECT with its result and a saved query](docs/assets/screens/query.png)
+
+**Load fixtures.** Upload a CSV or XLSX, map the columns, dry-run it, then import for real.
+
+![The imports tab, listing import runs with their counts](docs/assets/screens/imports.png)
+
+**Let an agent look.** Testate speaks MCP, so Claude or any agent can read schemas, page rows, run
+read-only queries, and read your snapshots. The token it uses reaches nothing but `/mcp`, and it
+cannot write.
+
 ## Status
 
-Version 1.0.0-alpha. Every engine in the table is real, not a stand-in. The gate runs on every push: type-check, lint, format, unit tests, build. A browser suite covers all 150 user stories, each one tagged with the story it proves. `docs/api-specs/_index.md` lists every operation.
+Version 1.0.0-alpha. Every engine in the table is real, not a stand-in. The gate runs on every push:
+type-check, lint, format, unit tests, build. A browser suite covers all 150 user stories, each one
+tagged with the story it proves.
 
 ## Run it
 
@@ -27,17 +69,8 @@ docker compose -f deploy/docker-compose.yml up -d
 open http://localhost:3000
 ```
 
-Sign in as `admin`. The first login forces a password change. Create users under **Users**; roles are `viewer` < `qa` < `admin`.
-
-The image is `ghcr.io/pt-perkasa-pilar-utama/testate`, built from `deploy/Dockerfile` and slimmed with docker-slim by the manual **Deploy image** workflow. To publish: run `bun run bump-version <version>`, then run the workflow. It publishes `<version>` and `latest`, and skips a version that is already there.
-
-Serve under a sub-path by setting `TESTATE_BASE_PATH=/testate`. `deploy/nginx.conf` shows the proxy block.
-
-### Forgot a password
-
-An admin resets any account to a temporary password under **Users**. The owner must change it at the next login.
-
-Nobody can reset the last admin, so that one recovers through the environment. Restart the container with `TESTATE_ADMIN_PASSWORD_RESET=true` and a new `TESTATE_ADMIN_PASSWORD`. That account gets the password, must change it at the next login, and loses every session it had. Then remove the variable: while it is set, every restart resets that password again.
+Sign in as `admin`. The first login forces a password change. Create users under **Users**; roles
+are `viewer` < `qa` < `admin`.
 
 ## What it does not do
 
@@ -65,6 +98,29 @@ You can still get real use out of it by staying inside one service at a time. Ad
 
 That gives one place to look at data across every service, with no way to break anything. Give the service under test a normal sandbox adapter in its own project, snapshot it, run, reset. Deleting a project leaves read-only adapters alone, so the safe ones stay safe.
 
+## Operating it
+
+Serve under a sub-path by setting `TESTATE_BASE_PATH=/testate`. `deploy/nginx.conf` shows the proxy
+block.
+
+The image is `ghcr.io/pt-perkasa-pilar-utama/testate`, built from `deploy/Dockerfile` and slimmed
+with docker-slim by the manual **Deploy image** workflow. To publish: run
+`bun run bump-version <version>`, then run the workflow. It publishes `<version>` and `latest`, and
+skips a version that is already there.
+
+### Forgot a password
+
+An admin resets any account to a temporary password under **Users**. The owner must change it at the
+next login.
+
+Nobody can reset the last admin, so that one recovers through the environment. Restart the container
+with `TESTATE_ADMIN_PASSWORD_RESET=true` and a new `TESTATE_ADMIN_PASSWORD`. That account gets the
+password, must change it at the next login, and loses every session it had. Then remove the
+variable: while it is set, every restart resets that password again.
+
+Backups, upgrades, boot refusals and the rest live in the
+[deployment plan](docs/DEPLOYMENT_PLAN.md).
+
 ## Develop
 
 Requires [Bun](https://bun.sh) 1.4.
@@ -87,8 +143,6 @@ The first boot needs `TESTATE_ADMIN_PASSWORD`; the first login forces a change. 
 | `bun run bump-version`   | set the version everywhere at once                         |
 | `bun run generate-key`   | a new sealed-values key                                    |
 
-Docs live in `docs/`: the [PRD](docs/PRD.md), the [technical specs](docs/technical-specs/_index.md), the [API specs](docs/api-specs/_index.md), the [coding standard](docs/CODING_STANDARD.md), [key rotation](docs/KEY_ROTATION.md), [agent access](docs/AGENT_ACCESS.md), the [deployment plan](docs/DEPLOYMENT_PLAN.md), and the [browser suite](docs/E2E.md).
-
 ## Layout
 
 ```text
@@ -98,6 +152,10 @@ packages/shared valibot schemas: the contract both apps derive their types from
 deploy          Dockerfile, compose, nginx, engines for development
 docs            PRD, specs, ADRs, standards
 ```
+
+## Docs
+
+Docs live in `docs/`: the [PRD](docs/PRD.md), the [technical specs](docs/technical-specs/_index.md), the [API specs](docs/api-specs/_index.md), the [coding standard](docs/CODING_STANDARD.md), [key rotation](docs/KEY_ROTATION.md), [agent access](docs/AGENT_ACCESS.md), the [deployment plan](docs/DEPLOYMENT_PLAN.md), and the [browser suite](docs/E2E.md).
 
 ## License
 

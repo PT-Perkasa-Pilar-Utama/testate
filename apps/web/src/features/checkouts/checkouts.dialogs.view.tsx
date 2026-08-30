@@ -70,15 +70,15 @@ export function DetailDialog(props: { presenter: CheckoutsPresenter }): JSX.Elem
                       </Cell>
                       <Cell>
                         {adapter.strategy === null
-                          ? "—"
+                          ? "-"
                           : `${adapter.strategy.emptyMode} · ${adapter.strategy.foreignKeyHandling} FKs`}
                       </Cell>
-                      <Cell>{adapter.rows ?? "—"}</Cell>
+                      <Cell>{adapter.rows ?? "-"}</Cell>
                       <Cell>
-                        {adapter.duration_ms === null ? "—" : `${adapter.duration_ms} ms`}
+                        {adapter.duration_ms === null ? "-" : `${adapter.duration_ms} ms`}
                       </Cell>
                       <Cell>
-                        {adapter.lock_wait_ms === null ? "—" : `${adapter.lock_wait_ms} ms`}
+                        {adapter.lock_wait_ms === null ? "-" : `${adapter.lock_wait_ms} ms`}
                       </Cell>
                     </Row>
                   )}

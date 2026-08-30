@@ -49,6 +49,8 @@ export default defineConfig({
     { name: "state-api", testMatch: /state-api\.e2e\.ts/, dependencies: ["states"] },
     { name: "adapter", testMatch: /adapter\.e2e\.ts/, dependencies: ["state-api"] },
     { name: "crawl", testMatch: /buttons\.e2e\.ts/, dependencies: ["adapter"] },
+    // README screenshots, skipped unless SHOTS=1; it reads the seeded demo like any other spec.
+    { name: "screens", testMatch: /screens\.e2e\.ts/, dependencies: ["state-api"] },
     // Boot stories spawn API processes of their own; run them last so they never starve a browser.
     {
       name: "boot",
