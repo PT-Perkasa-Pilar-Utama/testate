@@ -1,4 +1,6 @@
 import type { JSX } from "@solidjs/web";
+import FormErrors from "@/components/form-errors.tsx";
+import { createFormGuard } from "@/lib/form.ts";
 import { Show } from "solid-js";
 
 import Banner from "@/components/banner.tsx";
@@ -10,10 +12,7 @@ import { createPasswordPresenter } from "./auth.presenter.ts";
 /** Shown instead of the app while `must_change_password` is set (bootstrap admin, admin reset). */
 export default function ChangePasswordView(): JSX.Element {
   const presenter = createPasswordPresenter();
-  const onSubmit = (event: SubmitEvent): void => {
-    event.preventDefault();
-    void presenter.submit();
-  };
+  const guard = createFormGuard();
   return (
     // The same shape as the sign-in screen it follows.
     <section class="mx-auto grid w-full max-w-[340px] gap-6 pt-16">
@@ -23,7 +22,16 @@ export default function ChangePasswordView(): JSX.Element {
       </div>
       <LayerCard class="grid gap-4 px-6 py-5">
         <h1 class="text-base font-semibold text-kumo-strong">Choose a new password</h1>
-        <form class="grid gap-4" onSubmit={onSubmit}>
+        <form
+          ref={guard.ref}
+          novalidate
+          class="grid gap-4"
+          onSubmit={(event) => {
+            if (!guard.accepts(event)) return;
+            void presenter.submit();
+          }}
+        >
+          <FormErrors errors={guard.errors()} />
           <label class="grid gap-1.5 text-base">
             <span>Current password</span>
             <Input

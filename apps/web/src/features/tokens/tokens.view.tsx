@@ -1,4 +1,6 @@
 import type { JSX } from "@solidjs/web";
+import FormErrors from "@/components/form-errors.tsx";
+import { createFormGuard } from "@/lib/form.ts";
 import PageHeader from "@/components/page-header.tsx";
 import { For, Loading, Show } from "solid-js";
 
@@ -16,10 +18,7 @@ import { KIND_OPTIONS, ROLE_OPTIONS, createTokensPresenter } from "./tokens.pres
 import type { TokensPresenter } from "./tokens.presenter.ts";
 
 function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
-  const onSubmit = (event: SubmitEvent): void => {
-    event.preventDefault();
-    void props.presenter.create();
-  };
+  const guard = createFormGuard();
   return (
     <Dialog
       open={props.presenter.creating()}
@@ -27,7 +26,16 @@ function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
       title="New API token"
       description="Standard tokens act as their role on the REST API. Agent tokens are viewer-only and reach the MCP endpoint alone."
     >
-      <form class="grid gap-4" onSubmit={onSubmit}>
+      <form
+        ref={guard.ref}
+        novalidate
+        class="grid gap-4"
+        onSubmit={(event) => {
+          if (!guard.accepts(event)) return;
+          void props.presenter.create();
+        }}
+      >
+        <FormErrors errors={guard.errors()} />
         <label class="grid gap-1.5 text-base">
           <span>Name</span>
           <Input

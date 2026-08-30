@@ -1,4 +1,6 @@
 import type { JSX } from "@solidjs/web";
+import FormErrors from "@/components/form-errors.tsx";
+import { createFormGuard } from "@/lib/form.ts";
 import PageHeader from "@/components/page-header.tsx";
 import { For, Loading, Show } from "solid-js";
 import type { User } from "@testate/shared";
@@ -16,10 +18,7 @@ import { ROLE_OPTIONS, createUsersPresenter } from "./users.presenter.ts";
 import type { UsersPresenter } from "./users.presenter.ts";
 
 function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element {
-  const onSubmit = (event: SubmitEvent): void => {
-    event.preventDefault();
-    void props.presenter.create();
-  };
+  const guard = createFormGuard();
   return (
     <Dialog
       open={props.presenter.creating()}
@@ -27,7 +26,16 @@ function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element {
       title="New user"
       description="Hand the temporary password over out of band. The first login forces a change."
     >
-      <form class="grid gap-4" onSubmit={onSubmit}>
+      <form
+        class="grid gap-4"
+        ref={guard.ref}
+        novalidate
+        onSubmit={(event) => {
+          if (!guard.accepts(event)) return;
+          void props.presenter.create();
+        }}
+      >
+        <FormErrors errors={guard.errors()} />
         <label class="grid gap-1.5 text-base">
           <span>Username</span>
           <Input
@@ -85,10 +93,7 @@ function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element {
 }
 
 function ResetDialog(props: { presenter: UsersPresenter }): JSX.Element {
-  const onSubmit = (event: SubmitEvent): void => {
-    event.preventDefault();
-    void props.presenter.resetPassword();
-  };
+  const guard2 = createFormGuard();
   return (
     <Dialog
       open={props.presenter.resetting() !== null}
@@ -96,7 +101,16 @@ function ResetDialog(props: { presenter: UsersPresenter }): JSX.Element {
       title={`Reset password for ${props.presenter.resetting()?.username ?? ""}`}
       description="Every session of this user ends. The next login forces a change."
     >
-      <form class="grid gap-4" onSubmit={onSubmit}>
+      <form
+        class="grid gap-4"
+        ref={guard2.ref}
+        novalidate
+        onSubmit={(event) => {
+          if (!guard2.accepts(event)) return;
+          void props.presenter.resetPassword();
+        }}
+      >
+        <FormErrors errors={guard2.errors()} />
         <label class="grid gap-1.5 text-base">
           <span>Temporary password (12+ characters)</span>
           <Input

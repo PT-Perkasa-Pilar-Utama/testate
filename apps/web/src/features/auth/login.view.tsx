@@ -3,16 +3,15 @@ import { Show } from "solid-js";
 
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
+import FormErrors from "@/components/form-errors.tsx";
 import Input from "@/components/input.tsx";
 import LayerCard from "@/components/layer-card.tsx";
+import { createFormGuard } from "@/lib/form.ts";
 import { createLoginPresenter } from "./auth.presenter.ts";
 
 export default function LoginView(props: { next: string }): JSX.Element {
   const presenter = createLoginPresenter(() => props.next);
-  const onSubmit = (event: SubmitEvent): void => {
-    event.preventDefault();
-    void presenter.submit();
-  };
+  const guard = createFormGuard();
   return (
     // GitHub's sign-in: the mark above a narrow card, nothing else on the page.
     <section class="mx-auto grid w-full max-w-[340px] gap-6 pt-16">
@@ -22,7 +21,16 @@ export default function LoginView(props: { next: string }): JSX.Element {
       </div>
       <LayerCard class="grid gap-4 px-6 py-5">
         <h1 class="text-base font-semibold text-kumo-strong">Sign in</h1>
-        <form class="grid gap-4" onSubmit={onSubmit}>
+        <form
+          class="grid gap-4"
+          ref={guard.ref}
+          novalidate
+          onSubmit={(event) => {
+            if (!guard.accepts(event)) return;
+            void presenter.submit();
+          }}
+        >
+          <FormErrors errors={guard.errors()} />
           <label class="grid gap-1.5 text-base">
             <span>Username</span>
             <Input

@@ -1,4 +1,6 @@
 import type { JSX } from "@solidjs/web";
+import FormErrors from "@/components/form-errors.tsx";
+import { createFormGuard } from "@/lib/form.ts";
 import { For, Loading, Show } from "solid-js";
 
 import Banner from "@/components/banner.tsx";
@@ -58,10 +60,7 @@ function Actions(props: { presenter: StatesPresenter; submit: string }): JSX.Ele
 }
 
 export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
-  const onSubmit = (event: SubmitEvent): void => {
-    event.preventDefault();
-    void props.presenter.take();
-  };
+  const guard = createFormGuard();
   return (
     <Dialog
       open={props.presenter.taking()}
@@ -69,7 +68,16 @@ export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
       title="Take state"
       description="Every database adapter is snapshotted at one point in time. Untick adapters to take a partial state."
     >
-      <form class="grid gap-4" onSubmit={onSubmit}>
+      <form
+        class="grid gap-4"
+        ref={guard.ref}
+        novalidate
+        onSubmit={(event) => {
+          if (!guard.accepts(event)) return;
+          void props.presenter.take();
+        }}
+      >
+        <FormErrors errors={guard.errors()} />
         <DraftFields presenter={props.presenter} />
         <fieldset class="grid gap-1.5 text-sm">
           <legend>Adapters</legend>
@@ -103,10 +111,7 @@ export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
 }
 
 export function EditDialog(props: { presenter: StatesPresenter }): JSX.Element {
-  const onSubmit = (event: SubmitEvent): void => {
-    event.preventDefault();
-    void props.presenter.save();
-  };
+  const guard2 = createFormGuard();
   return (
     <Dialog
       open={props.presenter.editing() !== null}
@@ -114,7 +119,16 @@ export function EditDialog(props: { presenter: StatesPresenter }): JSX.Element {
       title={`Edit ${props.presenter.editing()?.name ?? ""}`}
       description="Init states keep their kind; CI filters on it."
     >
-      <form class="grid gap-4" onSubmit={onSubmit}>
+      <form
+        class="grid gap-4"
+        ref={guard2.ref}
+        novalidate
+        onSubmit={(event) => {
+          if (!guard2.accepts(event)) return;
+          void props.presenter.save();
+        }}
+      >
+        <FormErrors errors={guard2.errors()} />
         <DraftFields presenter={props.presenter} />
         <Show when={props.presenter.error()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
@@ -126,10 +140,7 @@ export function EditDialog(props: { presenter: StatesPresenter }): JSX.Element {
 }
 
 export function DeleteDialog(props: { presenter: StatesPresenter }): JSX.Element {
-  const onSubmit = (event: SubmitEvent): void => {
-    event.preventDefault();
-    void props.presenter.confirmDelete();
-  };
+  const guard3 = createFormGuard();
   return (
     <Dialog
       open={props.presenter.deleting() !== null}
@@ -137,7 +148,16 @@ export function DeleteDialog(props: { presenter: StatesPresenter }): JSX.Element
       title={`Delete ${props.presenter.deleting()?.name ?? ""}`}
       description="A job reclaims the storage this state holds alone. Checkout history keeps the name."
     >
-      <form class="grid gap-4" onSubmit={onSubmit}>
+      <form
+        class="grid gap-4"
+        ref={guard3.ref}
+        novalidate
+        onSubmit={(event) => {
+          if (!guard3.accepts(event)) return;
+          void props.presenter.confirmDelete();
+        }}
+      >
+        <FormErrors errors={guard3.errors()} />
         <Show when={props.presenter.error()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>

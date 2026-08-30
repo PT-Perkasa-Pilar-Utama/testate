@@ -1,4 +1,6 @@
 import type { JSX } from "@solidjs/web";
+import FormErrors from "@/components/form-errors.tsx";
+import { createFormGuard } from "@/lib/form.ts";
 import { For, Show, createSignal } from "solid-js";
 import type { TableSchema } from "@testate/shared";
 
@@ -90,10 +92,7 @@ export default function RowForm(props: {
   table: TableSchema;
 }): JSX.Element {
   const [copies, setCopies] = createSignal("1");
-  const onSubmit = (event: SubmitEvent): void => {
-    event.preventDefault();
-    void props.presenter.submitForm({ copies: Number.parseInt(copies(), 10) });
-  };
+  const guard = createFormGuard();
   return (
     <Show when={props.presenter.form()}>
       {(form) => (
@@ -108,7 +107,16 @@ export default function RowForm(props: {
           }
           description="Functions run on the server; a policed column takes its function, never plain text."
         >
-          <form class="grid gap-3" onSubmit={onSubmit}>
+          <form
+            ref={guard.ref}
+            novalidate
+            class="grid gap-3"
+            onSubmit={(event) => {
+              if (!guard.accepts(event)) return;
+              void props.presenter.submitForm({ copies: Number.parseInt(copies(), 10) });
+            }}
+          >
+            <FormErrors errors={guard.errors()} />
             <For each={props.table.columns.filter((column) => !column.generated)}>
               {(column) => (
                 <Field

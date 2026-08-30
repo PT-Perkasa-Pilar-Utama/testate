@@ -105,6 +105,23 @@ test.describe("signing in", () => {
     await expect(page).toHaveURL(/\/login$/);
   });
 
+  test("@story-1 an empty sign-in refuses in the app's words, not the browser's bubble", async ({
+    page,
+  }) => {
+    const bubbles: string[] = [];
+    page.on("dialog", (dialog) => {
+      bubbles.push(dialog.message());
+      void dialog.dismiss();
+    });
+    await page.goto("/login");
+    await settle(page);
+    await page.locator('form button[type="submit"]').click();
+    await expect(page.getByRole("status")).toContainText("Username");
+    await expect(page.getByLabel("Username")).toHaveAttribute("aria-invalid", "true");
+    await expect(page).toHaveURL(/\/login$/);
+    expect(bubbles).toStrictEqual([]);
+  });
+
   test("@story-6 sends you to the page you asked for, not the front page", async ({ page }) => {
     await page.goto("/jobs");
     await settle(page);

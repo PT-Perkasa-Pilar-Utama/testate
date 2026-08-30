@@ -1,4 +1,6 @@
 import type { JSX } from "@solidjs/web";
+import FormErrors from "@/components/form-errors.tsx";
+import { createFormGuard } from "@/lib/form.ts";
 import { For, Show } from "solid-js";
 import type { Adapter } from "@testate/shared";
 
@@ -52,10 +54,7 @@ export default function EditDialog(props: {
   adapter: Adapter;
 }): JSX.Element {
   const form = (): (typeof ENGINE_FORMS)[Adapter["engine"]] => ENGINE_FORMS[props.adapter.engine];
-  const onSubmit = (event: SubmitEvent): void => {
-    event.preventDefault();
-    void props.presenter.save();
-  };
+  const guard = createFormGuard();
   return (
     <Dialog
       open={props.presenter.editing()}
@@ -64,7 +63,16 @@ export default function EditDialog(props: {
       description="Renaming keeps states, mappings, and saved queries. A new host or database takes a new init state."
       size="lg"
     >
-      <form class="grid gap-4" onSubmit={onSubmit}>
+      <form
+        ref={guard.ref}
+        novalidate
+        class="grid gap-4"
+        onSubmit={(event) => {
+          if (!guard.accepts(event)) return;
+          void props.presenter.save();
+        }}
+      >
+        <FormErrors errors={guard.errors()} />
         <label class="grid gap-1.5 text-base">
           <span>Name</span>
           <Input

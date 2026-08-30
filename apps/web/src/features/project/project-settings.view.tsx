@@ -1,4 +1,6 @@
 import type { JSX } from "@solidjs/web";
+import FormErrors from "@/components/form-errors.tsx";
+import { createFormGuard } from "@/lib/form.ts";
 import { formatWhen } from "@/lib/format.ts";
 import { For, Show } from "solid-js";
 
@@ -45,17 +47,23 @@ export function AffectedList(props: { affected: DeletionAffected }): JSX.Element
 }
 
 export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element {
-  const onSubmit = (event: SubmitEvent): void => {
-    event.preventDefault();
-    void props.presenter.save();
-  };
+  const guard = createFormGuard();
   return (
     <Dialog
       open={props.presenter.editing()}
       onClose={() => props.presenter.closeEdit()}
       title="Edit project"
     >
-      <form class="grid gap-4" onSubmit={onSubmit}>
+      <form
+        class="grid gap-4"
+        ref={guard.ref}
+        novalidate
+        onSubmit={(event) => {
+          if (!guard.accepts(event)) return;
+          void props.presenter.save();
+        }}
+      >
+        <FormErrors errors={guard.errors()} />
         <label class="grid gap-1.5 text-base">
           <span>Name</span>
           <Input
@@ -110,10 +118,7 @@ const ACTION_VARIANT = {
 } as const;
 
 export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string }): JSX.Element {
-  const onSubmit = (event: SubmitEvent): void => {
-    event.preventDefault();
-    void props.presenter.confirmDelete();
-  };
+  const guard2 = createFormGuard();
   return (
     <Show when={props.presenter.plan()}>
       {(plan) => (
@@ -124,7 +129,16 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
           description="This cannot be undone. Read what goes with the project, then type its slug."
           size="lg"
         >
-          <form class="grid gap-4" onSubmit={onSubmit}>
+          <form
+            class="grid gap-4"
+            ref={guard2.ref}
+            novalidate
+            onSubmit={(event) => {
+              if (!guard2.accepts(event)) return;
+              void props.presenter.confirmDelete();
+            }}
+          >
+            <FormErrors errors={guard2.errors()} />
             <Banner variant="alert">
               Every writable database below returns to its init state. That restore is not stashed:
               anything the databases hold now, and every state that could bring it back, is gone.

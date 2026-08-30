@@ -1,4 +1,6 @@
 import type { JSX } from "@solidjs/web";
+import FormErrors from "@/components/form-errors.tsx";
+import { createFormGuard } from "@/lib/form.ts";
 import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
 import { For, Loading, Show } from "solid-js";
 import type { ColumnPolicy } from "@testate/shared";
@@ -19,10 +21,7 @@ import {
 import type { PoliciesPresenter } from "./policies.presenter.ts";
 
 function PolicyDialog(props: { presenter: PoliciesPresenter }): JSX.Element {
-  const onSubmit = (event: SubmitEvent): void => {
-    event.preventDefault();
-    void props.presenter.save();
-  };
+  const guard = createFormGuard();
   return (
     <Show when={props.presenter.draft()}>
       {(draft) => (
@@ -32,7 +31,16 @@ function PolicyDialog(props: { presenter: PoliciesPresenter }): JSX.Element {
           title={`Policy for ${draft().table}.${draft().column}`}
           description="A required function is applied to every form, grid, and import write; a mask hides the column from viewers and agents."
         >
-          <form class="grid gap-4" onSubmit={onSubmit}>
+          <form
+            ref={guard.ref}
+            novalidate
+            class="grid gap-4"
+            onSubmit={(event) => {
+              if (!guard.accepts(event)) return;
+              void props.presenter.save();
+            }}
+          >
+            <FormErrors errors={guard.errors()} />
             <label class="grid gap-1.5 text-base">
               <span>Required function</span>
               <Select

@@ -1,4 +1,6 @@
 import type { JSX } from "@solidjs/web";
+import FormErrors from "@/components/form-errors.tsx";
+import { createFormGuard } from "@/lib/form.ts";
 import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
@@ -43,10 +45,7 @@ function FieldInput(props: {
 }
 
 function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Element {
-  const onSubmit = (event: SubmitEvent): void => {
-    event.preventDefault();
-    void props.presenter.create();
-  };
+  const guard = createFormGuard();
   return (
     <Dialog
       open={props.presenter.creating()}
@@ -55,7 +54,16 @@ function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Element {
       description="Secrets are sealed before they reach the database and never shown again."
       size="lg"
     >
-      <form class="grid gap-4" onSubmit={onSubmit}>
+      <form
+        ref={guard.ref}
+        novalidate
+        class="grid gap-4"
+        onSubmit={(event) => {
+          if (!guard.accepts(event)) return;
+          void props.presenter.create();
+        }}
+      >
+        <FormErrors errors={guard.errors()} />
         <div class="grid gap-3 sm:grid-cols-2">
           <label class="grid gap-1.5 text-base">
             <span>Engine</span>

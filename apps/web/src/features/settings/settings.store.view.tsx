@@ -1,4 +1,6 @@
 import type { JSX } from "@solidjs/web";
+import FormErrors from "@/components/form-errors.tsx";
+import { createFormGuard } from "@/lib/form.ts";
 import { Show } from "solid-js";
 
 import Banner from "@/components/banner.tsx";
@@ -24,10 +26,7 @@ const FIELDS: { key: keyof S3Draft; label: string; type: "text" | "password" }[]
 
 /** Move every snapshot to another store as a job (stories 118, 119). */
 export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Element {
-  const onSubmit = (event: SubmitEvent): void => {
-    event.preventDefault();
-    void props.presenter.migrate();
-  };
+  const guard = createFormGuard();
   return (
     <Dialog
       open={props.presenter.migrating()}
@@ -35,7 +34,16 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
       title="Migrate store"
       description="Every snapshot copies to the new store before the switch; nothing is lost if the job fails."
     >
-      <form class="grid gap-4" onSubmit={onSubmit}>
+      <form
+        ref={guard.ref}
+        novalidate
+        class="grid gap-4"
+        onSubmit={(event) => {
+          if (!guard.accepts(event)) return;
+          void props.presenter.migrate();
+        }}
+      >
+        <FormErrors errors={guard.errors()} />
         <label class="grid gap-1.5 text-sm">
           <span>Target</span>
           <Select

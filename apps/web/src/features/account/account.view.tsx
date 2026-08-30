@@ -1,4 +1,6 @@
 import type { JSX } from "@solidjs/web";
+import FormErrors from "@/components/form-errors.tsx";
+import { createFormGuard } from "@/lib/form.ts";
 import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
@@ -14,14 +16,20 @@ import { createAccountPresenter } from "./account.presenter.ts";
 import type { AccountPresenter } from "./account.presenter.ts";
 
 function PasswordCard(props: { presenter: AccountPresenter }): JSX.Element {
-  const onSubmit = (event: SubmitEvent): void => {
-    event.preventDefault();
-    void props.presenter.changePassword();
-  };
+  const guard = createFormGuard();
   return (
     <LayerCard class="grid gap-4 px-5 py-4">
       <h3 class="font-medium">Change password</h3>
-      <form class="grid gap-3 sm:grid-cols-2" onSubmit={onSubmit}>
+      <form
+        ref={guard.ref}
+        novalidate
+        class="grid gap-3 sm:grid-cols-2"
+        onSubmit={(event) => {
+          if (!guard.accepts(event)) return;
+          void props.presenter.changePassword();
+        }}
+      >
+        <FormErrors errors={guard.errors()} />
         <label class="grid gap-1.5 text-base">
           <span>Current password</span>
           <Input
