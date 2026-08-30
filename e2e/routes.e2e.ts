@@ -30,9 +30,37 @@ for (const role of ROLES) {
         await settle(page);
         const refused = await page.getByText(FORBIDDEN).isVisible();
         expect(refused).toBe(!allows(role, screen.role));
+        // "Renders" used to mean only that the screen had not refused, which a screen stuck on
+        // "Loading..." satisfies just as well. It has to say its own name.
+        await expect(page.getByRole("heading", { name: screen.title }).first()).toBeVisible({
+          visible: allows(role, screen.role),
+        });
         expect(issues).toStrictEqual([]);
       });
     }
+
+    test("@story-111 the tokens screen explains itself before any token exists", async ({
+      page,
+    }) => {
+      test.skip(role !== "admin", "only an admin opens the tokens screen");
+      await page.goto("/tokens");
+      await settle(page);
+      await expect(
+        page.getByText("No tokens yet. Create one for CI, or for an agent that may only read.")
+      ).toBeVisible();
+    });
+
+    test("@story-129 the health screen says in words what its badge means", async ({ page }) => {
+      const issues: Issue[] = [];
+      watch(page, issues);
+      await page.goto("/health");
+      await settle(page);
+      await expect(page.getByText("Everything this instance depends on answered.")).toBeVisible();
+      await page.getByRole("button", { name: "Refresh" }).click();
+      await settle(page);
+      await expect(page.getByText("Everything this instance depends on answered.")).toBeVisible();
+      expect(issues).toStrictEqual([]);
+    });
 
     test("@story-6 @story-9 the account screen is one click from the sidebar", async ({ page }) => {
       const issues: Issue[] = [];

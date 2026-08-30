@@ -22,7 +22,7 @@ function PasswordCard(props: { presenter: AccountPresenter }): JSX.Element {
     <LayerCard class="grid gap-4 px-5 py-4">
       <h3 class="font-medium">Change password</h3>
       <form class="grid gap-3 sm:grid-cols-2" onSubmit={onSubmit}>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Current password</span>
           <Input
             type="password"
@@ -32,7 +32,7 @@ function PasswordCard(props: { presenter: AccountPresenter }): JSX.Element {
             onInput={(event) => props.presenter.password.setCurrent(event.currentTarget.value)}
           />
         </label>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>New password (12+ characters)</span>
           <Input
             type="password"

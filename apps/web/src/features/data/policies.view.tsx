@@ -33,7 +33,7 @@ function PolicyDialog(props: { presenter: PoliciesPresenter }): JSX.Element {
           description="A required function is applied to every form, grid, and import write; a mask hides the column from viewers and agents."
         >
           <form class="grid gap-4" onSubmit={onSubmit}>
-            <label class="grid gap-1.5 text-sm">
+            <label class="grid gap-1.5 text-base">
               <span>Required function</span>
               <Select
                 options={FUNCTION_CHOICES}
@@ -41,7 +41,7 @@ function PolicyDialog(props: { presenter: PoliciesPresenter }): JSX.Element {
                 onChange={(fn) => props.presenter.setDraft({ fn })}
               />
             </label>
-            <label class="grid gap-1.5 text-sm">
+            <label class="grid gap-1.5 text-base">
               <span>Mask</span>
               <Select
                 options={MASK_CHOICES}

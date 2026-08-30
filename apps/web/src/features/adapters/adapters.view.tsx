@@ -28,7 +28,7 @@ function FieldInput(props: {
 }): JSX.Element {
   const key = (): string => `${props.prefix}.${props.field.key}`;
   return (
-    <label class="grid gap-1.5 text-sm">
+    <label class="grid gap-1.5 text-base">
       <span>{props.field.label}</span>
       <Input
         type={props.field.type === "boolean" ? "text" : props.field.type}
@@ -57,7 +57,7 @@ function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Element {
     >
       <form class="grid gap-4" onSubmit={onSubmit}>
         <div class="grid gap-3 sm:grid-cols-2">
-          <label class="grid gap-1.5 text-sm">
+          <label class="grid gap-1.5 text-base">
             <span>Engine</span>
             <Select
               options={ENGINE_OPTIONS}
@@ -65,7 +65,7 @@ function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Element {
               onChange={(engine) => props.presenter.setEngine(engine)}
             />
           </label>
-          <label class="grid gap-1.5 text-sm">
+          <label class="grid gap-1.5 text-base">
             <span>Name</span>
             <Input
               required
@@ -76,7 +76,7 @@ function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Element {
           </label>
         </div>
         <Show when={props.presenter.form().kind === "database"}>
-          <label class="grid gap-1.5 text-sm">
+          <label class="grid gap-1.5 text-base">
             <span>Mode</span>
             <Select
               options={MODE_OPTIONS}

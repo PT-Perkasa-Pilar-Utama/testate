@@ -26,7 +26,7 @@ function Fields(props: {
   return (
     <For each={props.fields}>
       {(field) => (
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>
             {field.label}
             {props.hint === undefined ? "" : ` ${props.hint}`}
@@ -65,7 +65,7 @@ export default function EditDialog(props: {
       size="lg"
     >
       <form class="grid gap-4" onSubmit={onSubmit}>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Name</span>
           <Input
             required
@@ -75,7 +75,7 @@ export default function EditDialog(props: {
           />
         </label>
         <Show when={props.adapter.kind === "database"}>
-          <label class="grid gap-1.5 text-sm">
+          <label class="grid gap-1.5 text-base">
             <span>Excluded tables (comma separated; migration tables are excluded by default)</span>
             <InputArea
               rows="2"
@@ -86,7 +86,7 @@ export default function EditDialog(props: {
             />
           </label>
           <Show when={props.adapter.engine === "postgres"}>
-            <label class="grid gap-1.5 text-sm">
+            <label class="grid gap-1.5 text-base">
               <span>Schemas (comma separated; empty = every non-system schema)</span>
               <Input
                 value={props.presenter.draft().schemas}
@@ -97,7 +97,7 @@ export default function EditDialog(props: {
             </label>
           </Show>
           <div class="grid gap-3 sm:grid-cols-2">
-            <label class="grid gap-1.5 text-sm">
+            <label class="grid gap-1.5 text-base">
               <span>Restore mode</span>
               <Select
                 options={RESTORE_OPTIONS}
@@ -105,7 +105,7 @@ export default function EditDialog(props: {
                 onChange={(restore_mode) => props.presenter.setDraft({ restore_mode })}
               />
             </label>
-            <label class="grid gap-1.5 text-sm">
+            <label class="grid gap-1.5 text-base">
               <span>Lock timeout (ms)</span>
               <Input
                 type="number"

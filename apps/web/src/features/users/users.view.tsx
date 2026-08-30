@@ -11,7 +11,7 @@ import LoadMore from "@/components/load-more.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
-import { Cell, Head, Row, Table, TableFooter } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, TableFooter, EmptyRow } from "@/components/table.tsx";
 import { ROLE_OPTIONS, createUsersPresenter } from "./users.presenter.ts";
 import type { UsersPresenter } from "./users.presenter.ts";
 
@@ -28,7 +28,7 @@ function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element {
       description="Hand the temporary password over out of band. The first login forces a change."
     >
       <form class="grid gap-4" onSubmit={onSubmit}>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Username</span>
           <Input
             required
@@ -38,7 +38,7 @@ function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element {
             onInput={(event) => props.presenter.setDraft({ username: event.currentTarget.value })}
           />
         </label>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Display name</span>
           <Input
             required
@@ -48,7 +48,7 @@ function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element {
             }
           />
         </label>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Role</span>
           <Select
             options={ROLE_OPTIONS}
@@ -56,7 +56,7 @@ function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element {
             onChange={(role) => props.presenter.setDraft({ role })}
           />
         </label>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Temporary password</span>
           <Input
             type="password"
@@ -97,7 +97,7 @@ function ResetDialog(props: { presenter: UsersPresenter }): JSX.Element {
       description="Every session of this user ends. The next login forces a change."
     >
       <form class="grid gap-4" onSubmit={onSubmit}>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Temporary password (12+ characters)</span>
           <Input
             type="password"
@@ -174,34 +174,41 @@ export default function UsersView(): JSX.Element {
             </tr>
           </thead>
           <tbody>
-            <For each={presenter.value()}>
-              {(user) => (
-                <Row>
-                  <Cell>{user.username}</Cell>
-                  <Cell>{user.display_name}</Cell>
-                  <Cell>
-                    <Badge variant="outline">{user.role}</Badge>
-                  </Cell>
-                  <Cell>
-                    <span class="inline-flex gap-1">
-                      <Badge variant={user.disabled_at === null ? "success" : "secondary"}>
-                        {user.disabled_at === null ? "active" : "disabled"}
-                      </Badge>
-                      <Show when={user.must_change_password}>
-                        <Badge variant="warning">password change due</Badge>
-                      </Show>
-                      <Show when={user.locked_until !== null}>
-                        <Badge variant="error">locked</Badge>
-                      </Show>
-                    </span>
-                  </Cell>
-                  <Cell>{user.last_login_at ?? "never"}</Cell>
-                  <Cell>
-                    <Actions presenter={presenter} user={user} />
-                  </Cell>
-                </Row>
-              )}
-            </For>
+            <Show
+              when={presenter.value().length > 0}
+              fallback={
+                <EmptyRow>No users yet. Add one to give a tester their own account.</EmptyRow>
+              }
+            >
+              <For each={presenter.value()}>
+                {(user) => (
+                  <Row>
+                    <Cell class="font-semibold whitespace-nowrap">{user.username}</Cell>
+                    <Cell>{user.display_name}</Cell>
+                    <Cell>
+                      <Badge variant="outline">{user.role}</Badge>
+                    </Cell>
+                    <Cell>
+                      <span class="inline-flex gap-1">
+                        <Badge variant={user.disabled_at === null ? "success" : "secondary"}>
+                          {user.disabled_at === null ? "active" : "disabled"}
+                        </Badge>
+                        <Show when={user.must_change_password}>
+                          <Badge variant="warning">password change due</Badge>
+                        </Show>
+                        <Show when={user.locked_until !== null}>
+                          <Badge variant="error">locked</Badge>
+                        </Show>
+                      </span>
+                    </Cell>
+                    <Cell>{user.last_login_at ?? "never"}</Cell>
+                    <Cell>
+                      <Actions presenter={presenter} user={user} />
+                    </Cell>
+                  </Row>
+                )}
+              </For>
+            </Show>
           </tbody>
         </Table>
         <TableFooter shown={presenter.value().length} noun="users" hasMore={presenter.hasMore()}>

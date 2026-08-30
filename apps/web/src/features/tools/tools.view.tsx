@@ -34,7 +34,7 @@ function HashCard(props: { presenter: ToolsPresenter }): JSX.Element {
         </p>
       </div>
       <div class="grid gap-3 sm:grid-cols-2">
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Algorithm</span>
           <Select
             options={ALGORITHM_OPTIONS}
@@ -42,7 +42,7 @@ function HashCard(props: { presenter: ToolsPresenter }): JSX.Element {
             onChange={(value) => props.presenter.setAlgorithm(value)}
           />
         </label>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Secret or seed (optional)</span>
           <Input
             type="password"
@@ -74,7 +74,7 @@ function RandomCard(props: { presenter: ToolsPresenter }): JSX.Element {
     <LayerCard class="grid gap-4 px-5 py-4">
       <h3 class="font-medium">Random bytes</h3>
       <div class="grid gap-3 sm:grid-cols-2">
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Bytes (8 to 1024)</span>
           <Input
             type="number"
@@ -84,7 +84,7 @@ function RandomCard(props: { presenter: ToolsPresenter }): JSX.Element {
             onInput={(event) => props.presenter.setBytes(Number(event.currentTarget.value))}
           />
         </label>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Encoding</span>
           <Select
             options={ENCODING_OPTIONS}

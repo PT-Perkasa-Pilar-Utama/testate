@@ -183,6 +183,26 @@ nothing its source reads), and the two SSE effects in `jobs.presenter.ts` and `c
 that reproduces it first.
 
 
+**The redesign (2026-08-30).** ADR 0002 records the decision; `docs/design/github.md` is the
+specification as it was given. The palette lives in `apps/web/src/styles/app.css` as an override of
+Kumo's own variables, after the import, so retargeting them re-skins forty views without touching
+one. Dark only: `data-mode="dark"` and `color-scheme: dark`.
+
+Conventions the screens now share, and that a new screen should follow:
+
+| Thing | Where |
+| --- | --- |
+| Title, one line under it, the action on the right | `components/page-header.tsx` |
+| Toolbar over a table, footer under it, empty row inside it | `components/table.tsx` |
+| Numbers right, in tabular figures, never wrapping | `<Cell numeric>`; the grid picks by engine type (`NUMERIC_TYPE`) |
+| A row's extra actions | `components/menu.tsx`, a `<details>` element |
+| A destructive confirm | `components/confirm-dialog.tsx`, never `window.confirm` |
+| Timestamps | `lib/format.ts`, never the raw ISO string |
+| Page navigation vs a control inside a screen | `Tabs` underline vs `variant="segmented"` |
+
+Content text is 14px. Headings are sentence case. `font-semibold`, never `font-bold`. Mona Sans is
+not fetched at runtime, on purpose: the README promises nothing leaves your network.
+
 **The UI target is GitHub.** The user said so on 2026-08-30, reading the UI/UX review. Reach for
 GitHub patterns before inventing one: a neutral surface with a single accent, borders rather than
 shadows, dense tables that still breathe, one button hierarchy used everywhere, empty states that

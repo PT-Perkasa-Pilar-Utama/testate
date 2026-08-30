@@ -28,7 +28,7 @@ function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
       description="Standard tokens act as their role on the REST API. Agent tokens are viewer-only and reach the MCP endpoint alone."
     >
       <form class="grid gap-4" onSubmit={onSubmit}>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Name</span>
           <Input
             required
@@ -37,7 +37,7 @@ function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
             onInput={(event) => props.presenter.setDraft({ name: event.currentTarget.value })}
           />
         </label>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Kind</span>
           <Select
             options={KIND_OPTIONS}
@@ -46,7 +46,7 @@ function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
           />
         </label>
         <Show when={props.presenter.draft().kind === "standard"}>
-          <label class="grid gap-1.5 text-sm">
+          <label class="grid gap-1.5 text-base">
             <span>Role</span>
             <Select
               options={ROLE_OPTIONS}
@@ -55,7 +55,7 @@ function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
             />
           </label>
         </Show>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>
             {props.presenter.draft().kind === "agent"
               ? "Expires on (default 90 days, at most 365)"
@@ -146,7 +146,7 @@ export default function TokensView(): JSX.Element {
               <For each={presenter.value()}>
                 {(token) => (
                   <Row>
-                    <Cell>{token.name}</Cell>
+                    <Cell class="font-semibold">{token.name}</Cell>
                     <Cell>
                       <Badge variant={token.kind === "agent" ? "info" : "outline"}>
                         {token.kind}

@@ -13,7 +13,7 @@ import type { StatesPresenter } from "./states.presenter.ts";
 function DraftFields(props: { presenter: StatesPresenter }): JSX.Element {
   return (
     <>
-      <label class="grid gap-1.5 text-sm">
+      <label class="grid gap-1.5 text-base">
         <span>Name</span>
         <Input
           required
@@ -23,7 +23,7 @@ function DraftFields(props: { presenter: StatesPresenter }): JSX.Element {
           onInput={(event) => props.presenter.setDraft({ name: event.currentTarget.value })}
         />
       </label>
-      <label class="grid gap-1.5 text-sm">
+      <label class="grid gap-1.5 text-base">
         <span>Notes</span>
         <InputArea
           rows="3"
@@ -32,7 +32,7 @@ function DraftFields(props: { presenter: StatesPresenter }): JSX.Element {
           onInput={(event) => props.presenter.setDraft({ notes: event.currentTarget.value })}
         />
       </label>
-      <label class="grid gap-1.5 text-sm">
+      <label class="grid gap-1.5 text-base">
         <span>Tags (comma separated)</span>
         <Input
           autocomplete="off"

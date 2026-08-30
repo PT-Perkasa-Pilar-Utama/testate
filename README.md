@@ -15,6 +15,11 @@ REST adapters hold no data of their own. They store the requests you save and th
 
 ## What you get
 
+**Start with a project per system under test.** It owns the databases behind that system, the
+states you take of them, and everything you do to them.
+
+![The projects list, each with its slug, where its HEAD points, and when it last changed](docs/assets/screens/projects.png)
+
 **Point it at the databases behind the system under test.** Each adapter reports its engine and
 version, what your login is allowed to do, and whether the database is safe to reset. Object storage
 and REST endpoints sit in the same list.

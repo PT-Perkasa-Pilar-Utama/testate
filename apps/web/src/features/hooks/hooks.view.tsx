@@ -31,7 +31,7 @@ function CreateDialog(props: { presenter: HooksPresenter }): JSX.Element {
       description="A saved REST request runs at the trigger. Its path, query, headers, and body may use {{project.slug}}, {{state.name}}, {{state.id}}, and {{job.id}}."
     >
       <form class="grid gap-4" onSubmit={onSubmit}>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Trigger</span>
           <Select
             options={TRIGGER_OPTIONS}
@@ -40,7 +40,7 @@ function CreateDialog(props: { presenter: HooksPresenter }): JSX.Element {
           />
         </label>
         <Loading fallback={<p class="text-kumo-subtle">Listing REST adapters...</p>}>
-          <label class="grid gap-1.5 text-sm">
+          <label class="grid gap-1.5 text-base">
             <span>REST adapter</span>
             <Select
               options={[
@@ -55,7 +55,7 @@ function CreateDialog(props: { presenter: HooksPresenter }): JSX.Element {
               }
             />
           </label>
-          <label class="grid gap-1.5 text-sm">
+          <label class="grid gap-1.5 text-base">
             <span>Saved request</span>
             <Select
               options={[
@@ -69,7 +69,7 @@ function CreateDialog(props: { presenter: HooksPresenter }): JSX.Element {
             />
           </label>
         </Loading>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>On failure</span>
           <Select
             options={POLICY_OPTIONS}

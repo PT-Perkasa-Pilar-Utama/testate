@@ -11,16 +11,26 @@ export default function HealthView(): JSX.Element {
   const presenter = createHealthPresenter();
   return (
     <section class="grid gap-6">
-      <PageHeader title="Health" description="Liveness of this Testate instance." />
+      <PageHeader
+        title="Health"
+        description="Liveness of this Testate instance."
+        actions={
+          <Button size="sm" variant="secondary" onClick={() => presenter.refresh()}>
+            Refresh
+          </Button>
+        }
+      />
       <LayerCard class="px-5 py-4">
         <Loading fallback={<p class="text-kumo-subtle">Checking...</p>}>
           <div class="flex items-center gap-3">
             <Badge variant={presenter.health().status === "ok" ? "success" : "warning"}>
               {presenter.health().status}
             </Badge>
-            <Button size="sm" onClick={() => presenter.refresh()}>
-              Refresh
-            </Button>
+            <span class="text-kumo-subtle">
+              {presenter.health().status === "ok"
+                ? "Everything this instance depends on answered."
+                : "Something it depends on did not answer. An admin sees the breakdown."}
+            </span>
           </div>
         </Loading>
       </LayerCard>

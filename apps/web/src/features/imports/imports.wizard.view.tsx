@@ -30,7 +30,7 @@ function MappingStep(props: { presenter: WizardPresenter }): JSX.Element {
   return (
     <div class="grid gap-3">
       <div class="grid gap-3 sm:grid-cols-2">
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Database adapter</span>
           <Loading fallback={<p class="text-kumo-subtle">Listing adapters...</p>}>
             <Select
@@ -43,7 +43,7 @@ function MappingStep(props: { presenter: WizardPresenter }): JSX.Element {
             />
           </Loading>
         </label>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Table</span>
           <Select
             options={[
@@ -54,7 +54,7 @@ function MappingStep(props: { presenter: WizardPresenter }): JSX.Element {
             onChange={(table) => props.presenter.setTable(table)}
           />
         </label>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Saved mapping</span>
           <Select
             options={[
@@ -65,7 +65,7 @@ function MappingStep(props: { presenter: WizardPresenter }): JSX.Element {
             onChange={(id) => props.presenter.pickMapping(id)}
           />
         </label>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Mapping name</span>
           <Input
             required
@@ -74,7 +74,7 @@ function MappingStep(props: { presenter: WizardPresenter }): JSX.Element {
             onInput={(event) => props.presenter.setDraft({ name: event.currentTarget.value })}
           />
         </label>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Mode</span>
           <Select
             options={MODE_OPTIONS}
@@ -82,7 +82,7 @@ function MappingStep(props: { presenter: WizardPresenter }): JSX.Element {
             onChange={(mode) => props.presenter.setDraft({ mode })}
           />
         </label>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Key columns (comma separated, for upsert)</span>
           <Input
             value={props.presenter.draft().key_columns}

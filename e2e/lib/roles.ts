@@ -24,18 +24,19 @@ export function statePath(role: Role): string {
 }
 
 /** Top-level screens with the minimum role each needs (routes.ts); admin screens refuse the rest. */
-export const SCREENS: { path: string; role: Role; nav: string | null }[] = [
-  { path: "/projects", role: "viewer", nav: "Projects" },
-  { path: "/projects/demo", role: "viewer", nav: null },
-  { path: "/jobs", role: "viewer", nav: "Jobs" },
-  { path: "/tools", role: "viewer", nav: "Tools" },
+/** `title` is the heading the screen leads with, so "renders" can mean more than "did not refuse". */
+export const SCREENS: { path: string; role: Role; nav: string | null; title: string }[] = [
+  { path: "/projects", role: "viewer", nav: "Projects", title: "Projects" },
+  { path: "/projects/demo", role: "viewer", nav: null, title: "Demo" },
+  { path: "/jobs", role: "viewer", nav: "Jobs", title: "Jobs" },
+  { path: "/tools", role: "viewer", nav: "Tools", title: "Tools" },
   // Reachable from the identity line at the foot of the sidebar, not from the nav list.
-  { path: "/account", role: "viewer", nav: null },
-  { path: "/health", role: "viewer", nav: null },
-  { path: "/audit", role: "admin", nav: "Audit" },
-  { path: "/users", role: "admin", nav: "Users" },
-  { path: "/tokens", role: "admin", nav: "Tokens" },
-  { path: "/settings", role: "admin", nav: "Settings" },
+  { path: "/account", role: "viewer", nav: null, title: "Account" },
+  { path: "/health", role: "viewer", nav: null, title: "Health" },
+  { path: "/audit", role: "admin", nav: "Audit", title: "Audit log" },
+  { path: "/users", role: "admin", nav: "Users", title: "Users" },
+  { path: "/tokens", role: "admin", nav: "Tokens", title: "API tokens" },
+  { path: "/settings", role: "admin", nav: "Settings", title: "Settings" },
 ];
 
 const RANK = { viewer: 0, qa: 1, admin: 2 } satisfies Record<Role, number>;

@@ -56,7 +56,7 @@ export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element 
       title="Edit project"
     >
       <form class="grid gap-4" onSubmit={onSubmit}>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Name</span>
           <Input
             required
@@ -65,7 +65,7 @@ export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element 
             onInput={(event) => props.presenter.setDraft({ name: event.currentTarget.value })}
           />
         </label>
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Description</span>
           <Input
             maxlength="2000"
@@ -76,7 +76,7 @@ export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element 
           />
         </label>
         <Show when={hasRole("admin")}>
-          <label class="grid gap-1.5 text-sm">
+          <label class="grid gap-1.5 text-base">
             <span>Snapshot quota in GiB (empty = instance default)</span>
             <Input
               type="number"
@@ -158,7 +158,7 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
                 </For>
               </tbody>
             </Table>
-            <label class="grid gap-1.5 text-sm">
+            <label class="grid gap-1.5 text-base">
               <span>Type the slug to confirm</span>
               <Input
                 required

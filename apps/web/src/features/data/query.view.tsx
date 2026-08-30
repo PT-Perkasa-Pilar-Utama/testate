@@ -47,7 +47,7 @@ function MongoForm(props: { presenter: QueryPresenter }): JSX.Element {
       <Show
         when={draft().op === "find"}
         fallback={
-          <label class="grid gap-1.5 text-sm">
+          <label class="grid gap-1.5 text-base">
             <span>Pipeline (JSON array)</span>
             <InputArea
               rows={8}
@@ -58,7 +58,7 @@ function MongoForm(props: { presenter: QueryPresenter }): JSX.Element {
           </label>
         }
       >
-        <label class="grid gap-1.5 text-sm">
+        <label class="grid gap-1.5 text-base">
           <span>Filter (JSON)</span>
           <InputArea
             rows={4}
@@ -68,7 +68,7 @@ function MongoForm(props: { presenter: QueryPresenter }): JSX.Element {
           />
         </label>
         <div class="grid gap-3 sm:grid-cols-2">
-          <label class="grid gap-1.5 text-sm">
+          <label class="grid gap-1.5 text-base">
             <span>Projection (JSON, optional)</span>
             <Input
               class="font-mono"
@@ -78,7 +78,7 @@ function MongoForm(props: { presenter: QueryPresenter }): JSX.Element {
               }
             />
           </label>
-          <label class="grid gap-1.5 text-sm">
+          <label class="grid gap-1.5 text-base">
             <span>Sort (JSON, optional)</span>
             <Input
               class="font-mono"

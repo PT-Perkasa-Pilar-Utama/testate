@@ -126,7 +126,7 @@ export default function RowForm(props: {
             </Show>
             <div class="flex flex-wrap items-center justify-end gap-2">
               <Show when={form().kind === "insert"}>
-                <label class="flex items-center gap-2 text-sm">
+                <label class="flex items-center gap-2 text-base">
                   <span>Copies</span>
                   <Input
                     size="sm"

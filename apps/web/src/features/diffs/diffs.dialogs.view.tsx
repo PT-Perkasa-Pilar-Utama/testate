@@ -35,7 +35,7 @@ export function CreateDialog(props: { presenter: DiffsPresenter }): JSX.Element 
     >
       <form class="grid gap-4" onSubmit={onSubmit}>
         <Loading fallback={<p class="text-kumo-subtle">Listing states...</p>}>
-          <label class="grid gap-1.5 text-sm">
+          <label class="grid gap-1.5 text-base">
             <span>Base state</span>
             <Select
               options={[{ value: "", label: "choose a state" }, ...stateOptions()]}
@@ -43,7 +43,7 @@ export function CreateDialog(props: { presenter: DiffsPresenter }): JSX.Element 
               onChange={(value) => props.presenter.setDraft({ base_state_id: value })}
             />
           </label>
-          <label class="grid gap-1.5 text-sm">
+          <label class="grid gap-1.5 text-base">
             <span>Target</span>
             <Select
               options={[{ value: LIVE, label: "live database" }, ...stateOptions()]}
@@ -175,7 +175,7 @@ export function RowsDialog(props: { presenter: DiffsPresenter }): JSX.Element {
           size="xl"
         >
           <div class="grid gap-4">
-            <label class="grid gap-1.5 text-sm">
+            <label class="grid gap-1.5 text-base">
               <span>Operation</span>
               <Select
                 options={OP_OPTIONS}
