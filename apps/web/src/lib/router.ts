@@ -21,16 +21,27 @@ function stripBase(pathname: string): string {
 }
 
 const [location, setLocation] = createSignal(stripBase(window.location.pathname));
+/**
+ * The `?query` half of the location, kept apart from the pathname because routes match on the
+ * pathname alone. A screen that reads the query needs it to be a signal: a link from one row of a
+ * grid to another table's grid changes only the query, and the screen has to be told.
+ */
+const [search, setSearch] = createSignal(window.location.search);
 
-window.addEventListener("popstate", () => setLocation(stripBase(window.location.pathname)));
+window.addEventListener("popstate", () => {
+  setLocation(stripBase(window.location.pathname));
+  setSearch(window.location.search);
+});
 
 /** Navigates to an app-relative path and updates history. */
 export function navigate(path: string, replace = false): void {
   const url = `${BASE}${path}`;
   if (replace) window.history.replaceState(null, "", url);
   else window.history.pushState(null, "", url);
-  // Routes match on the pathname; a `?query` rides along in history for the screen to read.
-  setLocation(path.split("?")[0] ?? path);
+  // Read both halves back off `window.location` rather than splitting `path`: history has already
+  // applied and normalised the URL, so this lands on exactly the values a popstate would give.
+  setLocation(stripBase(window.location.pathname));
+  setSearch(window.location.search);
 }
 
 /** Builds an href for anchors so middle-click and copy work. */
@@ -73,4 +84,4 @@ export function createMatcher(routes: readonly RouteDef[]): () => Match | null {
   });
 }
 
-export { location };
+export { location, search };

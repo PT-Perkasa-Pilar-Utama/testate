@@ -24,7 +24,7 @@ import SettingsView from "@/features/settings/settings.view.tsx";
 import TokensView from "@/features/tokens/tokens.view.tsx";
 import ToolsView from "@/features/tools/tools.view.tsx";
 import UsersView from "@/features/users/users.view.tsx";
-import { createMatcher, href, location, navigate } from "@/lib/router.ts";
+import { createMatcher, href, location, navigate, search } from "@/lib/router.ts";
 import type { Match as RouteMatch } from "@/lib/router.ts";
 import { actor, hasRole, session, sessionReady } from "@/lib/session.ts";
 import { ROUTES } from "./routes.ts";
@@ -80,7 +80,16 @@ function Page(props: { match: RouteMatch | null }): JSX.Element {
       <Match when={name() === "adapter"}>
         <AdapterView slug={param("slug")} id={param("id")} />
       </Match>
-      <Match when={name() === "table"}>
+      {/*
+        Keyed, unlike every other route: the grid holds the filters, sort and cursors of one table
+        in signals, and a plain Match would hand the next table the previous table's ones. A key
+        that covers the query as well means a foreign-key link into the same table also lands on a
+        fresh grid, which a table-name comparison could never catch.
+      */}
+      <Match
+        when={name() === "table" ? `${param("id")}/${param("table")}${search()}` : false}
+        keyed
+      >
         <GridView slug={param("slug")} id={param("id")} table={param("table")} />
       </Match>
       <Match when={name() === "query"}>

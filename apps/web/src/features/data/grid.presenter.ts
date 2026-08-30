@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal } from "solid-js";
+import { createMemo, createSignal } from "solid-js";
 import type { Adapter, JsonValue, RowsPage, TableSchema } from "@testate/shared";
 import * as v from "valibot";
 
@@ -115,6 +115,10 @@ export function createGridPresenter(
 ): GridPresenter {
   const [sort, setSort] = createSignal<string | undefined>(undefined);
   const [order, setOrder] = createSignal<"asc" | "desc">("asc");
+  // Read once, at build. `app.tsx` keys this route on the table and the query, so a link to
+  // another table builds a new presenter rather than writing over this one's signals from an
+  // effect. That effect fed the same signals the row query reads, which is the shape the
+  // scheduler is worst at.
   const [filters, setFilters] = createSignal<Filter[]>(filtersFromSearch(window.location.search));
   const [limit, setLimitSignal] = createSignal<PageSize>("100");
   const [cursors, setCursors] = createSignal<string[]>([]);
@@ -133,16 +137,6 @@ export function createGridPresenter(
   const reset = (): void => {
     setCursors([]);
   };
-  // The view survives a link to another table, so the table change re-reads the URL filters.
-  createEffect(
-    () => table_(),
-    (name, previous) => {
-      if (previous === undefined || previous === name) return;
-      setFilters(filtersFromSearch(window.location.search));
-      setSort(undefined);
-      reset();
-    }
-  );
   const adapter = createRefreshable(() => adaptersModel.get(slug(), id()));
   const schema = createRefreshable(() => adapterModel.schema(slug(), id()));
   const table = createMemo((): TableSchema | null => {
