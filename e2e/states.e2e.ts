@@ -288,6 +288,9 @@ test.describe("viewer state stories", () => {
     await settle(page);
     await page.getByRole("tab", { name: "States" }).click();
     await expect(page.locator("tr", { hasText: "seeded-baseline" })).toBeVisible();
+    // The footer counts the rows it is showing, so a wrong or missing count fails here.
+    const rows = await page.locator("main tbody tr").count();
+    await expect(page.getByText(new RegExp(`^${rows} states( so far)?$`))).toBeVisible();
     await expect(page.getByRole("button", { name: "Take state" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Check out" })).toHaveCount(0);
   });

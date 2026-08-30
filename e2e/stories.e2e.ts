@@ -27,10 +27,20 @@ test.describe("qa stories", () => {
     await settle(page);
     await expect(page.getByRole("heading", { name: `E2E ${STAMP}` })).toBeVisible();
     await expect(page.getByText("HEAD:")).toBeVisible();
-    // A new project is every table's empty case: it used to be a header row over blank space.
+    await expect(page.getByText(`e2e-${STAMP}`, { exact: true })).toBeVisible();
+    // A new project is every table's empty case: it used to be a header row over blank space, and
+    // the demo project the rest of the suite runs against is never empty enough to show it.
     await expect(page.getByText("No adapters yet.")).toBeVisible();
-    await openTab(page, "Checkouts");
-    await expect(page.getByText("No checkouts yet.")).toBeVisible();
+    for (const [tab, message] of [
+      ["States", "No states yet."],
+      ["Checkouts", "No checkouts yet."],
+      ["Diffs", "No diffs yet."],
+      ["Imports", "No imports yet."],
+      ["Hooks", "No hooks yet."],
+    ] as const) {
+      await openTab(page, tab);
+      await expect(page.getByText(message)).toBeVisible();
+    }
     expect(issues).toStrictEqual([]);
   });
 

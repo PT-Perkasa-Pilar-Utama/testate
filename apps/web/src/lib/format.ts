@@ -6,18 +6,14 @@
  * The year is dropped inside the current one. It is the same for every row you are comparing, and
  * carrying it wrapped the column onto two lines.
  */
-const THIS_YEAR = new Intl.DateTimeFormat("en-GB", {
-  day: "2-digit",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-const OTHER_YEAR = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" });
+// Joined here rather than by Intl, which writes "04 Mar at 09:07" and reads long in a column.
+const DAY = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" });
+const YEAR_DAY = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" });
+const TIME = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
 
 export function formatWhen(iso: string): string {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return iso;
-  const format = at.getFullYear() === new Date().getFullYear() ? THIS_YEAR : OTHER_YEAR;
-  return format.format(at);
+  const day = at.getFullYear() === new Date().getFullYear() ? DAY : YEAR_DAY;
+  return `${day.format(at)}, ${TIME.format(at)}`;
 }
