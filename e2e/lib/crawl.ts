@@ -68,8 +68,11 @@ export function watch(page: Page, issues: Issue[]): void {
     })
   );
   page.on("console", (message) => {
-    if (message.type() !== "error") return;
     const text = message.text();
+    // Solid's dev build reports its reactivity diagnostics as warnings with a stable code, and we
+    // were dropping every warning, so the codes that name our own mistakes never reached a run.
+    const diagnostic = message.type() === "warning" && /\[[A-Z_]{6,}\]/.test(text);
+    if (message.type() !== "error" && !diagnostic) return;
     if (/Failed to load resource/.test(text)) return;
     issues.push({ kind: "console", detail: `${where()} ${text.slice(0, 300)}` });
   });

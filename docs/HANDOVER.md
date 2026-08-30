@@ -175,9 +175,12 @@ leans on native validation to fill forms; the gain did not look worth that.
 **The reactive loop is still open, and rc.4 did not fix it.** Solid's flush guard throws
 "Potential Infinite Loop Detected" on the data grid, about one full browser run in four, always
 during the crawler and never in a crawler run on its own. Every frame is inside the framework's
-async write-back and none is ours. The evidence, the frames, what was ruled out and what a
-reproduction would need are written up in `docs/upstream-solid-flush-loop.md`, ready to file
-upstream; nobody has filed it. `e2e/stress.e2e.ts` (project `stress`, `STRESS=1`) drives the same
+async write-back and none is ours. The cause is not established: the guard lives in the framework, so
+it throws from there whoever caused the runaway, and the same message has been raised by
+application code before (`solidjs/solid#2843`, closed, not our pattern). `solidjs/solid` has no
+open issue matching this symptom. The evidence and the first places to look are in
+`docs/known-issue-flush-loop.md`. Do not file it upstream as a framework bug until it is shown to
+be one. `e2e/stress.e2e.ts` (project `stress`, `STRESS=1`) drives the same
 screen far harder than the crawler does and has never reproduced it in six runs, which is itself
 evidence: whatever it takes, it is not rapid interaction alone. Do not claim it fixed without a run
 that reproduces it first.

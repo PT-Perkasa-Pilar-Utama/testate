@@ -1,7 +1,7 @@
-# Upstream report: "Potential Infinite Loop Detected" on a screen with several async memos
+# Known issue: "Potential Infinite Loop Detected" on the data grid
 
-**Status:** open, not fixed here. Written to be pasted into an issue on `solidjs/solid` once someone
-decides to file it. Nobody has filed it yet.
+**Status:** open, cause not established. It has not been shown to be a framework defect, and it has
+not been shown to be ours. Do not file it upstream as a bug report until one of those is true.
 
 ## What happens
 
@@ -33,6 +33,14 @@ at result.then.syncError (@solidjs/signals dev)
 
 `asyncWrite` and `result.then.syncError` put it in the write-back of a settled async computation.
 
+**This does not mean the defect is in the framework.** The guard lives there, so it throws from
+there whoever caused the runaway. `solidjs/solid#2843` is the same message, raised on
+`2.0.0-beta.15`, and its cause was an application pattern: `isPending(() => latest(asyncMemo))`
+read in a user effect while no render effect subscribed to that memo. We use neither `isPending`
+nor `latest`, and that one was fixed in the companion redesign (#2838) long before rc.4, so it is
+not our case. It is the reason to hold the conclusion open: this alarm has a history of being
+raised by application code.
+
 ## Where
 
 `/projects/:slug/adapters/:id/tables/:table`, always. That screen holds four async computations
@@ -59,12 +67,31 @@ query a person can change quickly.
 well, and rc.4's note about a flush loop spinning forever on a pending store read (#3068) did not
 end it.
 
+## What the framework says can cause this from application code
+
+`node_modules/solid-js/skills/reactivity-diagnostics/SKILL.md`, shipped with rc.4, lists patterns
+that make the scheduler re-run more than it should. `UNSTABLE_MEMO_OUTPUT` is the closest to
+anything we do: "a memo keeps producing referentially-new but shallowly-equivalent objects/arrays,
+so its equality gate never closes and every subscriber re-runs on every upstream change." Our
+`createRefreshable` returns a fresh promise per run by construction, and `createPaged.value` builds
+a new array on every read. Neither is proven to be the cause; both are the first place to look.
+
+Those diagnostics arrive as console warnings carrying a code in brackets. The browser suite dropped
+every warning until 2026-08-31, so no run has ever reported one. It keeps them now.
+
 ## What was ruled out
 
 - `fkLink`, the grid's only pure helper on that path.
 - The grid's table-change effect: its handler writes nothing its own source reads.
 - The two server-sent-event effects (`jobs.presenter.ts`, `checkouts.view.tsx`): the source value
   does not change when the list refreshes, so the handler does not re-run.
+
+## Open issues checked
+
+`solidjs/solid` has no open issue matching this symptom: a search for "infinite loop" in open
+issues returns nothing, and neither "livelock", "scheduler loop" nor "async memo write-back"
+returns anything. The only matches are three closed issues, of which #2843 is the one described
+above.
 
 ## What a reproduction would need
 
