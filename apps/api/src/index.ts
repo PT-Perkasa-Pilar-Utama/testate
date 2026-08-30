@@ -203,7 +203,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
 
   const handlers = {
     ops: createOpsHandlers(
-      opsDeps(config, db, VERSION, bootId, bootedAt, storeTarget.driver, ring, logger, jobs),
+      opsDeps(config, db, VERSION, bootId, bootedAt, storeTarget, wiring.blobs, ring, logger, jobs),
       () => ready
     ),
     // The reset route exists only outside production: registration, not authorization, is the gate (07 §7.8).

@@ -1,6 +1,7 @@
 import { accessSync, constants, statfsSync } from "node:fs";
 import type { HealthAdmin } from "@testate/shared";
 
+import type { BlobStore } from "../../lib/blobstore/index.ts";
 import type { MetadataDb } from "../../lib/db/index.ts";
 
 export type HealthDeps = {
@@ -11,6 +12,8 @@ export type HealthDeps = {
   bootId: string;
   bootedAt: number;
   storeDriver: "local" | "s3";
+  /** Probed on every health call: a store nobody can reach loses every snapshot and checkout. */
+  store: BlobStore;
   activeKid: string;
   extraKeys: number;
   sinkDegraded: () => boolean;
@@ -40,6 +43,35 @@ function checkDataDir(dir: string): HealthAdmin["checks"]["data_dir"] {
   }
 }
 
+/** No blob can have this hash. The probe wants the round trip, not the answer. */
+const ABSENT_HASH = "0".repeat(64);
+const PROBE_TIMEOUT_MS = 2_000;
+
+/** Never rejects: a probe that loses the race below would have no one left to catch it. */
+async function reachable(store: BlobStore): Promise<boolean> {
+  try {
+    await store.has(ABSENT_HASH);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function tooSlow(): Promise<boolean> {
+  await Bun.sleep(PROBE_TIMEOUT_MS);
+  return false;
+}
+
+async function checkStore(deps: HealthDeps): Promise<HealthAdmin["checks"]["snapshot_store"]> {
+  const started = performance.now();
+  const answered = await Promise.race([reachable(deps.store), tooSlow()]);
+  return {
+    status: answered ? "ok" : "down",
+    driver: deps.storeDriver,
+    latency_ms: Math.round(performance.now() - started),
+  };
+}
+
 function overall(checks: HealthAdmin["checks"]): CheckStatus {
   if (checks.metadata_db.status === "down" || checks.data_dir.status === "down") return "down";
   const degraded = [
@@ -52,12 +84,12 @@ function overall(checks: HealthAdmin["checks"]): CheckStatus {
 }
 
 /** The admin health breakdown; the public shape is its `status` alone. */
-export function health(deps: HealthDeps): HealthAdmin {
+export async function health(deps: HealthDeps): Promise<HealthAdmin> {
   const dispatcher = deps.dispatcher();
   const checks: HealthAdmin["checks"] = {
     metadata_db: checkDb(deps.db),
     data_dir: checkDataDir(deps.dataDir),
-    snapshot_store: { status: "ok", driver: deps.storeDriver, latency_ms: 0 },
+    snapshot_store: await checkStore(deps),
     dispatcher: {
       status: dispatcher.alive ? "ok" : "degraded",
       running: dispatcher.running,

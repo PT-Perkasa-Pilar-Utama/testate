@@ -5,15 +5,15 @@ import { health } from "./ops.service.ts";
 import type { HealthDeps } from "./ops.service.ts";
 
 export type OpsHandlers = {
-  health: (c: Context) => Response;
+  health: (c: Context) => Promise<Response>;
   live: (c: Context) => Response;
   ready: (c: Context) => Response;
 };
 
 export function createOpsHandlers(deps: HealthDeps, ready: () => boolean): OpsHandlers {
   return {
-    health: (c) => {
-      const report = health(deps);
+    health: async (c) => {
+      const report = await health(deps);
       const actor = c.get("actor");
       const status = report.status === "down" ? 503 : 200;
       if (actor?.role === "admin") return c.json({ data: report }, { status });

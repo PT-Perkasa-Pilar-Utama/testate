@@ -1,4 +1,5 @@
 import type { Config } from "./lib/config/index.ts";
+import type { BlobStore } from "./lib/blobstore/index.ts";
 import type { MetadataDb } from "./lib/db/index.ts";
 import type { KeyRing } from "./lib/sealed/index.ts";
 import type { AuditService } from "./modules/audit/audit.service.ts";
@@ -120,7 +121,8 @@ export function opsDeps(
   version: string,
   bootId: string,
   bootedAt: number,
-  storeDriver: "local" | "s3",
+  storeTarget: { driver: "local" | "s3" },
+  blobs: BlobStore,
   ring: KeyRing,
   logger: { sink: { degraded: boolean } },
   jobs: Pick<JobsService, "heartbeat">
@@ -132,7 +134,8 @@ export function opsDeps(
     version,
     bootId,
     bootedAt,
-    storeDriver,
+    storeDriver: storeTarget.driver,
+    store: blobs,
     activeKid: ring.activeKid,
     extraKeys: ring.all.size - 1,
     sinkDegraded: () => logger.sink.degraded,

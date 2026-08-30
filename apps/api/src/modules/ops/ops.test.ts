@@ -5,6 +5,7 @@ import { join } from "node:path";
 import * as v from "valibot";
 import { healthAdminSchema } from "@testate/shared";
 
+import { createMemoryBlobStore } from "../../lib/blobstore/index.ts";
 import { migrate, openMetadataDb } from "../../lib/db/index.ts";
 import { health } from "./ops.service.ts";
 import type { HealthDeps } from "./ops.service.ts";
@@ -21,6 +22,7 @@ function deps(overrides: Partial<HealthDeps> = {}): HealthDeps {
     bootId: "01J-boot",
     bootedAt: Date.now() - 5000,
     storeDriver: "local",
+    store: createMemoryBlobStore(),
     activeKid: "9f3c1a2b",
     extraKeys: 0,
     sinkDegraded: () => false,
@@ -31,8 +33,8 @@ function deps(overrides: Partial<HealthDeps> = {}): HealthDeps {
 }
 
 describe("health", () => {
-  it("reports ok with a migrated metadata database and a writable data dir", () => {
-    const report = health(deps());
+  it("reports ok with a migrated metadata database and a writable data dir", async () => {
+    const report = await health(deps());
 
     expect(report.status).toBe("ok");
     expect(report.checks.metadata_db.status).toBe("ok");
@@ -40,8 +42,8 @@ describe("health", () => {
     expect(v.safeParse(healthAdminSchema, report).success).toBe(true);
   });
 
-  it("degrades when the dispatcher is not alive", () => {
-    const report = health(
+  it("degrades when the dispatcher is not alive", async () => {
+    const report = await health(
       deps({ dispatcher: () => ({ alive: false, running: 0, queued: 3, lastTickAt: null }) })
     );
 
@@ -49,8 +51,21 @@ describe("health", () => {
     expect(report.checks.dispatcher.queued).toBe(3);
   });
 
-  it("goes down when the data dir is not writable", () => {
-    const report = health(deps({ dataDir: "/nonexistent/testate" }));
+  // The store used to report "ok" without anyone asking it anything.
+  it("degrades when the snapshot store cannot be reached", async () => {
+    const unreachable = {
+      ...createMemoryBlobStore(),
+      has: () => Promise.reject(new Error("s3: connection refused")),
+    };
+    const report = await health(deps({ store: unreachable, storeDriver: "s3" }));
+
+    expect(report.checks.snapshot_store.status).toBe("down");
+    expect(report.checks.snapshot_store.driver).toBe("s3");
+    expect(report.status).toBe("degraded");
+  });
+
+  it("goes down when the data dir is not writable", async () => {
+    const report = await health(deps({ dataDir: "/nonexistent/testate" }));
 
     expect(report.status).toBe("down");
     expect(report.checks.data_dir.status).toBe("down");
