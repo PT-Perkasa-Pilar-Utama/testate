@@ -1,4 +1,4 @@
-![Testate: git for your test database. Snapshot it, break it, put it back in seconds. Works with PostgreSQL, MySQL, MariaDB, MongoDB, S3 and SFTP, self-hosted in one container](docs/assets/hero.svg)
+![Testate: git for your test database. Testers, CI pipelines and AI agents drive Testate, which runs on the same test server as the system under test and snapshots or restores its databases](docs/assets/hero.svg)
 
 **Git for your test database. Reset the database, not the developer.**
 

@@ -1,70 +1,120 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-label="Testate. Git for your test database. Snapshot it, break it, put it back in seconds. Four states run down a line and a checkout carries the database back to the one you keep. PostgreSQL, MySQL, MariaDB, MongoDB, S3, SFTP, self-hosted in one container.">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-label="Testate. Git for your test database. Snapshot it, break it, put it back in seconds. Testers, CI, and AI agents drive Testate, which runs on the same test server as the system under test and snapshots and restores its databases: PostgreSQL, MySQL, MariaDB, MongoDB, S3 and SFTP.">
   <defs>
     <radialGradient id="wash" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#7DD3C0" stop-opacity="0.30"/>
+      <stop offset="0" stop-color="#7DD3C0" stop-opacity="0.28"/>
       <stop offset="1" stop-color="#7DD3C0" stop-opacity="0"/>
     </radialGradient>
+    <marker id="grey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#94A3B8"/>
+    </marker>
+    <marker id="green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#10B981"/>
+    </marker>
     <style>
       .sans { font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
+      .lead { font-size: 20px; font-weight: 600; fill: #0B1F2A; }
+      .note { font-size: 16px; fill: #64748B; }
+      .card { fill: #FFFFFF; stroke: #E2E8F0; stroke-width: 2; }
+      .edge { fill: none; stroke: #94A3B8; stroke-width: 3; }
     </style>
   </defs>
 
   <rect width="1200" height="900" fill="#F8FAFC"/>
-  <circle cx="1010" cy="120" r="380" fill="url(#wash)"/>
+  <circle cx="1030" cy="90" r="360" fill="url(#wash)"/>
   <rect x="0.5" y="0.5" width="1199" height="899" fill="none" stroke="#E2E8F0"/>
 
   <!-- Mark: a commit line with the state you return to -->
-  <g transform="translate(96 92)">
-    <rect width="96" height="96" rx="22" fill="#0B1F2A"/>
-    <g fill="none" stroke="#7DD3C0" stroke-width="6" stroke-linecap="round">
-      <line x1="31" y1="66" x2="31" y2="24"/>
-      <path d="M31 46 C31 35 55 43 55 32"/>
+  <g transform="translate(80 60)">
+    <rect width="84" height="84" rx="20" fill="#0B1F2A"/>
+    <g fill="none" stroke="#7DD3C0" stroke-width="5.5" stroke-linecap="round">
+      <line x1="27" y1="58" x2="27" y2="21"/>
+      <path d="M27 40 C27 30 48 38 48 28"/>
     </g>
-    <circle cx="31" cy="66" r="6" fill="#7DD3C0"/>
-    <circle cx="55" cy="32" r="6" fill="#7DD3C0"/>
-    <circle cx="31" cy="24" r="8.5" fill="#10B981"/>
-    <circle cx="31" cy="24" r="3.5" fill="#0B1F2A"/>
+    <circle cx="27" cy="58" r="5.5" fill="#7DD3C0"/>
+    <circle cx="48" cy="28" r="5.5" fill="#7DD3C0"/>
+    <circle cx="27" cy="21" r="7.5" fill="#10B981"/>
+    <circle cx="27" cy="21" r="3" fill="#0B1F2A"/>
   </g>
-
-  <text class="sans" x="216" y="160" font-size="66" font-weight="700" letter-spacing="-1.5">
+  <text class="sans" x="184" y="120" font-size="54" font-weight="700" letter-spacing="-1.2">
     <tspan fill="#0B1F2A">Test</tspan><tspan fill="#10B981">ate</tspan>
   </text>
 
-  <text class="sans" x="96" y="320" font-size="64" font-weight="700" fill="#0B1F2A" letter-spacing="-1.2">
+  <text class="sans" x="80" y="226" font-size="54" font-weight="700" fill="#0B1F2A" letter-spacing="-1.1">
     Git for your test database.
   </text>
-  <text class="sans" x="96" y="382" font-size="32" font-weight="500" fill="#475569">
+  <text class="sans" x="80" y="274" font-size="27" font-weight="500" fill="#475569">
     Snapshot it, break it, put it back in seconds.
   </text>
 
-  <!-- Four states down a line; a checkout carries the database back to the green one -->
-  <g transform="translate(96 470)">
-    <line x1="60" y1="40" x2="940" y2="40" stroke="#CBD5E1" stroke-width="5" stroke-linecap="round"/>
-    <circle cx="353" cy="40" r="11" fill="#94A3B8"/>
-    <circle cx="646" cy="40" r="11" fill="#94A3B8"/>
-    <circle cx="940" cy="40" r="16" fill="#94A3B8"/>
-    <path d="M934 128 C700 208 240 208 66 132" fill="none" stroke="#10B981" stroke-width="5"
-          stroke-linecap="round" stroke-dasharray="12 12"/>
-    <path d="M84 118 L62 130 L74 152" fill="none" stroke="#10B981" stroke-width="5"
-          stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="60" cy="40" r="18" fill="#10B981"/>
-    <circle cx="60" cy="40" r="7" fill="#F8FAFC"/>
-    <text class="sans" x="60" y="-4" font-size="24" font-weight="600" fill="#0B1F2A" text-anchor="middle">
-      the state you keep
-    </text>
-    <text class="sans" x="940" y="-4" font-size="24" font-weight="500" fill="#64748B" text-anchor="middle">
-      today's mess
-    </text>
-    <text class="sans" x="500" y="212" font-size="26" font-weight="600" fill="#10B981" text-anchor="middle">
-      one checkout
-    </text>
+  <!-- The server everything sits on -->
+  <rect x="280" y="352" width="840" height="382" rx="20" fill="none" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="9 8"/>
+  <rect x="304" y="338" width="330" height="30" rx="8" fill="#F8FAFC"/>
+  <text class="sans" x="316" y="360" font-size="17" font-weight="600" fill="#64748B">
+    your test server: dev, SIT or UAT
+  </text>
+
+  <!-- Who drives it, from outside the server -->
+  <g class="sans" font-size="19" font-weight="600" fill="#0B1F2A">
+    <rect x="80" y="414" width="182" height="56" rx="12" class="card"/>
+    <text x="171" y="449" text-anchor="middle">Testers</text>
+    <rect x="80" y="494" width="182" height="56" rx="12" class="card"/>
+    <text x="171" y="529" text-anchor="middle">CI pipelines</text>
+    <rect x="80" y="574" width="182" height="56" rx="12" class="card"/>
+    <text x="171" y="601" text-anchor="middle">AI agents</text>
+    <text x="171" y="621" font-size="14" font-weight="500" fill="#64748B" text-anchor="middle">read-only</text>
+  </g>
+  <g class="edge">
+    <line x1="266" y1="442" x2="306" y2="442" marker-end="url(#grey)"/>
+    <line x1="266" y1="522" x2="306" y2="522" marker-end="url(#grey)"/>
+    <line x1="266" y1="602" x2="306" y2="602" marker-end="url(#grey)"/>
   </g>
 
-  <line x1="96" y1="762" x2="1104" y2="762" stroke="#E2E8F0" stroke-width="2"/>
-  <text class="sans" x="96" y="812" font-size="24" font-weight="500" fill="#64748B">
-    PostgreSQL · MySQL · MariaDB · MongoDB · S3 · SFTP
+  <!-- Testate itself -->
+  <rect x="312" y="398" width="286" height="290" rx="18" fill="#ECFDF5" stroke="#10B981" stroke-width="2.5"/>
+  <g transform="translate(340 424)">
+    <rect width="46" height="46" rx="12" fill="#0B1F2A"/>
+    <g fill="none" stroke="#7DD3C0" stroke-width="3" stroke-linecap="round">
+      <line x1="15" y1="32" x2="15" y2="12"/>
+      <path d="M15 22 C15 16 26 21 26 15"/>
+    </g>
+    <circle cx="15" cy="32" r="3" fill="#7DD3C0"/>
+    <circle cx="26" cy="15" r="3" fill="#7DD3C0"/>
+    <circle cx="15" cy="12" r="4" fill="#10B981"/>
+  </g>
+  <text class="sans" x="400" y="456" font-size="27" font-weight="700" fill="#0B1F2A">Testate</text>
+  <line x1="340" y1="496" x2="570" y2="496" stroke="#A7F3D0" stroke-width="2"/>
+  <g class="sans" font-size="19" fill="#0B1F2A">
+    <text x="340" y="533">Snapshot</text>
+    <text x="340" y="567">Check out</text>
+    <text x="340" y="601">Diff</text>
+    <text x="340" y="635">Import fixtures</text>
+  </g>
+  <text class="sans" x="340" y="669" font-size="15" fill="#64748B">One container, one volume</text>
+
+  <!-- The system it tests -->
+  <rect x="760" y="392" width="330" height="94" rx="14" class="card"/>
+  <text class="sans" x="925" y="430" font-size="23" font-weight="700" fill="#0B1F2A" text-anchor="middle">Your app</text>
+  <text class="sans" x="925" y="458" font-size="16" fill="#64748B" text-anchor="middle">the system under test</text>
+
+  <line class="edge" x1="925" y1="486" x2="925" y2="556" marker-end="url(#grey)"/>
+  <text class="sans" x="941" y="527" font-size="15" fill="#64748B">reads and writes</text>
+
+  <rect x="760" y="560" width="330" height="140" rx="14" class="card"/>
+  <text class="sans" x="925" y="600" font-size="23" font-weight="700" fill="#0B1F2A" text-anchor="middle">Its databases</text>
+  <text class="sans" x="925" y="632" font-size="16" fill="#475569" text-anchor="middle">PostgreSQL, MySQL, MariaDB, MongoDB</text>
+  <text class="sans" x="925" y="662" font-size="16" fill="#475569" text-anchor="middle">S3, SFTP, and any REST API</text>
+
+  <!-- What Testate does to them -->
+  <text class="sans" x="679" y="577" font-size="17" font-weight="600" fill="#475569" text-anchor="middle">snapshot</text>
+  <line class="edge" x1="754" y1="596" x2="604" y2="596" marker-end="url(#grey)"/>
+  <line x1="604" y1="646" x2="754" y2="646" fill="none" stroke="#10B981" stroke-width="3" marker-end="url(#green)"/>
+  <text class="sans" x="679" y="676" font-size="17" font-weight="600" fill="#10B981" text-anchor="middle">put it back</text>
+
+  <line x1="80" y1="778" x2="1120" y2="778" stroke="#E2E8F0" stroke-width="2"/>
+  <text class="sans" x="80" y="824" font-size="22" font-weight="600" fill="#0B1F2A">
+    Self-hosted, beside the system it tests.
   </text>
-  <text class="sans" x="96" y="850" font-size="24" font-weight="500" fill="#64748B">
-    Self-hosted. One container, one volume.
+  <text class="sans" x="80" y="860" font-size="20" font-weight="500" fill="#64748B">
+    Nothing leaves your network. No agent inside your app.
   </text>
 </svg>
