@@ -7,7 +7,7 @@ import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { Cell, EmptyRow, Head, Row, Table, TableToolbar } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import Switch from "@/components/switch.tsx";
 import FixtureDialog from "./fixture.view.tsx";
@@ -17,6 +17,9 @@ import { FkCell, ForeignKeys } from "./grid-cells.view.tsx";
 import RowForm from "./row-form.view.tsx";
 
 const OP_OPTIONS = FILTER_OPS.map((op) => ({ value: op, label: op }));
+
+/** Postgres, MySQL and MongoDB spell their number types differently; they all match this. */
+const NUMERIC_TYPE = /int|serial|numeric|decimal|float|double|real|money|long/i;
 const SIZE_OPTIONS = PAGE_SIZES.map((size) => ({ value: size, label: `${size} rows` }));
 
 function FilterBar(props: { presenter: GridPresenter; columns: string[] }): JSX.Element {
@@ -36,6 +39,7 @@ function FilterBar(props: { presenter: GridPresenter; columns: string[] }): JSX.
     <form class="flex flex-wrap items-end gap-2" onSubmit={onSubmit}>
       <Select
         size="sm"
+        class="w-40!"
         aria-label="Filter column"
         options={columnOptions()}
         value={column() === "" ? (props.columns[0] ?? "") : column()}
@@ -43,6 +47,7 @@ function FilterBar(props: { presenter: GridPresenter; columns: string[] }): JSX.
       />
       <Select
         size="sm"
+        class="w-24!"
         aria-label="Filter operator"
         options={OP_OPTIONS}
         value={op()}
@@ -50,6 +55,7 @@ function FilterBar(props: { presenter: GridPresenter; columns: string[] }): JSX.
       />
       <Input
         size="sm"
+        class="w-44!"
         aria-label="Filter value"
         placeholder="value"
         value={value()}
@@ -81,39 +87,45 @@ function Pager(props: { presenter: GridPresenter }): JSX.Element {
   const page = (): ReturnType<GridPresenter["page"]["value"]>["page"] =>
     props.presenter.page.value().page;
   return (
-    <div class="flex flex-wrap items-center gap-2 text-sm">
-      <Select
-        size="sm"
-        aria-label="Rows per page"
-        options={SIZE_OPTIONS}
-        value={props.presenter.limit()}
-        onChange={(size) => props.presenter.setLimit(size)}
-      />
-      <Badge variant="secondary">{page().kind} paging</Badge>
-      <Button
-        size="sm"
-        variant="ghost"
-        disabled={props.presenter.depth() === 0}
-        onClick={() => props.presenter.first()}
-      >
-        First
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        disabled={props.presenter.depth() === 0}
-        onClick={() => props.presenter.previous()}
-      >
-        Previous
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        disabled={page().next_cursor === null}
-        onClick={() => props.presenter.next()}
-      >
-        Next
-      </Button>
+    <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-kumo-subtle">
+      <div class="flex flex-wrap items-center gap-2">
+        <span>{props.presenter.page.value().data.length} rows on this page</span>
+        <Badge variant="secondary">{page().kind} paging</Badge>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <Select
+          size="sm"
+          class="w-28!"
+          aria-label="Rows per page"
+          options={SIZE_OPTIONS}
+          value={props.presenter.limit()}
+          onChange={(size) => props.presenter.setLimit(size)}
+        />
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={props.presenter.depth() === 0}
+          onClick={() => props.presenter.first()}
+        >
+          First
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={props.presenter.depth() === 0}
+          onClick={() => props.presenter.previous()}
+        >
+          Previous
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={page().next_cursor === null}
+          onClick={() => props.presenter.next()}
+        >
+          Next
+        </Button>
+      </div>
     </div>
   );
 }
@@ -213,13 +225,14 @@ export default function GridView(props: { slug: string; id: string; table: strin
         <ForeignKeys presenter={presenter} />
       </div>
       <Loading fallback={<p class="text-kumo-subtle">Loading rows...</p>}>
-        <FilterBar
-          presenter={presenter}
-          columns={presenter.page.value().columns.map((column) => column.name)}
-        />
-        <WriteControls presenter={presenter} />
+        <TableToolbar actions={<WriteControls presenter={presenter} />}>
+          <FilterBar
+            presenter={presenter}
+            columns={presenter.page.value().columns.map((column) => column.name)}
+          />
+        </TableToolbar>
         <Show when={presenter.page.value().masked_columns.length > 0}>
-          <p class="text-sm text-kumo-subtle">
+          <p class="text-xs text-kumo-subtle">
             Masked for your role: {presenter.page.value().masked_columns.join(", ")}
           </p>
         </Show>
@@ -229,7 +242,7 @@ export default function GridView(props: { slug: string; id: string; table: strin
               <tr>
                 <For each={presenter.page.value().columns}>
                   {(column) => (
-                    <Head>
+                    <Head numeric={NUMERIC_TYPE.test(column.type)}>
                       <button
                         type="button"
                         class="cursor-pointer font-medium hover:underline"
@@ -248,24 +261,29 @@ export default function GridView(props: { slug: string; id: string; table: strin
               </tr>
             </thead>
             <tbody>
-              <For each={presenter.page.value().data}>
-                {(row) => (
-                  <Row>
-                    <For each={presenter.page.value().columns}>
-                      {(column) => (
-                        <Cell>
-                          <FkCell
-                            presenter={presenter}
-                            column={column.name}
-                            value={row[column.name]}
-                          />
-                        </Cell>
-                      )}
-                    </For>
-                    <RowActions presenter={presenter} row={row} />
-                  </Row>
-                )}
-              </For>
+              <Show
+                when={presenter.page.value().data.length > 0}
+                fallback={<EmptyRow>No rows match. Clear a filter to see more.</EmptyRow>}
+              >
+                <For each={presenter.page.value().data}>
+                  {(row) => (
+                    <Row>
+                      <For each={presenter.page.value().columns}>
+                        {(column) => (
+                          <Cell numeric={NUMERIC_TYPE.test(column.type)}>
+                            <FkCell
+                              presenter={presenter}
+                              column={column.name}
+                              value={row[column.name]}
+                            />
+                          </Cell>
+                        )}
+                      </For>
+                      <RowActions presenter={presenter} row={row} />
+                    </Row>
+                  )}
+                </For>
+              </Show>
             </tbody>
           </Table>
         </div>

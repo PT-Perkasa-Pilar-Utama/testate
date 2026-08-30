@@ -57,12 +57,21 @@ const SAMPLE = new Map([
 ]);
 
 export function watch(page: Page, issues: Issue[]): void {
-  page.on("pageerror", (error) => issues.push({ kind: "pageerror", detail: error.message }));
+  // The page it happened on, because the crawler visits thirty of them and the message alone
+  // ("Potential Infinite Loop Detected") says nothing about where to look.
+  const where = (): string => new URL(page.url()).pathname;
+  page.on("pageerror", (error) =>
+    issues.push({
+      kind: "pageerror",
+      // The stack too: the message alone has twice sent a reader to the wrong module.
+      detail: `${where()} ${error.message}\n${(error.stack ?? "").split("\n").slice(1, 6).join("\n")}`,
+    })
+  );
   page.on("console", (message) => {
     if (message.type() !== "error") return;
     const text = message.text();
     if (/Failed to load resource/.test(text)) return;
-    issues.push({ kind: "console", detail: text.slice(0, 300) });
+    issues.push({ kind: "console", detail: `${where()} ${text.slice(0, 300)}` });
   });
   page.on("response", (response) => {
     if (response.status() >= 500)

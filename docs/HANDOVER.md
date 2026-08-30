@@ -172,9 +172,15 @@ each with a test that fails when the fix is removed:
 inline error. Replacing it means a validation state per field in every dialog, and the crawler
 leans on native validation to fill forms; the gain did not look worth that.
 
-**Watch item:** one crawl run logged Solid's "Potential Infinite Loop Detected" on a screen the
-crawler had never reached before (`/account`, newly routed). Three runs since, including a crawl
-on its own, are clean. If it comes back, start at `account.presenter.ts`.
+**Watch item, still open.** Solid's "Potential Infinite Loop Detected" has fired three times in
+about ten full browser runs, never in a crawl run on its own, and never twice in the same place
+until the third: the page was `/projects/demo/adapters/<mongo>/tables/customers`, the data grid.
+The crawler now records the page and five frames of the stack with every page error
+(`e2e/lib/crawl.ts`), so the next occurrence names the module instead of the symptom. Suspects
+read and cleared so far: `fkLink` (pure), the grid's table-change effect (its handler writes
+nothing its source reads), and the two SSE effects in `jobs.presenter.ts` and `checkouts.view.tsx`
+(the source value does not change when the list refreshes). Do not claim it fixed without a run
+that reproduces it first.
 
 
 **The UI target is GitHub.** The user said so on 2026-08-30, reading the UI/UX review. Reach for
