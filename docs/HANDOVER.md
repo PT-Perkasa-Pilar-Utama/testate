@@ -172,27 +172,21 @@ each with a test that fails when the fix is removed:
 inline error. Replacing it means a validation state per field in every dialog, and the crawler
 leans on native validation to fill forms; the gain did not look worth that.
 
-**The reactive loop is still open, and rc.4 did not fix it.** Solid's flush guard throws "Potential
-Infinite Loop Detected" on the data grid, about one full browser run in four, always during the
-crawler and never in a crawler run on its own. Every frame is inside the framework's async
-write-back and none is ours. The cause is not established: the guard lives in the framework, so it
-throws from there whoever caused the runaway, and the same message has been raised by application
-code before (`solidjs/solid#2843`, closed, not our pattern). It is now filed upstream as
-`solidjs/solid#3140`, at the owner's direction and worded as a question rather than a bug report.
-The evidence and the first places to look are in `docs/upstream-solid-flush-loop.md`. Watch that
-issue; a maintainer's answer is the fastest route to a cause. `e2e/stress.e2e.ts` (project `stress`,
-`STRESS=1`) drives the same screen far harder than the crawler does and has never reproduced it in
-six runs, which is itself evidence: whatever it takes, it is not rapid interaction alone. Do not
-claim it fixed without a run that reproduces it first.
+**The reactive loop is fixed, and the cause was upstream.** `setSignal` in `@solidjs/signals`
+re-opens a node's transition before it checks whether the write changes anything. A `Loading` boundary
+writes the same boolean on every pass of a drain, so a node stamped with an already-finished
+transition re-arms it forever and the drain never ends. One line in
+`patches/@solidjs%2Fsignals@2.0.0-rc.4.patch` drops the dead stamp. Filed upstream as
+`solidjs/solid#3140`; drop the patch when a release carries their own fix. The full instrumentation
+record, the measurement and the reproduction recipe are in `docs/upstream-solid-flush-loop.md`, and
+`patches/README.md` says why the guard sits at the write rather than inside `initTransition`.
 
-What did land: solid-js and @solidjs/web went from 2.0.0-rc.3 to rc.4, whose notes fix a case of
-"the flush loop spun forever" on a pending store read. That is the same subsystem as this
-diagnostic, and the stack always pointed inside the framework's async write-back rather than our
-code. Five full runs and four stress runs since the upgrade are clean. That is evidence, not proof:
-the loop was intermittent at roughly one run in three before, so five clean runs is worth about
-that much. If it returns, rc.4 also ships `node_modules/solid-js/skills/reactivity-diagnostics/
-SKILL.md`, which maps each diagnostic code to its repair, and the crawler already records the page
-and five stack frames.
+Along the way solid-js and @solidjs/web went from 2.0.0-rc.3 to rc.4. That upgrade did not end the
+loop, and neither did rewriting the data layer onto `refresh()` and a memo, nor removing the grid's
+table-change effect. All three are worth keeping on their own merits, and none of them was the
+cause. Do not read a run of clean suites as proof of anything here: the loop met its trigger in
+about half of crawl runs, so the only readable measurement is one that counts whether the trigger
+occurred at all. `docs/upstream-solid-flush-loop.md` explains how to count it.
 
 
 **The redesign (2026-08-30).** ADR 0002 records the decision; `docs/design/github.md` is the

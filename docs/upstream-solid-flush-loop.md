@@ -1,122 +1,95 @@
-# Known issue: "Potential Infinite Loop Detected" on the data grid
+# The flush loop: cause, fix, and how it was found
 
-**Status:** filed upstream at the owner's direction as `solidjs/solid#3140`
-(https://github.com/solidjs/solid/issues/3140). The cause is still not established. The issue says
-so plainly: it asks which application patterns can drive `asyncWrite` to reschedule, and asks the
-guard to name the node it kept rescheduling. Do not read the filing as a claim that the framework
-is at fault. If a maintainer answers, put the answer here and act on it.
+**Status:** cause established and fixed locally. `patches/@solidjs%2Fsignals@2.0.0-rc.4.patch`
+carries a one-line change to `setSignal`. Filed upstream as `solidjs/solid#3140`. Drop the patch
+when a release carries the maintainers' own fix.
 
-## What happens
+## The defect
 
-Solid's dev build throws `Potential Infinite Loop Detected` from the flush guard while the browser
-sits on our data-grid screen. The page keeps working; the error reaches `window.onerror`, which is
-how our browser suite catches it.
-
-The guard is `flush()` counting its own iterations:
+`setSignal` re-opens the node's transition before it checks whether the write changes anything:
 
 ```js
-let count = 0;
-while (scheduled || activeTransition) {
-  if (++count === 1e5) throw new Error("Potential Infinite Loop Detected.");
-  ...
-}
+if (el._transition && activeTransition !== el._transition)
+  globalQueue.initTransition(el._transition);   // runs first
+...
+const valueChanged = ... || !el._equals(currentValue, v);
+if (!valueChanged) return v;                     // and only then bails out
 ```
 
-So something reschedules work a hundred thousand times inside one flush.
+A `Loading` boundary holds a boolean flag. `CollectionQueue._checkSources` writes that flag on every
+pass of a drain. When it is already `false` the write changes nothing, but it has already re-opened
+the transition the node is stamped with. If that transition has already finished, the drain loop
+sees a live transition again and goes round, forever:
 
-## Frames
+1. The drain loop sees `activeTransition`, so it calls `globalQueue.flush()`.
+2. `transitionComplete` returns true on its first line, because `_done` is already `true`. The
+   transition completes and `activeTransition` becomes null.
+3. Still inside that flush, `finalizePureQueue` reaches `checkBoundaryChildren`, which reaches
+   `CollectionQueue._checkSources`, which writes `false` over `false`.
+4. `setSignal` re-opens the finished transition before discovering the write is a no-op.
+5. The loop condition is true again. Go to 2.
 
-Every occurrence carries the same three, and no frame of ours:
+Nothing recomputes. The dirty queue is empty, nothing is scheduled, no effects are queued, there are
+no pending nodes and no lanes. In the dev build the loop throws at 100,000 iterations. The
+production scheduler has the same loop with no counter, so there it does not throw. It hangs.
 
+## The fix
+
+```js
+if (el._transition?._done === true) el._transition = null;
 ```
-at flush      (@solidjs/signals dev, the guard above)
-at asyncWrite (@solidjs/signals dev)
-at result.then.syncError (@solidjs/signals dev)
-```
 
-`asyncWrite` and `result.then.syncError` put it in the write-back of a settled async computation.
+`_done` is only ever a forwarding object, which `currentTransition` follows, or the boolean `true`,
+which ends the chain. So a `_done === true` stamp is dead and dropping it is safe.
+`resolveTransition` already refuses a finished transition on its override branch. The plain write
+path did not.
 
-**This does not mean the defect is in the framework.** The guard lives there, so it throws from
-there whoever caused the runaway. `solidjs/solid#2843` is the same message, raised on
-`2.0.0-beta.15`, and its cause was an application pattern: `isPending(() => latest(asyncMemo))`
-read in a user effect while no render effect subscribed to that memo. We use neither `isPending`
-nor `latest`, and that one was fixed in the companion redesign (#2838) long before rc.4, so it is
-not our case. It is the reason to hold the conclusion open: this alarm has a history of being
-raised by application code.
+**A guard inside `initTransition` does not work.** Refusing the finished transition there makes it
+open a fresh batch instead, and the drain stays alive. That was measured: the spin survived, with a
+different transition identity on each pass.
 
-## Where
+## How it was found
 
-`/projects/:slug/adapters/:id/tables/:table`, always. That screen holds four async computations
-built on `createMemo(async …)`: the page of rows (whose query the person controls: filters, sort,
-cursor, page size), the adapter, its schema, and a write-session presenter that refreshes the first
-one. It is the only screen in the product with that many, and the only one whose async memo takes a
-query a person can change quickly.
+The message names nothing and every frame is internal, so the only way through was to instrument the
+drain loop in a local copy of `dist/dev.js` and run the browser crawl until it tripped.
 
-## Conditions
+| Probe | Question | Answer |
+| --- | --- | --- |
+| report scheduler state at iteration 200 | is anything actually queued? | no: empty heap, nothing scheduled, no effects, no pending nodes |
+| track transition identity across passes | one transition or many? | the same one, already `_done`, re-armed every pass |
+| guard `initTransition` | does refusing it help? | no: a fresh batch per pass, still spinning |
+| count reads per node during a drain | which node? | one node, on 99,997 of 100,000 passes |
+| hook all four re-open sites | which path? | `setSignal`, which the first probes missed |
+| capture the writer | who writes it? | `CollectionQueue._checkSources` under `finalizePureQueue`, writing `false` over `false` |
 
-- It fires far more often than the suite goes red. Counting the message in a run's log rather than
-  waiting for a test to fail: 4, 0 and 0 occurrences across three identical runs of the crawler
-  chain. The suite only turns red when one lands on a page a test is watching, which is the "one
-  run in four" figure reported earlier. The bug is more frequent than that number suggested.
-- That variance also means single-run counts prove nothing about whether a change helped. Two
-  changes to the data layer measured 8 and 10 against a baseline of 4-0-0, which is inside the
-  noise, not evidence of harm.
-- Always during the crawler project, which clicks every control on every screen in turn.
-- Never in a crawler run on its own: 3 consecutive clean runs.
-- Never in a dedicated stress spec that drives the same screen's sort, filter, paging and write
-  switch 20 times over with no wait between clicks, with and without a query the API rejects:
-  6 clean runs (`e2e/stress.e2e.ts`, project `stress`, `STRESS=1`).
-- The difference between the two is what ran before: in a full suite the crawler arrives after
-  every other project has taken snapshots, run checkouts, imported fixtures and left jobs
-  streaming over server-sent events.
+## The measurement
 
-## Versions
+Both arms ran the same crawl with the same counters, differing only in that one line. A run only
+counts as evidence if the stale-stamp condition actually arose in it, because a run that never met
+the condition cannot say anything about the fix.
 
-`solid-js` and `@solidjs/web` 2.0.0-rc.4, `@solidjs/signals` transitively. It happened on rc.3 as
-well, and rc.4's note about a flush loop spinning forever on a pending store read (#3068) did not
-end it.
+| Arm | Runs that met the condition | Drains over 25 passes | Runaways |
+| --- | --- | --- | --- |
+| unpatched | 5 of 10 | 5 of 5 | 5 of 5 |
+| patched | 6 | 0 of 6 | 0 of 6 |
 
-## What the framework says can cause this from application code
+In the unpatched arm the condition and the runaway matched exactly, ten times out of ten: every run
+that met it span, every run that did not was clean. That is what makes the patched arm readable.
 
-`node_modules/solid-js/skills/reactivity-diagnostics/SKILL.md`, shipped with rc.4, lists patterns
-that make the scheduler re-run more than it should. `UNSTABLE_MEMO_OUTPUT` is the closest to
-anything we do: "a memo keeps producing referentially-new but shallowly-equivalent objects/arrays,
-so its equality gate never closes and every subscriber re-runs on every upstream change." Our
-`createRefreshable` returns a fresh promise per run by construction, and `createPaged.value` builds
-a new array on every read. Neither is proven to be the cause; both are the first place to look.
+The stale-stamp counts differ between arms by construction. Unpatched runs count 9 or 18 because the
+stamp stays and the same node keeps hitting it. Patched runs count 3 because the first contact
+clears it.
 
-Those diagnostics arrive as console warnings carrying a code in brackets. The browser suite dropped
-every warning until 2026-08-31, so no run has ever reported one. It keeps them now.
+## What was ruled out along the way
 
-## What was tried and did not fix it
+- Our data layer. The rewrite onto `refresh()` and a memo for the derived page was right on its own
+  merits and changed nothing here.
+- The grid's table-change effect. Removing it (`089713a`) is right on its own merits and changed
+  nothing here.
+- `fkLink`, and the two server-sent-event effects.
 
-Rewriting the data layer onto Solid's own primitives (2026-08-31): `createRefreshable` now calls
-core `refresh()` instead of bumping a version counter, and `createPaged` returns a memo instead of
-building a new array on every read. Both are correct on their own merits and both are kept. Neither
-ended the loop.
+## Reproducing it
 
-A stress spec that hammers the grid harder than the crawler does has never reproduced it, across
-eight runs and three shapes: rapid sort/filter/paging/write-mode with no settle; the same plus the
-fixture dialog and the row form; the same again after walking through the jobs screen first so a
-live stream is open. The crawler remains the only thing that reproduces it, which points at
-something about visiting thirty screens in one browser context rather than anything the grid does
-by itself.
-
-## What was ruled out
-
-- `fkLink`, the grid's only pure helper on that path.
-- The grid's table-change effect: its handler writes nothing its own source reads.
-- The two server-sent-event effects (`jobs.presenter.ts`, `checkouts.view.tsx`): the source value
-  does not change when the list refreshes, so the handler does not re-run.
-
-## Open issues checked
-
-`solidjs/solid` had no open issue matching this symptom before ours: a search for "infinite loop" in
-open issues returned nothing, and neither "livelock", "scheduler loop" nor "async memo write-back"
-returned anything. The only matches were three closed issues, of which #2843 is the one described
-above. Ours is #3140.
-
-## What a reproduction would need
-
-An instance with enough accumulated state to match a full run, then the crawler's own pattern of
-clicking every control including the dialogs. Our own harness gets there about one run in four.
+`bunx playwright test --project=crawl --no-deps` against a seeded `.e2e/data`, repeatedly. It met
+the condition in about half of runs. A single screen driven hard never reproduces it; the crawl
+across thirty screens does.
