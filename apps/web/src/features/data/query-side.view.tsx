@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show, createSignal } from "solid-js";
 
 import Button from "@/components/button.tsx";
@@ -75,7 +76,8 @@ export default function SidePanel(props: { presenter: QueryPresenter }): JSX.Ele
                 <li class="grid gap-0.5 border-b border-kumo-line py-1">
                   <code class="truncate">{row.query_text}</code>
                   <span class="text-xs text-kumo-subtle">
-                    {row.created_at} · {row.duration_ms ?? "?"} ms · {row.row_count ?? "?"} rows
+                    {formatWhen(row.created_at)} · {row.duration_ms ?? "?"} ms ·{" "}
+                    {row.row_count ?? "?"} rows
                     {row.error === null ? "" : ` · ${row.error}`}
                   </span>
                 </li>

@@ -1,9 +1,10 @@
 import type { JSX } from "@solidjs/web";
+import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
 import type { State, StateTreeNode } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
-import Button from "@/components/button.tsx";
+import Button, { buttonClass } from "@/components/button.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Switch from "@/components/switch.tsx";
 import Tabs from "@/components/tabs.tsx";
@@ -35,7 +36,7 @@ function Branch(props: { nodes: StateTreeNode[] }): JSX.Element {
                 <Badge variant="success">HEAD</Badge>
               </Show>
               <span class="text-kumo-subtle text-sm">
-                {formatBytes(node.size_bytes)} · {node.created_at}
+                {formatBytes(node.size_bytes)} · {formatWhen(node.created_at)}
               </span>
             </span>
             <Show when={node.children.length > 0}>
@@ -62,10 +63,7 @@ function RowActions(props: {
       >
         Details
       </Button>
-      <a
-        class="inline-flex h-8 items-center rounded-lg px-3 text-sm hover:bg-kumo-tint"
-        href={props.presenter.archiveUrl(props.state)}
-      >
+      <a class={buttonClass("ghost", "sm")} href={props.presenter.archiveUrl(props.state)}>
         Download
       </a>
       <Show when={hasRole("qa")}>
@@ -177,7 +175,7 @@ export default function StatesView(props: { slug: string; onChanged?: () => void
                     <Cell>{state.adapters.map((adapter) => adapter.adapter_name).join(", ")}</Cell>
                     <Cell>{formatBytes(state.size_bytes)}</Cell>
                     <Cell>{state.actor.label}</Cell>
-                    <Cell>{state.created_at}</Cell>
+                    <Cell>{formatWhen(state.created_at)}</Cell>
                     <Cell>
                       <RowActions
                         presenter={presenter}

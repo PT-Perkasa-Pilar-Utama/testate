@@ -11,6 +11,7 @@ import PoliciesView from "@/features/data/policies.view.tsx";
 import QueryView from "@/features/data/query.view.tsx";
 import RestView from "@/features/rest/rest.view.tsx";
 import StorageView from "@/features/storage/storage.view.tsx";
+import AccountView from "@/features/account/account.view.tsx";
 import AuditView from "@/features/audit/audit.view.tsx";
 import { signOut } from "@/features/auth/auth.presenter.ts";
 import ChangePasswordView from "@/features/auth/change-password.view.tsx";
@@ -112,6 +113,9 @@ function Page(props: { match: RouteMatch | null }): JSX.Element {
       <Match when={name() === "tools"}>
         <ToolsView />
       </Match>
+      <Match when={name() === "account"}>
+        <AccountView />
+      </Match>
       <Match when={name() === "health"}>
         <HealthView />
       </Match>
@@ -147,9 +151,16 @@ function Sidebar(props: { current: string | undefined }): JSX.Element {
         <Show when={actor()}>
           {(current) => (
             <>
-              <span class="text-kumo-subtle">
+              <a
+                class={[
+                  "rounded-md px-2 py-1.5 text-kumo-subtle hover:bg-kumo-tint",
+                  { "bg-kumo-tint font-medium": props.current === "/account" },
+                ]}
+                href={href("/account")}
+                onClick={(event) => onNav(event, "/account")}
+              >
                 {current().label} · {current().role}
-              </span>
+              </a>
               <Button size="sm" variant="ghost" onClick={() => void signOut()}>
                 Sign out
               </Button>

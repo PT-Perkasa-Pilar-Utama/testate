@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
@@ -80,7 +81,7 @@ export function DetailDialog(props: { presenter: DiffsPresenter }): JSX.Element 
           open
           onClose={() => props.presenter.close()}
           title={`${diff().base.name} → ${targetLabel(diff().target)}`}
-          description={`Expires ${diff().expires_at}`}
+          description={`Expires ${formatWhen(diff().expires_at)}`}
           size="xl"
         >
           <div class="grid gap-4">

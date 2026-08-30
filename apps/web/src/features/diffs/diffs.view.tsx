@@ -1,15 +1,16 @@
 import type { JSX } from "@solidjs/web";
+import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
-import Button from "@/components/button.tsx";
+import Button, { buttonClass } from "@/components/button.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { CreateDialog, DetailDialog, RowsDialog } from "./diffs.dialogs.view.tsx";
 import { changedRows, createDiffsPresenter, targetLabel } from "./diffs.presenter.ts";
 
 const STATUS_VARIANT = { running: "info", ready: "success", failed: "error" } as const;
-const LINK = "inline-flex h-8 items-center rounded-lg px-3 text-sm hover:bg-kumo-tint";
+const LINK = buttonClass("ghost", "sm");
 
 export default function DiffsView(props: { slug: string }): JSX.Element {
   const presenter = createDiffsPresenter(() => props.slug);
@@ -44,7 +45,7 @@ export default function DiffsView(props: { slug: string }): JSX.Element {
                     <Badge variant={STATUS_VARIANT[diff.status]}>{diff.status}</Badge>
                   </Cell>
                   <Cell>{changedRows(diff)}</Cell>
-                  <Cell>{diff.expires_at}</Cell>
+                  <Cell>{formatWhen(diff.expires_at)}</Cell>
                   <Cell>
                     <div class="flex flex-wrap justify-end gap-1">
                       <Button

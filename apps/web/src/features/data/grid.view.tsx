@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
 import type { JsonObject } from "@testate/shared";
 import { For, Loading, Show, createSignal } from "solid-js";
 
@@ -7,7 +8,6 @@ import Button from "@/components/button.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
-import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import Switch from "@/components/switch.tsx";
 import FixtureDialog from "./fixture.view.tsx";
@@ -204,19 +204,11 @@ export default function GridView(props: { slug: string; id: string; table: strin
     () => props.id,
     () => props.table
   );
-  const back = (): string => `/projects/${props.slug}/adapters/${props.id}`;
-  const onBack = (event: MouseEvent): void => {
-    event.preventDefault();
-    navigate(back());
-  };
   return (
     <section class="grid gap-4">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-lg font-semibold">
-          <a class="text-kumo-subtle hover:underline" href={href(back())} onClick={onBack}>
-            adapter
-          </a>{" "}
-          / <code>{props.table}</code>
+          <AdapterCrumb slug={props.slug} id={props.id} /> / <code>{props.table}</code>
         </h2>
         <ForeignKeys presenter={presenter} />
       </div>

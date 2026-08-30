@@ -24,6 +24,17 @@ for (const role of ROLES) {
       });
     }
 
+    test("@story-6 @story-9 the account screen is one click from the sidebar", async ({ page }) => {
+      const issues: Issue[] = [];
+      watch(page, issues);
+      await page.goto("/projects");
+      await settle(page);
+      await page.getByRole("link", { name: new RegExp(`${role}$`) }).click();
+      await expect(page.getByRole("heading", { name: "Change password" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Sessions" })).toBeVisible();
+      expect(issues).toStrictEqual([]);
+    });
+
     test("@story-6 @story-7 the sidebar lists only the screens the role may open", async ({
       page,
     }) => {
@@ -60,7 +71,8 @@ for (const role of ROLES) {
         for (const path of await adapterScreens(adapter)) {
           await page.goto(path);
           await settle(page);
-          await expect(page.getByText("adapter", { exact: true }).first()).toBeVisible();
+          // The crumb carries the adapter's own name; it used to be the literal word "adapter".
+          await expect(page.getByRole("link", { name: adapter.name }).first()).toBeVisible();
         }
       }
       expect(issues).toStrictEqual([]);

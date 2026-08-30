@@ -29,6 +29,8 @@ export const SCREENS: { path: string; role: Role; nav: string | null }[] = [
   { path: "/projects/demo", role: "viewer", nav: null },
   { path: "/jobs", role: "viewer", nav: "Jobs" },
   { path: "/tools", role: "viewer", nav: "Tools" },
+  // Reachable from the identity line at the foot of the sidebar, not from the nav list.
+  { path: "/account", role: "viewer", nav: null },
   { path: "/health", role: "viewer", nav: null },
   { path: "/audit", role: "admin", nav: "Audit" },
   { path: "/users", role: "admin", nav: "Users" },

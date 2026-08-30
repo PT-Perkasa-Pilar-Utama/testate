@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
 import type { Job } from "@testate/shared";
 
@@ -52,7 +53,7 @@ function JobRow(props: { presenter: JobsPresenter; job: Job }): JSX.Element {
         </Show>
       </Cell>
       <Cell>{props.job.actor.label}</Cell>
-      <Cell>{props.job.created_at}</Cell>
+      <Cell>{formatWhen(props.job.created_at)}</Cell>
       <Cell>
         <Show when={hasRole("qa") && canCancel(props.job)}>
           <Button

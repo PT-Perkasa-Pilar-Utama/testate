@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
@@ -85,8 +86,8 @@ export default function AccountView(): JSX.Element {
               <For each={presenter.sessions.value()}>
                 {(session) => (
                   <Row>
-                    <Cell>{session.created_at}</Cell>
-                    <Cell>{session.last_seen_at}</Cell>
+                    <Cell>{formatWhen(session.created_at)}</Cell>
+                    <Cell>{formatWhen(session.last_seen_at)}</Cell>
                     <Cell>{session.ip ?? ""}</Cell>
                     <Cell class="max-w-xs truncate">{session.user_agent ?? ""}</Cell>
                     <Cell>

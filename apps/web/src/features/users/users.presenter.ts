@@ -39,7 +39,11 @@ export type UsersPresenter = Paged<User> & {
   setTemporaryPassword: (value: string) => void;
   resetPassword: () => Promise<void>;
   setDisabled: (user: User, disabled: boolean) => Promise<void>;
-  remove: (user: User) => Promise<void>;
+  /** The account the delete dialog is asking about, null when it is closed. */
+  removing: () => User | null;
+  askRemove: (user: User) => void;
+  cancelRemove: () => void;
+  remove: () => Promise<void>;
   isSelf: (user: User) => boolean;
 };
 
@@ -53,6 +57,7 @@ export function createUsersPresenter(): UsersPresenter {
   const [draft, setDraftSignal] = createSignal<UserDraft>(EMPTY_DRAFT);
   const [error, setError] = createSignal<string | null>(null);
   const [resetting, setResetting] = createSignal<User | null>(null);
+  const [removing, setRemoving] = createSignal<User | null>(null);
   const [temporaryPassword, setTemporaryPassword] = createSignal("");
   return {
     ...users,
@@ -104,12 +109,18 @@ export function createUsersPresenter(): UsersPresenter {
         await (disabled ? usersModel.disable(user.id) : usersModel.enable(user.id));
         users.refresh();
       }),
-    remove: (user) =>
-      attempt(async () => {
-        if (!window.confirm(`Delete ${user.username}? Audit rows keep the name.`)) return;
-        await usersModel.remove(user.id);
+    removing,
+    askRemove: (user) => setRemoving(user),
+    cancelRemove: () => setRemoving(null),
+    remove: () => {
+      const staticUser = removing();
+      setRemoving(null);
+      return attempt(async () => {
+        if (staticUser === null) return;
+        await usersModel.remove(staticUser.id);
         users.refresh();
-      }),
+      });
+    },
     isSelf: (user) => actor()?.id === user.id,
   };
 }

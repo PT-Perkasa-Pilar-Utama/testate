@@ -25,7 +25,11 @@ export type TokensPresenter = Paged<ApiToken> & {
   create: () => Promise<void>;
   copyCreated: () => Promise<void>;
   dismissCreated: () => void;
-  revoke: (token: ApiToken) => Promise<void>;
+  /** The token the revoke dialog is asking about, null when it is closed. */
+  revoking: () => ApiToken | null;
+  askRevoke: (token: ApiToken) => void;
+  cancelRevoke: () => void;
+  revoke: () => Promise<void>;
 };
 
 /** Agent tokens are always viewer, so the role is sent for standard tokens only (02 §2.7). */
@@ -43,6 +47,7 @@ export function createTokensPresenter(): TokensPresenter {
   const [draft, setDraftSignal] = createSignal<TokenDraft>(EMPTY_DRAFT);
   const [error, setError] = createSignal<string | null>(null);
   const [created, setCreated] = createSignal<string | null>(null);
+  const [revoking, setRevoking] = createSignal<ApiToken | null>(null);
   return {
     ...tokens,
     creating,
@@ -76,11 +81,17 @@ export function createTokensPresenter(): TokensPresenter {
       });
     },
     dismissCreated: () => setCreated(null),
-    revoke: (token) =>
-      attempt(async () => {
-        if (!window.confirm(`Revoke ${token.name}? Requests with it fail from now on.`)) return;
-        await tokensModel.revoke(token.id);
+    revoking,
+    askRevoke: (token) => setRevoking(token),
+    cancelRevoke: () => setRevoking(null),
+    revoke: () => {
+      const staticToken = revoking();
+      setRevoking(null);
+      return attempt(async () => {
+        if (staticToken === null) return;
+        await tokensModel.revoke(staticToken.id);
         tokens.refresh();
-      }),
+      });
+    },
   };
 }

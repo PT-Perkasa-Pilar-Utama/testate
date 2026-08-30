@@ -27,6 +27,18 @@ const SIZES = {
   lg: "h-10 gap-2 rounded-lg px-4 text-base",
 } as const;
 
+/**
+ * The classes a Button renders, for the controls that have to be anchors: a download, an export.
+ * Three of those had hand-copied classes that drifted from every size the Button offers, and none
+ * of them carried the focus ring.
+ */
+export function buttonClass(
+  variant: keyof typeof VARIANTS = "secondary",
+  size: keyof typeof SIZES = "base"
+): string {
+  return [BASE, VARIANTS[variant], SIZES[size]].join(" ");
+}
+
 export type ButtonProps = ComponentProps<"button"> & {
   variant?: keyof typeof VARIANTS;
   size?: keyof typeof SIZES;

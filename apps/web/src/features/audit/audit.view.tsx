@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import { formatWhen } from "@/lib/format.ts";
 import { For, Loading } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
@@ -31,7 +32,7 @@ export default function AuditView(): JSX.Element {
             <For each={presenter.value()}>
               {(row) => (
                 <Row>
-                  <Cell>{row.created_at}</Cell>
+                  <Cell>{formatWhen(row.created_at)}</Cell>
                   <Cell>{row.actor.label}</Cell>
                   <Cell>
                     <code>{row.action}</code>

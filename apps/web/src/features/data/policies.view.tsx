@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
 import { For, Loading, Show } from "solid-js";
 import type { ColumnPolicy } from "@testate/shared";
 
@@ -8,7 +9,6 @@ import Dialog from "@/components/dialog.tsx";
 import Select from "@/components/select.tsx";
 import Switch from "@/components/switch.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
-import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import {
   FUNCTION_CHOICES,
@@ -142,20 +142,12 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
     () => props.slug,
     () => props.id
   );
-  const back = (): string => `/projects/${props.slug}/adapters/${props.id}`;
-  const onBack = (event: MouseEvent): void => {
-    event.preventDefault();
-    navigate(back());
-  };
   const policyOf = (table: string, column: string): ColumnPolicy | undefined =>
     presenter.policies.value().find((policy) => policy.table === table && policy.column === column);
   return (
     <section class="grid gap-4">
       <h2 class="text-lg font-semibold">
-        <a class="text-kumo-subtle hover:underline" href={href(back())} onClick={onBack}>
-          adapter
-        </a>{" "}
-        / column policies
+        <AdapterCrumb slug={props.slug} id={props.id} /> / column policies
       </h2>
       <Loading fallback={<p class="text-kumo-subtle">Loading schema...</p>}>
         <For each={presenter.schema.value().tables}>

@@ -4,6 +4,7 @@ import { For, Loading, Show } from "solid-js";
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
+import ConfirmDialog from "@/components/confirm-dialog.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
@@ -161,7 +162,7 @@ export default function TokensView(): JSX.Element {
                       <Button
                         size="xs"
                         variant="destructive"
-                        onClick={() => void presenter.revoke(token)}
+                        onClick={() => presenter.askRevoke(token)}
                       >
                         Revoke
                       </Button>
@@ -175,6 +176,14 @@ export default function TokensView(): JSX.Element {
         <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
       </Loading>
       <CreateDialog presenter={presenter} />
+      <ConfirmDialog
+        open={presenter.revoking() !== null}
+        title={`Revoke ${presenter.revoking()?.name ?? ""}`}
+        description="Every request carrying this token fails from now on. It cannot be undone."
+        confirmLabel="Revoke the token"
+        onConfirm={() => void presenter.revoke()}
+        onCancel={() => presenter.cancelRevoke()}
+      />
     </section>
   );
 }

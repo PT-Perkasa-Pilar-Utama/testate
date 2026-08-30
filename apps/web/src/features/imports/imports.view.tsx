@@ -1,8 +1,9 @@
 import type { JSX } from "@solidjs/web";
+import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
-import Button from "@/components/button.tsx";
+import Button, { buttonClass } from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
@@ -11,7 +12,7 @@ import ReportPanel from "./imports.report.view.tsx";
 import { createWizardPresenter } from "./imports.wizard.presenter.ts";
 import WizardDialog from "./imports.wizard.view.tsx";
 
-const LINK = "inline-flex h-8 items-center rounded-lg px-3 text-sm hover:bg-kumo-tint";
+const LINK = buttonClass("ghost", "sm");
 
 export default function ImportsView(props: { slug: string }): JSX.Element {
   const presenter = createImportsPresenter(() => props.slug);
@@ -56,7 +57,7 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
                   </Cell>
                   <Cell>{countsLabel(run)}</Cell>
                   <Cell>{run.actor.label}</Cell>
-                  <Cell>{run.created_at}</Cell>
+                  <Cell>{formatWhen(run.created_at)}</Cell>
                   <Cell>
                     <div class="flex flex-wrap justify-end gap-1">
                       <Button

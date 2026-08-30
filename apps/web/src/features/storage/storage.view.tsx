@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
 import { Errored, For, Loading, Show, Switch, Match } from "solid-js";
 import type { Entry, PreviewPayload } from "@testate/shared";
 
@@ -8,7 +9,6 @@ import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
-import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { formatBytes } from "../states/states.format.ts";
 import { createStoragePresenter } from "./storage.presenter.ts";
@@ -156,17 +156,10 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
     () => props.slug,
     () => props.id
   );
-  const back = (): string => `/projects/${props.slug}/adapters/${props.id}`;
-  const onBack = (event: MouseEvent): void => {
-    event.preventDefault();
-    navigate(back());
-  };
   return (
     <section class="grid gap-4">
       <h2 class="flex flex-wrap items-center gap-1 text-lg font-semibold">
-        <a class="text-kumo-subtle hover:underline" href={href(back())} onClick={onBack}>
-          adapter
-        </a>
+        <AdapterCrumb slug={props.slug} id={props.id} />
         <span>/</span>
         <button
           type="button"

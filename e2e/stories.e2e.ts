@@ -209,8 +209,10 @@ test.describe("admin stories", () => {
     await page.getByRole("button", { name: "Create" }).click();
     await page.getByRole("button", { name: "Done" }).click();
     const row = page.locator("tr", { hasText: `revoke-${STAMP}` });
-    page.once("dialog", (confirm) => void confirm.accept());
     await row.getByRole("button", { name: "Revoke" }).click();
+    // The app asks in its own dialog now, not the browser's.
+    await page.locator("dialog[open]").getByRole("button", { name: "Revoke the token" }).click();
+    await expect(page.locator("dialog[open]")).toHaveCount(0);
     await expect(row.getByText(/revoked/i)).toBeVisible();
     expect(issues).toStrictEqual([]);
   });

@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show, createEffect } from "solid-js";
 import type { Checkout } from "@testate/shared";
 import { TERMINAL_JOB_STATUSES } from "@testate/shared";
@@ -80,7 +81,7 @@ export default function CheckoutsView(props: {
                   </span>
                 </Cell>
                 <Cell>{checkout.actor.label}</Cell>
-                <Cell>{checkout.created_at}</Cell>
+                <Cell>{formatWhen(checkout.created_at)}</Cell>
                 <Cell>
                   <div class="flex flex-wrap justify-end gap-1">
                     <Button

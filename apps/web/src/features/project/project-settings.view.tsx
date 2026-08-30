@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import { formatWhen } from "@/lib/format.ts";
 import { For, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
@@ -128,7 +129,7 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
               Every writable database below returns to its init state. That restore is not stashed:
               anything the databases hold now, and every state that could bring it back, is gone.
               Download the archive of a state you still want before you delete. The plan expires at{" "}
-              {plan().expires_at}.
+              {formatWhen(plan().expires_at)}.
             </Banner>
             <AffectedList affected={plan().affected} />
             <Table>

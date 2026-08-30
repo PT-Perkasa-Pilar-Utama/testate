@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Match, Show, Switch } from "solid-js";
 import type { Adapter, Entry, Introspection, RestRequest } from "@testate/shared";
 
@@ -208,7 +209,7 @@ function DeleteDialog(props: { presenter: AdapterPresenter; name: string }): JSX
               Plan: {plan().adapter.action}
               {plan().adapter.reason === undefined ? "" : ` (${plan().adapter.reason})`} ·{" "}
               {plan().states_referencing} state(s) reference this adapter · expires{" "}
-              {plan().expires_at}
+              {formatWhen(plan().expires_at)}
             </Banner>
             <div class="flex justify-end gap-2">
               <Button type="button" variant="ghost" onClick={() => props.presenter.closeDelete()}>

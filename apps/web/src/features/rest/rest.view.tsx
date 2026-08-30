@@ -1,4 +1,6 @@
 import type { JSX } from "@solidjs/web";
+import { formatWhen } from "@/lib/format.ts";
+import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
 import { For, Loading, Show } from "solid-js";
 import type { RestRun, RestRunSummary } from "@testate/shared";
 
@@ -10,7 +12,6 @@ import Input from "@/components/input.tsx";
 import InputArea from "@/components/input-area.tsx";
 import Select from "@/components/select.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
-import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { METHOD_OPTIONS, createRestPresenter } from "./rest.presenter.ts";
 import type { RestPresenter } from "./rest.presenter.ts";
@@ -137,7 +138,7 @@ function RunPanel(props: { presenter: RestPresenter }): JSX.Element {
                   <li class="flex items-center gap-2">
                     <Badge variant={statusVariant(run)}>{run.status_code ?? "-"}</Badge>
                     <span class="text-kumo-subtle">
-                      {run.created_at} · {run.duration_ms} ms
+                      {formatWhen(run.created_at)} · {run.duration_ms} ms
                       {run.error === null ? "" : ` · ${run.error}`}
                     </span>
                   </li>
@@ -157,19 +158,11 @@ export default function RestView(props: { slug: string; id: string }): JSX.Eleme
     () => props.slug,
     () => props.id
   );
-  const back = (): string => `/projects/${props.slug}/adapters/${props.id}`;
-  const onBack = (event: MouseEvent): void => {
-    event.preventDefault();
-    navigate(back());
-  };
   return (
     <section class="grid gap-4">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-lg font-semibold">
-          <a class="text-kumo-subtle hover:underline" href={href(back())} onClick={onBack}>
-            adapter
-          </a>{" "}
-          / requests
+          <AdapterCrumb slug={props.slug} id={props.id} /> / requests
         </h2>
         <Show when={hasRole("qa")}>
           <Button variant="primary" onClick={() => presenter.openCreate()}>

@@ -18,21 +18,63 @@ export type LiveJob = {
   status: () => Job["status"];
 };
 
-const scalarSchema = v.union([v.string(), v.number(), v.boolean()]);
-
 export function canCancel(job: Job): boolean {
   return !TERMINAL_JOB_STATUSES.includes(job.status) && !job.cancel_requested;
 }
 
-/** "restore · public.orders · 12/42" from a progress object; keys are engine-defined. */
+/** The keys the jobs push; anything else on the object is for the log, not for a person. */
+const progressSchema = v.object({
+  phase: v.optional(v.string()),
+  trigger: v.optional(v.string()),
+  table: v.optional(v.string()),
+  tables_done: v.optional(v.number()),
+  tables_total: v.optional(v.number()),
+  rows: v.optional(v.number()),
+  done: v.optional(v.number()),
+  total: v.optional(v.number()),
+});
+
+type Progress = v.InferOutput<typeof progressSchema>;
+
+function phraseOf(progress: Progress): string {
+  const phase = progress.phase ?? "";
+  if (phase === "snapshot") return "Snapshotting";
+  if (phase === "restore") return "Restoring";
+  if (phase === "stash") return "Stashing the live data";
+  if (phase === "merge") return "Comparing";
+  if (phase === "write") return "Writing rows";
+  if (phase === "hooks") return `Running the ${progress.trigger ?? ""} hooks`.replace("  ", " ");
+  return phase === "" ? "Working" : phase;
+}
+
+function countOf(progress: Progress): string {
+  const tables = progress.tables_done;
+  if (tables !== undefined) {
+    const total = progress.tables_total;
+    return total === undefined ? `${tables} tables` : `${tables} of ${total} tables`;
+  }
+  const rows = progress.rows;
+  if (rows !== undefined) {
+    const total = progress.total;
+    return total === undefined ? `${rows} rows` : `${rows} of ${total} rows`;
+  }
+  const done = progress.done;
+  if (done === undefined) return "";
+  const total = progress.total;
+  return total === undefined ? `${done} done` : `${done} of ${total} adapters`;
+}
+
+/**
+ * A sentence, not the record. It used to print every key, including the adapter's UUID, which
+ * told the reader nothing and pushed the row onto two lines.
+ */
 export function describeProgress(progress: JsonObject | null): string {
   if (progress === null) return "";
-  return Object.entries(progress)
-    .flatMap(([key, value]) => {
-      const scalar = v.safeParse(scalarSchema, value);
-      return scalar.success ? [`${key} ${String(scalar.output)}`] : [];
-    })
-    .join(" · ");
+  const parsed = v.safeParse(progressSchema, progress);
+  if (!parsed.success) return "";
+  const parts = [phraseOf(parsed.output), parsed.output.table ?? ""].filter((part) => part !== "");
+  const count = countOf(parsed.output);
+  return count === "" ? parts.join(" ") : `${parts.join(" ")}, ${count}`;
 }
 
 export function createJobsPresenter(): JobsPresenter {

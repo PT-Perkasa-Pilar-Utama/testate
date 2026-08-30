@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
@@ -108,7 +109,7 @@ export default function ProjectsView(): JSX.Element {
                       {project.head.state_name ?? project.head.status}
                     </Badge>
                   </Cell>
-                  <Cell>{project.updated_at}</Cell>
+                  <Cell>{formatWhen(project.updated_at)}</Cell>
                 </Row>
               )}
             </For>

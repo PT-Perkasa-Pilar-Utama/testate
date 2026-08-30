@@ -48,11 +48,12 @@ export default function ProjectView(props: { slug: string }): JSX.Element {
           </div>
         </div>
         <LayerCard class="grid gap-2 px-5 py-4">
-          <div class="flex justify-between text-sm">
-            <span>Snapshot quota</span>
-            <span class="text-kumo-subtle">{presenter.usedPercent()}% used</span>
-          </div>
-          <Meter value={presenter.usedPercent()} max={100} label="Snapshot quota" />
+          <Meter
+            value={presenter.usedPercent()}
+            max={100}
+            label="Snapshot quota"
+            detail={`${presenter.usedPercent()}% used`}
+          />
         </LayerCard>
       </Loading>
       <Tabs

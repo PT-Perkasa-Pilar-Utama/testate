@@ -5,6 +5,7 @@ import type { User } from "@testate/shared";
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
+import ConfirmDialog from "@/components/confirm-dialog.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
@@ -137,7 +138,7 @@ function Actions(props: { presenter: UsersPresenter; user: User }): JSX.Element 
         <Button
           size="xs"
           variant="destructive"
-          onClick={() => void props.presenter.remove(props.user)}
+          onClick={() => props.presenter.askRemove(props.user)}
         >
           Delete
         </Button>
@@ -206,6 +207,14 @@ export default function UsersView(): JSX.Element {
       </Loading>
       <CreateDialog presenter={presenter} />
       <ResetDialog presenter={presenter} />
+      <ConfirmDialog
+        open={presenter.removing() !== null}
+        title={`Delete ${presenter.removing()?.username ?? ""}`}
+        description="The account and its sessions go. Audit rows keep the name."
+        confirmLabel="Delete the account"
+        onConfirm={() => void presenter.remove()}
+        onCancel={() => presenter.cancelRemove()}
+      />
     </section>
   );
 }

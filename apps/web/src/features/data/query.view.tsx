@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
 import { For, Loading, Show } from "solid-js";
 import type { QueryResult } from "@testate/shared";
 
@@ -9,7 +10,6 @@ import Input from "@/components/input.tsx";
 import InputArea from "@/components/input-area.tsx";
 import Select from "@/components/select.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
-import { href, navigate } from "@/lib/router.ts";
 import { cellText } from "./grid.presenter.ts";
 import { MONGO_OPS, createQueryPresenter } from "./query.presenter.ts";
 import SidePanel from "./query-side.view.tsx";
@@ -144,11 +144,6 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
     () => props.slug,
     () => props.id
   );
-  const back = (): string => `/projects/${props.slug}/adapters/${props.id}`;
-  const onBack = (event: MouseEvent): void => {
-    event.preventDefault();
-    navigate(back());
-  };
   const onSubmit = (event: SubmitEvent): void => {
     event.preventDefault();
     void presenter.run();
@@ -156,10 +151,7 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
   return (
     <section class="grid gap-4">
       <h2 class="text-lg font-semibold">
-        <a class="text-kumo-subtle hover:underline" href={href(back())} onClick={onBack}>
-          adapter
-        </a>{" "}
-        / query console
+        <AdapterCrumb slug={props.slug} id={props.id} /> / query console
       </h2>
       <Loading fallback={<p class="text-kumo-subtle">Loading adapter...</p>}>
         <div class="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
