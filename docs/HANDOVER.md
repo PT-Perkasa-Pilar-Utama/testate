@@ -164,7 +164,9 @@ plan, and the user cut it from the README as out of place. The banner is `docs/a
 4:3 and light mode: users outside, Testate and the system under test inside one test server.
 
 **Worth knowing:** `.github/workflows/ci.yml` runs the fast gate (`complete-check`, then a boot and
-smoke) on every push. The browser suite and the image build are gated to pull requests, a `v*` tag,
+smoke) on every push. The `contract` job runs the engine suites against the compose engines through
+`bun run contract`, which fails when a suite skips: they skip themselves when a target is
+unreachable, so for months they ran nowhere and proved nothing. The browser suite and the image build are gated to pull requests, a `v*` tag,
 and `workflow_dispatch`, so a push to main does not pay for them. Two things the e2e job needs: a
 new compose container has to be named in its `up --wait` list as well as in
 `deploy/compose.engines.yml` (`postgres-old` is, for story 20), and one-shot containers must stay

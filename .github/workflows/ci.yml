@@ -1,8 +1,8 @@
 name: ci
 
 # Every push runs the fast gate: the same `complete-check` the pre-push hook runs, plus a boot.
-# The slow jobs, the browser suite and the image build, run on pull requests, on a version tag,
-# and on demand, so a push to main does not pay for them.
+# The slow jobs, the engine contract suites, the browser suite and the image build, run on pull
+# requests, on a version tag, and on demand, so a push to main does not pay for them.
 on:
   push:
     branches: [main]
@@ -80,6 +80,32 @@ jobs:
             VERSION=ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  contract:
+    name: engine contract suites
+    # The engines it needs cost a compose start, so it rides with the other slow jobs: pull
+    # requests, version tags, and on demand. `bun run contract` fails on a skipped suite, which
+    # is how these came to never run at all.
+    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.0"
+      - run: bun install --frozen-lockfile
+      - name: start the compose engines
+        run: |
+          docker compose -f deploy/compose.engines.yml up -d --wait \
+            postgres postgres-old mysql mariadb mongo minio sftp ftp
+      - name: create the MinIO bucket
+        run: docker compose -f deploy/compose.engines.yml run --rm minio-init
+      - run: bun run contract
+      - name: stop the compose engines
+        if: always()
+        run: docker compose -f deploy/compose.engines.yml down -v
 
   e2e:
     name: browser end-to-end
