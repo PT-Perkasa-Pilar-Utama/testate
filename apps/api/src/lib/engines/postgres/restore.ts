@@ -1,5 +1,5 @@
 import type { SQL } from "bun";
-import type { Introspection, TableRef, TableSchema } from "@testate/shared";
+import type { EngineWarning, Introspection, TableRef, TableSchema } from "@testate/shared";
 import * as v from "valibot";
 
 import { computeDependencyOrder } from "../pure/dependency-order.ts";
@@ -27,6 +27,8 @@ const BATCH_ROWS = 1000;
 type Reserved = Awaited<ReturnType<SQL["reserve"]>>;
 
 const countRow = v.object({ n: v.number() });
+const matviewRow = v.object({ schema: v.string(), name: v.string() });
+
 const sequenceRow = v.object({
   seq: v.string(),
   column: v.string(),
@@ -75,6 +77,39 @@ async function insertBatches(
 }
 
 /** `setval` for every sequence owned by a column of a restored table, after the commit (13 §13.4 step 7). */
+/**
+ * 13 §13.6 step 8: a materialized view still holds the rows the tables had before the restore, so
+ * a checkout that reported "restored" left the database answering with pre-restore data. Refresh
+ * runs after the commit, per view, and a view that will not refresh is a warning rather than a
+ * failed restore: the tables are already back.
+ */
+async function refreshMatviews(
+  sql: Pick<SQL, "unsafe">,
+  tables: TableRef[]
+): Promise<EngineWarning[]> {
+  if (tables.length === 0) return [];
+  const schemas = [...new Set(tables.map((table) => table.schema ?? "public"))];
+  const views = v.parse(v.array(matviewRow), [
+    ...(await sql.unsafe(
+      "SELECT schemaname AS schema, matviewname AS name FROM pg_matviews WHERE schemaname = ANY($1)",
+      [pgArray(schemas)]
+    )),
+  ]);
+  const warnings: EngineWarning[] = [];
+  for (const view of views) {
+    try {
+      await sql.unsafe(`REFRESH MATERIALIZED VIEW ${quoteTable(view.schema, view.name)}`);
+    } catch (cause: unknown) {
+      warnings.push({
+        code: "matview_not_refreshed",
+        table: `${view.schema}.${view.name}`,
+        message: cause instanceof Error ? cause.message : String(cause),
+      });
+    }
+  }
+  return warnings;
+}
+
 export async function resetCounters(
   sql: Pick<SQL, "unsafe">,
   tables: TableRef[]
@@ -251,10 +286,9 @@ async function restoreAll(
   }
   await conn.unsafe("COMMIT");
   result.status = "restored";
-  result.counters = await resetCounters(
-    conn,
-    targets.map((table) => ({ schema: table.schema, name: table.name }))
-  );
+  const refs = targets.map((table): TableRef => ({ schema: table.schema, name: table.name }));
+  result.counters = await resetCounters(conn, refs);
+  result.warnings = [...result.warnings, ...(await refreshMatviews(conn, refs))];
   return result;
 }
 

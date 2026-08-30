@@ -71,7 +71,7 @@ returnToInit(slug, plan: Array<{ adapterId; action: "restore" | "force" | "skip"
 5. Insert in dependency order, column-list inserts from introspection, batches of up to 1 000 rows, two-phase for nullable self-references, `OVERRIDING SYSTEM VALUE` on identity columns.
 6. `COMMIT`.
 7. Counters: `SELECT setval(seq, COALESCE(max(col), 0) + 1, false)` for every sequence owned by a restored column; each recorded.
-8. `REFRESH MATERIALIZED VIEW` for each materialized view the adapter option lists.
+8. `REFRESH MATERIALIZED VIEW` for every materialized view in the restored schemas, after the commit. One that will not refresh is a warning on the result, not a failed restore: the tables are already back.
 
 Cancel: the abort signal is checked between batches; an engine-level `pg_cancel_backend` from a second connection interrupts a blocked `TRUNCATE` or a long insert, and the transaction rolls back.
 

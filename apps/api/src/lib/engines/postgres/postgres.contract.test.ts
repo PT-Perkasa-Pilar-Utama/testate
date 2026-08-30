@@ -117,6 +117,38 @@ describe.skipIf(!(await reachable()))("postgres engine (contract)", () => {
     expect(next[0].id).toBe(4);
   });
 
+  // A materialized view keeps its own copy of the rows, so a restore that ignores it leaves the
+  // database answering with pre-restore data while reporting "restored".
+  test("checkout refreshes materialized views so they stop holding pre-restore rows", async () => {
+    await admin.unsafe(FIXTURE);
+    await admin.unsafe(
+      "CREATE MATERIALIZED VIEW contract.customer_count AS SELECT count(*)::int AS n FROM contract.customers"
+    );
+    const run = engine.snapshot(conn, { excludeTables: [] });
+    const saved = await collect(run);
+    const manifest = await run.manifest;
+    await admin.unsafe("INSERT INTO contract.customers (email) VALUES ('c@x.io')");
+    await admin.unsafe("REFRESH MATERIALIZED VIEW contract.customer_count");
+    const stale = await admin.unsafe("SELECT n FROM contract.customer_count");
+    expect(stale[0]).toEqual({ n: 3 });
+
+    const checkout = engine.checkout(conn, {
+      tables: planTables(manifest),
+      introspectionAtSnapshot: manifest.introspection,
+      rows: rowsFrom(saved),
+      onDrift: "fail",
+      lockTimeoutMs: 5000,
+      restoreMode: "atomic",
+    });
+    for await (const item of checkout) void item;
+    const result = await checkout.result;
+
+    expect(result.status).toBe("restored");
+    expect(result.warnings).toEqual([]);
+    const refreshed = await admin.unsafe("SELECT n FROM contract.customer_count");
+    expect(refreshed[0]).toEqual({ n: 2 });
+  });
+
   // A self-reference longer than one insert batch: the children in the first statement point at
   // parents the second statement has not inserted yet, so the keys have to wait for the commit.
   test("checkout restores a self-referencing table that spans more than one batch", async () => {
