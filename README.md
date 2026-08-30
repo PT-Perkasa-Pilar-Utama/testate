@@ -36,6 +36,19 @@ end. Remove the variable afterwards — while it is set, every restart resets th
 
 Serve under a sub-path by setting `TESTATE_BASE_PATH=/testate`; `deploy/nginx.conf` shows the proxy block.
 
+## What it does not do
+
+Testate resets only the databases you add to it. If your app also writes to a database Testate does
+not track, a reset puts one side back to the snapshot and leaves the other where it is. The app then
+reads rows that no longer match, and Testate cannot warn you: it has never heard of that database.
+
+Add every database the app writes to, to the **same project**, and snapshot them together. One
+snapshot covers every database adapter in a project, and one checkout restores them all.
+
+Even then, Testate takes and restores them one after another, not as a single transaction across
+servers. Each database is consistent on its own; the set is not guaranteed to line up, and one
+restore can fail while another succeeds. Keep the app idle while you snapshot or reset.
+
 ## Develop
 
 Requires [Bun](https://bun.sh) 1.4.
