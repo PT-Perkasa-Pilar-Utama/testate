@@ -13,6 +13,11 @@ left; `grep -rn "ponytail:" apps packages e2e scripts`).
 E2E: ~120 Playwright tests, ~3 min, coverage **150/150 stories covered**. `NON_UI` in
 `e2e/lib/stories.ts` is empty: what no screen shows, an API or boot test covers.
 
+The version is `1.0.0-alpha`. It lives in the root `package.json` — the release workflow tags the
+image with it — and `bun run bump-version <version>` writes it into the four `package.json` files
+and `apps/api/src/version.ts` at once. `bun run bump-version --check` reports drift, and
+`version.test.ts` fails the gate on it.
+
 ## 2. Standing rules from the user (do not relitigate)
 
 - Never add `Co-Authored-By: Claude` or "Generated with Claude Code" to commits or PRs.
@@ -145,6 +150,11 @@ new compose container has to be named in its `up --wait` list as well as in
 `deploy/compose.engines.yml` (`postgres-old` is, for story 20), and one-shot containers must stay
 out of that list — `--wait` fails on a container that exits, even with code 0, which is why
 `minio-init` runs as its own `compose run --rm` step.
+
+**Releasing:** `bun run bump-version <version>`, commit, tag `v<version>`. The tag runs the browser
+suite and the image build in CI; `deploy-image.yml` is still the manual step that slims the image
+and pushes it to ghcr.io, and it skips when that version is already published. The image carries
+the version in `org.opencontainers.image.version`.
 
 **Remaining ponytails, in order:** the deferrable-constraint check per constraint
 (`postgres/write.ts`); backup file naming in the content-addressed store; `readTable` snapshotting

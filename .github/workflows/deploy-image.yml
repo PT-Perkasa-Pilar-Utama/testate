@@ -56,6 +56,8 @@ jobs:
           file: deploy/Dockerfile
           load: true
           tags: testate:fat
+          build-args: |
+            VERSION=${{ steps.img.outputs.version }}
 
       # Boot refuses without a sealed-values key and a bootstrap password, so the
       # profiling run gets throwaway values through an env file. Nothing from this

@@ -76,6 +76,8 @@ jobs:
           file: deploy/Dockerfile
           push: false
           tags: testate:ci
+          build-args: |
+            VERSION=ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

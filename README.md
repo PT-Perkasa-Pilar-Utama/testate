@@ -25,7 +25,7 @@ docker compose -f deploy/docker-compose.yml up -d
 open http://localhost:3000
 ```
 
-The image is `ghcr.io/pt-perkasa-pilar-utama/testate`, built from `deploy/Dockerfile` and slimmed with docker-slim by the manual **Deploy image** workflow (`.github/workflows/deploy-image.yml`): bump `version` in `package.json`, run the workflow, and it publishes `<version>` and `latest`. An already-published version is skipped.
+The image is `ghcr.io/pt-perkasa-pilar-utama/testate`, built from `deploy/Dockerfile` and slimmed with docker-slim by the manual **Deploy image** workflow (`.github/workflows/deploy-image.yml`): run `bun run bump-version <version>` (it writes every `package.json` and the version the API reports), run the workflow, and it publishes `<version>` and `latest`. An already-published version is skipped.
 
 Sign in as `admin`. The first login forces a password change. Create users under **Users**; roles are `viewer` < `qa` < `admin`.
 

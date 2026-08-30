@@ -73,8 +73,7 @@ import { createToolsService } from "./modules/tools/tools.service.ts";
 import { createUsersHandlers } from "./modules/users/users.handler.ts";
 import { createUsersRepository } from "./modules/users/users.repository.ts";
 import { createUsersService } from "./modules/users/users.service.ts";
-
-const VERSION = "0.1.0";
+import { VERSION } from "./version.ts";
 
 export type App = {
   fetch: Hono["fetch"];

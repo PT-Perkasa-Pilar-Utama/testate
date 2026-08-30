@@ -4,6 +4,11 @@
 # The deploy-image workflow builds this "fat" image, profiles it with docker-slim,
 # and publishes the slimmed result to ghcr.io.
 
+# The version the image carries in its labels. `deploy-image.yml` passes the one in package.json
+# (`bun run bump-version` keeps that in step with the API); a plain build says `local` instead of
+# claiming a release. Declared before the first stage so every stage can re-declare it.
+ARG VERSION=0.0.0-local
+
 # ---- build ----
 FROM oven/bun:1.4@sha256:5ff609364c049b54eb0ff560ec96319729a972078ef2c755d758f0c6ef89c2d6 AS build
 WORKDIR /src
@@ -26,6 +31,9 @@ LABEL org.opencontainers.image.title="testate" \
       org.opencontainers.image.description="Git for your test database. Snapshot, checkout, diff, and import the databases behind a system under test." \
       org.opencontainers.image.source="https://github.com/PT-Perkasa-Pilar-Utama/testate" \
       org.opencontainers.image.licenses="MIT"
+
+ARG VERSION
+LABEL org.opencontainers.image.version="${VERSION}"
 
 ENV NODE_ENV=production \
     PORT=3000 \
