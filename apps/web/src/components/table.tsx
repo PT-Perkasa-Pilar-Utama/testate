@@ -17,14 +17,23 @@ export function Head(props: ComponentProps<"th">): JSX.Element {
   return (
     <th
       {...rest}
-      class={["bg-kumo-tint px-3 py-2 text-left text-xs font-medium text-kumo-subtle", props.class]}
+      class={[
+        "border-b border-kumo-hairline bg-kumo-elevated px-3 py-2 text-left text-xs font-medium text-kumo-subtle",
+        props.class,
+      ]}
     />
   );
 }
 
 export function Row(props: ComponentProps<"tr">): JSX.Element {
   const rest = omit(props, "class");
-  return <tr {...rest} class={["even:bg-kumo-tint", props.class]} />;
+  // A line between rows, not a stripe: the row you point at is the one that lifts.
+  return (
+    <tr
+      {...rest}
+      class={["border-b border-kumo-hairline last:border-0 hover:bg-kumo-tint", props.class]}
+    />
+  );
 }
 
 /**

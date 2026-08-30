@@ -16,7 +16,7 @@ export default function Tabs<T extends string>(props: TabsProps<T>): JSX.Element
     <div
       role="tablist"
       aria-label={props.label}
-      class="inline-flex gap-0.5 rounded-lg bg-kumo-fill p-0.5"
+      class="flex w-full gap-1 overflow-x-auto border-b border-kumo-line"
     >
       <For each={props.items}>
         {(item) => (
@@ -25,17 +25,18 @@ export default function Tabs<T extends string>(props: TabsProps<T>): JSX.Element
             role="tab"
             aria-selected={props.value === item.id ? "true" : "false"}
             class={[
-              "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-3 text-base font-medium outline-none focus-visible:ring-2 focus-visible:ring-kumo-focus",
+              "-mb-px inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-t-md border-b-2 px-3 text-base outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-kumo-focus",
               {
-                "bg-kumo-base text-kumo-strong shadow-sm": props.value === item.id,
-                "text-kumo-subtle hover:text-kumo-default": props.value !== item.id,
+                "border-kumo-contrast font-semibold text-kumo-strong": props.value === item.id,
+                "border-transparent text-kumo-subtle hover:border-kumo-line hover:text-kumo-default":
+                  props.value !== item.id,
               },
             ]}
             onClick={() => props.onChange(item.id)}
           >
             {item.label}
             <Show when={item.count !== undefined && item.count > 0}>
-              <span class="rounded-full bg-kumo-tint px-1.5 text-xs text-kumo-subtle">
+              <span class="rounded-full bg-kumo-fill px-1.5 text-xs text-kumo-subtle">
                 {item.count}
               </span>
             </Show>

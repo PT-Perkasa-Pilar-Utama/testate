@@ -33,11 +33,13 @@
   --color-kumo-focus: #8dd6ff;
 
   /* Status. The specification carries none, and a job outcome has to read as one. */
-  --color-kumo-success: #3fb950;
+  /* Solid fills carry white text, so they are the darker pair; the text tokens below are the
+     lighter pair that has to read on black. */
+  --color-kumo-success: #238636;
   --color-kumo-success-tint: #0f2f18;
-  --color-kumo-warning: #d29922;
+  --color-kumo-warning: #9e6a03;
   --color-kumo-warning-tint: #2e2306;
-  --color-kumo-danger: #f85149;
+  --color-kumo-danger: #da3633;
   --color-kumo-danger-tint: #3d1315;
   --color-kumo-info: #58a6ff;
   --color-kumo-info-tint: #0d2237;

@@ -5,9 +5,9 @@ import { toasts } from "@/lib/toast.ts";
 import type { ToastTone } from "@/lib/toast.ts";
 
 const TONES = {
-  info: "bg-kumo-info-tint text-kumo-info",
-  success: "bg-kumo-success-tint text-kumo-success",
-  error: "bg-kumo-danger-tint text-kumo-danger",
+  info: "bg-kumo-info-tint text-kumo-info ring-kumo-info/40",
+  success: "bg-kumo-success-tint text-kumo-success ring-kumo-success/40",
+  error: "bg-kumo-danger-tint text-kumo-danger ring-kumo-danger/40",
 } satisfies Record<ToastTone, string>;
 
 /** Mount once, near the end of the app tree. */
@@ -19,12 +19,7 @@ export default function Toaster(): JSX.Element {
     >
       <For each={toasts()}>
         {(toast) => (
-          <div
-            class={[
-              "rounded-lg px-4 py-2 text-base shadow-md ring ring-kumo-line",
-              TONES[toast.tone],
-            ]}
-          >
+          <div class={["rounded-md px-4 py-2 text-base shadow-md ring", TONES[toast.tone]]}>
             {toast.message}
           </div>
         )}

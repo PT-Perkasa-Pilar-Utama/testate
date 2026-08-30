@@ -37,7 +37,7 @@ export default function Dialog(props: DialogProps): JSX.Element {
     <dialog
       ref={setElement}
       class={[
-        "m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] overflow-y-auto rounded-xl bg-kumo-elevated p-0 text-kumo-default shadow-xl ring ring-kumo-line backdrop:bg-kumo-contrast/40",
+        "m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] overflow-y-auto rounded-lg bg-kumo-elevated p-0 text-kumo-default shadow-xl ring ring-kumo-line backdrop:bg-kumo-recessed/80",
         SIZES[props.size ?? "base"],
       ]}
       onClose={() => props.onClose()}

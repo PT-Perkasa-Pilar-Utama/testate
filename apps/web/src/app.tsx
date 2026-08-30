@@ -129,15 +129,15 @@ function Sidebar(props: { current: string | undefined }): JSX.Element {
     navigate(path);
   };
   return (
-    <aside class="sticky top-0 flex h-screen w-56 flex-col overflow-y-auto border-r border-kumo-line px-4 py-4">
-      <div class="mb-6 font-semibold">Testate</div>
+    <aside class="sticky top-0 flex h-screen w-60 flex-col overflow-y-auto border-r border-kumo-line px-3 py-4">
+      <div class="mb-6 px-2 text-base font-semibold text-kumo-strong">Testate</div>
       <nav class="grid gap-1">
         <For each={NAV.filter((item) => hasRole(item.role))}>
           {(item) => (
             <a
               class={[
-                "rounded-md px-2 py-1.5 hover:bg-kumo-tint",
-                { "bg-kumo-tint font-medium": props.current === item.path },
+                "rounded-md px-2 py-1.5 text-base text-kumo-default hover:bg-kumo-tint",
+                { "bg-kumo-fill font-semibold": props.current === item.path },
               ]}
               href={href(item.path)}
               onClick={(event) => onNav(event, item.path)}
@@ -153,8 +153,8 @@ function Sidebar(props: { current: string | undefined }): JSX.Element {
             <>
               <a
                 class={[
-                  "rounded-md px-2 py-1.5 text-kumo-subtle hover:bg-kumo-tint",
-                  { "bg-kumo-tint font-medium": props.current === "/account" },
+                  "rounded-md px-2 py-1.5 text-base text-kumo-subtle hover:bg-kumo-tint",
+                  { "bg-kumo-fill font-semibold": props.current === "/account" },
                 ]}
                 href={href("/account")}
                 onClick={(event) => onNav(event, "/account")}

@@ -5,6 +5,9 @@ import { omit } from "solid-js";
 export default function LayerCard(props: ComponentProps<"section">): JSX.Element {
   const rest = omit(props, "class");
   return (
-    <section {...rest} class={["rounded-xl bg-kumo-base p-4 ring ring-kumo-line", props.class]} />
+    <section
+      {...rest}
+      class={["rounded-lg bg-kumo-elevated p-4 ring ring-kumo-line", props.class]}
+    />
   );
 }

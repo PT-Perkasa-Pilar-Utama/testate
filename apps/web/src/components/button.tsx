@@ -3,28 +3,30 @@ import { merge, omit } from "solid-js";
 
 // Variant and size strings come from the Kumo registry entry "Button".
 const BASE =
-  "inline-flex cursor-pointer items-center justify-center font-medium whitespace-nowrap select-none outline-none focus-visible:ring-2 focus-visible:ring-kumo-focus disabled:cursor-not-allowed";
+  "inline-flex cursor-pointer items-center justify-center font-medium whitespace-nowrap select-none outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-kumo-focus disabled:cursor-not-allowed";
 
 // Kumo's React Button sets --kumo-button-emphasis-bg inline; here the emphasis
 // colours are the contrast and danger tokens directly.
+// Cyan is what you can act on, and it carries near-black: white on it fails AA (ADR 0002).
 const VARIANTS = {
   primary:
-    "bg-kumo-contrast text-kumo-base ring ring-kumo-contrast not-disabled:hover:opacity-90 disabled:opacity-50",
+    "bg-kumo-contrast !text-kumo-inverse ring ring-kumo-contrast not-disabled:hover:bg-kumo-brand-hover disabled:opacity-50",
   secondary:
-    "bg-kumo-base !text-kumo-default ring not-disabled:hover:bg-kumo-tint disabled:bg-kumo-base/50 disabled:!text-kumo-default/70 ring-kumo-line",
+    "bg-kumo-fill !text-kumo-default ring ring-kumo-line not-disabled:hover:bg-kumo-fill-hover disabled:opacity-50",
   ghost: "text-kumo-default hover:bg-kumo-tint shadow-none bg-inherit",
   success:
-    "bg-kumo-success text-white ring ring-kumo-success not-disabled:hover:opacity-90 disabled:opacity-50",
-  destructive: "bg-kumo-danger !text-white ring ring-kumo-danger disabled:opacity-50",
-  outline:
-    "bg-transparent text-kumo-default ring ring-kumo-line not-disabled:hover:text-kumo-strong not-disabled:hover:ring-kumo-hairline",
+    "bg-kumo-success !text-white ring ring-kumo-success not-disabled:hover:opacity-90 disabled:opacity-50",
+  destructive:
+    "bg-kumo-danger !text-white ring ring-kumo-danger not-disabled:hover:opacity-90 disabled:opacity-50",
+  outline: "bg-transparent text-kumo-default ring ring-kumo-line not-disabled:hover:bg-kumo-tint",
 } as const;
 
+// 20, 28, 32 and 40 pixels tall: the control heights GitHub uses, all on the 6px radius.
 const SIZES = {
-  xs: "h-5 gap-1 rounded-sm px-1.5 text-xs",
-  sm: "h-6.5 gap-1 rounded-md px-2 text-xs",
-  base: "h-9 gap-1.5 rounded-lg px-3 text-base",
-  lg: "h-10 gap-2 rounded-lg px-4 text-base",
+  xs: "h-5 gap-1 rounded-md px-1.5 text-xs",
+  sm: "h-7 gap-1 rounded-md px-2.5 text-xs",
+  base: "h-8 gap-1.5 rounded-md px-3 text-base",
+  lg: "h-10 gap-2 rounded-md px-4 text-base",
 } as const;
 
 /**
