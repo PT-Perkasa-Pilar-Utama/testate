@@ -1,7 +1,10 @@
 # Known issue: "Potential Infinite Loop Detected" on the data grid
 
-**Status:** open, cause not established. It has not been shown to be a framework defect, and it has
-not been shown to be ours. Do not file it upstream as a bug report until one of those is true.
+**Status:** filed upstream at the owner's direction as `solidjs/solid#3140`
+(https://github.com/solidjs/solid/issues/3140). The cause is still not established. The issue says
+so plainly: it asks which application patterns can drive `asyncWrite` to reschedule, and asks the
+guard to name the node it kept rescheduling. Do not read the filing as a claim that the framework
+is at fault. If a maintainer answers, put the answer here and act on it.
 
 ## What happens
 
@@ -108,10 +111,10 @@ by itself.
 
 ## Open issues checked
 
-`solidjs/solid` has no open issue matching this symptom: a search for "infinite loop" in open
-issues returns nothing, and neither "livelock", "scheduler loop" nor "async memo write-back"
-returns anything. The only matches are three closed issues, of which #2843 is the one described
-above.
+`solidjs/solid` had no open issue matching this symptom before ours: a search for "infinite loop" in
+open issues returned nothing, and neither "livelock", "scheduler loop" nor "async memo write-back"
+returned anything. The only matches were three closed issues, of which #2843 is the one described
+above. Ours is #3140.
 
 ## What a reproduction would need
 
