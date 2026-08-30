@@ -135,7 +135,7 @@ function refuseReset(variable: string, message: string): never {
 
 /**
  * Step 8: `TESTATE_ADMIN_PASSWORD_RESET=true` puts one admin back in reach of its owner, for the
- * instance whose last admin forgot its password — no other account can reset it, and the guard
+ * instance whose last admin forgot its password. No other account can reset it, and the guard
  * refuses to delete or demote it (03 §3.4). Whoever sets this already owns the volume, so it hands
  * out no authority the environment did not already have. It never creates a user and never
  * promotes one: a typo refuses the boot instead.

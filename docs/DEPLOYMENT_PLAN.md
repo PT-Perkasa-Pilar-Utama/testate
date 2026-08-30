@@ -67,7 +67,7 @@ Boot stops before any write and prints a framed message with the variable and th
 
 An admin resets any other account under **Users**: the account gets a temporary password, must
 change it at the next login, loses every session it had, and leaves its lockout behind. Hand the
-temporary password over out of band — Testate sends no mail.
+temporary password over out of band, because Testate sends no mail.
 
 Nobody can reset the last admin, and nothing may delete or demote it. That account recovers through
 the environment instead:
@@ -87,7 +87,7 @@ Sign in with that password, change it when asked, then **remove `TESTATE_ADMIN_P
 again to whatever the environment holds.
 
 This grants nothing the environment did not already have: whoever edits `.env` also holds the
-volume. It refuses rather than guessing — an unknown name, or a name that is not an admin, stops the
+volume. It refuses rather than guessing: an unknown name, or a name that is not an admin, stops the
 boot with exit 78 and changes nothing.
 
 ## Health

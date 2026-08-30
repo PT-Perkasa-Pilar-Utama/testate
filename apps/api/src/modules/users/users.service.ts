@@ -34,7 +34,7 @@ export type UsersService = {
   /**
    * Puts one existing admin back in reach of its owner (22 §22.2 step 8): a new temporary
    * password, a forced change, no sessions left, and the lockout cleared. It never creates a user
-   * and never promotes one — the caller has already refused when the name is not an admin.
+   * and never promotes one: the caller has already refused when the name is not an admin.
    */
   recoverAdmin(username: string, password: string): Promise<RecoveredAdmin>;
 };

@@ -15,7 +15,7 @@ REST adapters hold no data of their own. They store the requests you save and th
 
 ## Status
 
-Version 1.0.0-alpha. Every engine in the table is real, not a stand-in. The gate — type-check, lint, format, unit tests, build — runs on every push, and a browser suite covers all 150 user stories, each one tagged with the story it proves. `docs/api-specs/_index.md` lists every operation.
+Version 1.0.0-alpha. Every engine in the table is real, not a stand-in. The gate runs on every push: type-check, lint, format, unit tests, build. A browser suite covers all 150 user stories, each one tagged with the story it proves. `docs/api-specs/_index.md` lists every operation.
 
 ## Run it
 
@@ -41,15 +41,15 @@ Nobody can reset the last admin, so that one recovers through the environment. R
 
 ## What it does not do
 
-**It only resets the databases you add to it.** If your app also writes somewhere Testate does not track, a reset puts one side back to the snapshot and leaves the other where it is. The app then reads rows that no longer match. Testate cannot warn you here — it has never heard of that database. Put every database your app writes to in one project, and snapshot them together: one snapshot covers every database in a project, and one checkout restores them all.
+**It only resets the databases you add to it.** If your app also writes somewhere Testate does not track, a reset puts one side back to the snapshot and leaves the other where it is. The app then reads rows that no longer match. Testate cannot warn you here. It has never heard of that database. Put every database your app writes to in one project, and snapshot them together: one snapshot covers every database in a project, and one checkout restores them all.
 
 **Databases go one at a time, not together.** Even in one project, Testate snapshots and restores them one after another. Each database is correct on its own, but the set is not guaranteed to line up, and one restore can fail while another succeeds. Keep the app idle while you snapshot or reset.
 
-**It has to reach the database from inside a container.** A database on another server needs a route, an open firewall, and a login. A database installed straight onto the same machine needs the same care: inside the container, `127.0.0.1` means the container. Point the adapter at `host.docker.internal` — the compose file carries the line, commented out — and let the database listen on that interface. If Testate cannot reach a database, you cannot add it, so a reset will skip it and you are back to the first problem.
+**It has to reach the database from inside a container.** A database on another server needs a route, an open firewall, and a login. A database installed straight onto the same machine needs the same care: inside the container, `127.0.0.1` means the container. Point the adapter at `host.docker.internal`, which the compose file carries commented out, and let the database listen on that interface. If Testate cannot reach a database, you cannot add it, so a reset will skip it and you are back to the first problem.
 
-**A snapshot has no owner.** Two testers sharing one database share everything: either can reset it, and the other's work goes without a warning. Two projects on the same database is worse, because Testate sees two unrelated adapters — their jobs are not kept apart, and each takes its own starting snapshot at a different moment. One database, one project, one tester at a time. When you point an adapter at a database another project already tracks, the connection test says so.
+**A snapshot has no owner.** Two testers sharing one database share everything: either can reset it, and the other's work goes without a warning. Two projects on the same database is worse. Testate sees two unrelated adapters, so their jobs are not kept apart and each takes its own starting snapshot at a different moment. One database, one project, one tester at a time. When you point an adapter at a database another project already tracks, the connection test says so.
 
-**It needs a real database connection.** Testate has to speak the database's own protocol, read every table at one moment, and be allowed to empty and refill tables inside one transaction. Firebase, Firestore and DynamoDB offer none of that — you reach them through an SDK, not a connection, so they cannot be added. Hosted PostgreSQL and MySQL are ordinary targets whoever runs them: Supabase, Neon, RDS, Cloud SQL. On Supabase, use the direct connection rather than the pooler, with a role that owns the tables; otherwise the reset is refused.
+**It needs a real database connection.** Testate has to speak the database's own protocol, read every table at one moment, and be allowed to empty and refill tables inside one transaction. Firebase, Firestore and DynamoDB offer none of that. You reach them through an SDK rather than a connection, so they cannot be added. Hosted PostgreSQL and MySQL are ordinary targets whoever runs them: Supabase, Neon, RDS, Cloud SQL. On Supabase, use the direct connection rather than the pooler, with a role that owns the tables; otherwise the reset is refused.
 
 **It resets databases and nothing else.** Caches, queues, and whatever a running service holds in memory are left alone, so a service can go on serving rows the database no longer has. Attach a saved request to the `before_checkout` and `after_checkout` hooks to pause a service and clear its cache around the reset.
 

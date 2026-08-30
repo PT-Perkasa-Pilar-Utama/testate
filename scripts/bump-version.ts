@@ -1,6 +1,6 @@
 /**
  * Writes one version everywhere it is written down: the four `package.json` files and the constant
- * the API reports. The root `package.json` is the source of truth — `deploy-image.yml` tags the
+ * the API reports. The root `package.json` is the source of truth: `deploy-image.yml` tags the
  * published image with it, and the Dockerfile stamps it into `org.opencontainers.image.version`.
  *
  *   bun run bump-version 1.0.0-alpha   # write it

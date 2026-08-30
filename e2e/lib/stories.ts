@@ -6,9 +6,9 @@ export type Story = { id: number; section: string; actor: string; title: string 
 const ROOT = join(import.meta.dirname, "..", "..");
 
 /**
- * Stories no screen shows. Every one of them is covered through the API instead — contract and
+ * Stories no screen shows. Every one of them is covered through the API instead: contract and
  * agent stories in `api.e2e.ts` and `agent.e2e.ts`, boot and key stories in `boot.e2e.ts`, engine
- * behaviour in `engine.e2e.ts`, `types.e2e.ts`, `session.e2e.ts`, and `storage.e2e.ts` — so this
+ * behaviour in `engine.e2e.ts`, `types.e2e.ts`, `session.e2e.ts`, and `storage.e2e.ts`. So this
  * list is empty. Put an id back only when a story genuinely cannot be exercised at all.
  */
 const NON_UI: [number, number][] = [];

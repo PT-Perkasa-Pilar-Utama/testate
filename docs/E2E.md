@@ -38,7 +38,7 @@ the browser projects starve the crawl. Rules that keep it honest:
 
 Put `@story-N` in the test title. `.e2e/coverage.md` lists each PRD story as `covered`,
 `no-screen`, `api`, or `uncovered`. All 150 are `covered`, and both exception lists in
-`e2e/lib/stories.ts` are empty — add an id back only when a story truly cannot be exercised.
+`e2e/lib/stories.ts` are empty. Add an id back only when a story truly cannot be exercised.
 
 ## Rules
 

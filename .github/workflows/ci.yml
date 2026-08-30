@@ -1,7 +1,7 @@
 name: ci
 
 # Every push runs the fast gate: the same `complete-check` the pre-push hook runs, plus a boot.
-# The slow jobs — the browser suite and the image build — run on pull requests, on a version tag,
+# The slow jobs, the browser suite and the image build, run on pull requests, on a version tag,
 # and on demand, so a push to main does not pay for them.
 on:
   push:

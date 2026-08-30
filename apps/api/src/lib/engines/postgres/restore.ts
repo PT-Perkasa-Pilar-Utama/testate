@@ -138,7 +138,7 @@ function selectTables(plan: CheckoutPlan, live: Introspection): Selection {
 
 /**
  * Columns the insert leaves out: the ones force skips, and the ones only the live table has.
- * A live-only column must take its own default — naming it would write NULL into it (13 §13.2).
+ * A live-only column must take its own default: naming it would write NULL into it (13 §13.2).
  */
 function skipMap(forced: ForceIntersection | null): Map<string, Set<string>> {
   const map = new Map<string, Set<string>>();
