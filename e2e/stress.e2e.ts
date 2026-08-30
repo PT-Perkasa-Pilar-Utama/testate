@@ -23,6 +23,12 @@ test.describe("the grid under a hand that never waits", () => {
     test.setTimeout(300_000);
     const issues: Issue[] = [];
     watch(page, issues);
+    // The crawler passes through the jobs screen before it reaches the grid, and that screen opens
+    // a live stream per running job. Walk the same path.
+    await page.goto("/jobs");
+    await settle(page);
+    await page.goto("/projects/demo");
+    await settle(page);
     const mongo = await firstTableOf("mongodb");
     await page.goto(
       `/projects/demo/adapters/${mongo.id}/tables/${encodeURIComponent(mongo.table)}`
@@ -68,6 +74,19 @@ test.describe("the grid under a hand that never waits", () => {
         .getByRole("switch", { name: "Write mode" })
         .click(optional)
         .catch(() => undefined);
+      // The two things the crawler does here that the first version of this spec did not: the
+      // fixture dialog and the row form, both of which mount their own async reads over the grid.
+      await page
+        .getByRole("button", { name: "Fixture" })
+        .first()
+        .click(optional)
+        .catch(() => undefined);
+      await page.keyboard.press("Escape").catch(() => undefined);
+      await page
+        .getByRole("button", { name: "Insert row" })
+        .click(optional)
+        .catch(() => undefined);
+      await page.keyboard.press("Escape").catch(() => undefined);
       await page
         .getByRole("switch", { name: "Write mode" })
         .click(optional)

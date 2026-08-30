@@ -51,7 +51,13 @@ query a person can change quickly.
 
 ## Conditions
 
-- Seen 4 times in about 15 full browser-suite runs (Playwright, Chromium, headless).
+- It fires far more often than the suite goes red. Counting the message in a run's log rather than
+  waiting for a test to fail: 4, 0 and 0 occurrences across three identical runs of the crawler
+  chain. The suite only turns red when one lands on a page a test is watching, which is the "one
+  run in four" figure reported earlier. The bug is more frequent than that number suggested.
+- That variance also means single-run counts prove nothing about whether a change helped. Two
+  changes to the data layer measured 8 and 10 against a baseline of 4-0-0, which is inside the
+  noise, not evidence of harm.
 - Always during the crawler project, which clicks every control on every screen in turn.
 - Never in a crawler run on its own: 3 consecutive clean runs.
 - Never in a dedicated stress spec that drives the same screen's sort, filter, paging and write
@@ -78,6 +84,20 @@ a new array on every read. Neither is proven to be the cause; both are the first
 
 Those diagnostics arrive as console warnings carrying a code in brackets. The browser suite dropped
 every warning until 2026-08-31, so no run has ever reported one. It keeps them now.
+
+## What was tried and did not fix it
+
+Rewriting the data layer onto Solid's own primitives (2026-08-31): `createRefreshable` now calls
+core `refresh()` instead of bumping a version counter, and `createPaged` returns a memo instead of
+building a new array on every read. Both are correct on their own merits and both are kept. Neither
+ended the loop.
+
+A stress spec that hammers the grid harder than the crawler does has never reproduced it, across
+eight runs and three shapes: rapid sort/filter/paging/write-mode with no settle; the same plus the
+fixture dialog and the row form; the same again after walking through the jobs screen first so a
+live stream is open. The crawler remains the only thing that reproduces it, which points at
+something about visiting thirty screens in one browser context rather than anything the grid does
+by itself.
 
 ## What was ruled out
 

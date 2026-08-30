@@ -1,20 +1,21 @@
-import { createMemo, createSignal } from "solid-js";
+import { createMemo, createSignal, refresh } from "solid-js";
 
 export type Refreshable<T> = { value: () => T; refresh: () => void };
 export type Page<T> = { data: T[]; next: string | null };
 export type Paged<T> = Refreshable<T[]> & { hasMore: () => boolean; loadMore: () => Promise<void> };
 
 /**
- * An async memo with a manual refresh. `load` runs inside the memo, so every signal or prop
- * it reads re-runs it; views read `value()` under `<Loading>` and `<Errored>`.
+ * An async memo you can ask again. `load` runs inside the memo, so every signal or prop it reads
+ * re-runs it; views read `value()` under `<Loading>` and `<Errored>`.
+ *
+ * `refresh` is Solid's own primitive rather than a counter we bump, and the difference is not
+ * tidiness. A counter is an input change, so the memo's next window counts as pending and every
+ * `<Loading>` above it flashes its fallback after a save. `refresh()` marks the recompute a re-ask
+ * of the same question and the window stays quiet.
  */
 export function createRefreshable<T>(load: () => Promise<T>): Refreshable<T> {
-  const [version, bump] = createSignal(0);
-  const value = createMemo(async (): Promise<T> => {
-    version();
-    return load();
-  });
-  return { value, refresh: () => bump((n) => n + 1) };
+  const value = createMemo((): Promise<T> => load());
+  return { value, refresh: () => refresh(value) };
 }
 
 /**
@@ -27,8 +28,11 @@ export function createPaged<T>(load: (cursor: string | undefined) => Promise<Pag
   const [next, setNext] = createSignal<string | null | undefined>(undefined);
   const cursor = (): string | null =>
     next() === undefined ? first.value().next : (next() ?? null);
+  // A memo, not a plain function: a plain one built a new array on every read, so no subscriber's
+  // equality gate ever closed and each of them re-ran on every upstream change.
+  const value = createMemo(() => [...first.value().data, ...extra()]);
   return {
-    value: () => [...first.value().data, ...extra()],
+    value,
     refresh: () => {
       setExtra([]);
       setNext(undefined);
