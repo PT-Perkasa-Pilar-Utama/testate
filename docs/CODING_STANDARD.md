@@ -91,7 +91,7 @@ Why 10: a function with more than ten paths cannot be covered by a handful of te
 
 - Comments explain why, cite a spec section (`07 §7.8`), or name a ceiling. No narration of what the code does.
 - `// SCAFFOLD:` marks mock-backed code that a named card replaces.
-- `// ponytail: <what> — <ceiling>; <upgrade path>` marks a deliberate shortcut. `grep ponytail:` lists them.
+- `// ponytail: <what>. <ceiling>; <upgrade path>` marks a deliberate shortcut. `grep ponytail:` lists them.
 - `// SAFETY:` precedes every `as`.
 
 ## 11. Git

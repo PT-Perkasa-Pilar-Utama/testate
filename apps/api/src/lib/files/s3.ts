@@ -91,7 +91,7 @@ export function createS3Source(config: S3SourceConfig): FileSource {
       try {
         const page = await listDir(dir, query.limit, query.cursor);
         if (dir !== "" && page.data.length === 0 && query.cursor === undefined) throw missing(dir);
-        // ponytail: `q` filters within the fetched page only — S3 has no server-side name search.
+        // ponytail: `q` filters within the fetched page only; S3 has no server-side name search.
         if (query.q !== undefined)
           page.data = page.data.filter((e) => e.name.includes(query.q ?? ""));
         return page;

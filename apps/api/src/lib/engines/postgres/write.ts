@@ -100,7 +100,7 @@ function keyOf(table: TableSchema, op: RowOp, row: JsonObject | null): JsonObjec
 
 /**
  * Foreign-key checks off (24 §24.5): deferred constraints for the transaction, else the replica
- * role when the role may set it. ponytail: the deferrable check is per attempt, not per constraint —
+ * role when the role may set it. ponytail: the deferrable check is per attempt, not per constraint;
  * name the non-deferrable constraints once introspection carries them.
  */
 async function relaxForeignKeys(conn: Reserved): Promise<void> {

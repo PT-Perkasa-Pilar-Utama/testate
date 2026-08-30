@@ -45,7 +45,7 @@ function isMissing(cause: unknown): boolean {
 /**
  * SFTP through `ssh2-sftp-client` (10 §10.3). The addon never builds because `bun install` runs
  * no lifecycle scripts, so ssh2 stays on its pure-JS crypto.
- * ponytail: never add ssh2 to `trustedDependencies` — the native addon crashes under Bun.
+ * ponytail: never add ssh2 to `trustedDependencies`; the native addon crashes under Bun.
  */
 export function createSftpSource(config: SftpSourceConfig): FileSource {
   let client: SftpClient | null = null;

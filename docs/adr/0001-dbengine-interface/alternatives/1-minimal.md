@@ -200,7 +200,7 @@ try {
 const admin = await engine.connect(record.decryptedConfig, { mode: "read", tag: actor.userId }, event);
 try {
   const running = await admin.read({ kind: "running" }, event);
-  await admin.cancel(running[0].id, event);   // a second connection — never the one running the query
+  await admin.cancel(running[0].id, event);   // a second connection, never the one running the query
 } finally {
   await admin.close(event);
 }

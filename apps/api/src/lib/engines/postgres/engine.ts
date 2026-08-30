@@ -93,7 +93,7 @@ export function createPostgresEngine(netguard: Netguard): DbEngine {
       const sql = await pools.acquire(conn);
       return { counters: await guarded("counters", () => resetCounters(sql, tables)) };
     },
-    // ponytail: readTable snapshots every table and keeps one — fine for the grid on small
+    // ponytail: readTable snapshots every table and keeps one. Fine for the grid on small
     // databases; give it its own cursor before the data card pages large tables.
     async *readTable(conn, table, opts) {
       const sql = await pools.acquire(conn);

@@ -71,7 +71,7 @@ export type DiffsDeps = {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** ponytail: decoded diff rows cached up to this many across tables — above it a blob streams from the start per page; add a chunk index when a diff table passes it. */
+/** ponytail: decoded diff rows cached up to this many across tables. Above it a blob streams from the start per page; add a chunk index when a diff table passes it. */
 const CACHED_ROWS = 200_000;
 const rowsCache = createRowsCache<DiffRow>(CACHED_ROWS);
 

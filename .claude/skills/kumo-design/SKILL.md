@@ -11,7 +11,7 @@ Apply these rules when designing, implementing, or reviewing Cloudflare product 
 
 ### `content-text-size` Use 14px for content text
 
-All content text—body, buttons, data, other interactables—must be 14px in size. 16px and above are restricted to headings and subheadings.
+All content text (body, buttons, data, other interactables) must be 14px in size. 16px and above are restricted to headings and subheadings.
 
 **Good**
 

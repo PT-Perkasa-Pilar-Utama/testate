@@ -122,7 +122,7 @@ async function deliver(
     };
   }
   // ponytail: the store is content-addressed, so the backup lands under blobs/<hash> and the
-  // result names that key — 22 §22.5 wrote `backups/<timestamp>.tar`; add a keyed put if needed.
+  // result names that key. 22 §22.5 wrote `backups/<timestamp>.tar`; add a keyed put if needed.
   const stored = await deps.live.put(tar, {});
   return { size_bytes: stored.size, store_key: `blobs/${stored.hash.slice(0, 2)}/${stored.hash}` };
 }

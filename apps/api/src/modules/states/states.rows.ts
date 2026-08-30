@@ -106,7 +106,7 @@ export function toState(row: StateRow, adapters: AdapterRow[]): State {
     adapters: adapters.map(toStateAdapter),
     size_bytes: row.size_bytes,
     actor: actorOf(row),
-    // ponytail: the column is NOT NULL, so an inline stash stores "" — null on the wire; a rebuild migration lifts it.
+    // ponytail: the column is NOT NULL, so an inline stash stores "", null on the wire; a rebuild migration lifts it.
     job_id: row.job_id === "" ? null : row.job_id,
     created_at: row.created_at,
     updated_at: row.updated_at,

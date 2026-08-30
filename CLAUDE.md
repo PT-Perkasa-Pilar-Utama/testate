@@ -48,7 +48,7 @@ Read the rule text in `docs/CODING_STANDARD.md` when a rule fires; do not reform
 - Trust boundaries parse with valibot: request bodies, queries, params, env, engine rows, MCP arguments.
 - Secrets are `Sealed` values; the logger refuses the keys `password`, `token`, `secret`, `connection_string`. Never log a credential, a session cookie, or a bearer token.
 - `requireRole` on every non-public route; agent tokens reach `/mcp` only.
-- A deliberate shortcut carries `// ponytail: <what> — <ceiling>; <upgrade path>`. `grep ponytail:` lists them. `// SCAFFOLD:` marks mock-backed code the next card replaces.
+- A deliberate shortcut carries `// ponytail: <what>. <ceiling>; <upgrade path>`. `grep ponytail:` lists them. `// SCAFFOLD:` marks mock-backed code the next card replaces.
 - One wide event per request or job (`.claude/skills/wide-event-logging`). Add fields to the event; do not add log lines.
 
 ## Workflows
