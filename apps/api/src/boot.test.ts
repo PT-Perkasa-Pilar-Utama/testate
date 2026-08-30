@@ -5,7 +5,15 @@ import { join } from "node:path";
 
 import { ADMIN_PASSWORD, TEST_META, createAccounts } from "../test/accounts.ts";
 import { preMigrationCopies } from "../test/boot-copies.ts";
-import { preMigrationCopy, resetAdminPassword } from "./boot.ts";
+import {
+  BootError,
+  ensureDirs,
+  migrateOrRefuse,
+  preMigrationCopy,
+  resetAdminPassword,
+} from "./boot.ts";
+import { openMetadataDb } from "./lib/db/index.ts";
+import type { MigrationReport } from "./lib/db/index.ts";
 import { loadConfig } from "./lib/config/index.ts";
 import type { Config } from "./lib/config/index.ts";
 
@@ -19,6 +27,37 @@ function configWith(overrides: Record<string, string>): Config {
     ...overrides,
   });
 }
+
+describe("boot refusals", () => {
+  // The two most ordinary deployment mistakes there are: a volume that is read-only or missing,
+  // and a migration that will not apply. Both used to end in a raw stack trace and exit 1.
+  it("refuses a data dir it cannot write into, naming the variable", () => {
+    const dir = mkdtempSync(join(tmpdir(), "testate-boot-"));
+    const notADir = join(dir, "occupied");
+    writeFileSync(notADir, "a file where the data dir should be");
+
+    expect(() => ensureDirs(configWith({ TESTATE_DATA_DIR: notADir }))).toThrow(
+      /TESTATE_DATA_DIR is not writable/
+    );
+  });
+
+  it("refuses a migration that will not run, and says the copy survived", () => {
+    const dir = mkdtempSync(join(tmpdir(), "testate-boot-"));
+    const migrations = join(dir, "migrations");
+    mkdirSync(migrations, { recursive: true });
+    writeFileSync(join(migrations, "0001_broken.sql"), "THIS IS NOT SQL;");
+    const db = openMetadataDb(join(dir, "metadata.db"));
+
+    const refusal = (): MigrationReport => migrateOrRefuse(db, migrations, dir);
+    expect(refusal).toThrow(/a database migration failed/);
+    expect(refusal).toThrow(new RegExp(join(dir, "run").replaceAll(".", "\\.")));
+  });
+
+  it("names both as refusals, so refuse() frames them instead of rethrowing", () => {
+    expect(new BootError("x")).toBeInstanceOf(Error);
+    expect(new BootError("x").name).toBe("BootError");
+  });
+});
 
 describe("boot", () => {
   it("copies the metadata database before migrations and keeps the last three", () => {

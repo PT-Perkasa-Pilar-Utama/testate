@@ -10,7 +10,8 @@ import { join } from "node:path";
 import { ConfigError } from "./lib/config/index.ts";
 import { SETTINGS_DEFAULTS } from "./modules/settings/settings.service.ts";
 import type { Config } from "./lib/config/index.ts";
-import type { MetadataDb } from "./lib/db/index.ts";
+import { migrate } from "./lib/db/index.ts";
+import type { MetadataDb, MigrationReport } from "./lib/db/index.ts";
 import { SealedConfigError } from "./lib/sealed/index.ts";
 import type { KeyRing } from "./lib/sealed/index.ts";
 import { banner, disableUnreadableOwners, sweep } from "./lib/sealed/registry.ts";
@@ -225,16 +226,58 @@ export function createRetention(
   };
 }
 
+/** A refusal the environment did not cause: a filesystem or a migration that will not run. */
+export class BootError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BootError";
+  }
+}
+
+function messageOf(cause: unknown): string {
+  return cause instanceof Error ? cause.message : String(cause);
+}
+
 /** Step 2 of 22 §22.2: the data dir and the subdirectories every later step writes into. */
 export function ensureDirs(config: Config): void {
   for (const sub of ["blobs", "logs", "uploads", "imports", "run"]) {
-    mkdirSync(join(config.TESTATE_DATA_DIR, sub), { recursive: true });
+    const path = join(config.TESTATE_DATA_DIR, sub);
+    try {
+      mkdirSync(path, { recursive: true });
+    } catch (cause: unknown) {
+      // A read-only or missing volume is the most ordinary deployment mistake there is, and the
+      // deployment plan promises this sentence rather than a stack trace.
+      throw new BootError(`TESTATE_DATA_DIR is not writable: ${path} (${messageOf(cause)})`);
+    }
+  }
+}
+
+/**
+ * Step 4 of 22 §22.2. A migration that will not run is a refusal, and the operator needs to hear
+ * that the pre-migration copy of the database is sitting in the run directory, untouched.
+ */
+export function migrateOrRefuse(
+  db: MetadataDb,
+  migrationsDir: string,
+  dataDir: string
+): MigrationReport {
+  try {
+    return migrate(db, migrationsDir);
+  } catch (cause: unknown) {
+    throw new BootError(
+      `a database migration failed: ${messageOf(cause)}\n` +
+        `The database is as it was: the copy taken before this attempt is in ${join(dataDir, "run")}.`
+    );
   }
 }
 
 /** Boot refusals print a framed message and exit 78 (configuration error), per 22 §22.2. */
 export function refuse(cause: unknown): never {
-  if (!(cause instanceof ConfigError) && !(cause instanceof SealedConfigError)) throw cause;
+  const refusal =
+    cause instanceof ConfigError ||
+    cause instanceof SealedConfigError ||
+    cause instanceof BootError;
+  if (!refusal) throw cause;
   process.stderr.write(`${RULE}\nTestate refused to start\n${cause.message}\n${RULE}\n`);
   process.exit(78);
 }

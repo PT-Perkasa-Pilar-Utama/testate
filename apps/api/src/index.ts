@@ -17,6 +17,7 @@ import {
   createRetention,
   preMigrationCopy,
   ensureDirs,
+  migrateOrRefuse,
   refuse,
   resetAdminPassword,
   serve,
@@ -30,7 +31,7 @@ import {
 } from "./wiring.ts";
 import { bootStore, lazyJobs, opsDeps, resetDeps, storageDeps } from "./wiring.store.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
-import { migrate, openMetadataDb } from "./lib/db/index.ts";
+import { openMetadataDb } from "./lib/db/index.ts";
 import { authenticate } from "./lib/http/auth.ts";
 import { errorResponse, notFound } from "./lib/http/index.ts";
 import { createLogger } from "./lib/logger/index.ts";
@@ -109,7 +110,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   const db = openMetadataDb(join(config.TESTATE_DATA_DIR, "metadata.db"));
   // Migrations live next to this entry in both layouts: src/db/migrations and dist/db/migrations.
   const migrationsDir = join(import.meta.dir, "db", "migrations");
-  const migration = migrate(db, migrationsDir);
+  const migration = migrateOrRefuse(db, migrationsDir, config.TESTATE_DATA_DIR);
   const sealed = await sweepSealed(ring, db, config);
   const prefix = apiPrefix(config);
   const webSource = resolveWebSource(import.meta.dir);
