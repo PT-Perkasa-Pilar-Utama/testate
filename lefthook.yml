@@ -46,7 +46,12 @@ commit-msg:
 # The gate CI runs, before the push rather than after it: type-check, lint, format,
 # `bun test`, and the build. About a minute, and it is the difference between a red CI
 # run over a formatting slip and a clean one. Skip it with `--no-verify`.
+#
+# Lefthook skips this when the push carries no changed files, so a no-op push costs nothing.
+# `interactive` hands the command the terminal: every step prints as it starts rather than
+# arriving in one lump at the end. Without a terminal it says so once and runs anyway.
 pre-push:
   commands:
     complete-check:
+      interactive: true
       run: bun run complete-check

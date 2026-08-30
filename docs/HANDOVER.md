@@ -27,7 +27,10 @@ and `apps/api/src/version.ts` at once. `bun run bump-version --check` reports dr
 - No new dependencies for what Bun, the standard library, or an installed package does.
 - Roles admin/qa/viewer are cumulative; agent tokens reach `/mcp` only. Secrets are `Sealed`.
 - Keep the gate green: `bun run complete-check` then `bun run e2e`. A `pre-push` hook runs
-  `complete-check` for you, so nothing reaches CI with a formatting or lint slip.
+  `complete-check` for you and prints each step as it goes, so nothing reaches CI with a formatting
+  or lint slip. It skips when a push carries no changed files. `lefthook validate` is worth running
+  after editing `lefthook.yml`: v2 dropped `follow` and `skip_empty`, and an unknown key is ignored
+  in silence.
 - Talk like a colleague at a whiteboard: answer first, short sentences, no process narration.
 
 ## 3. The working loop that works
