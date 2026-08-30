@@ -7,6 +7,7 @@ import type { Dispatcher } from "./modules/jobs/jobs.dispatcher.ts";
 import type { JobsService } from "./modules/jobs/jobs.service.ts";
 import { restBaseUrls, sharesOrigin } from "./modules/ops/ops.service.ts";
 import type { HealthDeps } from "./modules/ops/ops.service.ts";
+import { createResetHandler } from "./modules/ops/ops.reset.ts";
 import type { ResetDeps } from "./modules/ops/ops.reset.ts";
 import { createSeeds, devSampleWriter } from "./modules/ops/ops.seeds.ts";
 import type { SeedDeps } from "./modules/ops/ops.seeds.ts";
@@ -90,13 +91,33 @@ export type SeedServices = Pick<SeedDeps, "users" | "projects" | "adapters" | "s
 };
 
 /** The reset endpoint outside production (19 §19.3): wipe, migrate, bootstrap, seed. */
+/**
+ * The reset route exists only outside production: registration, not authorization, is the gate
+ * (07 §7.8). Null here means the path does not exist and answers 404 like any other unknown one.
+ */
+export function resetHandler(
+  config: Config,
+  db: MetadataDb,
+  migrationsDir: string,
+  bootstrap: (() => Promise<boolean>) | null,
+  jobs: Pick<JobsService, "heartbeat">,
+  resync: () => Promise<void>,
+  services: SeedServices
+): ReturnType<typeof createResetHandler> | null {
+  if (config.TESTATE_ENV === "production") return null;
+  return createResetHandler(
+    resetDeps(config, db, migrationsDir, bootstrap, jobs, services, resync)
+  );
+}
+
 export function resetDeps(
   config: Config,
   db: MetadataDb,
   migrationsDir: string,
   bootstrap: (() => Promise<boolean>) | null,
   jobs: Pick<JobsService, "heartbeat">,
-  services: SeedServices
+  services: SeedServices,
+  resync: () => Promise<void>
 ): ResetDeps {
   return {
     db,
@@ -104,6 +125,7 @@ export function resetDeps(
     defaultSeed: config.TESTATE_RESET_SEED,
     jobsRunning: () => jobs.heartbeat().running > 0,
     bootstrap,
+    resync,
     seed: createSeeds({
       users: services.users,
       projects: services.projects,

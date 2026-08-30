@@ -46,7 +46,7 @@ function stubDeps(calls: Calls, refuse: string | null): SeedDeps {
       snapshot: async (_actor, _slug, input) => {
         calls.states.push(input.name);
         // SAFETY: the seed reads nothing back from the snapshot.
-        return { state: { id: "s1" }, job: { id: "j1" } } as Awaited<
+        return { state: { id: "s1" }, job: { id: `snapshot-${input.name}` } } as Awaited<
           ReturnType<SeedDeps["states"]["snapshot"]>
         >;
       },
@@ -89,6 +89,8 @@ describe("reset seeds", () => {
       "init-shop-mariadb",
       "init-exports",
       "init-minio-health",
+      // The reset answers "states: 1", so it waits for that snapshot too.
+      "snapshot-seeded-baseline",
     ]);
     expect(counts).toEqual({
       users: 3,

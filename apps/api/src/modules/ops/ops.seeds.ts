@@ -137,7 +137,15 @@ async function devSeed(deps: SeedDeps, admin: Actor): Promise<SeedCounts> {
     }
   }
   if (counts.adapters > 0) {
-    await deps.states.snapshot(admin, project.slug, { name: "seeded-baseline" }, META);
+    // Wait for it like the init snapshots above: the reset answers "states: 1", and a caller that
+    // changes anything the job depends on before it finishes gets a state stuck at running.
+    const { job } = await deps.states.snapshot(
+      admin,
+      project.slug,
+      { name: "seeded-baseline" },
+      META
+    );
+    await deps.jobs.wait(null, job.id, INIT_WAIT_SECONDS);
     counts.states = 1;
   }
   try {

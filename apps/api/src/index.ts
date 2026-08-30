@@ -29,7 +29,7 @@ import {
   createStateServices,
   settingsDeps,
 } from "./wiring.ts";
-import { bootStore, lazyJobs, opsDeps, resetDeps, storageDeps } from "./wiring.store.ts";
+import { bootStore, lazyJobs, opsDeps, resetHandler, storageDeps } from "./wiring.store.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import { openMetadataDb } from "./lib/db/index.ts";
 import { authenticate } from "./lib/http/auth.ts";
@@ -58,7 +58,6 @@ import { createV1 } from "./modules/index.ts";
 import { createJobsHandlers } from "./modules/jobs/jobs.handler.ts";
 import { mountSpa, resolveWebSource, rewriteWebAssets } from "./modules/ops/ops.basepath.ts";
 import { createOpsHandlers } from "./modules/ops/ops.handler.ts";
-import { createResetHandler } from "./modules/ops/ops.reset.ts";
 import { createProjectsHandlers } from "./modules/projects/projects.handler.ts";
 import { createProjectsRepository } from "./modules/projects/projects.repository.ts";
 import { requireProjectInScope } from "./modules/projects/projects.scope.ts";
@@ -195,26 +194,22 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   });
   let ready = false;
   const live = { jobs, adapters: wiring.adapters };
+  const resyncPolicy = async (): Promise<void> =>
+    netguard.setDeny((await settings.get()).netguard.deny);
 
   const handlers = {
     ops: createOpsHandlers(
       opsDeps(config, db, VERSION, bootId, bootedAt, storeTarget, wiring.blobs, ring, logger, live),
       () => ready
     ),
-    // The reset route exists only outside production: registration, not authorization, is the gate (07 §7.8).
-    resetState:
-      config.TESTATE_ENV === "production"
-        ? null
-        : createResetHandler(
-            resetDeps(config, db, migrationsDir, bootstrap, jobs, {
-              users,
-              projects,
-              adapters,
-              states: core.states,
-              jobs,
-              usersRepo,
-            })
-          ),
+    resetState: resetHandler(config, db, migrationsDir, bootstrap, jobs, resyncPolicy, {
+      users,
+      projects,
+      adapters,
+      states: core.states,
+      jobs,
+      usersRepo,
+    }),
     auth: createAuthHandlers(auth, {
       env: config.TESTATE_ENV,
       basePath: config.TESTATE_BASE_PATH,

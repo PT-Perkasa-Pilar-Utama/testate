@@ -29,7 +29,8 @@ export async function resetState(
   migrationsDir: string,
   seed: SeedKind,
   bootstrap: () => Promise<boolean>,
-  runSeed: (kind: SeedKind) => Promise<SeedCounts>
+  runSeed: (kind: SeedKind) => Promise<SeedCounts>,
+  resync: () => Promise<void>
 ): Promise<ResetReport> {
   const started = performance.now();
   const tables = db
@@ -43,6 +44,9 @@ export async function resetState(
   migrate(db, migrationsDir);
   await bootstrap();
   const counts = await runSeed(seed);
+  // The settings table went with the others, so whatever the live process is enforcing came from
+  // before the reset. A security control that says one thing and does another is worse than either.
+  await resync();
   return {
     seed,
     ...counts,
@@ -59,6 +63,8 @@ export type ResetDeps = {
   /** Null when TESTATE_ADMIN_PASSWORD is unset: the reset refuses rather than leave no admin. */
   bootstrap: (() => Promise<boolean>) | null;
   seed: (kind: SeedKind) => Promise<SeedCounts>;
+  /** Re-applies the settings the reset just recreated to whatever holds them in memory. */
+  resync: () => Promise<void>;
 };
 
 export function createResetHandler(deps: ResetDeps): Handler {
@@ -75,7 +81,8 @@ export function createResetHandler(deps: ResetDeps): Handler {
         deps.migrationsDir,
         body.seed ?? deps.defaultSeed,
         deps.bootstrap,
-        deps.seed
+        deps.seed,
+        deps.resync
       )
     );
   };

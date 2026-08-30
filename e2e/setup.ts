@@ -32,6 +32,9 @@ async function changePassword(username: string, from: string, to: string): Promi
  * One reset per run: the bootstrap admin changes its temporary password, lifts the loopback deny
  * list (the compose engines live on 127.0.0.1), seeds `dev`, then every role gets a final
  * password and a saved browser session.
+ *
+ * The deny list is lifted twice on purpose. The reset recreates the settings table and the live
+ * policy follows it, so the default loopback deny is back in force the moment the seed finishes.
  */
 export default async function globalSetup(): Promise<void> {
   rmSync(join(E2E_DIR, "state"), { recursive: true, force: true });
@@ -47,6 +50,9 @@ export default async function globalSetup(): Promise<void> {
   await admin.dispose();
   // The reset recreated every account with a temporary password.
   await changePassword("admin", ADMIN_PASSWORD, PASSWORDS.admin);
+  const after = await login("admin", PASSWORDS.admin);
+  await after.patch("settings", { data: { netguard: { deny: [] } } });
+  await after.dispose();
   await changePassword(USERNAMES.qa, "qa-password-1234", PASSWORDS.qa);
   await changePassword(USERNAMES.viewer, "viewer-password-1234", PASSWORDS.viewer);
   for (const role of ROLES) {
