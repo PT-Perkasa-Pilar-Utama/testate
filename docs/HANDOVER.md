@@ -91,6 +91,11 @@ deletion restore the shared demo databases.
 - Demo tables live in schema `contract` (not `public`). `getByLabel("X")` also matches option
   text, so use `getByRole("combobox", { name })`. Count only your own rows.
 - Never wipe data in `playwright.config.ts`; it runs in every worker.
+- `screens.e2e.ts` writes the README screenshots, and only when `SHOTS=1`:
+  `SHOTS=1 bunx playwright test --project=screens` runs the chain up to `state-api` and shoots
+  `docs/assets/screens/*.png`. It trims the empty page under the content by measuring `main`, and
+  it makes what it shoots first: a diff, a run query, two readably named states. Re-run it after a
+  screen changes and commit the PNGs.
 
 ## 5. Contract and product bugs this suite found
 
@@ -145,6 +150,10 @@ b9131cd test(e2e): cover the contract and agent stories over the API
 ## 8. In flight and next
 
 **In flight:** nothing. The tree was clean when this was written; `git status` should agree.
+
+**README:** it opens with what Testate does, one screenshot per capability, then the status, how to
+run it, the limits, then operating it. Password recovery sits under "Operating it" because you look
+for it after something goes wrong. The banner is `docs/assets/hero.svg`, 4:3 and light mode.
 
 **Worth knowing:** `.github/workflows/ci.yml` runs the fast gate (`complete-check`, then a boot and
 smoke) on every push. The browser suite and the image build are gated to pull requests, a `v*` tag,
