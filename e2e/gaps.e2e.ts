@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { demoAdapter, demoTables, swallow } from "./lib/api.ts";
-import { settle, watch } from "./lib/crawl.ts";
+import { dataRows, settle, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
@@ -25,11 +25,19 @@ test.describe("qa gap stories", () => {
     await settle(page);
     await page.getByLabel("Rows per page").selectOption("25");
     await settle(page);
-    const rows = await page.locator("main tbody tr").count();
+    const rows = await dataRows(page).count();
     expect(rows).toBeGreaterThan(0);
     expect(rows).toBeLessThanOrEqual(25);
     await expect(page.getByRole("button", { name: "First" })).toBeDisabled();
-    const firstBefore = await page.locator("main tbody tr").first().innerText();
+    await page.getByLabel("Filter column").selectOption("email");
+    await page.getByLabel("Filter value").fill(`nobody-${STAMP}@x.io`);
+    await page.getByRole("button", { name: "Add filter" }).click();
+    await settle(page);
+    await expect(page.getByText("No rows match. Clear a filter to see more.")).toBeVisible();
+    await expect(dataRows(page)).toHaveCount(0);
+    await page.getByRole("button", { name: "Remove filter" }).click();
+    await settle(page);
+    const firstBefore = await dataRows(page).first().innerText();
     await page.getByRole("button", { name: /^email/ }).click();
     await settle(page);
     await page.getByRole("button", { name: /^email/ }).click();
@@ -160,7 +168,9 @@ test.describe("qa gap stories", () => {
     await settle(page);
     await expect(page).toHaveURL(/customers.*filter=id%3Aeq%3A/);
     await expect(page.getByText(`id eq ${value}`)).toBeVisible();
-    await expect(page.locator("main tbody tr")).toHaveCount(1);
+    // The chip says what was asked for; the row has to be the answer, and an empty table is a row.
+    await expect(dataRows(page)).toHaveCount(1);
+    await expect(dataRows(page).first()).toContainText(value);
     await expect(page.getByText(/← .*orders\.customer_id/)).toBeVisible();
     expect(issues).toStrictEqual([]);
   });

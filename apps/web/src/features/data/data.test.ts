@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import type { TableSchema } from "@testate/shared";
 
-import { cellText, filterText, filtersFromSearch, parseFilterText } from "./grid.presenter.ts";
+import {
+  NUMERIC_TYPE,
+  cellText,
+  filterText,
+  filtersFromSearch,
+  parseFilterText,
+} from "./grid.presenter.ts";
 import { pkOf, toFormValue, valuesOf } from "./editing.presenter.ts";
 import { NONE, policyBody } from "./policies.presenter.ts";
 import { buildRequest } from "./query.presenter.ts";
@@ -112,5 +118,31 @@ describe("data feature", () => {
       mask: "redact",
       display: false,
     });
+  });
+});
+
+describe("the grid's numeric columns", () => {
+  // Alignment is decided from the type name the engine reports, and the three engines report the
+  // same idea in different words.
+  test("recognises a number whatever the engine calls it", () => {
+    const numbers = [
+      "bigint",
+      "int4",
+      "int(11)",
+      "smallserial",
+      "numeric(24,4)",
+      "decimal",
+      "double precision",
+      "float8",
+      "real",
+      "money",
+      "long",
+    ];
+    expect(numbers.filter((type) => !NUMERIC_TYPE.test(type))).toEqual([]);
+  });
+
+  test("leaves everything else alone", () => {
+    const others = ["text", "varchar(255)", "uuid", "jsonb", "timestamptz", "boolean", "bytea"];
+    expect(others.filter((type) => NUMERIC_TYPE.test(type))).toEqual([]);
   });
 });

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import { demoAdapter, firstTable } from "./lib/api.ts";
-import { settle, watch } from "./lib/crawl.ts";
+import { dataRows, settle, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
@@ -114,6 +114,27 @@ test.describe("qa flows", () => {
     ).toBeVisible();
     await row.getByRole("button", { name: "Delete" }).click();
     await expect(row).toHaveCount(0);
+    // The demo's REST adapter holds nothing else, so deleting the one request shows the empty state.
+    await expect(
+      page.getByText("No saved requests yet. Save one to run it around a checkout, or by hand.")
+    ).toBeVisible();
+    expect(issues).toStrictEqual([]);
+  });
+
+  test("@story-94 an empty listing says so and the footer counts what is there", async ({
+    page,
+  }) => {
+    const issues: Issue[] = [];
+    watch(page, issues);
+    const storage = await demoAdapter({ kind: "storage" });
+    await page.goto(`/projects/demo/adapters/${storage.id}/files`);
+    await settle(page);
+    const rows = await dataRows(page).count();
+    await expect(page.getByText(new RegExp(`^${rows} entries( so far)?$`))).toBeVisible();
+    await page.getByPlaceholder("filter by name").fill("no-such-file-anywhere");
+    await settle(page);
+    await expect(page.getByText("Nothing here. This directory is empty.")).toBeVisible();
+    await expect(page.getByText("0 entries")).toBeVisible();
     expect(issues).toStrictEqual([]);
   });
 

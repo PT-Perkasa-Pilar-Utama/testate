@@ -206,6 +206,11 @@ export async function rowMenu(row: Locator): Promise<Locator> {
   return row;
 }
 
+/** The rows holding data. The empty state is a row as well, and counting it hides an empty table. */
+export function dataRows(page: Page): Locator {
+  return page.locator("main tbody tr:not(:has(td[colspan]))");
+}
+
 export async function openTab(page: Page, tab: string | undefined): Promise<void> {
   if (tab !== undefined) await page.getByRole("tab", { name: tab }).click();
   await settle(page);

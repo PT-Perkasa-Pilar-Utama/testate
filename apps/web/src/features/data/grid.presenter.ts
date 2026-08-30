@@ -54,6 +54,12 @@ export type GridPresenter = {
   linkFor: (column: string, value: JsonValue) => string | null;
 };
 
+/**
+ * Which columns are numbers, and so line up on the right. Postgres, MySQL and MongoDB each spell
+ * the same idea differently ("int4", "int(11)", "long"), and they all match this.
+ */
+export const NUMERIC_TYPE = /int|serial|numeric|decimal|float|double|real|money|long/i;
+
 /** `<column>:<op>:<value>` as 06 §6.2 reads it; the value may hold colons. */
 export function filterText(filter: Filter): string {
   return `${filter.column}:${filter.op}:${filter.value}`;

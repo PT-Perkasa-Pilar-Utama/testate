@@ -11,17 +11,14 @@ import { Cell, EmptyRow, Head, Row, Table, TableToolbar } from "@/components/tab
 import { hasRole } from "@/lib/session.ts";
 import Switch from "@/components/switch.tsx";
 import FixtureDialog from "./fixture.view.tsx";
-import { FILTER_OPS, PAGE_SIZES, createGridPresenter } from "./grid.presenter.ts";
+import { FILTER_OPS, NUMERIC_TYPE, PAGE_SIZES, createGridPresenter } from "./grid.presenter.ts";
 import type { FilterOp, GridPresenter } from "./grid.presenter.ts";
 import { FkCell, ForeignKeys } from "./grid-cells.view.tsx";
 import RowForm from "./row-form.view.tsx";
 
 const OP_OPTIONS = FILTER_OPS.map((op) => ({ value: op, label: op }));
 
-/** Postgres, MySQL and MongoDB spell their number types differently; they all match this. */
-const NUMERIC_TYPE = /int|serial|numeric|decimal|float|double|real|money|long/i;
 const SIZE_OPTIONS = PAGE_SIZES.map((size) => ({ value: size, label: `${size} rows` }));
-
 function FilterBar(props: { presenter: GridPresenter; columns: string[] }): JSX.Element {
   const [column, setColumn] = createSignal("");
   const [op, setOp] = createSignal<FilterOp>("eq");
