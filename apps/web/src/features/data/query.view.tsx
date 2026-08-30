@@ -95,7 +95,7 @@ function MongoForm(props: { presenter: QueryPresenter }): JSX.Element {
 function ResultTable(props: { result: QueryResult }): JSX.Element {
   return (
     <div class="grid gap-2">
-      <div class="flex flex-wrap items-center gap-2 text-sm">
+      <div class="flex flex-wrap items-center gap-2 text-xs">
         <Badge variant={ENFORCEMENT_VARIANT[props.result.read_only_enforcement]}>
           {ENFORCEMENT_TEXT[props.result.read_only_enforcement]}
         </Badge>
@@ -171,35 +171,42 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
             >
               <MongoForm presenter={presenter} />
             </Show>
-            <div class="flex flex-wrap items-center gap-2">
-              <label class="flex items-center gap-2 text-sm">
-                <span>Row cap</span>
-                <Input
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <Button type="submit" variant="primary" disabled={presenter.busy()}>
+                  {presenter.busy() ? "Running..." : "Run (read-only)"}
+                </Button>
+                <label class="flex items-center gap-2 text-xs text-kumo-subtle">
+                  <span>Row cap</span>
+                  <Input
+                    size="sm"
+                    class="w-24!"
+                    type="number"
+                    min="1"
+                    max="5000"
+                    value={presenter.rowCap()}
+                    onInput={(event) => presenter.setRowCap(event.currentTarget.value)}
+                  />
+                </label>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
                   size="sm"
-                  type="number"
-                  min="1"
-                  max="5000"
-                  value={presenter.rowCap()}
-                  onInput={(event) => presenter.setRowCap(event.currentTarget.value)}
-                />
-              </label>
-              <Button type="submit" variant="primary" disabled={presenter.busy()}>
-                {presenter.busy() ? "Running..." : "Run (read-only)"}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => void presenter.exportAs("csv")}
-              >
-                Export CSV
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => void presenter.exportAs("json")}
-              >
-                Export JSON
-              </Button>
+                  variant="secondary"
+                  onClick={() => void presenter.exportAs("csv")}
+                >
+                  Export CSV
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void presenter.exportAs("json")}
+                >
+                  Export JSON
+                </Button>
+              </div>
             </div>
             <Show when={presenter.error()}>
               {(message) => <Banner variant="error">{message()}</Banner>}

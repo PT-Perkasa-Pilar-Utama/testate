@@ -19,10 +19,16 @@ export default function SidePanel(props: { presenter: QueryPresenter }): JSX.Ele
   const [tab, setTab] = createSignal<SideTab>("saved");
   return (
     <aside class="grid content-start gap-3">
-      <Tabs items={SIDE_TABS} value={tab()} onChange={setTab} label="Query lists" />
+      <Tabs
+        items={SIDE_TABS}
+        value={tab()}
+        onChange={setTab}
+        label="Query lists"
+        variant="segmented"
+      />
       <Show when={tab() === "saved"}>
         <Loading fallback={<p class="text-kumo-subtle">Loading...</p>}>
-          <ul class="grid gap-1 text-sm">
+          <ul class="grid gap-1 text-base">
             <For each={props.presenter.saved.value()}>
               {(query) => (
                 <li class="flex items-center justify-between gap-2">

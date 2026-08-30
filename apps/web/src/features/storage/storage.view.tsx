@@ -1,14 +1,23 @@
 import type { JSX } from "@solidjs/web";
+import { formatWhen } from "@/lib/format.ts";
 import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
 import { Errored, For, Loading, Show, Switch, Match } from "solid-js";
 import type { Entry, PreviewPayload } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
-import Button from "@/components/button.tsx";
+import Button, { buttonClass } from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import {
+  Cell,
+  EmptyRow,
+  Head,
+  Row,
+  Table,
+  TableFooter,
+  TableToolbar,
+} from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { formatBytes } from "../states/states.format.ts";
 import { createStoragePresenter } from "./storage.presenter.ts";
@@ -133,12 +142,16 @@ function EntryRow(props: { presenter: StoragePresenter; entry: Entry }): JSX.Ele
           </a>
         </Show>
       </Cell>
-      <Cell>{props.entry.size_bytes === null ? "" : formatBytes(props.entry.size_bytes)}</Cell>
-      <Cell>{props.entry.modified_at ?? ""}</Cell>
+      <Cell numeric>
+        {props.entry.size_bytes === null ? "" : formatBytes(props.entry.size_bytes)}
+      </Cell>
+      <Cell class="whitespace-nowrap">
+        {props.entry.modified_at === null ? "" : formatWhen(props.entry.modified_at)}
+      </Cell>
       <Cell>
         <Show when={props.entry.kind === "file"}>
           <a
-            class="text-sm underline"
+            class={buttonClass("ghost", "sm")}
             href={props.presenter.downloadUrl(props.entry)}
             download={props.entry.name}
           >
@@ -183,30 +196,36 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
           )}
         </For>
       </h2>
-      <div class="flex flex-wrap items-center gap-2">
+      <TableToolbar
+        actions={
+          <>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={presenter.path() === ""}
+              onClick={() => presenter.up()}
+            >
+              Up
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={presenter.depth() === 0}
+              onClick={() => presenter.previous()}
+            >
+              Previous
+            </Button>
+          </>
+        }
+      >
         <Input
           size="sm"
+          class="w-56!"
           placeholder="filter by name"
           value={presenter.q()}
           onInput={(event) => presenter.setQ(event.currentTarget.value)}
         />
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={presenter.path() === ""}
-          onClick={() => presenter.up()}
-        >
-          Up
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={presenter.depth() === 0}
-          onClick={() => presenter.previous()}
-        >
-          Previous
-        </Button>
-      </div>
+      </TableToolbar>
       <Show when={presenter.changedKey()}>
         {(fingerprint) => (
           <Banner variant="alert">
@@ -225,22 +244,33 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
             <thead>
               <tr>
                 <Head>Name</Head>
-                <Head>Size</Head>
+                <Head numeric>Size</Head>
                 <Head>Modified</Head>
                 <Head />
               </tr>
             </thead>
             <tbody>
-              <For each={presenter.page.value().data}>
-                {(entry) => <EntryRow presenter={presenter} entry={entry} />}
-              </For>
+              <Show
+                when={presenter.page.value().data.length > 0}
+                fallback={<EmptyRow>Nothing here. This directory is empty.</EmptyRow>}
+              >
+                <For each={presenter.page.value().data}>
+                  {(entry) => <EntryRow presenter={presenter} entry={entry} />}
+                </For>
+              </Show>
             </tbody>
           </Table>
-          <Show when={presenter.page.value().page.next_cursor !== null}>
-            <Button size="sm" variant="ghost" onClick={() => presenter.next()}>
-              Next page
-            </Button>
-          </Show>
+          <TableFooter
+            shown={presenter.page.value().data.length}
+            noun="entries"
+            hasMore={presenter.page.value().page.next_cursor !== null}
+          >
+            <Show when={presenter.page.value().page.next_cursor !== null}>
+              <Button size="sm" variant="secondary" onClick={() => presenter.next()}>
+                Next page
+              </Button>
+            </Show>
+          </TableFooter>
         </Loading>
       </Errored>
       <PreviewDialog presenter={presenter} />

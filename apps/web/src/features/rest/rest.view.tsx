@@ -11,7 +11,7 @@ import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
 import InputArea from "@/components/input-area.tsx";
 import Select from "@/components/select.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { METHOD_OPTIONS, createRestPresenter } from "./rest.presenter.ts";
 import type { RestPresenter } from "./rest.presenter.ts";
@@ -183,48 +183,57 @@ export default function RestView(props: { slug: string; id: string }): JSX.Eleme
               </tr>
             </thead>
             <tbody>
-              <For each={presenter.requests.value()}>
-                {(request) => (
-                  <Row>
-                    <Cell>
-                      <button
-                        type="button"
-                        class="cursor-pointer hover:underline"
-                        onClick={() => presenter.select(request)}
-                      >
-                        {request.name}
-                      </button>
-                    </Cell>
-                    <Cell>
-                      <Badge variant="outline">{request.method}</Badge>
-                    </Cell>
-                    <Cell>
-                      <code>{request.path}</code>
-                    </Cell>
-                    <Cell>{request.expected_status ?? "any"}</Cell>
-                    <Cell>
-                      <Show when={hasRole("qa")}>
-                        <div class="flex gap-1">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => void presenter.run(request)}
-                          >
-                            Run
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => void presenter.remove(request)}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </Show>
-                    </Cell>
-                  </Row>
-                )}
-              </For>
+              <Show
+                when={presenter.requests.value().length > 0}
+                fallback={
+                  <EmptyRow>
+                    No saved requests yet. Save one to run it around a checkout, or by hand.
+                  </EmptyRow>
+                }
+              >
+                <For each={presenter.requests.value()}>
+                  {(request) => (
+                    <Row>
+                      <Cell>
+                        <button
+                          type="button"
+                          class="cursor-pointer hover:underline"
+                          onClick={() => presenter.select(request)}
+                        >
+                          {request.name}
+                        </button>
+                      </Cell>
+                      <Cell>
+                        <Badge variant="outline">{request.method}</Badge>
+                      </Cell>
+                      <Cell>
+                        <code>{request.path}</code>
+                      </Cell>
+                      <Cell>{request.expected_status ?? "any"}</Cell>
+                      <Cell>
+                        <Show when={hasRole("qa")}>
+                          <div class="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => void presenter.run(request)}
+                            >
+                              Run
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => void presenter.remove(request)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </Show>
+                      </Cell>
+                    </Row>
+                  )}
+                </For>
+              </Show>
             </tbody>
           </Table>
         </Loading>
