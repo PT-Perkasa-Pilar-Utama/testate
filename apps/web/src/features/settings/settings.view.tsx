@@ -4,6 +4,7 @@ import { For, Loading, Show } from "solid-js";
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
 import Input from "@/components/input.tsx";
+import InputArea from "@/components/input-area.tsx";
 import LayerCard from "@/components/layer-card.tsx";
 import Switch from "@/components/switch.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
@@ -105,6 +106,46 @@ function BackupCard(props: { presenter: SettingsPresenter }): JSX.Element {
   );
 }
 
+/**
+ * The deny list decides which hosts an adapter may reach, and it had no screen at all: the only
+ * way to see it was the API, and the only way to change it was a PATCH by hand.
+ */
+function NetguardCard(props: { presenter: SettingsPresenter }): JSX.Element {
+  const text = (): string =>
+    props.presenter.denyDraft() ?? props.presenter.value().netguard.deny.join("\n");
+  const onSubmit = (event: SubmitEvent): void => {
+    event.preventDefault();
+    void props.presenter.saveDeny();
+  };
+  return (
+    <LayerCard class="grid gap-3 px-5 py-4">
+      <div class="grid gap-1">
+        <h3 class="font-medium">Blocked hosts</h3>
+        <p class="text-sm text-kumo-subtle">
+          One host, CIDR or host:port per line. An adapter pointing at a blocked address is disabled
+          when you save.
+        </p>
+      </div>
+      <form class="grid gap-3" onSubmit={onSubmit}>
+        <InputArea
+          rows="4"
+          aria-label="Blocked hosts"
+          value={text()}
+          onInput={(event) => props.presenter.setDenyDraft(event.currentTarget.value)}
+        />
+        <div class="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="secondary" type="submit">
+            Save
+          </Button>
+          <span class="text-sm text-kumo-subtle">
+            Always blocked: {props.presenter.value().netguard.fixed.join(", ")}
+          </span>
+        </div>
+      </form>
+    </LayerCard>
+  );
+}
+
 export default function SettingsView(): JSX.Element {
   const presenter = createSettingsPresenter();
   return (
@@ -129,6 +170,7 @@ export default function SettingsView(): JSX.Element {
           </Show>
         </LayerCard>
         <For each={SECTIONS}>{(name) => <Section presenter={presenter} name={name} />}</For>
+        <NetguardCard presenter={presenter} />
         <BackupCard presenter={presenter} />
       </Loading>
       <MigrateDialog presenter={presenter} />

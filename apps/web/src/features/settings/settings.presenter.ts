@@ -25,6 +25,10 @@ export type SettingsPresenter = Refreshable<Settings> & {
   drafts: () => Map<string, string>;
   setValue: (key: string, value: string) => void;
   save: (section: Section) => Promise<void>;
+  /** The deny list as text, one entry per line; empty until the person edits it. */
+  denyDraft: () => string | null;
+  setDenyDraft: (value: string) => void;
+  saveDeny: () => Promise<void>;
   migrating: () => boolean;
   targetDriver: () => "local" | "s3";
   s3: () => S3Draft;
@@ -49,6 +53,14 @@ const EMPTY_S3: S3Draft = {
   access_key_id: "",
   secret_access_key: "",
 };
+
+/** One host, CIDR or host:port per line, blanks dropped. */
+export function denyList(text: string): string[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+}
 
 /** The PATCH body for one section: only edited, unlocked keys, as integers (story 120). */
 export function sectionPatch(
@@ -83,6 +95,7 @@ export function migrationBody(driver: "local" | "s3", s3: S3Draft): JsonObject {
 export function createSettingsPresenter(): SettingsPresenter {
   const settings = createRefreshable(() => settingsModel.get());
   const [drafts, setDrafts] = createSignal(new Map<string, string>());
+  const [denyDraft, setDenyDraft] = createSignal<string | null>(null);
   const [migrating, setMigrating] = createSignal(false);
   const [targetDriver, setTargetDriver] = createSignal<"local" | "s3">("s3");
   const [s3, setS3Signal] = createSignal<S3Draft>(EMPTY_S3);
@@ -101,6 +114,23 @@ export function createSettingsPresenter(): SettingsPresenter {
     ...settings,
     rows,
     drafts,
+    denyDraft,
+    setDenyDraft: (value) => setDenyDraft(value),
+    saveDeny: () => {
+      const staticDeny = denyList(denyDraft() ?? "");
+      return attempt(async () => {
+        const result = await settingsModel.update({ netguard: { deny: staticDeny } });
+        setDenyDraft(null);
+        settings.refresh();
+        const disabled = result.disabled_adapters ?? [];
+        showToast(
+          disabled.length === 0
+            ? "netguard saved"
+            : `netguard saved; disabled ${disabled.join(", ")}`,
+          "success"
+        );
+      });
+    },
     setValue: (key, value) => setDrafts((current) => new Map(current).set(key, value)),
     save: (section) => {
       const staticBody = sectionPatch(section, rows(section), drafts());

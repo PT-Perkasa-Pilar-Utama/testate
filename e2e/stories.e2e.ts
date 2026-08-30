@@ -229,6 +229,33 @@ test.describe("admin stories", () => {
     await page.goto("/audit");
     await settle(page);
     await expect(page.getByText("auth.login").first()).toBeVisible();
+    // The filters reach the API, which has taken them since it was written.
+    await page.getByLabel("Action").fill("auth.login");
+    await expect(page.getByText("auth.login").first()).toBeVisible();
+    await page.getByLabel("Action").fill("nothing.matches.this");
+    await expect(page.getByText("Nothing in the audit log yet.")).toBeVisible();
+    expect(issues).toStrictEqual([]);
+  });
+
+  test("@story-119 the settings screen shows the deny list and saves an edit to it", async ({
+    page,
+  }) => {
+    const issues: Issue[] = [];
+    watch(page, issues);
+    await page.goto("/settings");
+    await settle(page);
+    const deny = page.getByLabel("Blocked hosts");
+    // The suite runs against loopback engines, so this instance's list is empty; put a host that
+    // matches nothing in it, save, and read it back.
+    await deny.fill("198.51.100.7");
+    await page.getByRole("button", { name: "Save" }).last().click();
+    await expect(page.getByText("netguard saved")).toBeVisible();
+    await page.reload();
+    await settle(page);
+    await expect(page.getByLabel("Blocked hosts")).toHaveValue("198.51.100.7");
+    await page.getByLabel("Blocked hosts").fill("");
+    await page.getByRole("button", { name: "Save" }).last().click();
+    await expect(page.getByText("netguard saved")).toBeVisible();
     expect(issues).toStrictEqual([]);
   });
 

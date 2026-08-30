@@ -129,7 +129,7 @@ function Sidebar(props: { current: string | undefined }): JSX.Element {
     navigate(path);
   };
   return (
-    <aside class="flex w-56 flex-col border-r border-kumo-line px-4 py-4">
+    <aside class="sticky top-0 flex h-screen w-56 flex-col overflow-y-auto border-r border-kumo-line px-4 py-4">
       <div class="mb-6 font-semibold">Testate</div>
       <nav class="grid gap-1">
         <For each={NAV.filter((item) => hasRole(item.role))}>

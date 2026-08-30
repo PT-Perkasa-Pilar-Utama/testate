@@ -3,10 +3,49 @@ import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
+import Input from "@/components/input.tsx";
+import LoadMore from "@/components/load-more.tsx";
+import Select from "@/components/select.tsx";
 import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
-import { createAuditPresenter } from "./audit.presenter.ts";
+import { OUTCOMES, createAuditPresenter } from "./audit.presenter.ts";
+import type { AuditPresenter } from "./audit.presenter.ts";
 
 const OUTCOME_VARIANT = { succeeded: "success", failed: "error", partial: "warning" } as const;
+
+/** The API has filtered by action, actor and outcome since it was written. This is the screen. */
+function Filters(props: { presenter: AuditPresenter }): JSX.Element {
+  return (
+    <div class="flex flex-wrap items-end gap-2">
+      <label class="grid gap-1.5 text-sm">
+        <span>Action</span>
+        <Input
+          size="sm"
+          placeholder="auth.login"
+          value={props.presenter.filter().action}
+          onInput={(event) => props.presenter.setFilter({ action: event.currentTarget.value })}
+        />
+      </label>
+      <label class="grid gap-1.5 text-sm">
+        <span>Actor</span>
+        <Input
+          size="sm"
+          placeholder="qa-user"
+          value={props.presenter.filter().actor}
+          onInput={(event) => props.presenter.setFilter({ actor: event.currentTarget.value })}
+        />
+      </label>
+      <label class="grid gap-1.5 text-sm">
+        <span>Outcome</span>
+        <Select
+          size="sm"
+          options={OUTCOMES.map((value) => ({ value, label: value === "" ? "any" : value }))}
+          value={props.presenter.filter().outcome}
+          onChange={(outcome) => props.presenter.setFilter({ outcome })}
+        />
+      </label>
+    </div>
+  );
+}
 
 export default function AuditView(): JSX.Element {
   const presenter = createAuditPresenter();
@@ -16,6 +55,7 @@ export default function AuditView(): JSX.Element {
         <h2 class="text-lg font-semibold">Audit log</h2>
         <p class="text-kumo-subtle">Every write, by whom, and how it ended.</p>
       </div>
+      <Filters presenter={presenter} />
       <Loading fallback={<p class="text-kumo-subtle">Loading audit rows...</p>}>
         <Table>
           <thead>
@@ -62,6 +102,7 @@ export default function AuditView(): JSX.Element {
             </Show>
           </tbody>
         </Table>
+        <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
       </Loading>
     </section>
   );

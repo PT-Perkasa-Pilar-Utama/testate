@@ -36,7 +36,9 @@ export type StoragePresenter = {
   acceptHostKey: () => Promise<void>;
 };
 
-const PAGE_SIZE = 200;
+/** A screenful. The listing pages with a cursor, so a bucket with thousands of keys
+ * used to arrive as one 200-row page taller than the window. */
+const PAGE_SIZE = 50;
 
 const hostKeyDetails = v.object({
   reason: v.literal("host_key_changed"),
