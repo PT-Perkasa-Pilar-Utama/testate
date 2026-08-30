@@ -151,6 +151,15 @@ b9131cd test(e2e): cover the contract and agent stories over the API
 
 **In flight:** nothing. The tree was clean when this was written; `git status` should agree.
 
+**The review and what came out of it (2026-08-30).** Four two-agent teams, reports in
+`docs/review/`: 48 findings, 37 confirmed, 5 refuted. Fixed so far: the unswallowed promise that
+ended the process on any interrupted job (three engines, six sites), the diff that invented rows
+when the key strategy changed, the health check that never probed the store, the missing constraint
+deferral, `origin_shared` never being computed, the boot refusals that crashed instead, and the
+materialized views a restore left stale. CI now runs the engine contract suites and treats a
+skipped suite as a failure. Still open: the UI/UX list (27 findings, GitHub is the target), the
+netguard policy that can drift from what is enforced, and the smaller items in each report.
+
 **The UI target is GitHub.** The user said so on 2026-08-30, reading the UI/UX review. Reach for
 GitHub patterns before inventing one: a neutral surface with a single accent, borders rather than
 shadows, dense tables that still breathe, one button hierarchy used everywhere, empty states that
