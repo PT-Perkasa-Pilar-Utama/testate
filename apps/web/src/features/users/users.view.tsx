@@ -13,7 +13,7 @@ import LoadMore from "@/components/load-more.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
-import { Cell, Head, Row, Table, TableFooter, EmptyRow } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, TableFooter } from "@/components/table.tsx";
 import { ROLE_OPTIONS, createUsersPresenter } from "./users.presenter.ts";
 import type { UsersPresenter } from "./users.presenter.ts";
 
@@ -188,41 +188,34 @@ export default function UsersView(): JSX.Element {
             </tr>
           </thead>
           <tbody>
-            <Show
-              when={presenter.value().length > 0}
-              fallback={
-                <EmptyRow>No users yet. Add one to give a tester their own account.</EmptyRow>
-              }
-            >
-              <For each={presenter.value()}>
-                {(user) => (
-                  <Row>
-                    <Cell class="font-semibold whitespace-nowrap">{user.username}</Cell>
-                    <Cell>{user.display_name}</Cell>
-                    <Cell>
-                      <Badge variant="outline">{user.role}</Badge>
-                    </Cell>
-                    <Cell>
-                      <span class="inline-flex gap-1">
-                        <Badge variant={user.disabled_at === null ? "success" : "secondary"}>
-                          {user.disabled_at === null ? "active" : "disabled"}
-                        </Badge>
-                        <Show when={user.must_change_password}>
-                          <Badge variant="warning">password change due</Badge>
-                        </Show>
-                        <Show when={user.locked_until !== null}>
-                          <Badge variant="error">locked</Badge>
-                        </Show>
-                      </span>
-                    </Cell>
-                    <Cell>{user.last_login_at ?? "never"}</Cell>
-                    <Cell>
-                      <Actions presenter={presenter} user={user} />
-                    </Cell>
-                  </Row>
-                )}
-              </For>
-            </Show>
+            <For each={presenter.value()}>
+              {(user) => (
+                <Row>
+                  <Cell class="font-semibold whitespace-nowrap">{user.username}</Cell>
+                  <Cell>{user.display_name}</Cell>
+                  <Cell>
+                    <Badge variant="outline">{user.role}</Badge>
+                  </Cell>
+                  <Cell>
+                    <span class="inline-flex gap-1">
+                      <Badge variant={user.disabled_at === null ? "success" : "secondary"}>
+                        {user.disabled_at === null ? "active" : "disabled"}
+                      </Badge>
+                      <Show when={user.must_change_password}>
+                        <Badge variant="warning">password change due</Badge>
+                      </Show>
+                      <Show when={user.locked_until !== null}>
+                        <Badge variant="error">locked</Badge>
+                      </Show>
+                    </span>
+                  </Cell>
+                  <Cell>{user.last_login_at ?? "never"}</Cell>
+                  <Cell>
+                    <Actions presenter={presenter} user={user} />
+                  </Cell>
+                </Row>
+              )}
+            </For>
           </tbody>
         </Table>
         <TableFooter shown={presenter.value().length} noun="users" hasMore={presenter.hasMore()}>

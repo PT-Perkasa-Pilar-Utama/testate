@@ -448,7 +448,7 @@ Error codes: `VALIDATION_ERROR` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `ADAPT
 
 ### 4.13 Deployment
 
-- Image `ghcr.io/pt-perkasa-pilar-utama/testate`, tags `latest` and semver, built for amd64 and arm64 on GitHub Release. Base image is the slim Bun 1.4 image. No database client binaries.
+- Image `ghcr.io/pt-perkasa-pilar-utama/testate`, tags `latest` and semver, built on the manual **Deploy image** workflow, for the runner's own architecture. Multi-architecture builds are not set up yet. Base image is the slim Bun 1.4 image. No database client binaries.
 - Volume `/data` holds the metadata database, local snapshots, temporary uploads, and pre-migration copies of the metadata database.
 - Environment: port, active key list, declared-loss flag, data directory, base path, bootstrap admin user and password, trust proxy flag, upload limit, log level, optional snapshot store settings.
 - A docker compose example and an nginx example ship with the repository. The nginx example sets the upload size and a read timeout above the five-minute wait ceiling for server-sent events and long polls.

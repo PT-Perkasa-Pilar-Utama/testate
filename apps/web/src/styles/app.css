@@ -73,8 +73,8 @@
   --text-color-kumo-badge-neutral-subtle: #8b949e;
 
   /*
-   * Mona Sans is not fetched at runtime: the README promises nothing leaves your network, and a
-   * font CDN would break that on every load. Vendor the woff2 to turn this on (SIL OFL).
+   * Mona Sans is served from this instance, never from a font CDN: the README promises nothing
+   * leaves your network. The two variable files and their licence live in public/fonts (SIL OFL).
    */
   --font-sans:
     "Mona Sans", MonaSansFallback, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
@@ -86,6 +86,21 @@
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-xl: 12px;
+}
+
+/* One file each, every weight inside it, and the fallback stack keeps the page readable meanwhile. */
+@font-face {
+  font-family: "Mona Sans";
+  src: url("/fonts/mona-sans.woff2") format("woff2");
+  font-weight: 200 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Mona Sans Mono";
+  src: url("/fonts/mona-sans-mono.woff2") format("woff2");
+  font-weight: 200 900;
+  font-display: swap;
 }
 
 html,

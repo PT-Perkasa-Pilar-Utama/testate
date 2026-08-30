@@ -176,7 +176,7 @@ test.describe("admin flows", () => {
       .first()
       .fill("e2e-temporary-1234");
     await page.getByRole("button", { name: "Create" }).click();
-    await expect(page.getByText("e2e.user")).toBeVisible();
+    await expect(page.locator("tr", { hasText: "e2e.user" })).toBeVisible();
     await page.goto("/tokens");
     await settle(page);
     await page.getByRole("button", { name: "New token" }).click();
@@ -184,7 +184,7 @@ test.describe("admin flows", () => {
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.getByText(/tst_/)).toBeVisible();
     await page.getByRole("button", { name: "Done" }).click();
-    await expect(page.getByText("e2e token")).toBeVisible();
+    await expect(page.locator("tr", { hasText: "e2e token" })).toBeVisible();
     expect(issues).toStrictEqual([]);
   });
 });

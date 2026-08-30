@@ -172,11 +172,15 @@ each with a test that fails when the fix is removed:
 inline error. Replacing it means a validation state per field in every dialog, and the crawler
 leans on native validation to fill forms; the gain did not look worth that.
 
-**The reactive loop, and where it stands.** Solid's "Potential Infinite Loop Detected" fired three
-times in about ten full browser runs, always on the data grid, never in a crawl run on its own.
-`e2e/stress.e2e.ts` (project `stress`, `STRESS=1`) is the hunt: it drives the grid's sort, filter,
-paging and write switch twenty times over with no settle between clicks, which is the shape a
-crawler cannot make. It has never reproduced the loop.
+**The reactive loop is still open, and rc.4 did not fix it.** Solid's flush guard throws
+"Potential Infinite Loop Detected" on the data grid, about one full browser run in four, always
+during the crawler and never in a crawler run on its own. Every frame is inside the framework's
+async write-back and none is ours. The evidence, the frames, what was ruled out and what a
+reproduction would need are written up in `docs/upstream-solid-flush-loop.md`, ready to file
+upstream; nobody has filed it. `e2e/stress.e2e.ts` (project `stress`, `STRESS=1`) drives the same
+screen far harder than the crawler does and has never reproduced it in six runs, which is itself
+evidence: whatever it takes, it is not rapid interaction alone. Do not claim it fixed without a run
+that reproduces it first.
 
 What did land: solid-js and @solidjs/web went from 2.0.0-rc.3 to rc.4, whose notes fix a case of
 "the flush loop spun forever" on a pending store read. That is the same subsystem as this

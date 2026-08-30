@@ -73,9 +73,7 @@ for (const role of ROLES) {
       expect(issues).toStrictEqual([]);
     });
 
-    test("@story-6 @story-7 the sidebar lists only the screens the role may open", async ({
-      page,
-    }) => {
+    test("@story-6 the sidebar lists only the screens the role may open", async ({ page }) => {
       await page.goto("/projects");
       await settle(page);
       const labels = await page.locator("nav a").allTextContents();

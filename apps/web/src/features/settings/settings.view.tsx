@@ -136,7 +136,7 @@ function NetguardCard(props: { presenter: SettingsPresenter }): JSX.Element {
         />
         <div class="flex flex-wrap items-center gap-2">
           <Button size="sm" variant="secondary" type="submit">
-            Save
+            Save blocked hosts
           </Button>
           <span class="text-sm text-kumo-subtle">
             Always blocked: {props.presenter.value().netguard.fixed.join(", ")}

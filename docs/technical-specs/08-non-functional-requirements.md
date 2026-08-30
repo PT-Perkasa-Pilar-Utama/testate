@@ -80,5 +80,5 @@ Numbers here are targets. Sprint 0 measures the engine numbers and records the r
 | --- | --- |
 | Transport | HTTPS at the proxy; cookies `Secure` when the proxy reports HTTPS |
 | Secrets at rest | Sealed values only; keys outside the volume |
-| Dependencies | OSV scan in CI on every push; a high-severity finding blocks release |
+| Dependencies | No scan in CI yet. When one lands, a high-severity finding blocks release |
 | Supply chain | Exact pins; `bun install --frozen-lockfile` in CI and the image build |

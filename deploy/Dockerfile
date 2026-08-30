@@ -33,7 +33,12 @@ LABEL org.opencontainers.image.title="testate" \
       org.opencontainers.image.licenses="MIT"
 
 ARG VERSION
-LABEL org.opencontainers.image.version="${VERSION}"
+# The base image sets url, revision and created for itself; blanking them stops this image
+# describing where oven/bun came from as though it were where Testate came from.
+LABEL org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.url="https://github.com/PT-Perkasa-Pilar-Utama/testate" \
+      org.opencontainers.image.revision="" \
+      org.opencontainers.image.created=""
 
 ENV NODE_ENV=production \
     PORT=3000 \
@@ -42,6 +47,10 @@ ENV NODE_ENV=production \
 
 COPY --from=build /src/apps/api/dist ./dist
 COPY --from=build /src/apps/web/dist ./web
+# The maps are for the machine that built this, not for the one running it: they are seven
+# megabytes of the image, they are of no use without the sources, and a stack trace inside a
+# container is read from the build output anyway.
+RUN find ./dist ./web -name "*.map" -delete
 RUN mkdir -p /data && chown -R bun:bun /data /app
 USER bun
 VOLUME ["/data"]

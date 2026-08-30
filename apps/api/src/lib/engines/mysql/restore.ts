@@ -27,6 +27,8 @@ type Reserved = Awaited<ReturnType<SQL["reserve"]>>;
 const maxRow = v.object({ m: v.nullable(v.union([v.number(), v.string(), v.bigint()])) });
 
 /** JSON cells back to bind values: objects and arrays as JSON text, HEX blobs decoded by the server. */
+// ponytail: plan.restoreMode is not read here, so an adapter set to "fast" restores atomically
+// like every other one. Honest and slow beats fast and imaginary; implement it or drop the column.
 function bindValue(value: JsonValue | undefined): string | null {
   if (value === undefined || value === null) return null;
   return v.is(v.string(), value) ? value : JSON.stringify(value);

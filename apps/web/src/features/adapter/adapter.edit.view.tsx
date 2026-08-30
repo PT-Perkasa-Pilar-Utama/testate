@@ -14,10 +14,10 @@ import { ENGINE_FORMS } from "../adapters/adapters.fields.ts";
 import type { Field } from "../adapters/adapters.fields.ts";
 import type { AdapterPresenter } from "./adapter.presenter.ts";
 
-const RESTORE_OPTIONS = [
-  { value: "atomic", label: "atomic (one transaction)" },
-  { value: "fast", label: "fast (no transaction)" },
-] as const;
+// ponytail: "fast" is offered nowhere because no engine implements it. The column and the API
+// still take it (06 §6.3, MySQL and MariaDB only); offer it again when mysql/restore.ts reads
+// plan.restoreMode and drops the transaction for it.
+const RESTORE_OPTIONS = [{ value: "atomic", label: "atomic (one transaction)" }] as const;
 
 function Fields(props: {
   presenter: AdapterPresenter;

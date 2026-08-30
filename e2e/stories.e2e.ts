@@ -258,13 +258,13 @@ test.describe("admin stories", () => {
     // The suite runs against loopback engines, so this instance's list is empty; put a host that
     // matches nothing in it, save, and read it back.
     await deny.fill("198.51.100.7");
-    await page.getByRole("button", { name: "Save" }).last().click();
+    await page.getByRole("button", { name: "Save blocked hosts" }).click();
     await expect(page.getByText("netguard saved")).toBeVisible();
     await page.reload();
     await settle(page);
     await expect(page.getByLabel("Blocked hosts")).toHaveValue("198.51.100.7");
     await page.getByLabel("Blocked hosts").fill("");
-    await page.getByRole("button", { name: "Save" }).last().click();
+    await page.getByRole("button", { name: "Save blocked hosts" }).click();
     await expect(page.getByText("netguard saved")).toBeVisible();
     expect(issues).toStrictEqual([]);
   });

@@ -29,6 +29,11 @@ test.describe("the grid under a hand that never waits", () => {
     );
     await settle(page);
 
+    // The frames say the write-back of a *rejected* async memo is where it spins, and the grid is
+    // the only screen whose refreshable takes a query a person can make invalid.
+    await page.getByLabel("Filter column").selectOption({ index: 0 });
+    await page.getByLabel("Filter value").fill("not-a-number-at-all");
+    await page.getByRole("button", { name: "Add filter" }).click();
     for (let round = 0; round < ROUNDS; round += 1) {
       await page
         .locator("main thead button")
