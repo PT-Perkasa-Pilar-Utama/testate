@@ -52,6 +52,12 @@ export async function firstTable(adapterId: string): Promise<string> {
   return table;
 }
 
+/** The first table of an adapter, by engine, for a spec that only needs somewhere to work. */
+export async function firstTableOf(engine: string): Promise<{ id: string; table: string }> {
+  const adapter = await demoAdapter({ engine });
+  return { id: adapter.id, table: await firstTable(adapter.id) };
+}
+
 export async function demoTables(adapterId: string): Promise<string[]> {
   const context = await request.newContext({
     baseURL: `http://localhost:${API_PORT}/api/v1/`,

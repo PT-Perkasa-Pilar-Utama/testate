@@ -172,15 +172,20 @@ each with a test that fails when the fix is removed:
 inline error. Replacing it means a validation state per field in every dialog, and the crawler
 leans on native validation to fill forms; the gain did not look worth that.
 
-**Watch item, still open.** Solid's "Potential Infinite Loop Detected" has fired three times in
-about ten full browser runs, never in a crawl run on its own, and never twice in the same place
-until the third: the page was `/projects/demo/adapters/<mongo>/tables/customers`, the data grid.
-The crawler now records the page and five frames of the stack with every page error
-(`e2e/lib/crawl.ts`), so the next occurrence names the module instead of the symptom. Suspects
-read and cleared so far: `fkLink` (pure), the grid's table-change effect (its handler writes
-nothing its source reads), and the two SSE effects in `jobs.presenter.ts` and `checkouts.view.tsx`
-(the source value does not change when the list refreshes). Do not claim it fixed without a run
-that reproduces it first.
+**The reactive loop, and where it stands.** Solid's "Potential Infinite Loop Detected" fired three
+times in about ten full browser runs, always on the data grid, never in a crawl run on its own.
+`e2e/stress.e2e.ts` (project `stress`, `STRESS=1`) is the hunt: it drives the grid's sort, filter,
+paging and write switch twenty times over with no settle between clicks, which is the shape a
+crawler cannot make. It has never reproduced the loop.
+
+What did land: solid-js and @solidjs/web went from 2.0.0-rc.3 to rc.4, whose notes fix a case of
+"the flush loop spun forever" on a pending store read. That is the same subsystem as this
+diagnostic, and the stack always pointed inside the framework's async write-back rather than our
+code. Five full runs and four stress runs since the upgrade are clean. That is evidence, not proof:
+the loop was intermittent at roughly one run in three before, so five clean runs is worth about
+that much. If it returns, rc.4 also ships `node_modules/solid-js/skills/reactivity-diagnostics/
+SKILL.md`, which maps each diagnostic code to its repair, and the crawler already records the page
+and five stack frames.
 
 
 **The redesign (2026-08-30).** ADR 0002 records the decision; `docs/design/github.md` is the

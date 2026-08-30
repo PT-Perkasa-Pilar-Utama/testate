@@ -51,6 +51,8 @@ export default defineConfig({
     { name: "crawl", testMatch: /buttons\.e2e\.ts/, dependencies: ["adapter"] },
     // README screenshots, skipped unless SHOTS=1; it reads the seeded demo like any other spec.
     { name: "screens", testMatch: /screens\.e2e\.ts/, dependencies: ["state-api"] },
+    // The reactive-loop hunt: skipped unless STRESS=1, and it wants the data a full run leaves.
+    { name: "stress", testMatch: /stress\.e2e\.ts/, dependencies: ["state-api"] },
     // Boot stories spawn API processes of their own; run them last so they never starve a browser.
     {
       name: "boot",

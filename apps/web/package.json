@@ -9,9 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-rc.3",
+    "@solidjs/web": "2.0.0-rc.4",
     "@testate/shared": "workspace:*",
-    "solid-js": "2.0.0-rc.3",
+    "solid-js": "2.0.0-rc.4",
     "valibot": "1.4.2"
   },
   "devDependencies": {
