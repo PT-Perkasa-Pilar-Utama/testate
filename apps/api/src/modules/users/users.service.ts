@@ -31,7 +31,18 @@ export type UsersService = {
   ): Promise<void>;
   /** Creates the first admin from the environment when `users` is empty (22 §22.2 step 7). */
   bootstrap(username: string, password: string): Promise<boolean>;
+  /**
+   * Puts one existing admin back in reach of its owner (22 §22.2 step 8): a new temporary
+   * password, a forced change, no sessions left, and the lockout cleared. It never creates a user
+   * and never promotes one — the caller has already refused when the name is not an admin.
+   */
+  recoverAdmin(username: string, password: string): Promise<RecoveredAdmin>;
 };
+
+/** What the recovery did, or why it refused: the boot step turns a refusal into a config error. */
+export type RecoveredAdmin =
+  | { reset: true; username: string; sessions: number }
+  | { reset: false; reason: "unknown" | "not_admin" };
 
 export type UsersDeps = {
   repo: UsersRepository;
@@ -58,7 +69,7 @@ export function createUsersService(deps: UsersDeps): UsersService {
     action: string,
     user: UserRecord,
     meta: RequestMeta | undefined,
-    details: Record<string, string | boolean> = {}
+    details: Record<string, string | boolean | number> = {}
   ): void => {
     audit.record(
       meta === undefined
@@ -130,6 +141,15 @@ export function createUsersService(deps: UsersDeps): UsersService {
       repo.setPassword(id, await deps.password.hash(temporaryPassword), true, nowIso());
       deps.sessions.revokeAll(id);
       record(actor, "user.password_reset", user, meta);
+    },
+    async recoverAdmin(username, password) {
+      const user = repo.byUsername(username);
+      if (user === null) return { reset: false, reason: "unknown" };
+      if (user.role !== "admin") return { reset: false, reason: "not_admin" };
+      repo.setPassword(user.id, await deps.password.hash(password), true, nowIso());
+      const sessions = deps.sessions.revokeAll(user.id);
+      record(null, "user.password_reset", user, undefined, { recovery: true, sessions });
+      return { reset: true, username: user.username, sessions };
     },
     async bootstrap(username, password) {
       if (repo.count() > 0) return false;

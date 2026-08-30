@@ -151,6 +151,11 @@ new compose container has to be named in its `up --wait` list as well as in
 out of that list — `--wait` fails on a container that exits, even with code 0, which is why
 `minio-init` runs as its own `compose run --rm` step.
 
+**Password recovery:** an admin resets any account (`POST /users/:id/reset-password`); the last
+admin, which nobody can reset and nobody may delete or demote, recovers with
+`TESTATE_ADMIN_PASSWORD_RESET=true` at boot (22 §22.2 step 8). That step never creates or promotes
+an account — a name that is not an admin refuses the boot with exit 78.
+
 **Releasing:** `bun run bump-version <version>`, commit, tag `v<version>`. The tag runs the browser
 suite and the image build in CI; `deploy-image.yml` is still the manual step that slims the image
 and pushes it to ghcr.io, and it skips when that version is already published. The image carries

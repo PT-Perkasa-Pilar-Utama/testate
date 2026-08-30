@@ -11,7 +11,8 @@ Testate ships one prebuilt image that must serve under any sub-path, survive upg
 | API prefix | `${TESTATE_BASE_PATH}/api/v1`; the SPA reads the base from `<base href>` in the rewritten `index.html` | One variable drives assets, API, router, cookies |
 | Cookie path | `Path=${TESTATE_BASE_PATH}` | Two Testates on one host do not share cookies |
 | Own hostname | Boot warns and health reports `origin_shared` when `TESTATE_PUBLIC_URL`'s host equals a REST adapter's host | 07 §7.2 |
-| Boot order | keys → data dir → pre-migration copy → migrations → sealed sweep → base path rewrite → bootstrap admin → job recovery → retention sweep → dispatcher → listen | Each step can refuse before anything later runs |
+| Boot order | keys → data dir → pre-migration copy → migrations → sealed sweep → base path rewrite → bootstrap admin → admin password reset → job recovery → retention sweep → dispatcher → listen | Each step can refuse before anything later runs |
+| Admin password reset | `TESTATE_ADMIN_PASSWORD_RESET=true` with `TESTATE_ADMIN_PASSWORD` gives the account named by `TESTATE_ADMIN_USER` that password, forces a change, ends its sessions, and clears its lockout. It never creates or promotes an account: an unknown name, or a name that is not an admin, refuses the boot (exit 78). A framed banner names the user, never the password, and says to remove the flag | The last admin cannot reset itself, and no other account may delete or demote it (03 §3.4); whoever sets the variable already owns the volume |
 | Pre-migration copy | `metadata.db` copied to `${TESTATE_DATA_DIR}/run/metadata-<boot_id>.db` before migrations; the last three kept | Story 118: an upgrade can roll back |
 | Readiness | `/health/ready` returns 204 only after "listen"; `/health/live` from the first moment the process serves | Orchestrators can wait |
 | Shutdown | `SIGTERM`: stop accepting jobs, stop the HTTP listener after in-flight responses, ask running jobs to cancel at the next batch (SQL transactions roll back), wait up to 30 s, mark still-running jobs `interrupted`, close the database, exit 0 | PRD story 121 |
@@ -29,10 +30,11 @@ Testate ships one prebuilt image that must serve under any sub-path, survive upg
  5. sealed sweep; banner
  6. rewrite web assets -> run/web/                         delete first, then copy and replace placeholder
  7. bootstrap admin when users is empty                    refuse when TESTATE_ADMIN_PASSWORD is missing
- 8. jobs.recover()                                         interrupted jobs, HEAD unknown, pins, uploads
- 9. retention sweep (logs, stashes, diffs, history, imports, audit)
-10. start dispatcher; start retention timer (daily)
-11. listen on PORT; /health/ready -> 204; boot wide event with every step's counts
+ 8. reset the admin password when TESTATE_ADMIN_PASSWORD_RESET is set   banner; refuse on a bad name
+ 9. jobs.recover()                                         interrupted jobs, HEAD unknown, pins, uploads
+10. retention sweep (logs, stashes, diffs, history, imports, audit)
+11. start dispatcher; start retention timer (daily)
+12. listen on PORT; /health/ready -> 204; boot wide event with every step's counts
 ```
 
 Total budget: under 10 s on a warm volume (08 §8.3). Every refusal prints a framed message naming the step, the cause, and the fix, and exits with code 78 (configuration error).

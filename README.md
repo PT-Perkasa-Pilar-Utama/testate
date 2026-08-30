@@ -29,6 +29,11 @@ The image is `ghcr.io/pt-perkasa-pilar-utama/testate`, built from `deploy/Docker
 
 Sign in as `admin`. The first login forces a password change. Create users under **Users**; roles are `viewer` < `qa` < `admin`.
 
+Forgot a password? An admin resets any account to a temporary one under **Users**. If the last admin
+forgets its own, restart the container with `TESTATE_ADMIN_PASSWORD_RESET=true` and a new
+`TESTATE_ADMIN_PASSWORD`: that account gets it, must change it on the next login, and its sessions
+end. Remove the variable afterwards — while it is set, every restart resets that password again.
+
 Serve under a sub-path by setting `TESTATE_BASE_PATH=/testate`; `deploy/nginx.conf` shows the proxy block.
 
 ## Develop

@@ -15,6 +15,7 @@ All configuration enters through `lib/config`, parsed once at boot with a valibo
 | `TESTATE_SECRETS_ACCEPT_UNREADABLE` | bool, `false` | Declared-loss mode | `false` | `false` | `false` unless recovering |
 | `TESTATE_ADMIN_USER` | string, `admin` | Bootstrap admin when `users` is empty | `admin` | `admin` | set |
 | `TESTATE_ADMIN_PASSWORD` | string, required when `users` is empty | Bootstrap password, forced change | set | set | set once, then removable |
+| `TESTATE_ADMIN_PASSWORD_RESET` | bool, `false` | Gives `TESTATE_ADMIN_PASSWORD` to the admin named above and forces a change (22 §22.2) | `false` | `false` | `false` unless recovering |
 | `TESTATE_TRUST_PROXY` | bool, `false` | Honor `X-Forwarded-*` and `X-Request-Id` | `false` | `false` | `true` behind nginx |
 | `TESTATE_MAX_UPLOAD_MB` | int, `50` | Import and archive upload limit | 50 | 10 | 50 |
 | `TESTATE_JOB_CONCURRENCY` | int, `2` | Global job cap | 2 | 2 | 2 to 4 |
@@ -70,7 +71,7 @@ Development `.env` at the repository root adds `TESTATE_ENV=development`, `TESTA
 
 ## 11.4 Validation at boot
 
-Boot refuses to start, before any write, when: `TESTATE_SECRETS_ACTIVE_KEY` is missing, malformed, duplicated, longer than five keys, or cannot open stored sealed values (17 §17.5); `TESTATE_DATA_DIR` is not writable; `TESTATE_STORE=s3` without bucket and credentials; `TESTATE_ADMIN_PASSWORD` is missing while the `users` table is empty; `TESTATE_BASE_PATH` does not start with `/` or ends with `/` (except `/` itself). Every refusal names the variable and the fix.
+Boot refuses to start, before any write, when: `TESTATE_SECRETS_ACTIVE_KEY` is missing, malformed, duplicated, longer than five keys, or cannot open stored sealed values (17 §17.5); `TESTATE_DATA_DIR` is not writable; `TESTATE_STORE=s3` without bucket and credentials; `TESTATE_ADMIN_PASSWORD` is missing while the `users` table is empty or while `TESTATE_ADMIN_PASSWORD_RESET` is set; `TESTATE_ADMIN_USER` names nobody, or names an account that is not an admin, while that reset is set; `TESTATE_BASE_PATH` does not start with `/` or ends with `/` (except `/` itself). Every refusal names the variable and the fix.
 
 ## 11.5 Reset-state gating
 

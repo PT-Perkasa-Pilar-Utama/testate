@@ -8,6 +8,7 @@
 | Automation | Bearer token `tst_<32 random bytes, base64url>`, kind `standard` | Optional expiry | Admin revoke; tokens are independent of their creator |
 | AI agent | Bearer token of kind `agent`, role `viewer`, accepted only on `/api/v1/mcp` | Expiry required, default 90 days, maximum 365 | Admin revoke |
 | Bootstrap | `TESTATE_ADMIN_USER` and `TESTATE_ADMIN_PASSWORD` create the first admin when `users` is empty | First login forces a change | The environment values are ignored once a user exists |
+| Forgotten password | An admin resets any account to a temporary password; the last admin, which nobody can reset, recovers through `TESTATE_ADMIN_PASSWORD_RESET` at boot (22 §22.2) | Both force a change on the next login | Both end every session that account had |
 
 An `Actor` is `{ kind: "user" | "token"; id; role; projectIds: string[] | null; label }`. Middleware resolves it once per request and stores it on the Hono context; services receive it as an argument.
 

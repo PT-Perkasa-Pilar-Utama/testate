@@ -16,6 +16,7 @@ import {
   killDuringSnapshot,
   sealS3Credentials,
   seedProject,
+  signIn,
   waitIdle,
 } from "./lib/instance.ts";
 
@@ -162,4 +163,40 @@ test("@story-107 a job killed with the instance comes back interrupted", async (
   );
   expect(states.json.data.map((state) => state.status)).toContain("failed");
   expect(await second.stop()).toBe(0);
+});
+
+test("an admin locked out of its own instance recovers through the environment", async () => {
+  test.setTimeout(180_000);
+  const dir = bootDir("recovery");
+  const key = newKey();
+  const first = await bootApi(bootEnv(dir, key, 3107));
+  const session = await adminSession(first.base);
+  expect((await call(session, "GET", "auth/me")).status).toBe(200);
+  expect(await first.stop()).toBe(0);
+
+  // The operator sets the flag and restarts; the password in the environment takes over.
+  const recovered = await bootApi(
+    bootEnv(dir, key, 3107, {
+      TESTATE_ADMIN_PASSWORD: "recovered-password-1",
+      TESTATE_ADMIN_PASSWORD_RESET: "true",
+    })
+  );
+  expect(recovered.stderr()).toContain("TESTATE_ADMIN_PASSWORD_RESET");
+  expect(bootEvents(dir).at(-1)?.op.admin_password_reset).toBe(true);
+  // The session the admin had before the reset is gone with it.
+  expect((await call(session, "GET", "auth/me")).status).toBe(401);
+  const back = await signIn(recovered.base, "recovered-password-1");
+  expect(back.mustChangePassword).toBe(true);
+  expect(await recovered.stop()).toBe(0);
+
+  // A name that is no admin refuses the boot rather than minting one.
+  const refusal = await bootFails(
+    bootEnv(dir, key, 3107, {
+      TESTATE_ADMIN_USER: "nobody",
+      TESTATE_ADMIN_PASSWORD: "recovered-password-1",
+      TESTATE_ADMIN_PASSWORD_RESET: "true",
+    })
+  );
+  expect(refusal.code).toBe(78);
+  expect(refusal.stderr).toContain("no user named nobody");
 });

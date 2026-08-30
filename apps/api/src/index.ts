@@ -18,6 +18,7 @@ import {
   createRetention,
   preMigrationCopy,
   refuse,
+  resetAdminPassword,
   serve,
   sweepSealed,
 } from "./boot.ts";
@@ -151,6 +152,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     now,
   });
   const { bootstrapped, bootstrap } = await bootstrapAdmin(usersRepo.count(), users, config);
+  const adminReset = await resetAdminPassword(users, config);
   const netguard = createNetguard(config);
   const wiring = createEngineWiring(config, ring, db, netguard, projectsRepo);
   const settings = createSettingsService(
@@ -275,6 +277,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     pre_migration_copy: rollbackCopy !== null,
     reset_state_mounted: config.TESTATE_ENV !== "production",
     bootstrap_admin_created: bootstrapped,
+    admin_password_reset: adminReset,
     jobs_interrupted: recovery.interrupted,
     jobs_head_unknown: recovery.head_unknown,
     sealed_re_sealed: sealed.reSealed,

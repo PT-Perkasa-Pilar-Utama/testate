@@ -39,6 +39,8 @@ export const configSchema = v.object({
   TESTATE_SECRETS_ACCEPT_UNREADABLE: boolean,
   TESTATE_ADMIN_USER: v.optional(v.string(), "admin"),
   TESTATE_ADMIN_PASSWORD: v.optional(v.string()),
+  /** Recovery for a forgotten admin password (22 §22.2 step 8); remove it after the next login. */
+  TESTATE_ADMIN_PASSWORD_RESET: boolean,
   TESTATE_TRUST_PROXY: boolean,
   TESTATE_MAX_UPLOAD_MB: integer(50, 1, 4096),
   TESTATE_JOB_CONCURRENCY: integer(2, 1, 16),

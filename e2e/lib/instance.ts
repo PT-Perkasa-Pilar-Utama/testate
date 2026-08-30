@@ -236,3 +236,20 @@ export async function whileJobRuns(
   }
   return "the job never started";
 }
+
+export type SignedIn = { cookie: string; mustChangePassword: boolean };
+
+/** Signs in with a given password and reports whether the instance forces a change. */
+export async function signIn(base: string, password: string): Promise<SignedIn> {
+  const response = await fetch(`${base}/api/v1/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "X-Testate-Request": "1" },
+    body: JSON.stringify({ username: "admin", password }),
+  });
+  if (!response.ok) throw new Error(`sign in: ${response.status} ${await response.text()}`);
+  const body: { data: { must_change_password: boolean } } = await response.json();
+  return {
+    cookie: (response.headers.getSetCookie().at(0) ?? "").split(";")[0] ?? "",
+    mustChangePassword: body.data.must_change_password,
+  };
+}

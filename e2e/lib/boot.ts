@@ -136,6 +136,7 @@ export type BootEvent = {
     pre_migration_copy: boolean;
     jobs_interrupted: number;
     jobs_head_unknown: number;
+    admin_password_reset: boolean;
   };
 };
 

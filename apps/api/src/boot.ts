@@ -127,6 +127,41 @@ export async function bootstrapAdmin(
   return { bootstrapped: userCount === 0 ? await bootstrap() : false, bootstrap };
 }
 
+const RESET_FLAG = "TESTATE_ADMIN_PASSWORD_RESET";
+
+function refuseReset(variable: string, message: string): never {
+  throw new ConfigError([{ variable, message }]);
+}
+
+/**
+ * Step 8: `TESTATE_ADMIN_PASSWORD_RESET=true` puts one admin back in reach of its owner, for the
+ * instance whose last admin forgot its password — no other account can reset it, and the guard
+ * refuses to delete or demote it (03 §3.4). Whoever sets this already owns the volume, so it hands
+ * out no authority the environment did not already have. It never creates a user and never
+ * promotes one: a typo refuses the boot instead.
+ */
+export async function resetAdminPassword(users: UsersService, config: Config): Promise<boolean> {
+  if (!config.TESTATE_ADMIN_PASSWORD_RESET) return false;
+  const password = config.TESTATE_ADMIN_PASSWORD;
+  if (password === undefined) {
+    refuseReset("TESTATE_ADMIN_PASSWORD", `required by ${RESET_FLAG}`);
+  }
+  const username = config.TESTATE_ADMIN_USER;
+  const outcome = await users.recoverAdmin(username, password);
+  if (!outcome.reset) {
+    const message =
+      outcome.reason === "unknown" ? `no user named ${username}` : `${username} is not an admin`;
+    refuseReset("TESTATE_ADMIN_USER", message);
+  }
+  // The password never reaches the log or this banner; the operator already has it.
+  process.stderr.write(
+    `${RULE}\nThe password of ${outcome.username} was reset from the environment.\n` +
+      `Its ${outcome.sessions} session(s) ended and the next login must change it.\n` +
+      `Remove ${RESET_FLAG} now: while it is set, every restart resets that password again.\n${RULE}\n`
+  );
+  return true;
+}
+
 export type JobsRuntime = { jobs: JobsService; dispatcher: Dispatcher };
 
 /** The jobs runtime (spec 16): repository, event hub, dispatcher, service, and this build's runners. */
