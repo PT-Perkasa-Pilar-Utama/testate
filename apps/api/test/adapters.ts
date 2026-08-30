@@ -99,6 +99,8 @@ export type AdaptersHarness = {
   runtime: JobsHarness;
   /** Fake databases by name; the `shop` database starts with two tables. */
   databases: Map<string, FakeDatabase>;
+  /** Add a table here to have the next snapshot key it by row hash, as a table with no key is. */
+  rowHashTables: Set<string>;
   blobs: SwitchableBlobStore;
   states: StatesRepository;
   checkouts: CheckoutsRepository;
@@ -225,7 +227,8 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
   const dataDir = runtime.dataDir;
   const failCounters = { current: false };
   // The fake reads its options at call time, so a test can flip a failure on and off.
-  const fakeOptions: FakeEngineOptions = { databases, failCounters };
+  const rowHashTables = new Set<string>();
+  const fakeOptions: FakeEngineOptions = { databases, failCounters, rowHashTables };
   const engines = fakeRegistry(fakeOptions);
   const { requests, rest, hooks } = createTestIntegrations(
     accounts,
@@ -294,6 +297,7 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     blocked,
     runtime,
     databases,
+    rowHashTables,
     blobs,
     states,
     checkouts,

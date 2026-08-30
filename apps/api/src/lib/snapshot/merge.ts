@@ -11,6 +11,9 @@ function sign(left: string | number, right: string | number): number {
 
 /** Tuples compare element-wise: numbers numerically, everything else by code point (20 §20.3). */
 export function compareKeys(a: SortKey, b: SortKey): number {
+  // Two strategies have no common order. Coercing them to strings let the merge join miss every
+  // match and call identical rows both removed and added, so the caller must compare like with like.
+  if (a.by !== b.by) throw new Error(`cannot compare a ${a.by} key with a ${b.by} key`);
   if (a.by === "row-hash" || b.by === "row-hash") return sign(String(a.value), String(b.value));
   const length = Math.max(a.value.length, b.value.length);
   for (let index = 0; index < length; index += 1) {

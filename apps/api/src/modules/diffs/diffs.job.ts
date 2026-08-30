@@ -40,6 +40,16 @@ function schemaChanged(base: TableSide, target: TableSide): string[] | null {
   return changed.length === 0 ? null : changed.sort();
 }
 
+/**
+ * Adding or dropping a primary key changes how the rows are keyed, and rows keyed two different
+ * ways cannot be matched at all. Naming that beats a row diff made of nothing.
+ */
+function keyChanged(base: TableSide, target: TableSide): string | null {
+  return base.table.sort === target.table.sort
+    ? null
+    : `key changed: ${base.table.sort} to ${target.table.sort}`;
+}
+
 /** One table on both sides: equal blobs cost nothing; otherwise merge and store the diff blob. */
 async function diffTable(
   deps: DiffJobDeps,
@@ -58,6 +68,8 @@ async function diffTable(
     blob_hash: null,
     schema_changed: schemaChanged(base, target),
   };
+  const rekeyed = keyChanged(base, target);
+  if (rekeyed !== null) return { ...row, schema_changed: [rekeyed, ...(row.schema_changed ?? [])] };
   if (base.table.blob_hash === target.table.blob_hash) return row;
   const stats: MergeStats = { added: 0, removed: 0, changed: 0 };
   const merged = mergeRows(

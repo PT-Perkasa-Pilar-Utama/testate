@@ -26,6 +26,12 @@ async function drain(
   return { rows, stats };
 }
 
+test("comparing two key strategies is refused rather than guessed", () => {
+  expect(() =>
+    compareKeys({ by: "primary-key", value: [1] }, { by: "row-hash", value: "h" })
+  ).toThrow("cannot compare a primary-key key with a row-hash key");
+});
+
 describe("mergeRows", () => {
   test("yields removed, added, and changed rows in key order with the changed columns", async () => {
     const { rows, stats } = await drain(

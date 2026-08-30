@@ -3,6 +3,8 @@ import type { Introspection, JsonObject, ProbeResult, TableSchema } from "@testa
 import { jsonObjectSchema } from "@testate/shared";
 import * as v from "valibot";
 
+import { sha256 } from "../../password/index.ts";
+import { compareKeys } from "../../snapshot/merge.ts";
 import { computeFingerprint } from "../pure/fingerprint.ts";
 import { decodeOffsetCursor } from "../pure/page.ts";
 import { fakeImportRows, fakeWriteRows } from "./write.ts";
@@ -15,6 +17,7 @@ import type {
   EncodedRow,
   RowChunk,
   SnapshotManifest,
+  SortKey,
 } from "../types.ts";
 
 /** One in-memory database: rows per `schema.table`, keyed by the adapter's `database` name. */
@@ -27,6 +30,8 @@ export type FakeEngineOptions = {
   failCheckout?: "schema_drift" | "checkout_blocked" | "unreachable" | "lock_timeout";
   /** When set, checkouts report one failed counter until `repairCounters` runs. */
   failCounters?: { current: boolean };
+  /** Tables keyed by row hash rather than primary key, the way a table without a key is read. */
+  rowHashTables?: Set<string>;
 };
 
 const PROBE: Omit<ProbeResult, "version"> = {
@@ -118,11 +123,16 @@ function introspection(database: FakeDatabase): Introspection {
   return result;
 }
 
-function encode(rows: JsonObject[]): EncodedRow[] {
-  return rows.map((row) => ({
-    key: { by: "primary-key", value: [v.parse(v.union([v.number(), v.string()]), row["id"])] },
-    json: rowText(JSON.stringify(row)),
-  }));
+function encode(rows: JsonObject[], byRowHash: boolean): EncodedRow[] {
+  const keyed = rows.map((row) => {
+    const json = rowText(JSON.stringify(row));
+    const key: SortKey = byRowHash
+      ? { by: "row-hash", value: sha256(json) }
+      : { by: "primary-key", value: [v.parse(v.union([v.number(), v.string()]), row["id"])] };
+    return { key, json };
+  });
+  // Both readers hand the merge its rows in key order.
+  return keyed.sort((a, b) => compareKeys(a.key, b.key));
 }
 
 /** Map-backed engine for module tests (12 §12.9): snapshots read the map, checkouts replace it. */
@@ -147,6 +157,8 @@ export function createFakeEngine(opts: FakeEngineOptions): DbEngine {
     snapshot(conn) {
       const database = databaseOf(conn);
       const live = introspection(database);
+      const byRowHash = (table: { schema: string | null; name: string }): boolean =>
+        opts.rowHashTables?.has(tableKey(table)) ?? false;
       const manifest: SnapshotManifest = {
         introspection: live,
         fingerprint: live.fingerprint,
@@ -156,7 +168,7 @@ export function createFakeEngine(opts: FakeEngineOptions): DbEngine {
           ref: { schema: table.schema, name: table.name },
           rows: table.row_estimate,
           bytes: 0,
-          sort: "primary-key",
+          sort: byRowHash(table) ? "row-hash" : "primary-key",
           warnings: [],
         })),
         warnings: [],
@@ -165,7 +177,7 @@ export function createFakeEngine(opts: FakeEngineOptions): DbEngine {
         manifest: Promise.resolve(manifest),
         async *[Symbol.asyncIterator]() {
           for (const table of live.tables) {
-            const rows = encode(database.get(tableKey(table)) ?? []);
+            const rows = encode(database.get(tableKey(table)) ?? [], byRowHash(table));
             const chunk: RowChunk = {
               table: { schema: table.schema, name: table.name },
               rows,
@@ -247,7 +259,7 @@ export function createFakeEngine(opts: FakeEngineOptions): DbEngine {
     async *readTable(conn, table) {
       const database = databaseOf(conn);
       const found = [...database.keys()].find((key) => sameTable(schemaOf(key, []), table));
-      const rows = encode(found === undefined ? [] : (database.get(found) ?? []));
+      const rows = encode(found === undefined ? [] : (database.get(found) ?? []), false);
       yield { table, rows, bytes: 0 };
     },
     async pageRows(conn, query) {

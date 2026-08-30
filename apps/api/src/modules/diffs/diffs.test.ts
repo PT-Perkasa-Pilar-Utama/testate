@@ -137,6 +137,31 @@ describe("diffs", () => {
     expect((await h.diffs.list("shop", 10)).map((item) => item.id)).toEqual([diff.id]);
   });
 
+  it("a table keyed one way and then the other says so instead of inventing rows", async () => {
+    const h = await createHarness();
+    // What adding or dropping a primary key between two snapshots does to the same table.
+    h.harness.rowHashTables.add("public.customers");
+    const rekeyed = await manualState(h, "rekeyed");
+    const diff = await settled(
+      h,
+      await h.diffs.create(
+        h.harness.qa,
+        "shop",
+        "init",
+        { state_id: rekeyed },
+        undefined,
+        TEST_META
+      )
+    );
+    expect(diff.status).toBe("ready");
+    expect(
+      tablesOf(diff).map(
+        (table) =>
+          `${table.name}:${table.added}/${table.removed}/${table.changed}:${String(table.schema_changed)}`
+      )
+    ).toEqual(["customers:0/0/0:key changed: primary-key to row-hash", "orders:0/0/0:null"]);
+  });
+
   it("a live target takes a hidden diff state that never lists and dies with the diff", async () => {
     const h = await createHarness();
     h.harness.databases.get("shop")?.set("public.orders", []);
