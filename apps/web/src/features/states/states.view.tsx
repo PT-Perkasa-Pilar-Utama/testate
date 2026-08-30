@@ -4,7 +4,8 @@ import { For, Loading, Show } from "solid-js";
 import type { State, StateTreeNode } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
-import Button, { buttonClass } from "@/components/button.tsx";
+import Button from "@/components/button.tsx";
+import { Menu, MenuItem, MenuLink } from "@/components/menu.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Switch from "@/components/switch.tsx";
 import Tabs from "@/components/tabs.tsx";
@@ -55,18 +56,19 @@ function RowActions(props: {
   checkout: (state: State) => Promise<void>;
 }): JSX.Element {
   return (
-    <div class="flex flex-wrap justify-end gap-1">
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => void props.presenter.openDetail(props.state)}
+    <div class="flex items-center justify-end gap-1">
+      <Show
+        when={hasRole("qa")}
+        fallback={
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => void props.presenter.openDetail(props.state)}
+          >
+            Details
+          </Button>
+        }
       >
-        Details
-      </Button>
-      <a class={buttonClass("ghost", "sm")} href={props.presenter.archiveUrl(props.state)}>
-        Download
-      </a>
-      <Show when={hasRole("qa")}>
         <Button
           size="sm"
           variant="primary"
@@ -75,25 +77,28 @@ function RowActions(props: {
         >
           Check out
         </Button>
-        <Button size="sm" variant="secondary" onClick={() => props.presenter.openEdit(props.state)}>
-          Edit
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => void props.presenter.setProtected(props.state, !props.state.protected)}
-        >
-          {props.state.protected ? "Unprotect" : "Protect"}
-        </Button>
-        <Button
-          size="sm"
-          variant="destructive"
-          disabled={props.state.protected}
-          onClick={() => props.presenter.openDelete(props.state)}
-        >
-          Delete
-        </Button>
       </Show>
+      <Menu label={`Actions for ${props.state.name}`}>
+        <Show when={hasRole("qa")}>
+          <MenuItem onClick={() => void props.presenter.openDetail(props.state)}>Details</MenuItem>
+        </Show>
+        <MenuLink href={props.presenter.archiveUrl(props.state)}>Download</MenuLink>
+        <Show when={hasRole("qa")}>
+          <MenuItem onClick={() => props.presenter.openEdit(props.state)}>Edit</MenuItem>
+          <MenuItem
+            onClick={() => void props.presenter.setProtected(props.state, !props.state.protected)}
+          >
+            {props.state.protected ? "Unprotect" : "Protect"}
+          </MenuItem>
+          <MenuItem
+            danger
+            disabled={props.state.protected}
+            onClick={() => props.presenter.openDelete(props.state)}
+          >
+            Delete
+          </MenuItem>
+        </Show>
+      </Menu>
     </div>
   );
 }

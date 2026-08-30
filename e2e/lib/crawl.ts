@@ -188,6 +188,15 @@ async function afterClick(
 }
 
 /** Opens a project tab when one is named, then waits for the screen to settle. */
+/**
+ * Opens a row's overflow menu and answers with the row, so a spec can reach the actions that no
+ * longer sit in the row itself. <details> keeps them out of the DOM's reach until it is open.
+ */
+export async function rowMenu(row: Locator): Promise<Locator> {
+  await row.getByRole("group").click();
+  return row;
+}
+
 export async function openTab(page: Page, tab: string | undefined): Promise<void> {
   if (tab !== undefined) await page.getByRole("tab", { name: tab }).click();
   await settle(page);

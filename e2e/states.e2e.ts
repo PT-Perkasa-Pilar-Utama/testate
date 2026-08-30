@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { demoAdapter, firstTable } from "./lib/api.ts";
-import { settle, watch } from "./lib/crawl.ts";
+import { rowMenu, settle, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
@@ -37,17 +37,17 @@ test.describe("state stories", () => {
     await page.locator("dialog[open]").getByRole("button", { name: "Take" }).click();
     await expect(page.locator("dialog[open]").getByText(/exists|taken|conflict/i)).toBeVisible();
     await page.locator("dialog[open]").getByRole("button", { name: "Cancel" }).click();
-    await row.getByRole("button", { name: "Edit" }).click();
+    await (await rowMenu(row)).getByRole("button", { name: "Edit" }).click();
     await page.locator("dialog[open]").getByLabel("Name").fill(`${name}-renamed`);
     await page.locator("dialog[open]").getByRole("button", { name: "Save" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
     const renamed = page.locator("tr", { hasText: `${name}-renamed` });
     await expect(renamed).toBeVisible();
-    await renamed.getByRole("button", { name: "Protect" }).click();
+    await (await rowMenu(renamed)).getByRole("button", { name: "Protect" }).click();
     await expect(renamed.getByText("protected")).toBeVisible();
-    await expect(renamed.getByRole("button", { name: "Delete" })).toBeDisabled();
+    await expect((await rowMenu(renamed)).getByRole("button", { name: "Delete" })).toBeDisabled();
     await renamed.getByRole("button", { name: "Unprotect" }).click();
-    await expect(renamed.getByRole("button", { name: "Delete" })).toBeEnabled();
+    await expect((await rowMenu(renamed)).getByRole("button", { name: "Delete" })).toBeEnabled();
     const href = await renamed.getByRole("link", { name: "Download" }).getAttribute("href");
     const archive = await page.request.get(String(href));
     expect(archive.status()).toBe(200);
@@ -55,10 +55,10 @@ test.describe("state stories", () => {
     await page.getByRole("tab", { name: "Tree" }).click();
     await expect(page.locator("main li", { hasText: `${name}-renamed` }).last()).toBeVisible();
     await page.getByRole("tab", { name: "List" }).click();
-    await renamed.getByRole("button", { name: "Details" }).click();
+    await (await rowMenu(renamed)).getByRole("button", { name: "Details" }).click();
     await expect(page.locator("dialog[open]").getByText("primary-key").first()).toBeVisible();
     await page.locator("dialog[open]").getByText("Close", { exact: true }).click();
-    await renamed.getByRole("button", { name: "Delete" }).click();
+    await (await rowMenu(renamed)).getByRole("button", { name: "Delete" }).click();
     // One job per adapter (story 86): a parallel checkout or snapshot makes the first submit refuse.
     await expect(async () => {
       await page.locator("dialog[open]").getByRole("button", { name: "Delete state" }).click();
@@ -268,7 +268,7 @@ test.describe("state stories", () => {
     // Untouched adapters are not checkout rows: the preflight said so, the history stays honest.
     await expect(history).not.toContainText("shop-mongo");
     await page.getByRole("tab", { name: "States" }).click();
-    await row.getByRole("button", { name: "Delete" }).click();
+    await (await rowMenu(row)).getByRole("button", { name: "Delete" }).click();
     await expect(async () => {
       await page.locator("dialog[open]").getByRole("button", { name: "Delete state" }).click();
       await expect(page.locator("dialog[open]")).toHaveCount(0, { timeout: 3_000 });
