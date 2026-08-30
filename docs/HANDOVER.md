@@ -152,8 +152,9 @@ b9131cd test(e2e): cover the contract and agent stories over the API
 **In flight:** nothing. The tree was clean when this was written; `git status` should agree.
 
 **README:** it opens with what Testate does, one screenshot per capability, then the status, how to
-run it, the limits, then operating it. Password recovery sits under "Operating it" because you look
-for it after something goes wrong. The banner is `docs/assets/hero.svg`, 4:3 and light mode.
+run it, the limits, then operating it. Password recovery is not in it: it lives in the deployment
+plan, and the user cut it from the README as out of place. The banner is `docs/assets/hero.svg`,
+4:3 and light mode: users outside, Testate and the system under test inside one test server.
 
 **Worth knowing:** `.github/workflows/ci.yml` runs the fast gate (`complete-check`, then a boot and
 smoke) on every push. The browser suite and the image build are gated to pull requests, a `v*` tag,

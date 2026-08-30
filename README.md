@@ -108,17 +108,7 @@ with docker-slim by the manual **Deploy image** workflow. To publish: run
 `bun run bump-version <version>`, then run the workflow. It publishes `<version>` and `latest`, and
 skips a version that is already there.
 
-### Forgot a password
-
-An admin resets any account to a temporary password under **Users**. The owner must change it at the
-next login.
-
-Nobody can reset the last admin, so that one recovers through the environment. Restart the container
-with `TESTATE_ADMIN_PASSWORD_RESET=true` and a new `TESTATE_ADMIN_PASSWORD`. That account gets the
-password, must change it at the next login, and loses every session it had. Then remove the
-variable: while it is set, every restart resets that password again.
-
-Backups, upgrades, boot refusals and the rest live in the
+Backups, upgrades, a forgotten admin password, boot refusals and the rest live in the
 [deployment plan](docs/DEPLOYMENT_PLAN.md).
 
 ## Develop
