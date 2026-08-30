@@ -57,12 +57,14 @@ Project object:
 
 **Access.** `admin`.
 
-**Behavior.** For each database adapter: resolve the current init state; probe reachability; compare fingerprints. Action `restore` when reachable, sandbox, and no drift; `force` offered when drift; `skip` with `reason` in `read_only`, `unreachable`, `no_init_state`, `removed`. Files and REST adapters are listed with action `none` (story 14).
+**Behavior.** For each database adapter: resolve the current init state; probe reachability; compare fingerprints. Action `restore` when reachable, sandbox, and no drift; `force` offered when drift; `skip` with `reason` in `read_only`, `unreachable`, `no_init_state`, `removed`. Files and REST adapters are listed with action `none` (story 14). `affected` counts the rows the delete takes with the project, so the dialog can name them before it accepts the slug: the restore is not stashed, and every state goes with the project.
 
 **Output.** `200`
 
 ```json
 { "data": { "plan_id": "01J...", "expires_at": "...", "protected_states": 3,
+            "affected": { "adapters": 2, "states": 12, "protected_states": 3, "checkouts": 5,
+                          "diffs": 1, "import_runs": 4, "saved_queries": 2, "hooks": 1, "tokens": 1 },
             "adapters": [
               { "adapter_id": "01J...", "name": "orders-db", "engine": "postgres", "init_state_id": "01J...", "action": "restore", "drift": null },
               { "adapter_id": "01J...", "name": "legacy-db", "engine": "mysql", "action": "skip", "reason": "read_only", "drift": null } ] } }

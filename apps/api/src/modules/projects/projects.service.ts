@@ -6,7 +6,12 @@ import type { AdaptersService } from "../adapters/adapters.service.ts";
 import type { AuditService } from "../audit/audit.service.ts";
 import { idempotentRequest } from "../jobs/jobs.idempotency.ts";
 import type { EnqueueInput, JobsService } from "../jobs/jobs.service.ts";
-import type { ProjectPatch, ProjectsListQuery, ProjectsRepository } from "./projects.repository.ts";
+import type {
+  DeletionCounts,
+  ProjectPatch,
+  ProjectsListQuery,
+  ProjectsRepository,
+} from "./projects.repository.ts";
 
 export type AdapterSummary = {
   id: string;
@@ -42,6 +47,8 @@ export type DeletionPlan = {
   plan_id: string;
   expires_at: string;
   protected_states: number;
+  /** Everything the deletion takes with the project; the dialog names it before the slug is typed. */
+  affected: DeletionCounts;
   adapters: PlanAdapter[];
 };
 
@@ -216,10 +223,12 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
     async deletionPlan(slug) {
       const project = find(slug);
       const adapters = (await summaries(slug)).map(planFor);
+      const affected = repo.deletionCounts(project.id);
       const plan: StoredPlan = {
         plan_id: Bun.randomUUIDv7(),
         expires_at: new Date(deps.now().getTime() + PLAN_TTL_MS).toISOString(),
-        protected_states: repo.protectedStates(project.id),
+        protected_states: affected.protected_states,
+        affected,
         adapters,
         slug,
       };
@@ -229,6 +238,7 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
         plan_id: plan.plan_id,
         expires_at: plan.expires_at,
         protected_states: plan.protected_states,
+        affected,
         adapters,
       };
     },

@@ -55,6 +55,17 @@ export const DELETION_PLAN_MOCK = {
   plan_id: PLAN_ID,
   expires_at: "2026-08-28T08:15:00.000Z",
   protected_states: 3,
+  affected: {
+    adapters: 2,
+    states: 12,
+    protected_states: 3,
+    checkouts: 5,
+    diffs: 1,
+    import_runs: 4,
+    saved_queries: 2,
+    hooks: 1,
+    tokens: 1,
+  },
   adapters: [
     {
       adapter_id: ADAPTER_ID,

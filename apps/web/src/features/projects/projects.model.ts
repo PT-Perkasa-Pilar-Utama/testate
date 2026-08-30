@@ -6,10 +6,25 @@ import { apiClient } from "@/lib/api-client.ts";
 
 const path = (slug: string): string => `/projects/${encodeURIComponent(slug)}`;
 
+const affectedSchema = v.object({
+  adapters: v.number(),
+  states: v.number(),
+  protected_states: v.number(),
+  checkouts: v.number(),
+  diffs: v.number(),
+  import_runs: v.number(),
+  saved_queries: v.number(),
+  hooks: v.number(),
+  tokens: v.number(),
+});
+
+export type DeletionAffected = v.InferOutput<typeof affectedSchema>;
+
 export const deletionPlanSchema = v.object({
   plan_id: idSchema,
   expires_at: v.string(),
   protected_states: v.number(),
+  affected: affectedSchema,
   adapters: v.array(
     v.object({
       adapter_id: idSchema,

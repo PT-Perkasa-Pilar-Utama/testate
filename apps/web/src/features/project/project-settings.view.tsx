@@ -8,7 +8,40 @@ import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
+import type { DeletionAffected } from "../projects/projects.model.ts";
 import type { ProjectPresenter } from "./project.presenter.ts";
+
+/** What the delete takes with it, in the order a reader cares about; zeroes stay out of the way. */
+const AFFECTED_LABELS: [keyof DeletionAffected, string][] = [
+  ["adapters", "adapter"],
+  ["states", "state"],
+  ["protected_states", "of them protected"],
+  ["checkouts", "checkout"],
+  ["diffs", "diff"],
+  ["import_runs", "import run"],
+  ["saved_queries", "saved query"],
+  ["hooks", "hook"],
+  ["tokens", "token scoped to this project"],
+];
+
+function plural(count: number, label: string): string {
+  const many = label.endsWith("y") ? `${label.slice(0, -1)}ies` : `${label}s`;
+  return `${count} ${count === 1 || label.startsWith("of them") ? label : many}`;
+}
+
+export function AffectedList(props: { affected: DeletionAffected }): JSX.Element {
+  const rows = (): string[] =>
+    AFFECTED_LABELS.filter(([key]) => props.affected[key] > 0).map(([key, label]) =>
+      plural(props.affected[key], label)
+    );
+  return (
+    <Show when={rows().length > 0} fallback={<p class="text-sm">The project holds nothing yet.</p>}>
+      <ul class="grid gap-1 text-sm">
+        <For each={rows()}>{(row) => <li>{row} will be deleted</li>}</For>
+      </ul>
+    </Show>
+  );
+}
 
 export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element {
   const onSubmit = (event: SubmitEvent): void => {
@@ -87,14 +120,17 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
           open
           onClose={() => props.presenter.closeDelete()}
           title={`Delete ${props.slug}`}
-          description="Every database adapter returns to its init state first. Protected states are removed with the project."
+          description="This cannot be undone. Read what goes with the project, then type its slug."
           size="lg"
         >
           <form class="grid gap-4" onSubmit={onSubmit}>
             <Banner variant="alert">
-              {plan().protected_states} protected state(s) will be deleted. The plan expires at{" "}
+              Every writable database below returns to its init state. That restore is not stashed:
+              anything the databases hold now, and every state that could bring it back, is gone.
+              Download the archive of a state you still want before you delete. The plan expires at{" "}
               {plan().expires_at}.
             </Banner>
+            <AffectedList affected={plan().affected} />
             <Table>
               <thead>
                 <tr>

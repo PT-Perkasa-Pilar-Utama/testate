@@ -20,6 +20,7 @@ type Harness = {
   advance: (ms: number) => void;
   audit: Awaited<ReturnType<typeof createAccounts>>["audit"];
   repo: Awaited<ReturnType<typeof createAccounts>>["projectsRepo"];
+  db: Awaited<ReturnType<typeof createAccounts>>["db"];
 };
 
 const LIST = { limit: 50, sort: "name", order: "asc" } as const;
@@ -63,6 +64,7 @@ async function setup(): Promise<Harness> {
     advance: accounts.advance,
     audit: accounts.audit,
     repo: accounts.projectsRepo,
+    db: accounts.db,
   };
 }
 
@@ -154,6 +156,29 @@ describe("projects", () => {
     expect(overview.adapters.length).toBeGreaterThan(0);
     expect(overview.banner).toBeNull();
     expect((await projects.head("shop")).status).toBe("none");
+  });
+
+  it("counts what the deletion takes with the project", async () => {
+    const { projects, qa, admin, db } = await setup();
+    const project = await projects.create(qa, { slug: "shop", name: "Shop" }, TEST_META);
+    const empty = await projects.deletionPlan("shop");
+    expect(empty.affected).toMatchObject({ states: 0, protected_states: 0, checkouts: 0 });
+
+    for (const [id, name, isProtected] of [
+      ["01a0-state-1", "init", 1],
+      ["01a0-state-2", "nightly", 0],
+    ] as const) {
+      db.query(
+        `INSERT INTO states (id, project_id, name, kind, status, protected, job_id,
+           actor_user_id, created_at, updated_at)
+         VALUES (?, ?, ?, 'manual', 'ready', ?, '', ?, '2026-01-01', '2026-01-01')`
+      ).run(id, project.id, name, isProtected, admin.id);
+    }
+    const plan = await projects.deletionPlan("shop");
+    // The dialog says both numbers: everything that goes, and how much of it is protected.
+    expect(plan.affected.states).toBe(2);
+    expect(plan.affected.protected_states).toBe(1);
+    expect(plan.protected_states).toBe(1);
   });
 
   it("issues a deletion plan that expires after 15 minutes", async () => {

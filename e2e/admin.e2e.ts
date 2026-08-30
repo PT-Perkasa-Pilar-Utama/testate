@@ -66,7 +66,10 @@ test.describe("admin gap stories", () => {
     await expect(page.getByText(/% used/)).toBeVisible();
     await page.getByRole("button", { name: "Delete" }).click();
     const plan = page.locator("dialog[open]");
-    await expect(plan.getByText(/protected state\(s\) will be deleted/)).toBeVisible();
+    // The modal says what goes before it takes the slug: the restore, and the rows behind it.
+    await expect(plan.getByText(/returns to its init state/)).toBeVisible();
+    await expect(plan.getByText(/not stashed/)).toBeVisible();
+    await expect(plan.getByText(/The project holds nothing yet\.|will be deleted/)).toBeVisible();
     const confirm = plan.getByRole("button", { name: "Return to init and delete" });
     await expect(confirm).toBeDisabled();
     await plan.getByLabel("Type the slug to confirm").fill(`gone-${STAMP}`);

@@ -62,6 +62,21 @@ export type ProjectsRepository = {
   usedBytes(projectId: string): number;
   instanceUsedBytes(): number;
   protectedStates(projectId: string): number;
+  /** What a deletion takes with the project, for the confirmation dialog (04 §4.8). */
+  deletionCounts(projectId: string): DeletionCounts;
+};
+
+/** Rows that go with the project: everything cascades from it, tokens are revoked by the job. */
+export type DeletionCounts = {
+  adapters: number;
+  states: number;
+  protected_states: number;
+  checkouts: number;
+  diffs: number;
+  import_runs: number;
+  saved_queries: number;
+  hooks: number;
+  tokens: number;
 };
 
 const SELECT = `SELECT p.*, s.name AS head_state_name
@@ -179,5 +194,26 @@ export function createProjectsRepository(db: MetadataDb): ProjectsRepository {
     instanceUsedBytes: () => sum("SELECT COALESCE(SUM(size_bytes), 0) AS n FROM states"),
     protectedStates: (projectId) =>
       sum("SELECT COUNT(*) AS n FROM states WHERE project_id = ? AND protected = 1", projectId),
+    deletionCounts: (projectId) => ({
+      adapters: sum("SELECT COUNT(*) AS n FROM adapters WHERE project_id = ?", projectId),
+      states: sum("SELECT COUNT(*) AS n FROM states WHERE project_id = ?", projectId),
+      protected_states: sum(
+        "SELECT COUNT(*) AS n FROM states WHERE project_id = ? AND protected = 1",
+        projectId
+      ),
+      checkouts: sum("SELECT COUNT(*) AS n FROM checkouts WHERE project_id = ?", projectId),
+      diffs: sum("SELECT COUNT(*) AS n FROM diffs WHERE project_id = ?", projectId),
+      import_runs: sum("SELECT COUNT(*) AS n FROM import_runs WHERE project_id = ?", projectId),
+      saved_queries: sum(
+        `SELECT COUNT(*) AS n FROM saved_queries q
+           JOIN adapters a ON a.id = q.adapter_id WHERE a.project_id = ?`,
+        projectId
+      ),
+      hooks: sum("SELECT COUNT(*) AS n FROM hooks WHERE project_id = ?", projectId),
+      tokens: sum(
+        "SELECT COUNT(*) AS n FROM api_tokens WHERE revoked_at IS NULL AND project_ids LIKE ?",
+        `%"${projectId}"%`
+      ),
+    }),
   };
 }
