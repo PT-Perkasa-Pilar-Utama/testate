@@ -152,13 +152,30 @@ b9131cd test(e2e): cover the contract and agent stories over the API
 **In flight:** nothing. The tree was clean when this was written; `git status` should agree.
 
 **The review and what came out of it (2026-08-30).** Four two-agent teams, reports in
-`docs/review/`: 48 findings, 37 confirmed, 5 refuted. Fixed so far: the unswallowed promise that
-ended the process on any interrupted job (three engines, six sites), the diff that invented rows
-when the key strategy changed, the health check that never probed the store, the missing constraint
-deferral, `origin_shared` never being computed, the boot refusals that crashed instead, and the
-materialized views a restore left stale. CI now runs the engine contract suites and treats a
-skipped suite as a failure. Still open: the UI/UX list (27 findings, GitHub is the target), the
-netguard policy that can drift from what is enforced, and the smaller items in each report.
+`docs/review/`: 48 findings, 37 confirmed, 5 refuted. Every confirmed blocker and major is fixed,
+each with a test that fails when the fix is removed:
+
+| Fixed | Where |
+| --- | --- |
+| Any interrupted job ended the process (six unswallowed promises) | three engines, `runs.test.ts` |
+| The diff invented rows when the key strategy changed | `merge.ts`, `diffs.job.ts` |
+| Health never probed the snapshot store | `ops.service.ts` |
+| A restore never deferred constraints, or refreshed matviews | `postgres/restore.ts` |
+| `origin_shared` was the literal false | `ops.service.ts`, `wiring.store.ts` |
+| A bad data dir or migration crashed instead of refusing | `boot.ts` |
+| A state reset left the live policy behind | `ops.reset.ts` |
+| The engine contract suites ran nowhere | `ci.yml`, `scripts/contract.ts` |
+| Nine screens, one voice: progress sentences, dates, crumbs, dialogs, empty states, a row menu | `apps/web` |
+| Audit filters, storage paging, a screen for the deny list | `apps/web` |
+
+**Left on purpose:** required fields still use the browser's own validation bubble rather than an
+inline error. Replacing it means a validation state per field in every dialog, and the crawler
+leans on native validation to fill forms; the gain did not look worth that.
+
+**Watch item:** one crawl run logged Solid's "Potential Infinite Loop Detected" on a screen the
+crawler had never reached before (`/account`, newly routed). Three runs since, including a crawl
+on its own, are clean. If it comes back, start at `account.presenter.ts`.
+
 
 **The UI target is GitHub.** The user said so on 2026-08-30, reading the UI/UX review. Reach for
 GitHub patterns before inventing one: a neutral surface with a single accent, borders rather than
