@@ -1,8 +1,104 @@
 @import "tailwindcss";
 @import "@cloudflare/kumo/styles/tailwind";
 
+/*
+ * GitHub's design language on Kumo's tokens (ADR 0002). The values come from
+ * docs/design/github.md; the four places that specification contradicts itself are resolved in the
+ * ADR, not here. This block sits after the Kumo import on purpose: the cascade lands on our values
+ * and no component or view has to learn a new class name.
+ */
+:root {
+  color-scheme: dark;
+
+  /* Two surfaces, as the specification asks, plus one for hover and row striping. */
+  --color-kumo-canvas: #000000;
+  --color-kumo-base: #000000;
+  --color-kumo-elevated: #0d1117;
+  --color-kumo-recessed: #010409;
+  --color-kumo-tint: #161b22;
+  --color-kumo-fill: #161b22;
+  --color-kumo-fill-hover: #21262d;
+  --color-kumo-control: #0d1117;
+  --color-kumo-overlay: #010409;
+  --color-kumo-interact: #30363d;
+
+  /* The 1px ring inside the specification's card shadow, which is what its border really is. */
+  --color-kumo-line: rgba(209, 217, 224, 0.25);
+  --color-kumo-hairline: rgba(209, 217, 224, 0.15);
+
+  /* Cyan is what you can act on. Everything on it is near-black: white on cyan fails AA. */
+  --color-kumo-contrast: #8dd6ff;
+  --color-kumo-brand: #8dd6ff;
+  --color-kumo-brand-hover: #b6e3ff;
+  --color-kumo-focus: #8dd6ff;
+
+  /* Status. The specification carries none, and a job outcome has to read as one. */
+  --color-kumo-success: #3fb950;
+  --color-kumo-success-tint: #0f2f18;
+  --color-kumo-warning: #d29922;
+  --color-kumo-warning-tint: #2e2306;
+  --color-kumo-danger: #f85149;
+  --color-kumo-danger-tint: #3d1315;
+  --color-kumo-info: #58a6ff;
+  --color-kumo-info-tint: #0d2237;
+
+  --color-kumo-badge-neutral: #21262d;
+  --color-kumo-badge-inverted: #8dd6ff;
+  --color-kumo-badge-blue: #0d2237;
+  --color-kumo-badge-green: #0f2f18;
+  --color-kumo-badge-orange: #2e2306;
+  --color-kumo-badge-red: #3d1315;
+  --color-kumo-badge-purple: #221b3d;
+  --color-kumo-badge-teal: #0c2b2b;
+
+  --color-kumo-shadow-edge: rgba(209, 217, 224, 0.25);
+  --color-kumo-shadow-drop: rgba(1, 4, 9, 0.85);
+
+  /* White is what you read; #8b949e is what you skim. Black on black is unreadable (ADR 0002). */
+  --text-color-kumo-default: #ffffff;
+  --text-color-kumo-strong: #ffffff;
+  --text-color-kumo-subtle: #8b949e;
+  --text-color-kumo-placeholder: #6e7681;
+  --text-color-kumo-inactive: #6e7681;
+  --text-color-kumo-inverse: #111111;
+  --text-color-kumo-link: #8dd6ff;
+  --text-color-kumo-brand: #8dd6ff;
+  --text-color-kumo-success: #3fb950;
+  --text-color-kumo-warning: #d29922;
+  --text-color-kumo-danger: #f85149;
+  --text-color-kumo-info: #58a6ff;
+  --text-color-kumo-badge-inverted: #111111;
+  --text-color-kumo-badge-neutral-subtle: #8b949e;
+
+  /*
+   * Mona Sans is not fetched at runtime: the README promises nothing leaves your network, and a
+   * font CDN would break that on every load. Vendor the woff2 to turn this on (SIL OFL).
+   */
+  --font-sans:
+    "Mona Sans", MonaSansFallback, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: "Mona Sans Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+
+  /* 6px and 8px, the two radii GitHub actually uses on controls and cards. */
+  --radius-sm: 6px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+}
+
 html,
 body,
 #root {
   height: 100%;
+}
+
+/* 80ms is the specification's fast tier, and the only one an internal tool needs. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
