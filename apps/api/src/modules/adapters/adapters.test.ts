@@ -127,6 +127,18 @@ describe("adapters", () => {
     ).rejects.toMatchObject({ code: "HOST_BLOCKED" });
   });
 
+  it("warns when another adapter already tracks the same database", async () => {
+    const { adapters, qa } = await createAdaptersHarness();
+    // A fresh target is nobody else's business.
+    expect((await adapters.testDraft("shop", PG)).warnings).toStrictEqual([]);
+    await adapters.create(qa, "shop", { ...PG, name: "shop-db" }, TEST_META);
+
+    // The same database again, under any name: two adapters on one target do not serialise.
+    const again = await adapters.testDraft("shop", { ...PG, name: "second-look" });
+    expect(again.warnings.map((warning) => warning.code)).toStrictEqual(["target_shared"]);
+    expect(again.warnings[0]?.message).toContain("shop/shop-db");
+  });
+
   it("lists by project with filters and hides other projects", async () => {
     const { adapters, qa } = await createAdaptersHarness();
     await adapters.create(qa, "shop", PG, TEST_META);

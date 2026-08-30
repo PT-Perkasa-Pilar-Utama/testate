@@ -56,6 +56,12 @@ adapter at `host.docker.internal` (the compose file carries the line, commented 
 database listen on that interface. Cannot reach it, cannot add it — and you are back to the problem
 above.
 
+Testate also has no idea who a state belongs to. Two testers sharing one database share everything:
+either can reset it, and the other's work goes without a warning. Worse is two projects pointing at
+the same database — Testate sees two unrelated adapters, so their jobs are not kept apart and each
+has its own idea of the starting point. Give a database one project and one tester at a time. When
+you point an adapter at a database another project already tracks, the connection test says so.
+
 Finally, Testate resets databases and nothing else. Caches, queues, and whatever a running service
 holds in memory are left alone, so a service can go on serving rows the database no longer has.
 Attach a saved request to the `before_checkout` and `after_checkout` hooks to pause a service and

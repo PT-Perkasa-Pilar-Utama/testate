@@ -35,6 +35,11 @@ export function describeOutcome(outcome: ProbeOutcome): string {
   return `${outcome.dialect} ${outcome.version} · ${outcome.table_count} tables · ${outcome.strategy.emptyMode} restore · ${outcome.read_only_enforcement} read-only`;
 }
 
+/** The probe's warnings, one line each; a shared database is the one that costs a tester's work. */
+export function outcomeWarnings(outcome: ProbeOutcome): string[] {
+  return outcome.warnings.map((warning) => warning.message);
+}
+
 function messageOf(cause: unknown, fallback: string): string {
   return cause instanceof Error ? cause.message : fallback;
 }

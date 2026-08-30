@@ -27,6 +27,7 @@ import {
   purposeOf,
   readonlySecretsOf,
   refusal,
+  sharedTargetWarning,
   toPublic,
 } from "./adapters.helpers.ts";
 import { applyPatch } from "./adapters.patch.ts";
@@ -176,11 +177,14 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
     },
     async testDraft(slug, draft) {
       projectOf(slug);
-      return probe(
-        draft.engine,
-        validateConfig(draft.engine, draft.kind, draft.config, draft.secrets),
-        draft.secrets
-      );
+      const validated = validateConfig(draft.engine, draft.kind, draft.config, draft.secrets);
+      const outcome = await probe(draft.engine, validated, draft.secrets);
+      // Two adapters on one database do not see each other: their jobs are not serialised, and a
+      // reset through one rewinds the other's work. Say so while the operator can still stop.
+      const shared = repo.sharingTarget(validated.targetHash);
+      return shared.length === 0
+        ? outcome
+        : { ...outcome, warnings: [...outcome.warnings, sharedTargetWarning(shared)] };
     },
     async create(actor, slug, draft, meta) {
       const project = projectOf(slug);

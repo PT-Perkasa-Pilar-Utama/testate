@@ -12,7 +12,7 @@ import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { ENGINE_OPTIONS } from "./adapters.fields.ts";
 import type { Field } from "./adapters.fields.ts";
-import { createAdaptersPresenter, describeOutcome } from "./adapters.presenter.ts";
+import { createAdaptersPresenter, describeOutcome, outcomeWarnings } from "./adapters.presenter.ts";
 import type { AdaptersPresenter } from "./adapters.presenter.ts";
 
 const STATUS_VARIANT = { ok: "success", error: "error", disabled: "secondary" } as const;
@@ -94,7 +94,14 @@ function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Element {
           </For>
         </div>
         <Show when={props.presenter.outcome()}>
-          {(outcome) => <Banner variant="default">{describeOutcome(outcome())}</Banner>}
+          {(outcome) => (
+            <>
+              <Banner variant="default">{describeOutcome(outcome())}</Banner>
+              <For each={outcomeWarnings(outcome())}>
+                {(warning) => <Banner variant="alert">{warning}</Banner>}
+              </For>
+            </>
+          )}
         </Show>
         <Show when={props.presenter.error()}>
           {(message) => <Banner variant="error">{message()}</Banner>}

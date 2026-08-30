@@ -47,6 +47,8 @@ test.describe("qa stories", () => {
     await dialog.getByLabel("Password").fill("testate");
     await dialog.getByRole("button", { name: "Test connection" }).click();
     await expect(dialog.getByText(/postgres 1\d/)).toBeVisible({ timeout: 15_000 });
+    // The seeded adapter already tracks this database, and two on one target collide.
+    await expect(dialog.getByText(/already tracks this database/)).toBeVisible();
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
     await expect(page.getByRole("link", { name: `pg-${STAMP}` })).toBeVisible();

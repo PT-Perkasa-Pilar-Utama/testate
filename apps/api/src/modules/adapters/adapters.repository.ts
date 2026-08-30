@@ -104,12 +104,21 @@ export type AdaptersFilter = {
   status?: Adapter["status"];
 };
 
+/** One adapter that already tracks a target, named the way an operator recognises it. */
+export type TargetShare = { project_slug: string; name: string };
+
+const targetShare = v.object({ project_slug: v.string(), name: v.string() });
+const SHARING = `SELECT p.slug AS project_slug, a.name FROM adapters a
+  JOIN projects p ON p.id = a.project_id WHERE a.target_hash = ? ORDER BY p.slug, a.name`;
+
 export type AdaptersRepository = {
   list(projectId: string, filter: AdaptersFilter): AdapterRecord[];
   /** Every adapter of every project, for instance-wide policy rechecks (16 §16.2). */
   all(): AdapterRecord[];
   byId(id: string): AdapterRecord | null;
   byName(projectId: string, name: string): AdapterRecord | null;
+  /** Adapters anywhere that already point at this target; two testers on one database collide. */
+  sharingTarget(targetHash: string): TargetShare[];
   insert(adapter: NewAdapter): AdapterRecord;
   updateConfig(id: string, patch: AdapterConfigPatch, at: string): void;
   setMode(id: string, mode: AdapterMode, at: string): void;
@@ -231,6 +240,7 @@ export function createAdaptersRepository(db: MetadataDb): AdaptersRepository {
         .map(toRecord),
     byId: (id) => one("id = ?", id),
     byName: (projectId, name) => one("project_id = ? AND name = ?", projectId, name),
+    sharingTarget: (targetHash) => v.parse(v.array(targetShare), db.query(SHARING).all(targetHash)),
     insert(adapter) {
       db.query(
         `INSERT INTO adapters (id, project_id, kind, engine, name, mode, config_public, config_sealed,
