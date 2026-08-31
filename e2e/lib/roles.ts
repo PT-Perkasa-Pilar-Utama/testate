@@ -32,7 +32,6 @@ export const SCREENS: { path: string; role: Role; nav: string | null; title: str
   { path: "/tools", role: "viewer", nav: "Tools", title: "Tools" },
   // Reachable from the identity line at the foot of the sidebar, not from the nav list.
   { path: "/account", role: "viewer", nav: null, title: "Account" },
-  { path: "/health", role: "viewer", nav: null, title: "Health" },
   { path: "/audit", role: "admin", nav: "Audit", title: "Audit log" },
   { path: "/users", role: "admin", nav: "Users", title: "Users" },
   { path: "/tokens", role: "admin", nav: "Tokens", title: "API tokens" },

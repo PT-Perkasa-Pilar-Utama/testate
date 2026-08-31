@@ -75,12 +75,16 @@ export async function demoTables(adapterId: string): Promise<string[]> {
   return body.data.tables.map((t) => (t.schema === null ? t.name : `${t.schema}.${t.name}`));
 }
 
-/** The sub-screens an adapter offers: query/policies/grid for databases, files for storage. */
-export async function adapterScreens(adapter: AdapterRow): Promise<string[]> {
+/**
+ * The sub-screens an adapter offers: query/grid for databases, files for storage, and policies for
+ * an admin only. Masking rules moved behind `admin` in the beta rework, so a qa or viewer caller
+ * asking for that path would be testing the refusal screen, not the screen.
+ */
+export async function adapterScreens(adapter: AdapterRow, role: Role): Promise<string[]> {
   const base = `/projects/demo/adapters/${adapter.id}`;
   if (adapter.kind === "storage") return [`${base}/files`];
   const paths = [`${base}/query`];
-  if (adapter.tier === "tabular") paths.push(`${base}/policies`);
+  if (adapter.tier === "tabular" && role === "admin") paths.push(`${base}/policies`);
   const [table] = await demoTables(adapter.id);
   if (table !== undefined) paths.push(`${base}/tables/${encodeURIComponent(table)}`);
   return paths;

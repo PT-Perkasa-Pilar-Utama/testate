@@ -12,7 +12,7 @@ import { ROLES, SCREENS, allows, statePath } from "./lib/roles.ts";
 async function screensFor(role: (typeof ROLES)[number]): Promise<string[]> {
   const paths = SCREENS.filter((s) => allows(role, s.role)).map((s) => s.path);
   for (const adapter of await demoAdapters()) {
-    paths.push(`/projects/demo/adapters/${adapter.id}`, ...(await adapterScreens(adapter)));
+    paths.push(`/projects/demo/adapters/${adapter.id}`, ...(await adapterScreens(adapter, role)));
   }
   return paths;
 }
