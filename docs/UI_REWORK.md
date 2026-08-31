@@ -42,7 +42,7 @@ dry run looks like success.
 | Diffs | Keep, Engineer only | 2,116 lines, self-contained. Testers reset; engineers ask what changed. |
 | Storage files | Keep | Cutting it also kills "import from a storage adapter", one of three import sources. |
 | Column policies | Keep the engine, hide the screen | Load-bearing, see below. |
-| Tools page | Cut the page, keep the service | `tools.service.ts` feeds row generators and import transforms. |
+| Tools page | **Kept** (the plan said cut) | The service is load-bearing either way, and the page is three PRD stories (131-133) of working hash, secret and UUID generation a tester actually reaches for. Cutting it would have removed a covered feature to save nothing. Reversing this is one route, one nav entry, one view, one spec row. |
 | Query history | Cut | Serves none of the three people. |
 | Health screen | Fold into Settings | Nothing links to it. You must type the URL. |
 | Everything else | Keep | Projects, adapters, states, grid, query, imports, jobs, users, tokens, settings, audit, account. |
@@ -96,12 +96,36 @@ tab cannot be shared as a link.
 | 1. Cuts | done | 3,366 lines out; `/hooks` 404s; no `hook` or `rest` table survives a fresh boot |
 | 2. Navigation | done | project opens on States; `?tab=` survives a reload; health folded into Settings |
 | 3. Export gap | done | 2,502 of 2,502 rows exported against a live Postgres, where the old path gave 500 |
-| 4. Components | in progress | 67 icons, `EmptyState`, the states timeline; then every screen |
-| 5. E2E | pending | the suite is knowingly red until phase 4 lands |
+| 4. Components | done | 67 icons, `EmptyState`, and every screen on the new tokens; `bun run check:classes` gates it |
+| 5. E2E | done | the suite is green again, 144/144 stories, and the specs read the screens as they are |
+
+The one deviation from the decisions above is the Tools page, kept rather than cut; the row says why.
+
+## What the E2E repair found
+
+Rewriting the specs against the new screens caught four things the redesign broke and nobody had
+noticed, because a spec that cannot find a control fails loudly and a screen that quietly drops a
+field does not.
+
+| Regression | Where | Fix |
+| --- | --- | --- |
+| A state's tags stopped rendering | `states.timeline.view.tsx` | the `<For>` the table had, restored |
+| A state named its database count, not its databases | same | `adapterSummary`: two names, then `+N` |
+| The commit button read "Import 1 rows" | `imports.wizard.view.tsx` | `commitButtonLabel`, which uses the same `plural` as the rest of the copy |
+| The states list and tree had no accessible name | timeline and tree | `aria-label`, which a screen reader needed anyway |
+
+Three more were the rework working as intended, and only the specs were wrong: a ready state prints
+no badge (wait for its Check out button instead), a succeeded checkout reads "restored", and a
+manifest says "primary key order" rather than `primary-key`.
+
+The crawler also found two defects in the grid that had nothing to do with the restyle:
+**Add filter** submitted an empty value, which the API refuses and which threw the whole screen
+into its error boundary, and `fkLink` built the same dead link for an FK holding an empty string.
+Both refuse in place now, and `filterNeedsValue` states the API's own rule once.
 
 ## Known, accepted
 
-- **The browser suite breaks and stays broken until phase 4 ends.** This is deliberate and was
-  instructed. `.e2e/coverage.md` and the "0 uncovered UI" claim are stale from phase 1 onward.
-- The `design-system` skill documents the look as it is today. Phase 4 stales it; updating it is
-  part of phase 4, not an afterthought.
+- The `buttons.e2e.ts` crawler only clicks `main button:visible`, and a `<summary>` is not a button.
+  Actions that moved into a row's overflow menu (Export CSV, Extract fixture, Delete) are therefore
+  outside its reach. Every one of them has a story spec that clicks it by name, so the coverage is
+  real; the crawler's is narrower than it was.

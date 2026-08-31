@@ -30,7 +30,7 @@ starts its ephemeral range at 49152, which is why this only ever failed in CI.
 | `coverage`  | `e2e/coverage.e2e.ts`                                            | Every `@story-N` tag names a PRD story; writes `.e2e/coverage.md`     |
 | `routes`    | `e2e/routes.e2e.ts`                                              | Each screen renders or refuses per role; sidebar matches the role     |
 | `api`       | `e2e/api.e2e.ts`, `agent.e2e.ts`                                 | Contract, token, and MCP stories over `request`; no browser           |
-| `flows`     | `e2e/flows.e2e.ts`, `stories.e2e.ts`, `gaps`, `admin`            | One test per user story the dashboard can act on                      |
+| `flows`     | `e2e/flows.e2e.ts`, `stories`, `gaps`, `admin`, `jobs`           | One test per user story the dashboard can act on                      |
 | `states`    | `e2e/states.e2e.ts`                                              | Snapshot, checkout, and diff stories; serial, alone, after flows      |
 | `state-api` | `e2e/state-api.e2e.ts`                                           | State and job stories with no control of their own; holds the adapters |
 | `adapter`   | `e2e/adapter.e2e.ts`                                             | Adapter settings and deletion (init snapshot, restore)                |

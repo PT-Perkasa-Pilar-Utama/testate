@@ -96,7 +96,7 @@ at 6px (controls), `lg` at 8px (cards), `xl` at 12px. Those are the two radii Gi
 
 ## Components
 
-Nineteen files under `apps/web/src/components/`. Reuse before you write.
+Twenty-one files under `apps/web/src/components/`. Reuse before you write.
 
 | File | Exports |
 | --- | --- |
@@ -105,6 +105,7 @@ Nineteen files under `apps/web/src/components/`. Reuse before you write.
 | `button.tsx` | `Button`, `buttonClass` |
 | `confirm-dialog.tsx` | `ConfirmDialog` |
 | `dialog.tsx` | `Dialog` |
+| `empty-state.tsx` | `EmptyState` — the icon, line, and one action a screen with nothing on it shows |
 | `form-errors.tsx` | `FormErrors` |
 | `input.tsx` / `input-area.tsx` | `Input`, `InputArea` |
 | `kbd.tsx` | `Kbd` |
@@ -118,7 +119,7 @@ Nineteen files under `apps/web/src/components/`. Reuse before you write.
 | `table.tsx` | `Table`, `TableToolbar`, `TableFooter`, `Head`, `Row`, `EmptyRow`, `Cell` |
 | `tabs.tsx` | `Tabs` |
 | `toast.tsx` | `Toaster` (the host; `showToast` and `attempt` are in `lib/toast.ts`) |
-| `icon.tsx` | `Icon` — 39 lucide icons, vendored |
+| `icon.tsx` | `Icon` — 67 lucide icons, vendored |
 
 Conventions every one of them follows:
 
@@ -131,7 +132,7 @@ Conventions every one of them follows:
 
 ## Icons
 
-`components/icon.tsx` holds 39 lucide icons (ISC), generated from `lucide-static`'s
+`components/icon.tsx` holds 67 lucide icons (ISC), generated from `lucide-static`'s
 `icon-nodes.json`. That package is not a dependency; nothing of lucide ships at runtime but the
 markup in that file. `lucide-solid` cannot be used, for the same reason no Solid component library
 can: it calls `mergeProps` and `splitProps`, which Solid 2 does not export.
@@ -179,6 +180,9 @@ These are the design language, not the old vendor's house style. They survive it
 
 ## Before you finish
 
-- `bun run --cwd apps/web build`, then confirm every token class you wrote appears in
-  `apps/web/dist/assets/*.css`. A misspelled token is silent.
+- `bun run check:classes` (the last step of `complete-check`) builds the SPA and fails on any
+  class the stylesheet does not emit. `text-error` and `bg-kumo-danger` compile to nothing and
+  render silently uncoloured; this is the step that catches them. Run it before you hand off.
+- Look at the built stylesheet yourself when a colour is still wrong after that:
+  `bun run --cwd apps/web build && grep -c 'text-danger-fg' apps/web/dist/assets/*.css`.
 - Look at the screen. Contrast, alignment and dead colour do not show up in a type check.

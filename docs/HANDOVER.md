@@ -15,8 +15,9 @@ left; `grep -rn "ponytail:" apps packages e2e scripts`).
 homepage at <https://pt-perkasa-pilar-utama.github.io/testate/> served from `docs/`, and the head of
 engineering's green light. **Beta is the next phase and a lot is expected to change.**
 
-E2E: ~120 Playwright tests, ~3 min, coverage **150/150 stories covered**. `NON_UI` in
-`e2e/lib/stories.ts` is empty: what no screen shows, an API or boot test covers.
+E2E: 135 Playwright tests, ~4 min, coverage **144/144 stories covered**. `NON_UI` in
+`e2e/lib/stories.ts` is empty: what no screen shows, an API or boot test covers. The count fell
+from 150 because the UI rework cut the features six stories described; see `docs/UI_REWORK.md`.
 
 The version is `1.1.0-alpha`. The API listens on **7378** and the dev web server on **7379**;
 3000 and 5173 were abandoned because they collide with every other project on the machine. The
@@ -77,8 +78,9 @@ sqlite3 .e2e/data/metadata.db   # jobs, states, checkouts, import_runs ...
 ## 4. E2E layout and gotchas (all learned the hard way)
 
 Projects: `coverage`, `routes`, `api` run first; then `flows → states → state-api → adapter →
-crawl → boot`. The chain after `flows` is serial because checkouts, snapshots, and adapter
-deletion restore the shared demo databases.
+crawl → boot`, with `screens` and `stress` hanging off `state-api` (both opt-in, see below). The
+chain after `flows` is serial because checkouts, snapshots, and adapter deletion restore the shared
+demo databases. `flows` covers `flows`, `stories`, `gaps`, `admin` and `jobs`.
 
 - `api.e2e.ts` and `agent.e2e.ts`: contract and MCP stories over `request`, no browser.
 - `state-api.e2e.ts`: state, job, and checkout stories that hold the demo adapters.
@@ -177,6 +179,30 @@ b9131cd test(e2e): cover the contract and agent stories over the API
 - **The three README limits are the product boundary, not bugs.** Databases restore one after
   another, Testate only touches what you add, microservices are untested. Two are architectural.
 
+
+### The UI rework (2026-08-31 to 2026-09-01)
+
+The whole SPA was restyled and the product pruned. `docs/UI_REWORK.md` is the plan, the decisions,
+and the evidence; read it before touching a screen. What a next agent has to know in one place:
+
+- **There is no component library and there cannot be one.** Ark UI, Kobalte and every other Solid
+  library call `mergeProps` or `splitProps`, which Solid 2 does not export. Confirmed in the
+  vendors' own repositories, not from peer ranges. `@cloudflare/kumo` is gone. Everything under
+  `apps/web/src/components/` is hand-rolled Tailwind 4 on tokens in `apps/web/src/styles/app.css`.
+  The `design-system` skill is the reference.
+- **`bun run check:classes` is a gate step** (`scripts/check-theme-tokens.ts`, last in
+  `complete-check`). Tailwind emits nothing for a token that does not exist, so `text-error`
+  renders uncoloured and type-checks clean. That shipped once. The script fails on it now.
+- **Cut: hooks, saved REST requests, the `rest` adapter kind, the `http` engine, the Tools page,
+  the standalone Health screen.** Migration `0002` drops four tables. PRD stories 98-103 went with
+  them, so coverage is 144, not 150.
+- **A project opens on States, and the tab lives in the URL** (`?tab=`). Checkouts is labelled
+  History. Column policies moved behind `admin`; the masking engine underneath is load-bearing for
+  the grid, imports, diffs, fixtures and MCP, and cutting it would serve real passwords to an agent.
+- **States render as a timeline, not a table.** `e2e/lib/crawl.ts` exports `stateRow(page, name)`
+  for it. A ready state prints no badge; wait for its Check out button to enable.
+- **Table export exists now** (`data.export.ts`, `pagedExportStream`). The old path silently gave
+  500 rows; the new one streamed 2,502 across three cursor pages against live Postgres.
 
 **In flight:** nothing. The tree was clean when this was written; `git status` should agree.
 
