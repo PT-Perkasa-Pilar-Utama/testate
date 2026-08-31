@@ -9,21 +9,20 @@ import { Menu, MenuItem, MenuLink } from "@/components/menu.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Switch from "@/components/switch.tsx";
 import Tabs from "@/components/tabs.tsx";
-import { Cell, Head, Row, Table, EmptyRow, TableFooter } from "@/components/table.tsx";
+import { TableFooter } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { createPreflightPresenter } from "../checkouts/preflight.presenter.ts";
 import PreflightDialog from "../checkouts/preflight.view.tsx";
 import { DeleteDialog, DetailDialog, EditDialog, TakeDialog } from "./states.dialogs.view.tsx";
 import { formatBytes } from "./states.format.ts";
 import { createStatesPresenter } from "./states.presenter.ts";
+import Timeline from "./states.timeline.view.tsx";
 import type { StatesPresenter } from "./states.presenter.ts";
 
 const VIEWS = [
   { id: "list", label: "List" },
   { id: "tree", label: "Tree" },
 ] as const;
-const STATUS_VARIANT = { creating: "info", ready: "success", failed: "error" } as const;
-
 function Branch(props: { nodes: StateTreeNode[] }): JSX.Element {
   return (
     <ul class="grid gap-1 border-l border-line pl-4">
@@ -103,7 +102,12 @@ function RowActions(props: {
   );
 }
 
-export default function StatesView(props: { slug: string; onChanged?: () => void }): JSX.Element {
+export default function StatesView(props: {
+  slug: string;
+  /** The state the databases are on; the timeline marks it HEAD. */
+  headStateId?: string | null;
+  onChanged?: () => void;
+}): JSX.Element {
   const presenter = createStatesPresenter(
     () => props.slug,
     () => props.onChanged?.()
@@ -144,69 +148,18 @@ export default function StatesView(props: { slug: string; onChanged?: () => void
           <Branch nodes={presenter.tree.value()} />
         </Show>
         <Show when={presenter.view() === "list"}>
-          <Table>
-            <thead>
-              <tr>
-                <Head>Name</Head>
-                <Head>Kind</Head>
-                <Head>Status</Head>
-                <Head>Adapters</Head>
-                <Head numeric>Size</Head>
-                <Head>By</Head>
-                <Head>Taken</Head>
-                <Head pinned>Actions</Head>
-              </tr>
-            </thead>
-            <tbody>
-              <Show
-                when={presenter.value().length > 0}
-                fallback={
-                  <EmptyRow>
-                    No states yet. Take one to keep what the databases hold right now.
-                  </EmptyRow>
-                }
-              >
-                <For each={presenter.value()}>
-                  {(state) => (
-                    <Row>
-                      <Cell>
-                        <span class="inline-flex flex-wrap items-center gap-2">
-                          {state.name}
-                          <Show when={state.protected}>
-                            <Badge variant="warning">protected</Badge>
-                          </Show>
-                          <For each={state.tags}>
-                            {(tag) => <Badge variant="info">{tag}</Badge>}
-                          </For>
-                        </span>
-                      </Cell>
-                      <Cell>
-                        <Badge variant={state.kind === "init" ? "primary" : "outline"}>
-                          {state.kind}
-                        </Badge>
-                      </Cell>
-                      <Cell>
-                        <Badge variant={STATUS_VARIANT[state.status]}>{state.status}</Badge>
-                      </Cell>
-                      <Cell>
-                        {state.adapters.map((adapter) => adapter.adapter_name).join(", ")}
-                      </Cell>
-                      <Cell numeric>{formatBytes(state.size_bytes)}</Cell>
-                      <Cell class="whitespace-nowrap">{state.actor.label}</Cell>
-                      <Cell class="whitespace-nowrap">{formatWhen(state.created_at)}</Cell>
-                      <Cell pinned>
-                        <RowActions
-                          presenter={presenter}
-                          state={state}
-                          checkout={(target) => preflight.open(target)}
-                        />
-                      </Cell>
-                    </Row>
-                  )}
-                </For>
-              </Show>
-            </tbody>
-          </Table>
+          <Timeline
+            states={presenter.value()}
+            headStateId={props.headStateId ?? null}
+            actionsFor={(state) => (
+              <RowActions
+                presenter={presenter}
+                state={state}
+                checkout={(target) => preflight.open(target)}
+              />
+            )}
+            empty="No states yet. Take one to keep what the databases hold right now."
+          />
           <TableFooter shown={presenter.value().length} noun="states" hasMore={presenter.hasMore()}>
             <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
           </TableFooter>

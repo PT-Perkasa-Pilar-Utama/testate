@@ -118,6 +118,7 @@ Nineteen files under `apps/web/src/components/`. Reuse before you write.
 | `table.tsx` | `Table`, `TableToolbar`, `TableFooter`, `Head`, `Row`, `EmptyRow`, `Cell` |
 | `tabs.tsx` | `Tabs` |
 | `toast.tsx` | `Toaster` (the host; `showToast` and `attempt` are in `lib/toast.ts`) |
+| `icon.tsx` | `Icon` — 39 lucide icons, vendored |
 
 Conventions every one of them follows:
 
@@ -127,6 +128,26 @@ Conventions every one of them follows:
 - Never import from `features/`. The dependency runs one way.
 - `pinned` on `Head` and `Cell` freezes the action column against the right edge. Read the comment
   above `PINNED_CELL` before touching its z-index; it is load-bearing for row menus.
+
+## Icons
+
+`components/icon.tsx` holds 39 lucide icons (ISC), generated from `lucide-static`'s
+`icon-nodes.json`. That package is not a dependency; nothing of lucide ships at runtime but the
+markup in that file. `lucide-solid` cannot be used, for the same reason no Solid component library
+can: it calls `mergeProps` and `splitProps`, which Solid 2 does not export.
+
+```tsx
+<Icon name="download" />                       {/* decoration beside a label */}
+<Icon name="download" label="Download" />      {/* the control's own name */}
+<Icon name="lock" class="h-3 w-3" />           {/* sized to the line it sits on */}
+```
+
+16px on lucide's 24px grid, stroked in `currentColor`, so an icon takes the tone of whatever holds
+it and never needs a variant. Pass `label` only when the icon is alone; beside real text it is
+decoration and a label makes a screen reader say the same thing twice.
+
+To add one: find it at <https://lucide.dev>, take its entry from `icon-nodes.json`, add a line, keep
+the list sorted. An icon nobody uses is bytes for nothing.
 
 ## Rules
 

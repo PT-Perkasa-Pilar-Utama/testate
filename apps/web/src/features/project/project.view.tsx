@@ -66,7 +66,11 @@ export default function ProjectView(props: { slug: string }): JSX.Element {
           <AdaptersView slug={props.slug} />
         </Match>
         <Match when={presenter.tab() === "states"}>
-          <StatesView slug={props.slug} onChanged={() => presenter.project.refresh()} />
+          <StatesView
+            slug={props.slug}
+            headStateId={presenter.project.value().head.state_id}
+            onChanged={() => presenter.project.refresh()}
+          />
         </Match>
         <Match when={presenter.tab() === "checkouts"}>
           <CheckoutsView slug={props.slug} onChanged={() => presenter.project.refresh()} />

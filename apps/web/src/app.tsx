@@ -3,6 +3,8 @@ import { Errored, For, Match, Show, Switch, createEffect, createSignal } from "s
 import type { Role } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
+import Icon from "@/components/icon.tsx";
+import type { IconName } from "@/components/icon.tsx";
 import Button from "@/components/button.tsx";
 import Toaster from "@/components/toast.tsx";
 import AdapterView from "@/features/adapter/adapter.view.tsx";
@@ -27,14 +29,14 @@ import type { Match as RouteMatch } from "@/lib/router.ts";
 import { actor, hasRole, session, sessionReady } from "@/lib/session.ts";
 import { ROUTES } from "./routes.ts";
 
-const NAV: readonly { label: string; path: string; role: Role }[] = [
-  { label: "Projects", path: "/projects", role: "viewer" },
-  { label: "Jobs", path: "/jobs", role: "viewer" },
-  { label: "Tools", path: "/tools", role: "viewer" },
-  { label: "Audit", path: "/audit", role: "admin" },
-  { label: "Users", path: "/users", role: "admin" },
-  { label: "Tokens", path: "/tokens", role: "admin" },
-  { label: "Settings", path: "/settings", role: "admin" },
+const NAV: readonly { label: string; path: string; role: Role; icon: IconName }[] = [
+  { label: "Projects", path: "/projects", role: "viewer", icon: "folder" },
+  { label: "Jobs", path: "/jobs", role: "viewer", icon: "activity" },
+  { label: "Tools", path: "/tools", role: "viewer", icon: "wrench" },
+  { label: "Audit", path: "/audit", role: "admin", icon: "scroll-text" },
+  { label: "Users", path: "/users", role: "admin", icon: "users" },
+  { label: "Tokens", path: "/tokens", role: "admin", icon: "key-round" },
+  { label: "Settings", path: "/settings", role: "admin", icon: "settings" },
 ];
 
 type Access = "ok" | "login" | "forbidden" | "not-found";
@@ -166,27 +168,32 @@ function Sidebar(props: { current: string | undefined }): JSX.Element {
           title={collapsed() ? "Expand the sidebar" : "Collapse the sidebar"}
           onClick={() => setCollapsed((on) => !on)}
         >
-          {/* Two bars: the rail, and the panel that folds away behind it. */}
-          <svg viewBox="0 0 16 16" class="h-4 w-4" aria-hidden="true" fill="currentColor">
-            <path d="M1.5 2h13a.5.5 0 0 1 .5.5v11a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5Zm.5 1v10h3V3H2Zm4 0v10h8V3H6Z" />
-          </svg>
+          <Icon name="panel-left" />
         </button>
         <Show when={!collapsed()}>
           <span class="text-base font-semibold text-heading">Testate</span>
         </Show>
       </div>
-      <nav class={["grid gap-1", collapsed() ? "hidden" : ""]}>
+      {/*
+        The nav stays visible when the rail is collapsed. It used to be `hidden`, so folding the
+        sidebar away left a person with no way to go anywhere except Back.
+      */}
+      <nav class="grid gap-0.5">
         <For each={NAV.filter((item) => hasRole(item.role))}>
           {(item) => (
             <a
               class={[
-                "rounded-md px-2 py-1.5 text-base text-body hover:bg-hover",
-                { "bg-fill font-semibold": props.current === item.path },
+                "flex items-center rounded-md text-base hover:bg-hover hover:text-body",
+                collapsed() ? "h-9 w-8 justify-center" : "gap-2.5 px-2 py-1.5",
+                props.current === item.path ? "bg-fill font-medium text-body" : "text-muted",
               ]}
               href={href(item.path)}
               onClick={(event) => onNav(event, item.path)}
+              title={collapsed() ? item.label : undefined}
+              aria-current={props.current === item.path ? "page" : undefined}
             >
-              {item.label}
+              <Icon name={item.icon} label={collapsed() ? item.label : undefined} />
+              <Show when={!collapsed()}>{item.label}</Show>
             </a>
           )}
         </For>

@@ -1,6 +1,7 @@
 import type { JSX } from "@solidjs/web";
 
 import { buttonClass } from "./button.tsx";
+import Icon from "./icon.tsx";
 
 /**
  * A row's overflow menu, built on <details> so the browser owns the toggle, the Escape key and the
@@ -14,7 +15,7 @@ export function Menu(props: { label?: string; children: JSX.Element }): JSX.Elem
         class={[buttonClass("ghost", "sm"), "list-none"]}
         aria-label={props.label ?? "More actions"}
       >
-        ...
+        <Icon name="ellipsis" />
       </summary>
       <div class="absolute right-0 z-10 mt-1 grid w-44 gap-0.5 rounded-lg bg-surface p-1 text-left shadow-lg ring ring-line">
         {props.children}
