@@ -33,9 +33,10 @@
     "contract": "bun scripts/contract.ts",
     "generate-key": "bun scripts/generate-key.ts",
     "bump-version": "bun scripts/bump-version.ts",
-    "complete-check": "bun run type-check && bun run lint && bun run fmt && bun test && bun run build",
+    "complete-check": "bun run type-check && bun run lint && bun run fmt && bun test && bun run build && bun run check:classes",
     "prepare": "lefthook install",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "check:classes": "bun scripts/check-theme-tokens.ts"
   },
   "devDependencies": {
     "@oxlint/plugins": "1.80.0",

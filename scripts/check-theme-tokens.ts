@@ -1,0 +1,141 @@
+/**
+ * Every utility class the SPA writes must exist in the built stylesheet.
+ *
+ * Tailwind emits nothing for a class it does not recognise, and nothing is not an error: the
+ * element keeps whatever it inherited and the screen looks almost right. `text-kumo-error` shipped
+ * that way, so the diff dialog coloured "added" and "changed" and left "removed" plain. The type
+ * checker cannot see it, the linter cannot see it, and a screenshot only catches it if you already
+ * know the colour you expected.
+ *
+ * Checking only the tokens that exist would be tautological, so this reads class strings out of
+ * the source and asks the build whether it produced each word.
+ *
+ *   bun scripts/check-theme-tokens.ts
+ *
+ * Runs after `build:web`, because the built CSS is the evidence.
+ */
+const ROOT = new URL("..", import.meta.url).pathname;
+
+const SOURCE_DIR = `${ROOT}apps/web/src`;
+const INDEX_HTML = `${ROOT}apps/web/index.html`;
+const BUILT_CSS = `${ROOT}apps/web/dist/assets`;
+
+/** Every quoted string, with a flag for the ones that are a `class` value and so need no proving. */
+const CLASS_ATTR = /class\s*=\s*(?:\{?\s*)?["'`]([^"'`\n]{1,400})["'`]/g;
+const ANY_STRING = /["'`]([^"'`\n]{1,400})["'`]/g;
+
+/**
+ * A word that takes a colour. A lone `text-danger-fg` passed as a prop is still a class, which is
+ * exactly the shape the diff dialog's bug had, so these are checked wherever they appear.
+ */
+const COLOUR_WORD =
+  /^(?:text|bg|border|ring|outline|divide|fill|stroke|placeholder|caret|decoration)-[a-z0-9-]+$/;
+
+/** Anything with an arbitrary value is skipped: Tailwind escapes those and matching costs more than it catches. */
+const CANDIDATE = /^-?[a-z][a-z0-9-]*$/;
+
+type Finding = { klass: string; files: Set<string> };
+
+async function builtCss(): Promise<string> {
+  const parts: string[] = [];
+  for await (const name of new Bun.Glob("*.css").scan(BUILT_CSS)) {
+    parts.push(await Bun.file(`${BUILT_CSS}/${name}`).text());
+  }
+  if (parts.length === 0) {
+    console.error(`No built stylesheet under ${BUILT_CSS}. Run \`bun run build:web\` first.`);
+    process.exit(1);
+  }
+  return parts.join("\n");
+}
+
+async function sourceFiles(): Promise<string[]> {
+  const files = [INDEX_HTML];
+  for await (const name of new Bun.Glob("**/*.{ts,tsx}").scan(SOURCE_DIR)) {
+    if (name.endsWith(".test.ts") || name.endsWith(".test.tsx")) continue;
+    files.push(`${SOURCE_DIR}/${name}`);
+  }
+  return files;
+}
+
+/**
+ * The word as written, variants and all. Anything holding an arbitrary value is skipped: Tailwind
+ * escapes those in the selector and matching them here would cost more than it catches.
+ */
+function normalise(word: string): string | null {
+  if (/[[\]()]/.test(word)) return null;
+  const bare =
+    word
+      .slice(word.lastIndexOf(":") + 1)
+      .replace(/^!/, "")
+      .split("/")[0] ?? "";
+  return CANDIDATE.test(bare) ? word : null;
+}
+
+/** Tailwind escapes everything outside `[A-Za-z0-9_-]` in the selector it writes. */
+function selectorOf(klass: string): string {
+  return `.${klass.replace(/[^a-zA-Z0-9_-]/g, (char) => `\\${char}`)}`;
+}
+
+const css = await builtCss();
+/** A whole selector, not a prefix: `.text` must not be satisfied by `.text-xs`. */
+function emitted(klass: string): boolean {
+  const selector = selectorOf(klass);
+  let at = css.indexOf(selector);
+  while (at !== -1) {
+    const next = css[at + selector.length] ?? "";
+    if (!/[a-zA-Z0-9_-]/.test(next)) return true;
+    at = css.indexOf(selector, at + 1);
+  }
+  return false;
+}
+
+const findings = new Map<string, Finding>();
+const record = (klass: string, file: string): void => {
+  const seen = findings.get(klass) ?? { klass, files: new Set<string>() };
+  seen.files.add(file.replace(ROOT, ""));
+  findings.set(klass, seen);
+};
+
+for (const file of await sourceFiles()) {
+  const text = await Bun.file(file).text();
+
+  // 1. A `class` value is a class list by definition; every word in it must resolve.
+  for (const match of text.matchAll(CLASS_ATTR)) {
+    for (const word of (match[1] ?? "").split(/\s+/)) {
+      const klass = normalise(word);
+      if (klass !== null && !emitted(klass)) record(klass, file);
+    }
+  }
+
+  // 2. Any other string: a word that takes a colour is a class wherever it appears, and a string
+  //    where two words already resolve is a class list (the `as const` variant maps).
+  for (const match of text.matchAll(ANY_STRING)) {
+    const words = (match[1] ?? "").split(/\s+/);
+    const resolved = words.filter((w) => {
+      const k = normalise(w);
+      return k !== null && emitted(k);
+    }).length;
+    for (const word of words) {
+      const klass = normalise(word);
+      if (klass === null || emitted(klass)) continue;
+      const tail = klass.slice(klass.lastIndexOf(":") + 1).replace(/^!/, "");
+      if (COLOUR_WORD.test(tail) || resolved >= 2) record(klass, file);
+    }
+  }
+}
+
+if (findings.size > 0) {
+  console.error(
+    `${findings.size} class(es) written in the source but not generated by the build:\n`
+  );
+  for (const finding of [...findings.values()].sort((a, b) => a.klass.localeCompare(b.klass))) {
+    console.error(`  ${finding.klass}`);
+    for (const file of [...finding.files].sort()) console.error(`      ${file}`);
+  }
+  console.error(
+    `\nThese render as nothing. Check the spelling against the \`design-system\` skill.`
+  );
+  process.exit(1);
+}
+
+console.log("every class the SPA writes is present in the built stylesheet.");

@@ -3,6 +3,8 @@ import FormErrors from "@/components/form-errors.tsx";
 import { createFormGuard } from "@/lib/form.ts";
 import PageHeader from "@/components/page-header.tsx";
 import { For, Loading, Show } from "solid-js";
+
+import { formatWhen } from "@/lib/format.ts";
 import type { User } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
@@ -209,7 +211,11 @@ export default function UsersView(): JSX.Element {
                       </Show>
                     </span>
                   </Cell>
-                  <Cell>{user.last_login_at ?? "never"}</Cell>
+                  <Cell class="whitespace-nowrap">
+                    <Show when={user.last_login_at} fallback="never">
+                      {(at) => formatWhen(at())}
+                    </Show>
+                  </Cell>
                   <Cell pinned>
                     <Actions presenter={presenter} user={user} />
                   </Cell>
