@@ -4,8 +4,10 @@ import type { TableSchema } from "@testate/shared";
 import {
   NUMERIC_TYPE,
   cellText,
+  filterNeedsValue,
   filterText,
   filtersFromSearch,
+  fkLink,
   parseFilterText,
 } from "./grid.presenter.ts";
 import { pkOf, toFormValue, valuesOf } from "./editing.presenter.ts";
@@ -33,6 +35,41 @@ describe("data feature", () => {
     expect(cellText(null)).toBe("NULL");
     expect(cellText("x")).toBe("x");
     expect(cellText({ a: 1 })).toBe('{"a":1}');
+  });
+
+  test("a filter with no value is refused before it reaches the API, and so is a link to one", () => {
+    // The API's own rule (data.handler.ts parseFilter): only null and notnull take no value.
+    expect(filterNeedsValue("eq")).toBe(true);
+    expect(filterNeedsValue("like")).toBe(true);
+    expect(filterNeedsValue("null")).toBe(false);
+    expect(filterNeedsValue("notnull")).toBe(false);
+
+    const orders: TableSchema = {
+      schema: "contract",
+      name: "orders",
+      kind: "table",
+      row_estimate: 0,
+      columns: [],
+      primary_key: ["id"],
+      foreign_keys_out: [
+        {
+          columns: ["customer_id"],
+          ref: { schema: "contract", name: "customers" },
+          ref_columns: ["id"],
+        },
+      ],
+      foreign_keys_in: [],
+      unique: [],
+      unsupported: [],
+      excluded: false,
+      display_column: null,
+    };
+    expect(fkLink("demo", "a1", orders, "customer_id", "42")).toBe(
+      "/projects/demo/adapters/a1/tables/contract.customers?filter=id%3Aeq%3A42"
+    );
+    // A null or empty FK renders as nothing to filter on, so it must not be a link at all.
+    expect(fkLink("demo", "a1", orders, "customer_id", null)).toBeNull();
+    expect(fkLink("demo", "a1", orders, "customer_id", "")).toBeNull();
   });
 
   test("buildRequest sends SQL text or a parsed mongo operation with the row cap", () => {

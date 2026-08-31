@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { Preflight, State } from "@testate/shared";
+import type { Preflight, State, StateAdapter } from "@testate/shared";
 
 import {
   canCheckout,
@@ -7,7 +7,7 @@ import {
   driftSummary,
   strategyLine,
 } from "../checkouts/preflight.presenter.ts";
-import { consistencyLabel, sortLabel } from "./states.format.ts";
+import { adapterSummary, consistencyLabel, sortLabel } from "./states.format.ts";
 import {
   checkoutBlockedReason,
   parseTags,
@@ -142,5 +142,26 @@ describe("states feature", () => {
     expect(sortLabel("row-hash")).toBe("row hash order");
     expect(consistencyLabel("snapshot")).toBe("consistent snapshot");
     expect(consistencyLabel("best_effort")).toBe("best effort");
+  });
+
+  test("the timeline names the databases a state covers and folds the rest into a count", () => {
+    const one: StateAdapter = {
+      adapter_id: "a1",
+      adapter_name: "shop-postgres",
+      engine: "postgres",
+      engine_version: "17",
+      fingerprint: "f1",
+      consistency: "snapshot",
+      removed: false,
+      row_count: 0,
+      byte_count: 0,
+      warnings: [],
+    };
+    const named = (...names: string[]): StateAdapter[] =>
+      names.map((adapter_name) => ({ ...one, adapter_name }));
+    expect(adapterSummary([])).toBe("no databases");
+    expect(adapterSummary(named("shop-postgres"))).toBe("shop-postgres");
+    expect(adapterSummary(named("shop-postgres", "shop-mysql"))).toBe("shop-postgres, shop-mysql");
+    expect(adapterSummary(named("a", "b", "c", "d"))).toBe("a, b +2");
   });
 });

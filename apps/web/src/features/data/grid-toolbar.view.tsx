@@ -8,7 +8,7 @@ import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import Switch from "@/components/switch.tsx";
 import { hasRole } from "@/lib/session.ts";
-import { FILTER_OPS } from "./grid.presenter.ts";
+import { FILTER_OPS, filterNeedsValue } from "./grid.presenter.ts";
 import type { Filter, FilterOp, GridPresenter } from "./grid.presenter.ts";
 
 const OP_OPTIONS = FILTER_OPS.map((op) => ({ value: op, label: op }));
@@ -38,10 +38,13 @@ export function FilterBar(props: { presenter: GridPresenter; columns: string[] }
   const [value, setValue] = createSignal("");
   const columnOptions = (): { value: string; label: string }[] =>
     props.columns.map((name) => ({ value: name, label: name }));
+  // The API refuses a filter whose operator needs a value and has none, and that refusal takes the
+  // whole grid into its error boundary. Say so here instead, where the empty box is.
+  const missingValue = (): boolean => filterNeedsValue(op()) && value().trim() === "";
   const onSubmit = (event: SubmitEvent): void => {
     event.preventDefault();
     const chosen = column() === "" ? (props.columns[0] ?? "") : column();
-    if (chosen === "") return;
+    if (chosen === "" || missingValue()) return;
     props.presenter.addFilter({ column: chosen, op: op(), value: value() });
     setValue("");
   };
@@ -73,7 +76,13 @@ export function FilterBar(props: { presenter: GridPresenter; columns: string[] }
           value={value()}
           onInput={(event) => setValue(event.currentTarget.value)}
         />
-        <Button type="submit" size="sm" variant="ghost">
+        <Button
+          type="submit"
+          size="sm"
+          variant="ghost"
+          disabled={missingValue()}
+          title={missingValue() ? `${op()} needs a value` : undefined}
+        >
           <Icon name="plus" class="h-3.5 w-3.5" />
           Add filter
         </Button>

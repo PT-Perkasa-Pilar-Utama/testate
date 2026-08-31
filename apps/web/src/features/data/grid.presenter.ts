@@ -64,6 +64,16 @@ export type GridPresenter = {
  */
 export const NUMERIC_TYPE = /int|serial|numeric|decimal|float|double|real|money|long/i;
 
+/**
+ * Whether an operator needs a value. `null` and `notnull` do not; every other one does, and the
+ * API refuses a valueless filter outright (`parseFilter`, data.handler.ts). The form has to know
+ * the same rule, or pressing Add filter on an empty box throws the whole grid into its error
+ * boundary instead of saying what is missing.
+ */
+export function filterNeedsValue(op: FilterOp): boolean {
+  return op !== "null" && op !== "notnull";
+}
+
 /** `<column>:<op>:<value>` as 06 §6.2 reads it; the value may hold colons. */
 export function filterText(filter: Filter): string {
   return `${filter.column}:${filter.op}:${filter.value}`;
@@ -108,7 +118,11 @@ export function fkLink(
   );
   const refColumn = fk?.ref_columns[0];
   if (fk === undefined || refColumn === undefined || value === null) return null;
-  const filter = filterText({ column: refColumn, op: "eq", value: cellText(value) });
+  // An FK holding an empty string renders as nothing, and a filter with no value is refused by
+  // the API. A cell that cannot make a working link is not a link.
+  const text = cellText(value);
+  if (text === "") return null;
+  const filter = filterText({ column: refColumn, op: "eq", value: text });
   return `/projects/${encodeURIComponent(slug)}/adapters/${encodeURIComponent(id)}/tables/${encodeURIComponent(qualifiedName(fk.ref))}?filter=${encodeURIComponent(filter)}`;
 }
 

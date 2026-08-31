@@ -69,7 +69,7 @@ export default function Tree(props: TreeProps): JSX.Element {
         <div class="rounded-lg px-5 py-8 text-center text-muted ring ring-line">{props.empty}</div>
       }
     >
-      <ul class="grid gap-3 rounded-lg px-5 py-4 ring ring-line">
+      <ul class="grid gap-3 rounded-lg px-5 py-4 ring ring-line" aria-label="State history">
         <For each={props.nodes}>{(node) => <Node node={node} />}</For>
       </ul>
     </Show>

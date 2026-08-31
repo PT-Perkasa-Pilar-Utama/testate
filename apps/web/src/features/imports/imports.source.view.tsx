@@ -72,25 +72,32 @@ export default function SourceStep(props: { presenter: WizardPresenter }): JSX.E
           <StoragePicker presenter={props.presenter} />
         </Show>
       </Show>
+      {/*
+        Two sibling <Show>s reading the presenter, not one nested inside the other's callback.
+        <Show> wraps its `when` in a memo, and a nested one reading the outer callback's accessor
+        keeps that memo alive past the outer condition flipping: it then reads a narrowed value
+        that no longer exists and Solid throws its stale-value error, which took the whole screen
+        into the error boundary the moment the wizard left this step.
+      */}
+      <Show when={props.presenter.preview()?.sheets}>
+        {(sheets) => (
+          <label class="grid gap-1.5 text-sm">
+            <span>Sheet</span>
+            <Select
+              options={sheets().map((name) => ({ value: name, label: name }))}
+              value={
+                props.presenter.draft().sheet === ""
+                  ? (sheets()[0] ?? "")
+                  : props.presenter.draft().sheet
+              }
+              onChange={(sheet) => void props.presenter.setSheet(sheet)}
+            />
+          </label>
+        )}
+      </Show>
       <Show when={props.presenter.preview()}>
         {(preview) => (
           <div class="grid gap-2">
-            <Show when={preview().sheets}>
-              {(sheets) => (
-                <label class="grid gap-1.5 text-sm">
-                  <span>Sheet</span>
-                  <Select
-                    options={sheets().map((name) => ({ value: name, label: name }))}
-                    value={
-                      props.presenter.draft().sheet === ""
-                        ? (sheets()[0] ?? "")
-                        : props.presenter.draft().sheet
-                    }
-                    onChange={(sheet) => void props.presenter.setSheet(sheet)}
-                  />
-                </label>
-              )}
-            </Show>
             <p class="text-muted text-sm">
               Detected {preview().detected.encoding}, header row {preview().detected.header_row}
               {preview().typed_cells ? ", typed cells" : ""}

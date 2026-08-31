@@ -32,3 +32,15 @@ const CONSISTENCY_LABEL = {
 export function consistencyLabel(consistency: StateAdapter["consistency"]): string {
   return CONSISTENCY_LABEL[consistency];
 }
+
+/**
+ * Which databases a state covers, for the one line the timeline gives it. A bare count answers
+ * "how many" when the question a tester asks is "is mine in there"; past two names the count
+ * comes back as a "+N" so a state that spans ten adapters still fits on one line.
+ */
+export function adapterSummary(adapters: readonly StateAdapter[]): string {
+  const names = adapters.map((adapter) => adapter.adapter_name);
+  if (names.length === 0) return "no databases";
+  if (names.length <= 2) return names.join(", ");
+  return `${names[0]}, ${names[1]} +${names.length - 2}`;
+}

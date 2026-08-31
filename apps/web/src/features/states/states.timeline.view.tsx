@@ -5,7 +5,7 @@ import type { State } from "@testate/shared";
 import Badge from "@/components/badge.tsx";
 import Icon from "@/components/icon.tsx";
 import { formatWhen } from "@/lib/format.ts";
-import { formatBytes } from "./states.format.ts";
+import { adapterSummary, formatBytes } from "./states.format.ts";
 
 export const KIND_LABEL = {
   init: "starting point",
@@ -36,9 +36,7 @@ function Meta(props: { state: State }): JSX.Element {
     <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
       <span>{KIND_LABEL[props.state.kind]}</span>
       <span aria-hidden="true">·</span>
-      <span>
-        {props.state.adapters.length} {props.state.adapters.length === 1 ? "database" : "databases"}
-      </span>
+      <span>{adapterSummary(props.state.adapters)}</span>
       <Show when={props.state.size_bytes > 0}>
         <span aria-hidden="true">·</span>
         <span class="tabular-nums">{formatBytes(props.state.size_bytes)}</span>
@@ -88,6 +86,9 @@ function TimelineRow(props: TimelineRowProps): JSX.Element {
                 {props.state.status}
               </Badge>
             </Show>
+            {/* Tags are how a person finds one state among fifty; the table that came before
+                showed them and the timeline must not quietly drop them. */}
+            <For each={props.state.tags}>{(tag) => <Badge variant="info">{tag}</Badge>}</For>
           </div>
           <Meta state={props.state} />
         </div>
@@ -119,7 +120,7 @@ export default function Timeline(props: TimelineProps): JSX.Element {
         <div class="rounded-lg px-5 py-8 text-center text-muted ring ring-line">{props.empty}</div>
       }
     >
-      <ul class="grid rounded-lg px-5 py-4 ring ring-line">
+      <ul class="grid rounded-lg px-5 py-4 ring ring-line" aria-label="States">
         <For each={props.states}>
           {(state) => (
             <TimelineRow

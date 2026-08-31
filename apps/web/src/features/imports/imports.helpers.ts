@@ -191,6 +191,11 @@ export function reportSummary(counts: ReportCounts, dryRun: boolean): string {
   return `Imported ${plural(counts.ready, "row")}. ${plural(counts.rejected, "row")} ${verb(counts.rejected, "was", "were")} rejected.`;
 }
 
+/** The write button says what it will write. "Import 1 rows" is not something a person wrote. */
+export function commitButtonLabel(ready: number): string {
+  return `Import ${plural(ready, "row")}`;
+}
+
 /** The commit question beside the button that actually writes data: a fact, not a second blind press. */
 export function commitPrompt(counts: ReportCounts): string {
   if (counts.ready === 0) return "Every row will be rejected. Fix the file and try again.";

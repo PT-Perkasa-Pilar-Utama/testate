@@ -7,6 +7,7 @@ import {
   TRANSFORMS,
   TRANSFORM_OPTIONS,
   blockedReason,
+  commitButtonLabel,
   commitPrompt,
   defaultMappingName,
   guessColumns,
@@ -137,6 +138,8 @@ describe("imports feature", () => {
       failed: 0,
     });
     expect(commitPrompt(singular)).toBe("All 1 row is ready. Import it?");
+    expect(commitButtonLabel(1)).toBe("Import 1 row");
+    expect(commitButtonLabel(1204)).toBe("Import 1,204 rows");
 
     const allRejected = reportCounts({
       dry_run: true,

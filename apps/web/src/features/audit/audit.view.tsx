@@ -49,7 +49,7 @@ function Filters(props: { presenter: AuditPresenter }): JSX.Element {
           size="sm"
           placeholder="auth.login"
           value={props.presenter.filter().action}
-          onChange={(event) => props.presenter.setFilter({ action: event.currentTarget.value })}
+          onInput={(event) => props.presenter.setFilter({ action: event.currentTarget.value })}
         />
       </label>
       <label class="grid gap-1.5 text-sm">
@@ -58,7 +58,7 @@ function Filters(props: { presenter: AuditPresenter }): JSX.Element {
           size="sm"
           placeholder="qa-user"
           value={props.presenter.filter().actor}
-          onChange={(event) => props.presenter.setFilter({ actor: event.currentTarget.value })}
+          onInput={(event) => props.presenter.setFilter({ actor: event.currentTarget.value })}
         />
       </label>
       <label class="grid gap-1.5 text-sm">

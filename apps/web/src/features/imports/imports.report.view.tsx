@@ -19,7 +19,7 @@ export type ReportPanelProps = {
   /** Defaults to "Close"; the wizard passes "Done" once a real run has actually finished. */
   closeLabel?: string;
   /** Replaces the default Rejected-rows-and-close row; the wizard uses this for the commit step. */
-  footer?: JSX.Element;
+  footer?: JSX.Element | undefined;
 };
 
 /**
