@@ -1,6 +1,6 @@
 import { rmSync } from "node:fs";
 import { dirname } from "node:path";
-import type { Actor, JsonObject, Mapping, TableSchema } from "@testate/shared";
+import type { JsonObject, Mapping, TableSchema } from "@testate/shared";
 import { importModeSchema, parseOptionsSchema } from "@testate/shared";
 import * as v from "valibot";
 
@@ -11,8 +11,6 @@ import { AppError, notFound } from "../../lib/http/index.ts";
 import type { AdapterRecord } from "../adapters/adapters.repository.ts";
 import { CONFIG_COLUMN, openSecrets } from "../adapters/adapters.secrets.ts";
 import type { PoliciesRepository } from "../data/data.policies.ts";
-import { HookAbort, hookResultsJson } from "../hooks/hooks.service.ts";
-import type { HookRunResult, HookRunner } from "../hooks/hooks.service.ts";
 import type { JobRunner } from "../jobs/jobs.dispatcher.ts";
 import type { SnapshotDeps } from "../states/states.snapshot.ts";
 import { takeStash } from "../states/states.stash.ts";
@@ -26,7 +24,6 @@ import { validateMapping } from "./imports.validate.ts";
 export type ImportJobDeps = SnapshotDeps & {
   imports: ImportsRepository;
   policies: Pick<PoliciesRepository, "list">;
-  hooks: HookRunner;
   dataDir: string;
 };
 
@@ -177,25 +174,6 @@ async function process(
   return { counts, preview: sink.preview, rejectedPath: await sink.close() };
 }
 
-type AfterImport = { hooks: HookRunResult[]; aborted: boolean };
-
-async function afterImport(
-  deps: ImportJobDeps,
-  projectId: string,
-  jobId: string,
-  actor: Actor
-): Promise<AfterImport> {
-  try {
-    return {
-      hooks: await deps.hooks.run("after_import", { projectId, jobId, actor }),
-      aborted: false,
-    };
-  } catch (cause: unknown) {
-    if (!(cause instanceof HookAbort)) throw cause;
-    return { hooks: [], aborted: true };
-  }
-}
-
 function cleanup(
   deps: ImportJobDeps,
   payload: v.InferOutput<typeof importPayloadSchema>,
@@ -214,7 +192,7 @@ export function isFetchedSource(path: string): boolean {
   return /[/\\]imports[/\\]sources[/\\]/.test(path);
 }
 
-/** The `import` job (19 §19.3): stash, policy check, parse and transform, batches, report, hooks, cleanup. */
+/** The `import` job (19 §19.3): stash, policy check, parse and transform, batches, report, cleanup. */
 export function createImportRunner(deps: ImportJobDeps): JobRunner {
   return async ({ job, signal, progress }) => {
     const payload = v.parse(importPayloadSchema, job.payload);
@@ -244,11 +222,8 @@ export function createImportRunner(deps: ImportJobDeps): JobRunner {
       );
       counts.duration_ms = Date.now() - startedAt;
       deps.imports.finishRun(payload.run_id, counts, rejectedPath, deps.now().toISOString());
-      const { hooks, aborted } = payload.dry_run
-        ? { hooks: [], aborted: false }
-        : await afterImport(deps, projectId, job.id, job.actor);
       return {
-        status: aborted ? "partial" : "succeeded",
+        status: "succeeded",
         result: {
           run_id: payload.run_id,
           dry_run: payload.dry_run,
@@ -256,7 +231,6 @@ export function createImportRunner(deps: ImportJobDeps): JobRunner {
           errors_preview: preview,
           rejected_available: rejectedPath !== null,
           stash_state_id: deps.imports.run(projectId, payload.run_id)?.stash_state_id ?? null,
-          hooks: hookResultsJson(hooks),
         },
       };
     } finally {

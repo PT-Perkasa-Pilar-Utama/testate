@@ -1,6 +1,5 @@
 import { accessSync, constants, statfsSync } from "node:fs";
-import type { HealthAdmin, JsonObject } from "@testate/shared";
-import * as v from "valibot";
+import type { HealthAdmin } from "@testate/shared";
 
 import type { BlobStore } from "../../lib/blobstore/index.ts";
 import type { MetadataDb } from "../../lib/db/index.ts";
@@ -19,37 +18,9 @@ export type HealthDeps = {
   extraKeys: number;
   sinkDegraded: () => boolean;
   dispatcher: () => { alive: boolean; running: number; queued: number; lastTickAt: string | null };
-  /** Read per request: an adapter added after boot can start sharing the hostname. */
-  originShared: () => boolean;
 };
 
 type CheckStatus = HealthAdmin["status"];
-
-function hostOf(url: string | undefined): string | null {
-  try {
-    return url === undefined ? null : new URL(url).hostname.toLowerCase();
-  } catch {
-    return null;
-  }
-}
-
-/** The `base_url` of every REST adapter; it lives in the public half of the config. */
-export function restBaseUrls(adapters: { engine: string; config: JsonObject }[]): string[] {
-  return adapters
-    .filter((adapter) => adapter.engine === "http")
-    .map((adapter) => v.parse(v.fallback(v.string(), ""), adapter.config["base_url"]))
-    .filter((url) => url !== "");
-}
-
-/**
- * 07 §7.2: Testate answering on the same hostname as a REST target means a saved request can
- * reach Testate itself. The deployment plan says to give it its own hostname; this is the check
- * that notices when it did not get one.
- */
-export function sharesOrigin(publicUrl: string | undefined, baseUrls: string[]): boolean {
-  const host = hostOf(publicUrl);
-  return host !== null && baseUrls.some((url) => hostOf(url) === host);
-}
 
 function checkDb(db: MetadataDb): HealthAdmin["checks"]["metadata_db"] {
   const started = performance.now();
@@ -133,7 +104,6 @@ export async function health(deps: HealthDeps): Promise<HealthAdmin> {
     boot_id: deps.bootId,
     uptime_s: Math.round((Date.now() - deps.bootedAt) / 1000),
     env: deps.env,
-    origin_shared: deps.originShared(),
     checks,
   };
 }

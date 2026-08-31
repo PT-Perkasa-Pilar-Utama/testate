@@ -55,8 +55,6 @@ export function devSampleWriter(): SeedDeps["sample"] {
   };
 }
 
-export const REST_HEALTH_URL = "http://127.0.0.1:9010/minio/health/live";
-
 /** Adapters at the compose engines from `deploy/compose.engines.yml`, ports offset as documented there. */
 export function devAdapters(): AdapterDraft[] {
   const database = (engine: AdapterDraft["engine"], name: string, port: number): AdapterDraft => ({
@@ -93,14 +91,6 @@ export function devAdapters(): AdapterDraft[] {
         virtual_hosted: false,
       },
       secrets: { access_key_id: "testate", secret_access_key: "testate-minio" },
-    },
-    {
-      kind: "rest",
-      engine: "http",
-      name: "minio-health",
-      mode: "read_only",
-      config: { base_url: REST_HEALTH_URL },
-      secrets: {},
     },
   ];
 }

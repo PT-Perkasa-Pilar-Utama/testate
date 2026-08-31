@@ -45,7 +45,7 @@ Boot stops before any write and names the fix:
 
 ## Declared loss
 
-When the old key is gone for good, set `TESTATE_SECRETS_ACCEPT_UNREADABLE=true`. Boot proceeds, names every unreadable value in the error log, and disables the adapters and REST requests that own them (`credential_unreadable`). Re-enter each credential in the UI; each save seals under the active key. When a boot reports zero unreadable values, remove the flag. The flag never deletes a value.
+When the old key is gone for good, set `TESTATE_SECRETS_ACCEPT_UNREADABLE=true`. Boot proceeds, names every unreadable value in the error log, and disables the adapters that own them (`credential_unreadable`). Re-enter each credential in the UI; each save seals under the active key. When a boot reports zero unreadable values, remove the flag. The flag never deletes a value.
 
 ## Backups
 

@@ -5,7 +5,6 @@ import type { KeyRing } from "./lib/sealed/index.ts";
 import type { AuditService } from "./modules/audit/audit.service.ts";
 import type { Dispatcher } from "./modules/jobs/jobs.dispatcher.ts";
 import type { JobsService } from "./modules/jobs/jobs.service.ts";
-import { restBaseUrls, sharesOrigin } from "./modules/ops/ops.service.ts";
 import type { HealthDeps } from "./modules/ops/ops.service.ts";
 import { createResetHandler } from "./modules/ops/ops.reset.ts";
 import type { ResetDeps } from "./modules/ops/ops.reset.ts";
@@ -151,15 +150,6 @@ export function opsDeps(
   logger: { sink: { degraded: boolean } },
   live: { jobs: Pick<JobsService, "heartbeat">; adapters: Pick<AdaptersRepository, "all"> }
 ): HealthDeps {
-  const shared = (): boolean =>
-    sharesOrigin(config.TESTATE_PUBLIC_URL, restBaseUrls(live.adapters.all()));
-  // 07 §7.2 asks for a boot warning too, and this builder runs once, during boot.
-  if (shared()) {
-    process.stderr.write(
-      `WARNING: ${config.TESTATE_PUBLIC_URL ?? ""} is also a REST adapter's hostname. ` +
-        "Give Testate its own hostname: a saved request can otherwise reach Testate itself.\n"
-    );
-  }
   return {
     db,
     dataDir: config.TESTATE_DATA_DIR,
@@ -173,6 +163,5 @@ export function opsDeps(
     extraKeys: ring.all.size - 1,
     sinkDegraded: () => logger.sink.degraded,
     dispatcher: () => live.jobs.heartbeat(),
-    originShared: shared,
   };
 }

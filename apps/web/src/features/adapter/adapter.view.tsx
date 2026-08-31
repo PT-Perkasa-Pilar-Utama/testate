@@ -2,7 +2,7 @@ import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Match, Show, Switch } from "solid-js";
-import type { Adapter, Entry, Introspection, RestRequest } from "@testate/shared";
+import type { Adapter, Entry, Introspection } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
@@ -82,37 +82,6 @@ function FilesView(props: { entries: Entry[] }): JSX.Element {
   );
 }
 
-function RequestsView(props: { requests: RestRequest[] }): JSX.Element {
-  return (
-    <Table>
-      <thead>
-        <tr>
-          <Head>Name</Head>
-          <Head>Method</Head>
-          <Head>Path</Head>
-          <Head>Expected</Head>
-        </tr>
-      </thead>
-      <tbody>
-        <For each={props.requests}>
-          {(request) => (
-            <Row>
-              <Cell>{request.name}</Cell>
-              <Cell>
-                <Badge variant="outline">{request.method}</Badge>
-              </Cell>
-              <Cell>
-                <code>{request.path}</code>
-              </Cell>
-              <Cell>{request.expected_status ?? "any"}</Cell>
-            </Row>
-          )}
-        </For>
-      </tbody>
-    </Table>
-  );
-}
-
 const STATUS_VARIANT = { ok: "success", error: "error", disabled: "secondary" } as const;
 
 function qualified(table: { schema: string | null; name: string }): string {
@@ -151,11 +120,6 @@ function Actions(props: { presenter: AdapterPresenter; base: string }): JSX.Elem
       <Show when={adapter().kind === "storage"}>
         <Button size="sm" variant="secondary" onClick={() => navigate(`${props.base}/files`)}>
           Browse files
-        </Button>
-      </Show>
-      <Show when={adapter().kind === "rest"}>
-        <Button size="sm" variant="secondary" onClick={() => navigate(`${props.base}/requests`)}>
-          Requests
         </Button>
       </Show>
       <Show when={hasRole("qa")}>
@@ -252,9 +216,6 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
             {(schema) => <TablesView schema={schema()} base={base()} />}
           </Match>
           <Match when={presenter.entries()}>{(entries) => <FilesView entries={entries()} />}</Match>
-          <Match when={presenter.requests()}>
-            {(requests) => <RequestsView requests={requests()} />}
-          </Match>
         </Switch>
         <DeleteDialog presenter={presenter} name={presenter.adapter.value().name} />
         <EditDialog presenter={presenter} adapter={presenter.adapter.value()} />

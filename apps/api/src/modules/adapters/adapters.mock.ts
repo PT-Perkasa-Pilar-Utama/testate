@@ -7,7 +7,6 @@ import {
   NOW,
   PLAN_ID,
   PROJECT_ID,
-  REST_ADAPTER_ID,
   STORAGE_ADAPTER_ID,
 } from "../../lib/mock/fixtures.ts";
 
@@ -108,21 +107,6 @@ export const STORAGE_ADAPTER_MOCK: Adapter = {
   capabilities: null,
   strategy: null,
   read_only_enforcement: null,
-};
-
-export const REST_ADAPTER_MOCK: Adapter = {
-  ...STORAGE_ADAPTER_MOCK,
-  id: REST_ADAPTER_ID,
-  kind: "rest",
-  engine: "http",
-  name: "shop-api",
-  config: {
-    base_url: "https://shop.sit.internal",
-    timeout_ms: 30000,
-    verify_tls: true,
-    default_headers: { "X-Api-Version": "2" },
-    secret_header_names: ["Authorization"],
-  },
 };
 
 export const ADAPTER_DELETION_PLAN_MOCK = {

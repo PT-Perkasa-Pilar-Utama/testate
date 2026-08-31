@@ -80,20 +80,6 @@ export const ENGINE_FORMS = {
     ],
     secrets: [{ key: "password", label: "Password", type: "password", required: true }],
   },
-  http: {
-    kind: "rest",
-    label: "REST API",
-    config: [
-      {
-        key: "base_url",
-        label: "Base URL",
-        type: "url",
-        required: true,
-        placeholder: "https://api.sit.internal",
-      },
-    ],
-    secrets: [{ key: "Authorization", label: "Authorization header (optional)", type: "password" }],
-  },
 } as const satisfies Record<Engine, EngineForm>;
 
 export const ENGINE_OPTIONS = ENGINES.map((engine) => ({

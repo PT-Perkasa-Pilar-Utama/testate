@@ -9,9 +9,8 @@ Testate is a self-hosted tool for QA teams. It takes data-only snapshots ("state
 | Tabular  | PostgreSQL, MySQL, MariaDB | view, snapshot, checkout, diff, extract, edit, import |
 | Document | MongoDB                    | view, snapshot, checkout, diff, extract               |
 | Files    | S3, SFTP, FTP              | view, download                                        |
-| REST     | any HTTP API               | saved requests, hooks around checkouts                |
 
-REST adapters hold no data of their own. They store the requests you save and the hooks that run around a checkout. Version 1.0.0-alpha. Every engine in the table is real, not a stand-in.
+Version 1.1.0-alpha. Every engine in the table is real, not a stand-in.
 
 ## Quick start
 
@@ -260,7 +259,7 @@ Every job-creating `POST` also accepts an `Idempotency-Key` header, so a retried
 | It has to reach the database from inside a container | A database on another server needs a route, an open firewall, and a login. Inside the container, `127.0.0.1` means the container, not the host. If Testate cannot reach a database, you cannot add it, so a reset skips it.                                           | Point the adapter at the host or container name that is actually reachable; see section 3 above.                                                                                                       |
 | A snapshot has no owner                              | Two testers sharing one database share everything: either can reset it, and the other's work goes without a warning. Two projects on one database is worse: two unrelated adapters, jobs not kept apart, each taking its own starting snapshot at a different moment. | Run one database, one project, one tester at a time. The connection test warns you when another project already tracks that database.                                                                  |
 | It needs a real database connection                  | Testate has to speak the database's own protocol, read every table at one moment, and be allowed to empty and refill tables inside one transaction. Firebase, Firestore, and DynamoDB give you an SDK rather than a connection, so you cannot add them.               | Use an ordinary target instead: Supabase, Neon, RDS, and Cloud SQL all work. On Supabase, use the direct connection rather than the pooler, with a role that owns the tables, or the reset is refused. |
-| It resets databases and nothing else                 | Caches, queues, and whatever a running service holds in memory stay untouched, so a service can go on serving rows the database no longer has.                                                                                                                        | Attach a saved request to the `before_checkout` and `after_checkout` hooks to pause the service and clear its cache around the reset.                                                                  |
+| It resets databases and nothing else                 | Caches, queues, and whatever a running service holds in memory stay untouched, so a service can go on serving rows the database no longer has.                                                                                                                        | Restart the service, or clear its cache, after the reset. Testate does not do it for you.                                                                                                              |
 
 ### Microservices
 

@@ -25,7 +25,6 @@ Testate holds credentials to databases and can empty them. Every control below e
 | Bearer tokens | `Authorization: Bearer tst_<base64url 32 bytes>`; SHA-256 lookup, constant-time compare; role from the token; project scope enforced by middleware on every `/projects/:slug` route and every list |
 | Roles | Cumulative lattice `admin ⊇ qa ⊇ viewer`; `requireRole(min)` on each router; per-action checks in services for admin-only transitions (loosen mode, delete project, tokens, users, settings) |
 | Cookie CSRF | Mutating requests with a cookie session must carry `X-Testate-Request: 1`; browsers cannot set it cross-site without CORS approval, and CORS is off. Bearer requests skip the check |
-| Own hostname | Boot logs a warning and the health check reports `origin_shared: true` when `TESTATE_PUBLIC_URL` shares a hostname with any REST adapter base URL; the deployment plan says to run Testate on its own hostname |
 
 The full role matrix is in [09-authentication.md](09-authentication.md).
 

@@ -118,8 +118,7 @@ function untrustedAware(source: FileSource, untrusted: () => boolean): FileSourc
 /** Probes a storage target by listing its root (10 §10.3); any host key passes because no row exists yet. */
 export function createFileProbe(open: OpenFileSource, fallback: FileProbeFn): FileProbeFn {
   return async (engine: Engine, config: JsonObject, secrets: Secrets): Promise<FileProbeResult> => {
-    if (TIER_OF_ENGINE[engine] !== "files" || engine === "http")
-      return fallback(engine, config, secrets);
+    if (TIER_OF_ENGINE[engine] !== "files") return fallback(engine, config, secrets);
     const source = open(engine, config, secrets, () => true);
     try {
       await source.list("", { limit: 1 });

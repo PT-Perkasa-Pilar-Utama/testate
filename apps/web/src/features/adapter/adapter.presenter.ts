@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import type { Adapter, Entry, Introspection, RestRequest } from "@testate/shared";
+import type { Adapter, Entry, Introspection } from "@testate/shared";
 
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
@@ -15,15 +15,13 @@ import type { EditDraft } from "./adapter.edit.ts";
 
 export type AdapterDetail =
   | { view: "tables"; schema: Introspection }
-  | { view: "files"; entries: Entry[] }
-  | { view: "requests"; requests: RestRequest[] };
+  | { view: "files"; entries: Entry[] };
 
 export type AdapterPresenter = {
   adapter: Refreshable<Adapter>;
   detail: Refreshable<AdapterDetail>;
   tables: () => Introspection | null;
   entries: () => Entry[] | null;
-  requests: () => RestRequest[] | null;
   setMode: (mode: "sandbox" | "read_only") => Promise<void>;
   editing: () => boolean;
   draft: () => EditDraft;
@@ -39,11 +37,8 @@ export type AdapterPresenter = {
   confirmDelete: () => Promise<void>;
 };
 
-/** REST adapters list saved requests; the Files tier lists entries; the rest introspect. */
+/** The Files tier lists entries; every other tier introspects. */
 async function loadDetail(slug: string, adapter: Adapter): Promise<AdapterDetail> {
-  if (adapter.kind === "rest") {
-    return { view: "requests", requests: await adapterModel.requests(slug, adapter.id) };
-  }
   if (adapter.tier === "files") {
     return { view: "files", entries: await adapterModel.entries(slug, adapter.id) };
   }
@@ -98,10 +93,6 @@ export function createAdapterPresenter(slug: () => string, id: () => string): Ad
     entries: () => {
       const current = detail.value();
       return current.view === "files" ? current.entries : null;
-    },
-    requests: () => {
-      const current = detail.value();
-      return current.view === "requests" ? current.requests : null;
     },
     setMode: (mode) => {
       const staticSlug = slug();

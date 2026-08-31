@@ -15,7 +15,6 @@ export const PROJECT_TABS = [
   { id: "checkouts", label: "Checkouts" },
   { id: "diffs", label: "Diffs" },
   { id: "imports", label: "Imports" },
-  { id: "hooks", label: "Hooks" },
 ] as const;
 export type ProjectTab = (typeof PROJECT_TABS)[number]["id"];
 

@@ -14,7 +14,6 @@ const affectedSchema = v.object({
   diffs: v.number(),
   import_runs: v.number(),
   saved_queries: v.number(),
-  hooks: v.number(),
   tokens: v.number(),
 });
 

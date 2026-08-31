@@ -31,9 +31,6 @@ import { createPoliciesRepository } from "../src/modules/data/data.policies.ts";
 import type { PoliciesRepository } from "../src/modules/data/data.policies.ts";
 import { createImportsRepository } from "../src/modules/imports/imports.repository.ts";
 import type { ImportsRepository } from "../src/modules/imports/imports.repository.ts";
-import type { HooksService } from "../src/modules/hooks/hooks.service.ts";
-import type { RestRepository } from "../src/modules/rest/rest.repository.ts";
-import type { RestService } from "../src/modules/rest/rest.service.ts";
 import { createStatesRepository } from "../src/modules/states/states.repository.ts";
 import type { StatesRepository } from "../src/modules/states/states.repository.ts";
 import { registerRunners } from "../src/modules/jobs/jobs.runners.ts";
@@ -41,7 +38,6 @@ import type { QuotaSettings } from "../src/modules/states/states.snapshot.ts";
 
 /** Instance quota defaults the snapshot job reads; a test lowers them to hit the ceiling. */
 type QuotaKnob = { current: QuotaSettings };
-import { createTestIntegrations } from "./integrations.ts";
 import type { AdaptersService } from "../src/modules/adapters/adapters.service.ts";
 import { secretsSchema } from "../src/modules/adapters/adapters.secrets.ts";
 import type { Secrets } from "../src/modules/adapters/adapters.secrets.ts";
@@ -74,18 +70,6 @@ export const S3: AdapterDraft = {
   secrets: { access_key_id: "AKIA", secret_access_key: "s3-secret" },
 };
 
-/** A REST adapter draft against a local test server; secrets become default headers. */
-export function httpDraft(baseUrl: string): AdapterDraft {
-  return {
-    kind: "rest",
-    engine: "http",
-    name: "cache-api",
-    mode: "sandbox",
-    config: { base_url: baseUrl, timeout_ms: 2000, default_headers: { "X-Source": "testate" } },
-    secrets: { "X-Internal-Key": "hook-secret" },
-  };
-}
-
 export type AdaptersHarness = {
   adapters: AdaptersService;
   repo: AdaptersRepository;
@@ -113,9 +97,6 @@ export type AdaptersHarness = {
   fakeOptions: FakeEngineOptions;
   /** Instance quota defaults the snapshot job reads; lower them to test the ceiling. */
   quota: { current: { default_bytes: number; instance_ceiling_bytes: number | null } };
-  rest: RestService;
-  requests: RestRepository;
-  hooks: HooksService;
   failCounters: { current: boolean };
   projectsRepo: AccountsHarness["projectsRepo"];
   db: AccountsHarness["db"];
@@ -230,12 +211,6 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
   const rowHashTables = new Set<string>();
   const fakeOptions: FakeEngineOptions = { databases, failCounters, rowHashTables };
   const engines = fakeRegistry(fakeOptions);
-  const { requests, rest, hooks } = createTestIntegrations(
-    accounts,
-    repo,
-    ring,
-    stubNetguard(blocked)
-  );
   const quota: QuotaKnob = {
     current: { default_bytes: 10 * 1024 ** 3, instance_ceiling_bytes: null },
   };
@@ -254,7 +229,6 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     imports,
     policies,
     dataDir,
-    hooks,
     projects: accounts.projectsRepo,
   });
   runtime.dispatcher.start();
@@ -308,9 +282,6 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     engines,
     fakeOptions,
     quota,
-    rest,
-    requests,
-    hooks,
     failCounters,
     projectsRepo: accounts.projectsRepo,
     db: accounts.db,

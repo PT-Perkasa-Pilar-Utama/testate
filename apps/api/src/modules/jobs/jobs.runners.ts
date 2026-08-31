@@ -7,7 +7,6 @@ import { createCheckoutRunner } from "../checkouts/checkouts.job.ts";
 import type { CheckoutsRepository } from "../checkouts/checkouts.repository.ts";
 import { returnToInit } from "../checkouts/checkouts.return-to-init.ts";
 import type { ReturnToInitDeps } from "../checkouts/checkouts.return-to-init.ts";
-import type { HookRunner } from "../hooks/hooks.service.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import { createDiffRunner } from "../diffs/diffs.job.ts";
 import { createImportRunner } from "../imports/imports.job.ts";
@@ -22,7 +21,6 @@ import type { Dispatcher, JobRunner, JobRunnerContext } from "./jobs.dispatcher.
 
 export type RunnerDeps = ReturnToInitDeps & {
   db: MetadataDb;
-  hooks: HookRunner;
   checkouts: CheckoutsRepository;
   diffs: DiffsRepository;
   imports: ImportsRepository;

@@ -15,7 +15,6 @@ export const KIND_OF_ENGINE = {
   s3: "storage",
   sftp: "storage",
   ftp: "storage",
-  http: "rest",
 } as const satisfies Record<Engine, AdapterKind>;
 
 export const TIER_OF_ENGINE = {
@@ -26,7 +25,6 @@ export const TIER_OF_ENGINE = {
   s3: "files",
   sftp: "files",
   ftp: "files",
-  http: "files",
 } as const satisfies Record<Engine, Tier>;
 
 const DEFAULT_PORT = {
@@ -37,7 +35,6 @@ const DEFAULT_PORT = {
   s3: 443,
   sftp: 22,
   ftp: 21,
-  http: 443,
 } as const satisfies Record<Engine, number>;
 
 const port = v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(65535));
@@ -71,16 +68,6 @@ export const fileHostConfigSchema = v.object({
   tls: v.optional(v.boolean(), false),
 });
 
-const httpConfigSchema = v.object({
-  base_url: v.pipe(v.string(), v.url()),
-  timeout_ms: v.optional(
-    v.pipe(v.number(), v.integer(), v.minValue(1000), v.maxValue(120000)),
-    30000
-  ),
-  verify_tls: v.optional(v.boolean(), true),
-  default_headers: v.optional(v.record(v.string(), v.string()), {}),
-});
-
 /** Secret keys each engine accepts; `alternatives` lists groups of which exactly one is required. */
 type SecretRule = { allowed: readonly string[]; alternatives: readonly (readonly string[])[] };
 
@@ -110,7 +97,6 @@ const SECRET_RULES = {
     alternatives: [["password", "private_key"]],
   },
   ftp: { allowed: ["password"], alternatives: [["password"]] },
-  http: { allowed: [], alternatives: [] },
 } as const satisfies Record<Engine, SecretRule>;
 
 export type Target = { host: string; port: number };
@@ -146,7 +132,6 @@ function parseWith<TSchema extends v.GenericSchema>(
 /** Validates the secret keys for the engine; `http` accepts any header names. */
 export function validateSecrets(engine: Engine, secrets: Secrets): void {
   const rules: SecretRule = SECRET_RULES[engine];
-  if (engine === "http") return;
   const unknown = Object.keys(secrets).find((key) => !rules.allowed.includes(key));
   if (unknown !== undefined)
     throw invalid(`secret ${unknown} is not used by ${engine}`, { key: unknown });
@@ -222,17 +207,6 @@ export function validateConfig(
       config: v.parse(jsonObjectSchema, parsed),
       target,
       targetHash: sha256(`${target.host}|${parsed.bucket}|${parsed.prefix}`),
-    };
-  }
-  if (engine === "http") {
-    const parsed = parseWith(httpConfigSchema, config);
-    const target = hostOfUrl(parsed.base_url, parsed.base_url.startsWith("http:") ? 80 : 443);
-    return {
-      kind,
-      tier,
-      config: { ...parsed, secret_header_names: Object.keys(secrets) },
-      target,
-      targetHash: sha256(parsed.base_url),
     };
   }
   const parsed = parseWith(fileHostConfigSchema, config);

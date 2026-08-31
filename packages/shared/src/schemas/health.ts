@@ -12,7 +12,6 @@ export const healthAdminSchema = v.object({
   boot_id: v.string(),
   uptime_s: v.number(),
   env: v.picklist(["development", "test", "production"]),
-  origin_shared: v.boolean(),
   checks: v.object({
     metadata_db: v.object({ status: checkStatusSchema, latency_ms: v.number() }),
     data_dir: v.object({ status: checkStatusSchema, free_bytes: v.number() }),

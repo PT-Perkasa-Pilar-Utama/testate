@@ -13,7 +13,6 @@ export * from "./schemas/states.ts";
 export * from "./schemas/checkouts.ts";
 export * from "./schemas/diffs.ts";
 export * from "./schemas/storage.ts";
-export * from "./schemas/rest.ts";
 export * from "./schemas/audit.ts";
 export * from "./schemas/settings.ts";
 export * from "./schemas/tools.ts";

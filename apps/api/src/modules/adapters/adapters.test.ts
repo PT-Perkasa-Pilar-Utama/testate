@@ -43,41 +43,12 @@ describe("adapters", () => {
     expect(await storedSecrets(harness, adapter.id)).toStrictEqual({ password: "pg-secret" });
   });
 
-  it("forces storage adapters read-only with no init job and marks REST secrets as header names", async () => {
+  it("forces storage adapters read-only with no init job", async () => {
     const { adapters, qa } = await createAdaptersHarness();
     const s3 = await adapters.create(qa, "shop", S3, TEST_META);
     expect(s3.adapter.mode).toBe("read_only");
     expect(s3.adapter.tier).toBe("files");
     expect(s3.init_job).toBeNull();
-    const rest = await adapters.create(
-      qa,
-      "shop",
-      {
-        kind: "rest",
-        engine: "http",
-        name: "shop-api",
-        mode: "sandbox",
-        config: { base_url: "https://api.sit.internal" },
-        secrets: { Authorization: "Bearer x" },
-      },
-      TEST_META
-    );
-    expect(rest.adapter.config["secret_header_names"]).toStrictEqual(["Authorization"]);
-    expect(rest.adapter.credential.set).toBe(true);
-    const bare = await adapters.create(
-      qa,
-      "shop",
-      {
-        kind: "rest",
-        engine: "http",
-        name: "public-api",
-        mode: "sandbox",
-        config: { base_url: "https://api.sit.internal/v2" },
-        secrets: {},
-      },
-      TEST_META
-    );
-    expect(bare.adapter.credential).toStrictEqual({ set: false });
   });
 
   it("refuses a kind that does not match the engine, unknown or missing secrets, and a taken name", async () => {

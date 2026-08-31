@@ -9,7 +9,6 @@ import AdapterView from "@/features/adapter/adapter.view.tsx";
 import GridView from "@/features/data/grid.view.tsx";
 import PoliciesView from "@/features/data/policies.view.tsx";
 import QueryView from "@/features/data/query.view.tsx";
-import RestView from "@/features/rest/rest.view.tsx";
 import StorageView from "@/features/storage/storage.view.tsx";
 import AccountView from "@/features/account/account.view.tsx";
 import AuditView from "@/features/audit/audit.view.tsx";
@@ -98,9 +97,6 @@ function Page(props: { match: RouteMatch | null }): JSX.Element {
       </Match>
       <Match when={name() === "files"}>
         <StorageView slug={param("slug")} id={param("id")} />
-      </Match>
-      <Match when={name() === "requests"}>
-        <RestView slug={param("slug")} id={param("id")} />
       </Match>
       <Match when={name() === "jobs"}>
         <JobsView />

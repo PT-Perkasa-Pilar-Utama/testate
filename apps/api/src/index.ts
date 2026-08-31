@@ -23,12 +23,7 @@ import {
   serve,
   sweepSealed,
 } from "./boot.ts";
-import {
-  createEngineWiring,
-  createIntegrations,
-  createStateServices,
-  settingsDeps,
-} from "./wiring.ts";
+import { createEngineWiring, createStateServices, settingsDeps } from "./wiring.ts";
 import { bootStore, lazyJobs, opsDeps, resetHandler, storageDeps } from "./wiring.store.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import { openMetadataDb } from "./lib/db/index.ts";
@@ -52,7 +47,6 @@ import { createAuthService } from "./modules/auth/auth.service.ts";
 import { createCheckoutsHandlers } from "./modules/checkouts/checkouts.handler.ts";
 import { createDataHandlers } from "./modules/data/data.handler.ts";
 import { createDiffsHandlers } from "./modules/diffs/diffs.handler.ts";
-import { createHooksHandlers } from "./modules/hooks/hooks.handler.ts";
 import { createImportsHandlers } from "./modules/imports/imports.handler.ts";
 import { createV1 } from "./modules/index.ts";
 import { createJobsHandlers } from "./modules/jobs/jobs.handler.ts";
@@ -62,7 +56,6 @@ import { createProjectsHandlers } from "./modules/projects/projects.handler.ts";
 import { createProjectsRepository } from "./modules/projects/projects.repository.ts";
 import { requireProjectInScope } from "./modules/projects/projects.scope.ts";
 import { createProjectsService } from "./modules/projects/projects.service.ts";
-import { createRestHandlers } from "./modules/rest/rest.handler.ts";
 import { createSettingsHandlers } from "./modules/settings/settings.handler.ts";
 import { createSettingsService } from "./modules/settings/settings.service.ts";
 import { createStatesHandlers } from "./modules/states/states.handler.ts";
@@ -159,10 +152,8 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     })
   );
   netguard.setDeny((await settings.get()).netguard.deny);
-  const { rest, hooks } = createIntegrations(wiring, projectsRepo, netguard, audit, now);
   const { jobs, dispatcher } = createJobsRuntime(db, logger, audit, config, now, {
     ...wiring,
-    hooks,
     quota: async () => (await settings.get()).quota,
   });
   const storeTarget = await bootStore(config, db, ring, wiring, dispatcher, audit, now, VERSION);
@@ -226,8 +217,6 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     checkouts: createCheckoutsHandlers(core.checkouts, prefix, config.TESTATE_TRUST_PROXY, jobs),
     diffs: createDiffsHandlers(core.diffs, prefix, config.TESTATE_TRUST_PROXY),
     storage: createStorageHandlers(storage, config.TESTATE_TRUST_PROXY),
-    rest: createRestHandlers(rest),
-    hooks: createHooksHandlers(hooks, config.TESTATE_TRUST_PROXY),
     jobs: createJobsHandlers(jobs),
     audit: createAuditHandlers(audit),
     settings: createSettingsHandlers(settings, prefix, config.TESTATE_TRUST_PROXY),

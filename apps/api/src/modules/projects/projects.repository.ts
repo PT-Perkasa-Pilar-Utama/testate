@@ -75,7 +75,6 @@ export type DeletionCounts = {
   diffs: number;
   import_runs: number;
   saved_queries: number;
-  hooks: number;
   tokens: number;
 };
 
@@ -209,7 +208,6 @@ export function createProjectsRepository(db: MetadataDb): ProjectsRepository {
            JOIN adapters a ON a.id = q.adapter_id WHERE a.project_id = ?`,
         projectId
       ),
-      hooks: sum("SELECT COUNT(*) AS n FROM hooks WHERE project_id = ?", projectId),
       tokens: sum(
         "SELECT COUNT(*) AS n FROM api_tokens WHERE revoked_at IS NULL AND project_ids LIKE ?",
         `%"${projectId}"%`

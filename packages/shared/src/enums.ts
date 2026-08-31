@@ -8,20 +8,11 @@ export const TOKEN_KINDS = ["standard", "agent"] as const;
 export const tokenKindSchema = v.picklist(TOKEN_KINDS);
 export type TokenKind = v.InferOutput<typeof tokenKindSchema>;
 
-export const ADAPTER_KINDS = ["database", "storage", "rest"] as const;
+export const ADAPTER_KINDS = ["database", "storage"] as const;
 export const adapterKindSchema = v.picklist(ADAPTER_KINDS);
 export type AdapterKind = v.InferOutput<typeof adapterKindSchema>;
 
-export const ENGINES = [
-  "postgres",
-  "mysql",
-  "mariadb",
-  "mongodb",
-  "s3",
-  "sftp",
-  "ftp",
-  "http",
-] as const;
+export const ENGINES = ["postgres", "mysql", "mariadb", "mongodb", "s3", "sftp", "ftp"] as const;
 export const engineSchema = v.picklist(ENGINES);
 export type Engine = v.InferOutput<typeof engineSchema>;
 

@@ -63,8 +63,7 @@ function stubDeps(calls: Calls, refuse: string | null): SeedDeps {
 }
 
 function targetOf(draft: AdapterDraft): string {
-  const target =
-    draft.config["port"] ?? draft.config["endpoint"] ?? draft.config["base_url"] ?? "url";
+  const target = draft.config["port"] ?? draft.config["endpoint"] ?? "url";
   return `${draft.engine}:${String(target)}`;
 }
 
@@ -75,27 +74,20 @@ describe("reset seeds", () => {
     const counts = await seed("dev");
     expect(calls.users).toEqual(["qa-user", "viewer-user"]);
     expect(calls.projects).toEqual(["demo"]);
-    expect(calls.adapters).toEqual([
-      "shop-postgres",
-      "shop-mysql",
-      "shop-mariadb",
-      "exports",
-      "minio-health",
-    ]);
+    expect(calls.adapters).toEqual(["shop-postgres", "shop-mysql", "shop-mariadb", "exports"]);
     expect(calls.states).toEqual(["seeded-baseline"]);
     expect(calls.waits).toEqual([
       "init-shop-postgres",
       "init-shop-mysql",
       "init-shop-mariadb",
       "init-exports",
-      "init-minio-health",
       // The reset answers "states: 1", so it waits for that snapshot too.
       "snapshot-seeded-baseline",
     ]);
     expect(counts).toEqual({
       users: 3,
       projects: 1,
-      adapters: 5,
+      adapters: 4,
       states: 1,
       warnings: ["shop-mongo: connection refused"],
     });
@@ -113,7 +105,6 @@ describe("reset seeds", () => {
       "mariadb:13307",
       "mongodb:url",
       "s3:http://127.0.0.1:9010",
-      "http:http://127.0.0.1:9010/minio/health/live",
     ]);
   });
 });

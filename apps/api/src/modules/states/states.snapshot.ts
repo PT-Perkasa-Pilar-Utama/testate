@@ -14,8 +14,6 @@ import type { AdaptersRepository } from "../adapters/adapters.repository.ts";
 import type { AdapterRecord } from "../adapters/adapters.repository.ts";
 import { CONFIG_COLUMN, openSecrets } from "../adapters/adapters.secrets.ts";
 import type { AuditService } from "../audit/audit.service.ts";
-import { HookAbort, hookResultsJson } from "../hooks/hooks.service.ts";
-import type { HookRunResult, HookRunner } from "../hooks/hooks.service.ts";
 import type { JobRunner, JobRunnerContext } from "../jobs/jobs.dispatcher.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import type { AdapterManifest, StatesRepository } from "./states.repository.ts";
@@ -28,7 +26,6 @@ export type SnapshotDeps = {
   states: StatesRepository;
   projects: Pick<ProjectsRepository, "setHead" | "byId" | "usedBytes" | "instanceUsedBytes">;
   audit: AuditService;
-  hooks: HookRunner;
   now: () => Date;
   /** The instance defaults a project without a quota falls back to, and the instance ceiling. */
   quota?: () => Promise<QuotaSettings>;
@@ -235,35 +232,10 @@ function resolveTarget(deps: SnapshotDeps, job: JobRunnerContext["job"]): Target
   };
 }
 
-type AfterSnapshot = { hooks: HookRunResult[]; aborted: boolean };
-
-/** `after_snapshot` hooks; an `abort` failure is reported, never thrown, since the state is already ready. */
-async function afterSnapshot(
-  deps: SnapshotDeps,
-  jobId: string,
-  actor: Actor,
-  target: Target,
-  projectId: string
-): Promise<AfterSnapshot> {
-  try {
-    const hooks = await deps.hooks.run("after_snapshot", {
-      projectId,
-      jobId,
-      actor,
-      state: { id: target.stateId, name: target.name },
-    });
-    return { hooks, aborted: false };
-  } catch (cause: unknown) {
-    if (!(cause instanceof HookAbort)) throw cause;
-    return { hooks: [], aborted: true };
-  }
-}
-
 /**
  * The `snapshot` job: every adapter at one instant each, blobs pinned, manifests committed in one
  * transaction, HEAD moved to the state (08 §8.3, 15 §15.3).
  * Adapters on distinct targets run in parallel up to `adapterLanes`; one target stays sequential.
- * `after_snapshot` hooks run after HEAD moved; an `abort` failure marks the job partial (13 §13.5).
  */
 export function createSnapshotRunner(deps: SnapshotDeps): JobRunner {
   return async ({ job, signal, progress }) => {
@@ -296,7 +268,6 @@ export function createSnapshotRunner(deps: SnapshotDeps): JobRunner {
       if (MOVES_HEAD.has(target.kind)) {
         deps.projects.setHead(projectId, target.stateId, "at_state", deps.now().toISOString());
       }
-      const { hooks, aborted } = await afterSnapshot(deps, job.id, actor, target, projectId);
       deps.audit.record({
         actor,
         action: "state.created",
@@ -312,14 +283,13 @@ export function createSnapshotRunner(deps: SnapshotDeps): JobRunner {
         outcome: "succeeded",
       });
       return {
-        status: aborted ? "partial" : "succeeded",
+        status: "succeeded",
         result: {
           state_id: target.stateId,
           name: target.name,
           adapters: manifests.length,
           rows: manifests.reduce((total, manifest) => total + manifest.row_count, 0),
           size_bytes: size,
-          hooks: hookResultsJson(hooks),
         },
       };
     } catch (cause: unknown) {

@@ -28,7 +28,6 @@ Terms as the code, the API, and the UI use them. One meaning each. Specs cite th
 | **Kid** | The fingerprint of a sealing key, printed in health and in the rotation banner | The key |
 | **Sweep** | The boot pass that re-seals every stored value under the active key | A migration |
 | **Job** | Long work with a status, progress, cancel, and an SSE stream: snapshot, checkout, diff, import, deletion, backup, migration | A request |
-| **Hook** | A saved REST request that runs before or after a checkout, ordered, with a fail policy | A webhook Testate receives |
 | **Actor** | Who did something: a user, a token, or the system; carried on every audit row and wide event | A role |
 | **Role** | `viewer` < `qa` < `admin`, cumulative | A permission list |
 | **Agent token** | An API token of kind `agent`: viewer role, reaches `POST /mcp` only, masks always on | A user |

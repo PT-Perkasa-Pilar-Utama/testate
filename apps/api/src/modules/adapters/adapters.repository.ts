@@ -182,7 +182,6 @@ const TIER_BY_ENGINE = {
   s3: "files",
   sftp: "files",
   ftp: "files",
-  http: "files",
 } as const satisfies Record<AdapterRow["engine"], Adapter["tier"]>;
 
 type Column = [string, string | number | null];

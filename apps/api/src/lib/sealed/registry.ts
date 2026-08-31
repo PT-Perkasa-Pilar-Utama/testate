@@ -11,7 +11,6 @@ import type { KeyRing, Sealed } from "./index.ts";
 export const SEALED_COLUMNS = [
   { table: "adapters", column: "config_sealed", owner: "adapter" },
   { table: "adapters", column: "readonly_config_sealed", owner: "adapter" },
-  { table: "rest_requests", column: "headers_sealed", owner: "rest_request" },
 ] as const;
 
 export type SealedColumn = (typeof SEALED_COLUMNS)[number];

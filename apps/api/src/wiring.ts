@@ -12,7 +12,6 @@ import { createEngineRegistry } from "./lib/engines/index.ts";
 import type { Netguard } from "./lib/engines/index.ts";
 import {
   createEngineProbe,
-  createHttpProbe,
   createScaffoldFileProbe,
   createScaffoldProbe,
 } from "./modules/adapters/adapters.probe.ts";
@@ -41,14 +40,6 @@ import { createImportsRepository } from "./modules/imports/imports.repository.ts
 import type { ImportsRepository } from "./modules/imports/imports.repository.ts";
 import { createImportsService } from "./modules/imports/imports.service.ts";
 import type { ImportsService } from "./modules/imports/imports.service.ts";
-import { createHooksRepository } from "./modules/hooks/hooks.repository.ts";
-import type { HooksRepository } from "./modules/hooks/hooks.repository.ts";
-import { createHooksService } from "./modules/hooks/hooks.service.ts";
-import type { HooksDeps, HooksService } from "./modules/hooks/hooks.service.ts";
-import { createRestRepository } from "./modules/rest/rest.repository.ts";
-import type { RestRepository } from "./modules/rest/rest.repository.ts";
-import { createRestService } from "./modules/rest/rest.service.ts";
-import type { RestDeps, RestService } from "./modules/rest/rest.service.ts";
 import { createSettingsRepository } from "./modules/settings/settings.repository.ts";
 import type { SettingsDeps } from "./modules/settings/settings.service.ts";
 import { createStatesRepository } from "./modules/states/states.repository.ts";
@@ -56,10 +47,8 @@ import { createStatesService } from "./modules/states/states.service.ts";
 import type { StatesDeps, StatesService } from "./modules/states/states.service.ts";
 import type { JobsService } from "./modules/jobs/jobs.service.ts";
 
-export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now" | "hooks" | "blobs"> & {
+export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now" | "blobs"> & {
   blobs: SwitchableBlobStore;
-  requests: RestRepository;
-  hooks: HooksRepository;
   data: DataRepository;
   policies: PoliciesRepository;
   diffs: DiffsRepository;
@@ -87,7 +76,7 @@ export function createEngineWiring(
     engines,
     adapterLanes: config.TESTATE_JOB_CONCURRENCY,
     probe: createEngineProbe(engines, createScaffoldProbe()),
-    fileProbe: createFileProbe(openFileSource, createHttpProbe(createScaffoldFileProbe())),
+    fileProbe: createFileProbe(openFileSource, createScaffoldFileProbe()),
     hostKeys,
     files: createFilesResolver({
       repo: adapters,
@@ -102,8 +91,6 @@ export function createEngineWiring(
     adapters,
     states: createStatesRepository(db),
     checkouts: createCheckoutsRepository(db),
-    requests: createRestRepository(db),
-    hooks: createHooksRepository(db),
     data: createDataRepository(db),
     policies: createPoliciesRepository(db),
     diffs: createDiffsRepository(db),
@@ -141,55 +128,6 @@ export function checkoutsDeps(
   now: () => Date
 ): CheckoutsDeps {
   return { ...wiring, repo: wiring.checkouts, projects, jobs, audit, now };
-}
-
-export function restDeps(
-  wiring: EngineWiring,
-  projects: ProjectsRepository,
-  netguard: Netguard,
-  now: () => Date
-): RestDeps {
-  return {
-    repo: wiring.requests,
-    adapters: wiring.adapters,
-    projects,
-    ring: wiring.ring,
-    netguard,
-    now,
-  };
-}
-
-export function hooksDeps(
-  wiring: EngineWiring,
-  rest: RestService,
-  projects: ProjectsRepository,
-  audit: AuditService,
-  now: () => Date
-): HooksDeps {
-  return {
-    repo: wiring.hooks,
-    rest,
-    requests: wiring.requests,
-    adapters: wiring.adapters,
-    projects,
-    audit,
-    now,
-  };
-}
-
-export type Integrations = { rest: RestService; hooks: HooksService };
-
-/** REST requests and hooks exist before the jobs runtime, which runs hooks (05 §5.12-5.13). */
-export function createIntegrations(
-  wiring: EngineWiring,
-  projects: ProjectsRepository,
-  netguard: Netguard,
-  audit: AuditService,
-  now: () => Date
-): Integrations {
-  const rest = createRestService(restDeps(wiring, projects, netguard, now));
-  const hooks = createHooksService(hooksDeps(wiring, rest, projects, audit, now));
-  return { rest, hooks };
 }
 
 export type StateServices = {

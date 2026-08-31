@@ -23,7 +23,6 @@ const AFFECTED_LABELS: [keyof DeletionAffected, string][] = [
   ["diffs", "diff"],
   ["import_runs", "import run"],
   ["saved_queries", "saved query"],
-  ["hooks", "hook"],
   ["tokens", "token scoped to this project"],
 ];
 

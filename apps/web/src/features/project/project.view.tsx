@@ -9,7 +9,6 @@ import { hasRole } from "@/lib/session.ts";
 import AdaptersView from "../adapters/adapters.view.tsx";
 import CheckoutsView from "../checkouts/checkouts.view.tsx";
 import DiffsView from "../diffs/diffs.view.tsx";
-import HooksView from "../hooks/hooks.view.tsx";
 import ImportsView from "../imports/imports.view.tsx";
 import StatesView from "../states/states.view.tsx";
 import { DeleteDialog, EditDialog } from "./project-settings.view.tsx";
@@ -77,9 +76,6 @@ export default function ProjectView(props: { slug: string }): JSX.Element {
         </Match>
         <Match when={presenter.tab() === "imports"}>
           <ImportsView slug={props.slug} />
-        </Match>
-        <Match when={presenter.tab() === "hooks"}>
-          <HooksView slug={props.slug} />
         </Match>
       </Switch>
       <EditDialog presenter={presenter} />

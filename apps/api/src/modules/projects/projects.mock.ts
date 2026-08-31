@@ -63,7 +63,6 @@ export const DELETION_PLAN_MOCK = {
     diffs: 1,
     import_runs: 4,
     saved_queries: 2,
-    hooks: 1,
     tokens: 1,
   },
   adapters: [
