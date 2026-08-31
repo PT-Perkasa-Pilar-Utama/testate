@@ -1,4 +1,4 @@
-import type { JsonObject, Mapping, TableSchema } from "@testate/shared";
+import type { ImportReport, JsonObject, Mapping, TableSchema } from "@testate/shared";
 
 export const TRANSFORMS = ["", "trim", "emptyToNull", "number", "uuid", "now", "json"] as const;
 export type Transform = (typeof TRANSFORMS)[number];
@@ -62,8 +62,10 @@ export function sourceBody(source: Source): JsonObject {
 }
 
 export function mappingBody(draft: MappingDraft): JsonObject {
+  // A cleared name never blocks a run: it falls back to the same default she saw in the field.
+  const name = draft.name.trim() === "" ? defaultMappingName(draft.table) : draft.name.trim();
   const body: JsonObject = {
-    name: draft.name.trim(),
+    name,
     target: draft.table,
     columns: draft.columns.map((column) => ({
       source: column.source === "" ? null : column.source,
@@ -98,4 +100,103 @@ export function runBody(
   };
   if (draft.sheet !== "") body["options"] = { sheet: draft.sheet };
   return body;
+}
+
+// --- Plain-English copy. The wire values above are the API contract and never change; these are
+// only what a person reads for them, so the codes above never have to reach a screen unexplained. ---
+
+export const TRANSFORM_OPTIONS: ReadonlyArray<{ value: Transform; label: string }> = [
+  { value: "", label: "Leave as is" },
+  { value: "trim", label: "Trim extra spaces" },
+  { value: "emptyToNull", label: "Treat blank cells as no value" },
+  { value: "number", label: "Convert text to a number" },
+  { value: "uuid", label: "Generate a unique ID" },
+  { value: "now", label: "Fill in today's date and time" },
+  { value: "json", label: "Read as structured data (JSON)" },
+];
+
+export const MODE_OPTIONS: ReadonlyArray<{
+  value: Mapping["mode"];
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "append",
+    label: "Add these rows",
+    description: "Every row in the file becomes a new row. Nothing already in the table changes.",
+  },
+  {
+    value: "upsert",
+    label: "Add new rows, update existing ones",
+    description:
+      "Rows are matched by the key columns below. New rows are added; matching rows are updated.",
+  },
+  {
+    value: "replace",
+    label: "Clear the table, then load this file",
+    description: "Every row already in the table is removed first, then these rows are added.",
+  },
+];
+
+export function modeLabel(mode: Mapping["mode"]): string {
+  const found = MODE_OPTIONS.find((option) => option.value === mode);
+  return found === undefined ? mode : found.label;
+}
+
+/** The table's own name is a fine default, so naming a mapping is only her problem if she edits it. */
+export function defaultMappingName(table: string): string {
+  const dot = table.lastIndexOf(".");
+  return dot === -1 ? table : table.slice(dot + 1);
+}
+
+/** Why the primary action is disabled, next to itself; null once she can press it. */
+export function blockedReason(draft: MappingDraft, hasPreview: boolean): string | null {
+  if (!hasPreview) return "Load a file first.";
+  if (draft.table === "") return "Choose a table to import into.";
+  if (draft.mode === "upsert" && draft.key_columns.trim() === "") {
+    return "Pick at least one key column below to match rows by.";
+  }
+  return null;
+}
+
+export type ReportCounts = { ready: number; rejected: number };
+
+/** Written rows for a real run; rows that validated fine for a preview, which never writes anything. */
+export function reportCounts(
+  report: Pick<ImportReport, "dry_run" | "inserted" | "updated" | "skipped" | "failed">
+): ReportCounts {
+  return {
+    ready: report.dry_run ? report.skipped : report.inserted + report.updated,
+    rejected: report.failed,
+  };
+}
+
+function plural(count: number, noun: string): string {
+  return `${count.toLocaleString("en-GB")} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+function verb(count: number, singular: string, pluralForm: string): string {
+  return count === 1 ? singular : pluralForm;
+}
+
+/** The passive fact: what a preview found, or what a run did. Never "inserted 0 updated 0 skipped 1204". */
+export function reportSummary(counts: ReportCounts, dryRun: boolean): string {
+  if (dryRun) {
+    if (counts.rejected === 0) {
+      return `All ${plural(counts.ready, "row")} ${verb(counts.ready, "looks", "look")} ready to import.`;
+    }
+    return `${plural(counts.ready, "row")} ready. ${plural(counts.rejected, "row")} will be rejected.`;
+  }
+  if (counts.rejected === 0) return `Imported ${plural(counts.ready, "row")}.`;
+  return `Imported ${plural(counts.ready, "row")}. ${plural(counts.rejected, "row")} ${verb(counts.rejected, "was", "were")} rejected.`;
+}
+
+/** The commit question beside the button that actually writes data: a fact, not a second blind press. */
+export function commitPrompt(counts: ReportCounts): string {
+  if (counts.ready === 0) return "Every row will be rejected. Fix the file and try again.";
+  if (counts.rejected === 0) {
+    const subject = counts.ready === 1 ? "it" : "them";
+    return `All ${plural(counts.ready, "row")} ${verb(counts.ready, "is", "are")} ready. Import ${subject}?`;
+  }
+  return `${plural(counts.rejected, "row")} will be rejected. Import the other ${counts.ready.toLocaleString("en-GB")}?`;
 }

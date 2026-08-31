@@ -37,6 +37,8 @@ export type GridPresenter = {
   editing: EditingPresenter;
   /** Editing needs qa, a sandbox database adapter on the Tabular tier, and a primary key. */
   editable: () => boolean;
+  /** Why `editable` is false right now, so the write-mode switch can say why next to itself. */
+  editableReason: () => string | null;
   sort: () => string | undefined;
   order: () => "asc" | "desc";
   toggleSort: (column: string) => void;
@@ -146,6 +148,15 @@ export function createGridPresenter(
     return schema.value().tables.find((item) => qualifiedName(item) === wanted) ?? null;
   });
   const editing = createEditingPresenter(slug, id, table_, table, () => page.refresh());
+  /** The one reason, in order, that editing is off; null once every condition is met. */
+  const editableReason = (): string | null => {
+    const current = adapter.value();
+    if (current.tier !== "tabular") return "Editing needs the Tabular tier.";
+    if (current.mode !== "sandbox") return "Editing needs sandbox mode; this adapter is read-only.";
+    if ((table()?.primary_key?.length ?? 0) === 0)
+      return "This table has no primary key, so a row can't be targeted for edits.";
+    return null;
+  };
   const exportUrl = (format: "csv" | "json"): string => {
     const query = { order: order(), filter: filters().map(filterText) };
     const sorted = sort();
@@ -163,14 +174,8 @@ export function createGridPresenter(
     table,
     exportUrl,
     editing,
-    editable: () => {
-      const current = adapter.value();
-      return (
-        current.tier === "tabular" &&
-        current.mode === "sandbox" &&
-        (table()?.primary_key?.length ?? 0) > 0
-      );
-    },
+    editable: () => editableReason() === null,
+    editableReason,
     sort,
     order,
     toggleSort: (column) => {

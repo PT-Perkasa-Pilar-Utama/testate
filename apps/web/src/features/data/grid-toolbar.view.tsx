@@ -3,14 +3,34 @@ import { For, Show, createSignal } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
 import Button, { buttonClass } from "@/components/button.tsx";
+import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import Switch from "@/components/switch.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { FILTER_OPS } from "./grid.presenter.ts";
-import type { FilterOp, GridPresenter } from "./grid.presenter.ts";
+import type { Filter, FilterOp, GridPresenter } from "./grid.presenter.ts";
 
 const OP_OPTIONS = FILTER_OPS.map((op) => ({ value: op, label: op }));
+
+/** One removable filter, in the words it reads as: "status eq active". */
+function FilterChip(props: { filter: Filter; onRemove: () => void }): JSX.Element {
+  return (
+    <Badge variant="outline">
+      <span>
+        {props.filter.column} {props.filter.op} {props.filter.value}
+      </span>
+      <button
+        type="button"
+        class="-mr-0.5 cursor-pointer rounded-full p-0.5 hover:bg-hover"
+        aria-label={`Remove filter ${props.filter.column} ${props.filter.op} ${props.filter.value}`}
+        onClick={() => props.onRemove()}
+      >
+        <Icon name="x" class="h-3 w-3" />
+      </button>
+    </Badge>
+  );
+}
 
 export function FilterBar(props: { presenter: GridPresenter; columns: string[] }): JSX.Element {
   const [column, setColumn] = createSignal("");
@@ -26,88 +46,105 @@ export function FilterBar(props: { presenter: GridPresenter; columns: string[] }
     setValue("");
   };
   return (
-    <form class="flex flex-wrap items-end gap-2" onSubmit={onSubmit}>
-      <Select
-        size="sm"
-        class="w-40!"
-        aria-label="Filter column"
-        options={columnOptions()}
-        value={column() === "" ? (props.columns[0] ?? "") : column()}
-        onChange={setColumn}
-      />
-      <Select
-        size="sm"
-        class="w-24!"
-        aria-label="Filter operator"
-        options={OP_OPTIONS}
-        value={op()}
-        onChange={setOp}
-      />
-      <Input
-        size="sm"
-        class="w-44!"
-        aria-label="Filter value"
-        placeholder="value"
-        value={value()}
-        onInput={(event) => setValue(event.currentTarget.value)}
-      />
-      <Button type="submit" size="sm" variant="secondary">
-        Add filter
-      </Button>
-      <For each={props.presenter.filters()}>
-        {(filter, index) => (
-          <Badge variant="outline">
-            {filter.column} {filter.op} {filter.value}
-            <button
-              type="button"
-              class="ml-1 cursor-pointer"
-              aria-label="Remove filter"
-              onClick={() => props.presenter.removeFilter(index())}
-            >
-              ×
-            </button>
-          </Badge>
-        )}
-      </For>
-    </form>
+    <div class="flex flex-wrap items-center gap-2 rounded-lg p-1.5 ring ring-line">
+      <Icon name="funnel" class="h-3.5 w-3.5 shrink-0 text-muted" />
+      <form class="flex flex-wrap items-center gap-1.5" onSubmit={onSubmit}>
+        <Select
+          size="sm"
+          class="w-40!"
+          aria-label="Filter column"
+          options={columnOptions()}
+          value={column() === "" ? (props.columns[0] ?? "") : column()}
+          onChange={setColumn}
+        />
+        <Select
+          size="sm"
+          class="w-24!"
+          aria-label="Filter operator"
+          options={OP_OPTIONS}
+          value={op()}
+          onChange={setOp}
+        />
+        <Input
+          size="sm"
+          class="w-44!"
+          aria-label="Filter value"
+          placeholder="value"
+          value={value()}
+          onInput={(event) => setValue(event.currentTarget.value)}
+        />
+        <Button type="submit" size="sm" variant="ghost">
+          <Icon name="plus" class="h-3.5 w-3.5" />
+          Add filter
+        </Button>
+      </form>
+      <Show when={props.presenter.filters().length > 0}>
+        <span class="h-4 w-px bg-line" aria-hidden="true" />
+        <div class="flex flex-wrap items-center gap-1.5">
+          <For each={props.presenter.filters()}>
+            {(filter, index) => (
+              <FilterChip filter={filter} onRemove={() => props.presenter.removeFilter(index())} />
+            )}
+          </For>
+        </div>
+      </Show>
+    </div>
   );
 }
 
-export function WriteControls(props: { presenter: GridPresenter }): JSX.Element {
+/** The switch and its controls, once editing is actually available. */
+function WriteSessionControls(props: { presenter: GridPresenter }): JSX.Element {
   const session = (): ReturnType<GridPresenter["editing"]["session"]> =>
     props.presenter.editing.session();
   return (
-    <Show when={hasRole("qa") && props.presenter.editable()}>
-      <div class="flex flex-wrap items-center gap-3 text-sm">
-        <Switch
-          label="Write mode"
-          checked={session() !== null}
-          onChange={(on) =>
-            void (on ? props.presenter.editing.start() : props.presenter.editing.end())
-          }
-        />
-        <Show when={session()}>
-          {(open) => (
-            <>
-              <Switch
-                label={`Foreign-key checks (${open().fk_checks_mapping})`}
-                checked={open().foreign_key_checks}
-                onChange={(on) => void props.presenter.editing.setForeignKeyChecks(on)}
-              />
-              <Button
-                size="sm"
-                variant="primary"
-                onClick={() => props.presenter.editing.openInsert()}
-              >
-                Insert row
-              </Button>
-              <Show when={open().stash_state_id !== null}>
-                <Badge variant="info">stash taken</Badge>
-              </Show>
-            </>
-          )}
-        </Show>
-      </div>
+    <div class="flex flex-wrap items-center gap-3 text-sm">
+      <Switch
+        label="Write mode"
+        checked={session() !== null}
+        onChange={(on) =>
+          void (on ? props.presenter.editing.start() : props.presenter.editing.end())
+        }
+      />
+      <Show when={session()}>
+        {(open) => (
+          <>
+            <Switch
+              label={`Foreign-key checks (${open().fk_checks_mapping})`}
+              checked={open().foreign_key_checks}
+              onChange={(on) => void props.presenter.editing.setForeignKeyChecks(on)}
+            />
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => props.presenter.editing.openInsert()}
+            >
+              Insert row
+            </Button>
+            <Show when={open().stash_state_id !== null}>
+              <Badge variant="info">stash taken</Badge>
+            </Show>
+          </>
+        )}
+      </Show>
+    </div>
+  );
+}
+
+/** Write mode, qa-only; when it can't turn on, says why right here rather than just vanishing. */
+export function WriteControls(props: { presenter: GridPresenter }): JSX.Element {
+  return (
+    <Show when={hasRole("qa")}>
+      <Show
+        when={props.presenter.editableReason() === null}
+        fallback={
+          <p class="flex items-center gap-1.5 text-xs text-muted">
+            <Icon name="lock" class="h-3 w-3" />
+            {props.presenter.editableReason()}
+          </p>
+        }
+      >
+        <WriteSessionControls presenter={props.presenter} />
+      </Show>
     </Show>
   );
 }
@@ -115,15 +152,18 @@ export function WriteControls(props: { presenter: GridPresenter }): JSX.Element 
 /**
  * The table as a file. Anchors, not buttons: the browser streams straight to disk and the session
  * cookie carries the auth. Exporting used to mean opening the query console and writing SQL, which
- * a manual tester cannot do, and the result was capped at 500 rows without saying so.
+ * a manual tester cannot do, and the result was capped at 500 rows without saying so. First in the
+ * toolbar and carrying its own icon, so it reads as the way out of this table, not an afterthought.
  */
 export function ExportLinks(props: { presenter: GridPresenter }): JSX.Element {
   return (
     <>
       <a class={buttonClass("secondary", "sm")} href={props.presenter.exportUrl("csv")} download>
+        <Icon name="download" class="h-3.5 w-3.5" />
         Export CSV
       </a>
       <a class={buttonClass("secondary", "sm")} href={props.presenter.exportUrl("json")} download>
+        <Icon name="download" class="h-3.5 w-3.5" />
         Export JSON
       </a>
     </>

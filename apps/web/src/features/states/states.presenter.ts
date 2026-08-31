@@ -73,6 +73,13 @@ function messageOf(cause: unknown): string {
   return cause instanceof Error ? cause.message : "request failed";
 }
 
+/** Why "Check out" is dead for a state that is not ready, next to the button rather than a banner. */
+export function checkoutBlockedReason(state: State): string | undefined {
+  if (state.status === "creating") return "Still being taken.";
+  if (state.status === "failed") return "This state failed and can't be restored.";
+  return undefined;
+}
+
 export function createStatesPresenter(
   slug: () => string,
   onChanged: () => void = () => undefined

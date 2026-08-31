@@ -113,10 +113,18 @@ export function RowsDialog(props: { presenter: DiffsPresenter }): JSX.Element {
                       </Show>
                     </div>
                     <Show when={row.before}>
-                      {(before) => <pre class="overflow-x-auto">- {JSON.stringify(before())}</pre>}
+                      {(before) => (
+                        <pre class="overflow-x-auto rounded-md bg-danger-tint px-2 py-1 text-danger-fg">
+                          - {JSON.stringify(before())}
+                        </pre>
+                      )}
                     </Show>
                     <Show when={row.after}>
-                      {(after) => <pre class="overflow-x-auto">+ {JSON.stringify(after())}</pre>}
+                      {(after) => (
+                        <pre class="overflow-x-auto rounded-md bg-success-tint px-2 py-1 text-success-fg">
+                          + {JSON.stringify(after())}
+                        </pre>
+                      )}
                     </Show>
                   </div>
                 )}

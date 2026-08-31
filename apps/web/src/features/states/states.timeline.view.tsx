@@ -7,7 +7,7 @@ import Icon from "@/components/icon.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { formatBytes } from "./states.format.ts";
 
-const KIND_LABEL = {
+export const KIND_LABEL = {
   init: "starting point",
   manual: "state",
   stash: "stash",

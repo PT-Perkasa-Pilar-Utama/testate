@@ -1,9 +1,7 @@
 import type { JSX } from "@solidjs/web";
-import { formatWhen } from "@/lib/format.ts";
-import { For, Loading, Show } from "solid-js";
-import type { State, StateTreeNode } from "@testate/shared";
+import { Loading, Show } from "solid-js";
+import type { State } from "@testate/shared";
 
-import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
 import { Menu, MenuItem, MenuLink } from "@/components/menu.tsx";
 import LoadMore from "@/components/load-more.tsx";
@@ -14,40 +12,15 @@ import { hasRole } from "@/lib/session.ts";
 import { createPreflightPresenter } from "../checkouts/preflight.presenter.ts";
 import PreflightDialog from "../checkouts/preflight.view.tsx";
 import { DeleteDialog, DetailDialog, EditDialog, TakeDialog } from "./states.dialogs.view.tsx";
-import { formatBytes } from "./states.format.ts";
-import { createStatesPresenter } from "./states.presenter.ts";
+import { checkoutBlockedReason, createStatesPresenter } from "./states.presenter.ts";
 import Timeline from "./states.timeline.view.tsx";
+import Tree from "./states.tree.view.tsx";
 import type { StatesPresenter } from "./states.presenter.ts";
 
 const VIEWS = [
   { id: "list", label: "List" },
   { id: "tree", label: "Tree" },
 ] as const;
-function Branch(props: { nodes: StateTreeNode[] }): JSX.Element {
-  return (
-    <ul class="grid gap-1 border-l border-line pl-4">
-      <For each={props.nodes}>
-        {(node) => (
-          <li class="grid gap-1">
-            <span class="inline-flex items-center gap-2">
-              {node.name}
-              <Badge variant={node.kind === "init" ? "primary" : "outline"}>{node.kind}</Badge>
-              <Show when={node.is_head}>
-                <Badge variant="success">HEAD</Badge>
-              </Show>
-              <span class="text-muted text-sm">
-                {formatBytes(node.size_bytes)} · {formatWhen(node.created_at)}
-              </span>
-            </span>
-            <Show when={node.children.length > 0}>
-              <Branch nodes={node.children} />
-            </Show>
-          </li>
-        )}
-      </For>
-    </ul>
-  );
-}
 
 function RowActions(props: {
   presenter: StatesPresenter;
@@ -72,6 +45,7 @@ function RowActions(props: {
           size="sm"
           variant="primary"
           disabled={props.state.status !== "ready"}
+          title={checkoutBlockedReason(props.state)}
           onClick={() => void props.checkout(props.state)}
         >
           Check out
@@ -145,7 +119,10 @@ export default function StatesView(props: {
       </div>
       <Loading fallback={<p class="text-muted">Loading states...</p>}>
         <Show when={presenter.view() === "tree"}>
-          <Branch nodes={presenter.tree.value()} />
+          <Tree
+            nodes={presenter.tree.value()}
+            empty="No states yet. Take one to keep what the databases hold right now."
+          />
         </Show>
         <Show when={presenter.view() === "list"}>
           <Timeline

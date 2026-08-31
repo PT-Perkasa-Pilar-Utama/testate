@@ -12,16 +12,10 @@ import Select from "@/components/select.tsx";
 import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
 import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
-import { ENGINE_OPTIONS } from "./adapters.fields.ts";
+import { ENGINE_OPTIONS, MODE_OPTIONS, STATUS_VARIANT } from "./adapters.fields.ts";
 import type { Field } from "./adapters.fields.ts";
 import { createAdaptersPresenter, describeOutcome, outcomeWarnings } from "./adapters.presenter.ts";
 import type { AdaptersPresenter } from "./adapters.presenter.ts";
-
-const STATUS_VARIANT = { ok: "success", error: "error", disabled: "secondary" } as const;
-const MODE_OPTIONS = [
-  { value: "sandbox", label: "sandbox (restores allowed)" },
-  { value: "read_only", label: "read-only" },
-] as const;
 
 function FieldInput(props: {
   presenter: AdaptersPresenter;
@@ -207,11 +201,14 @@ export default function AdaptersView(props: { slug: string }): JSX.Element {
                       </Show>
                     </Cell>
                     <Cell>
-                      <Badge variant={STATUS_VARIANT[adapter.status]}>
-                        {adapter.status_message === null
-                          ? adapter.status
-                          : `${adapter.status}: ${adapter.status_message}`}
-                      </Badge>
+                      <div class="grid gap-0.5">
+                        <Badge variant={STATUS_VARIANT[adapter.status]}>{adapter.status}</Badge>
+                        <Show when={adapter.status !== "ok"}>
+                          <span class="text-xs text-muted">
+                            {adapter.status_message ?? "No reason recorded."}
+                          </span>
+                        </Show>
+                      </div>
                     </Cell>
                   </Row>
                 )}

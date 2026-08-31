@@ -5,6 +5,7 @@ import { Show } from "solid-js";
 
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
+import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import LayerCard from "@/components/layer-card.tsx";
 import { createPasswordPresenter } from "./auth.presenter.ts";
@@ -37,6 +38,7 @@ export default function ChangePasswordView(): JSX.Element {
             <Input
               type="password"
               autocomplete="current-password"
+              autofocus
               required
               value={presenter.current()}
               onInput={(event) => presenter.setCurrent(event.currentTarget.value)}
@@ -56,7 +58,10 @@ export default function ChangePasswordView(): JSX.Element {
             {(message) => <Banner variant="error">{message()}</Banner>}
           </Show>
           <Button type="submit" variant="primary" disabled={presenter.busy()}>
-            Save password
+            <Show when={presenter.busy()}>
+              <Icon name="loader-circle" class="h-3.5 w-3.5 animate-spin" />
+            </Show>
+            {presenter.busy() ? "Saving..." : "Save password"}
           </Button>
         </form>
       </LayerCard>

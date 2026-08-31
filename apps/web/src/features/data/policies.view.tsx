@@ -8,6 +8,8 @@ import type { ColumnPolicy } from "@testate/shared";
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
+import EmptyState from "@/components/empty-state.tsx";
+import Icon from "@/components/icon.tsx";
 import Select from "@/components/select.tsx";
 import Switch from "@/components/switch.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
@@ -152,17 +154,37 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
   );
   const policyOf = (table: string, column: string): ColumnPolicy | undefined =>
     presenter.policies.value().find((policy) => policy.table === table && policy.column === column);
+  const policyCount = (table: string): number =>
+    presenter.policies.value().filter((policy) => policy.table === table).length;
   return (
     <section class="grid gap-4">
-      <h2 class="text-lg font-semibold">
-        <AdapterCrumb slug={props.slug} id={props.id} /> / column policies
-      </h2>
+      <div class="grid gap-1.5">
+        <h2 class="flex items-center gap-2 text-lg font-semibold">
+          <Icon name="shield" class="h-4 w-4 text-muted" />
+          <AdapterCrumb slug={props.slug} id={props.id} /> / column policies
+        </h2>
+        <p class="max-w-prose text-sm text-muted">
+          Admin work. A required function or a mask set here applies everywhere a value could leave
+          this database: the grid, imports, diffs, fixtures, and the AI agent. There is no unmask.
+        </p>
+      </div>
       <Loading fallback={<p class="text-muted">Loading schema...</p>}>
-        <For each={presenter.schema.value().tables}>
+        <For
+          each={presenter.schema.value().tables}
+          fallback={
+            <EmptyState icon="table" title="No tables to police yet">
+              Connect a database with tables on it, then come back to set required functions and
+              masks per column.
+            </EmptyState>
+          }
+        >
           {(table) => (
             <div class="grid gap-2">
-              <h3 class="font-medium">
+              <h3 class="flex items-center gap-2 font-medium">
                 <code>{qualifiedName(table)}</code>
+                <Show when={policyCount(qualifiedName(table)) > 0}>
+                  <Badge variant="info">{policyCount(qualifiedName(table))} policed</Badge>
+                </Show>
               </h3>
               <Table>
                 <thead>

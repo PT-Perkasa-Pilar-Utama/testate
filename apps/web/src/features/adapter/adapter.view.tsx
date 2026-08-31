@@ -1,157 +1,58 @@
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
-import { For, Loading, Match, Show, Switch } from "solid-js";
-import type { Adapter, Entry, Introspection } from "@testate/shared";
+import { Loading, Match, Show, Switch } from "solid-js";
+import type { Adapter } from "@testate/shared";
 
-import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
-import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
+import { ConnectionCard, StatusLine } from "./adapter.summary.view.tsx";
+import { FilesView, JunctionToolbar, TablesView } from "./adapter.junction.view.tsx";
 import EditDialog from "./adapter.edit.view.tsx";
 import { createAdapterPresenter } from "./adapter.presenter.ts";
 import type { AdapterPresenter } from "./adapter.presenter.ts";
 
-function TablesView(props: { schema: Introspection; base: string }): JSX.Element {
-  const tablePath = (name: string): string => `${props.base}/tables/${encodeURIComponent(name)}`;
-  const open = (event: MouseEvent, name: string): void => {
-    event.preventDefault();
-    navigate(tablePath(name));
-  };
+/**
+ * Everything that changes the adapter rather than reads it, grouped so it reads as one decision
+ * apart from the junction below: renaming and retesting stay ordinary buttons, and Delete stays
+ * last and marked, the way `states.view.tsx`'s row menu keeps it.
+ */
+function AdminActions(props: { presenter: AdapterPresenter; adapter: Adapter }): JSX.Element {
+  const a = (): Adapter => props.adapter;
   return (
-    <Table>
-      <thead>
-        <tr>
-          <Head>Table</Head>
-          <Head>Rows (est.)</Head>
-          <Head>Columns</Head>
-          <Head>Primary key</Head>
-        </tr>
-      </thead>
-      <tbody>
-        <For each={props.schema.tables}>
-          {(table) => (
-            <Row>
-              <Cell>
-                <a
-                  class="hover:underline"
-                  href={href(tablePath(qualified(table)))}
-                  onClick={(event) => open(event, qualified(table))}
-                >
-                  <code>{qualified(table)}</code>
-                </a>
-              </Cell>
-              <Cell>{table.row_estimate}</Cell>
-              <Cell>{table.columns.length}</Cell>
-              <Cell>{table.primary_key?.join(", ") ?? "none"}</Cell>
-            </Row>
-          )}
-        </For>
-      </tbody>
-    </Table>
-  );
-}
-
-function FilesView(props: { entries: Entry[] }): JSX.Element {
-  return (
-    <Table>
-      <thead>
-        <tr>
-          <Head>Name</Head>
-          <Head>Kind</Head>
-          <Head>Size</Head>
-          <Head>Modified</Head>
-        </tr>
-      </thead>
-      <tbody>
-        <For each={props.entries}>
-          {(entry) => (
-            <Row>
-              <Cell>{entry.name}</Cell>
-              <Cell>{entry.kind}</Cell>
-              <Cell>{entry.size_bytes ?? ""}</Cell>
-              <Cell>{entry.modified_at ?? ""}</Cell>
-            </Row>
-          )}
-        </For>
-      </tbody>
-    </Table>
-  );
-}
-
-const STATUS_VARIANT = { ok: "success", error: "error", disabled: "secondary" } as const;
-
-function qualified(table: { schema: string | null; name: string }): string {
-  return table.schema === null ? table.name : `${table.schema}.${table.name}`;
-}
-
-function Actions(props: { presenter: AdapterPresenter; base: string }): JSX.Element {
-  const adapter = (): Adapter => props.presenter.adapter.value();
-  const fingerprint = (): string => {
-    const credential = adapter().credential;
-    return credential.set ? credential.key_fingerprint : "";
-  };
-  return (
-    <div class="flex flex-wrap items-center gap-2">
-      <Badge variant={STATUS_VARIANT[adapter().status]}>
-        {adapter().status_message === null
-          ? adapter().status
-          : `${adapter().status}: ${adapter().status_message}`}
-      </Badge>
-      <Show when={adapter().credential.set}>
-        <Badge variant="outline">sealed · {fingerprint()}</Badge>
-      </Show>
-      <Show when={adapter().readonly_credential.set}>
-        <Badge variant="outline">read-only credential sealed</Badge>
-      </Show>
-      <Show when={adapter().kind === "database"}>
-        <Button size="sm" variant="secondary" onClick={() => navigate(`${props.base}/query`)}>
-          Query console
-        </Button>
-      </Show>
-      <Show when={adapter().tier === "tabular"}>
-        <Button size="sm" variant="secondary" onClick={() => navigate(`${props.base}/policies`)}>
-          Policies
-        </Button>
-      </Show>
-      <Show when={adapter().kind === "storage"}>
-        <Button size="sm" variant="secondary" onClick={() => navigate(`${props.base}/files`)}>
-          Browse files
-        </Button>
-      </Show>
-      <Show when={hasRole("qa")}>
+    <Show when={hasRole("qa")}>
+      <div class="flex flex-wrap items-center gap-2">
         <Button size="sm" variant="secondary" onClick={() => props.presenter.openEdit()}>
           Edit adapter
         </Button>
         <Button size="sm" variant="secondary" onClick={() => void props.presenter.retest()}>
           Retest
         </Button>
-      </Show>
-      <Show when={hasRole("qa") && adapter().kind === "database" && adapter().mode === "sandbox"}>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => void props.presenter.setMode("read_only")}
-        >
-          Make read-only
-        </Button>
-      </Show>
-      <Show
-        when={hasRole("admin") && adapter().kind === "database" && adapter().mode === "read_only"}
-      >
-        <Button size="sm" variant="outline" onClick={() => void props.presenter.setMode("sandbox")}>
-          Allow restores
-        </Button>
-      </Show>
-      <Show when={hasRole("qa")}>
+        <Show when={a().kind === "database" && a().mode === "sandbox"}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void props.presenter.setMode("read_only")}
+          >
+            Make read-only
+          </Button>
+        </Show>
+        <Show when={hasRole("admin") && a().kind === "database" && a().mode === "read_only"}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void props.presenter.setMode("sandbox")}
+          >
+            Allow restores
+          </Button>
+        </Show>
         <Button size="sm" variant="destructive" onClick={() => void props.presenter.openDelete()}>
           Delete
         </Button>
-      </Show>
-    </div>
+      </div>
+    </Show>
   );
 }
 
@@ -204,19 +105,21 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
       <Loading fallback={<p class="text-muted">Loading adapter...</p>}>
         <PageHeader
           title={presenter.adapter.value().name}
-          description={`${presenter.adapter.value().engine}${
-            presenter.adapter.value().engine_version === null
-              ? ""
-              : ` ${presenter.adapter.value().engine_version}`
-          } · ${presenter.adapter.value().tier} tier · ${presenter.adapter.value().mode}`}
-          actions={<Actions presenter={presenter} base={base()} />}
+          actions={<AdminActions presenter={presenter} adapter={presenter.adapter.value()} />}
         />
-        <Switch>
-          <Match when={presenter.tables()}>
-            {(schema) => <TablesView schema={schema()} base={base()} />}
-          </Match>
-          <Match when={presenter.entries()}>{(entries) => <FilesView entries={entries()} />}</Match>
-        </Switch>
+        <StatusLine adapter={presenter.adapter.value()} />
+        <div class="grid gap-3">
+          <JunctionToolbar adapter={presenter.adapter.value()} base={base()} />
+          <Switch>
+            <Match when={presenter.tables()}>
+              {(schema) => <TablesView schema={schema()} base={base()} />}
+            </Match>
+            <Match when={presenter.entries()}>
+              {(entries) => <FilesView entries={entries()} />}
+            </Match>
+          </Switch>
+        </div>
+        <ConnectionCard adapter={presenter.adapter.value()} />
         <DeleteDialog presenter={presenter} name={presenter.adapter.value().name} />
         <EditDialog presenter={presenter} adapter={presenter.adapter.value()} />
       </Loading>

@@ -13,6 +13,16 @@ export type Field = {
 
 export type EngineForm = { kind: AdapterKind; label: string; config: Field[]; secrets: Field[] };
 
+/** One badge tone per adapter status, shared by the list and the detail header. `disabled` reads as
+ * a neutral grey by default; that hides the one state operators most need to notice, so it takes
+ * the warning tone instead. */
+export const STATUS_VARIANT = { ok: "success", error: "error", disabled: "warning" } as const;
+
+export const MODE_OPTIONS = [
+  { value: "sandbox", label: "sandbox (restores allowed)" },
+  { value: "read_only", label: "read-only" },
+] as const;
+
 const HOST_PORT = (port: number): Field[] => [
   { key: "host", label: "Host", type: "text", required: true, placeholder: "db.sit.internal" },
   { key: "port", label: "Port", type: "number", placeholder: String(port) },

@@ -1,10 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import type { Checkout } from "@testate/shared";
+import type { Checkout, Counters } from "@testate/shared";
 
 import {
+  blockedAdapters,
   blockingSessions,
   countersSummary,
+  hasFailure,
+  outcomeLine,
   retriable,
+  retryBlockedReason,
   skippedSummary,
 } from "./checkouts.presenter.ts";
 
@@ -95,5 +99,53 @@ describe("checkouts feature", () => {
         defaulted_columns: [{ table: "orders", column: "flag" }],
       })
     ).toBe("1 tables, 1 columns skipped · 1 columns defaulted");
+  });
+
+  test("blocked adapters are the ones with a session to terminate (story 85)", () => {
+    expect(blockedAdapters(CHECKOUT)).toStrictEqual([]);
+    const blocked = {
+      ...ADAPTER,
+      error: { code: "CHECKOUT_BLOCKED", message: "lock", details: { blocking_sessions: ["42"] } },
+    };
+    expect(blockedAdapters({ ...CHECKOUT, adapters: [ADAPTER, blocked] })).toStrictEqual([blocked]);
+  });
+
+  test("Retry says why it is dead next to the button (defect fix, same shape as preflight)", () => {
+    expect(retryBlockedReason(CHECKOUT)).toBe(
+      "Nothing to retry — every database finished cleanly."
+    );
+    expect(retryBlockedReason({ ...CHECKOUT, status: "running" })).toBe(
+      "Wait for this restore to finish."
+    );
+    expect(
+      retryBlockedReason({ ...CHECKOUT, adapters: [{ ...ADAPTER, result: "rolled_back" }] })
+    ).toBeUndefined();
+  });
+
+  test("the row's outcome line names the failed database first, then what was skipped", () => {
+    expect(outcomeLine(CHECKOUT)).toBe("");
+    const failed = { ...ADAPTER, error: { code: "X", message: "lock timeout" } };
+    expect(outcomeLine({ ...CHECKOUT, adapters: [failed] })).toBe("pg: lock timeout");
+    const skipped = { ...ADAPTER, skipped_tables: [{ schema: null, name: "audit" }] };
+    expect(outcomeLine({ ...CHECKOUT, adapters: [skipped] })).toBe("1 tables skipped");
+  });
+
+  test("a failure count that ends in 0 still reads as a failure (regression, was string-matched)", () => {
+    const tenFailed: Counters = {
+      adapters: [
+        {
+          adapter_id: "a1",
+          counters: Array.from({ length: 12 }, (_, index) => ({
+            name: `s${index}`,
+            ok: index >= 10,
+          })),
+        },
+      ],
+    };
+    expect(countersSummary(tenFailed)).toBe("2 ok · 10 failed");
+    expect(hasFailure(tenFailed)).toBe(true);
+    expect(
+      hasFailure({ adapters: [{ adapter_id: "a1", counters: [{ name: "s", ok: true }] }] })
+    ).toBe(false);
   });
 });

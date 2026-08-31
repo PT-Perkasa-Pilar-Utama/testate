@@ -1,8 +1,19 @@
 import { describe, expect, test } from "bun:test";
-import type { Preflight } from "@testate/shared";
+import type { Preflight, State } from "@testate/shared";
 
-import { canCheckout, driftSummary, strategyLine } from "../checkouts/preflight.presenter.ts";
-import { parseTags, toCreateBody, toUpdateBody } from "./states.presenter.ts";
+import {
+  canCheckout,
+  driftedAdapters,
+  driftSummary,
+  strategyLine,
+} from "../checkouts/preflight.presenter.ts";
+import { consistencyLabel, sortLabel } from "./states.format.ts";
+import {
+  checkoutBlockedReason,
+  parseTags,
+  toCreateBody,
+  toUpdateBody,
+} from "./states.presenter.ts";
 
 const NO_DRIFT = {
   changed: false,
@@ -89,5 +100,47 @@ describe("states feature", () => {
     expect(strategyLine({ ...ADAPTER, atomic: false })).toBe(
       "truncate · session-disable FKs · not atomic"
     );
+  });
+
+  test("drifted adapters exclude what is not included or already removed (story 77)", () => {
+    expect(driftedAdapters(PREFLIGHT)).toStrictEqual([ADAPTER]);
+    expect(
+      driftedAdapters({ ...PREFLIGHT, adapters: [{ ...ADAPTER, included: false }] })
+    ).toStrictEqual([]);
+    expect(
+      driftedAdapters({ ...PREFLIGHT, adapters: [{ ...ADAPTER, removed: true }] })
+    ).toStrictEqual([]);
+  });
+
+  test("Check out says why it is dead next to the button, not just in a banner (defect fix)", () => {
+    const STATE: State = {
+      id: "s1",
+      name: "base",
+      kind: "manual",
+      status: "ready",
+      protected: false,
+      notes: null,
+      tags: [],
+      parent_state_id: null,
+      stash_reason: null,
+      adapters: [],
+      size_bytes: 0,
+      actor: { kind: "user", id: "u1", label: "qa", role: "qa", agent: false },
+      job_id: null,
+      created_at: "2026-08-29T00:00:00.000Z",
+      updated_at: "2026-08-29T00:00:00.000Z",
+    };
+    expect(checkoutBlockedReason(STATE)).toBeUndefined();
+    expect(checkoutBlockedReason({ ...STATE, status: "creating" })).toBe("Still being taken.");
+    expect(checkoutBlockedReason({ ...STATE, status: "failed" })).toBe(
+      "This state failed and can't be restored."
+    );
+  });
+
+  test("sort and consistency read as words, not the API's punctuation (labels pass)", () => {
+    expect(sortLabel("primary-key")).toBe("primary key order");
+    expect(sortLabel("row-hash")).toBe("row hash order");
+    expect(consistencyLabel("snapshot")).toBe("consistent snapshot");
+    expect(consistencyLabel("best_effort")).toBe("best effort");
   });
 });

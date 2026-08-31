@@ -18,9 +18,32 @@ export type LiveJob = {
   status: () => Job["status"];
 };
 
-export function canCancel(job: Job): boolean {
-  return !TERMINAL_JOB_STATUSES.includes(job.status) && !job.cancel_requested;
+/**
+ * Split from `canCancel` so a row can key the check off the live SSE status instead of the row's
+ * initial prop: the point of a live list is that Cancel disappears the moment the stream says
+ * terminal, not when the next list refresh happens to land.
+ */
+export function cancelable(status: Job["status"], cancelRequested: boolean): boolean {
+  return !TERMINAL_JOB_STATUSES.includes(status) && !cancelRequested;
 }
+
+export function canCancel(job: Job): boolean {
+  return cancelable(job.status, job.cancel_requested);
+}
+
+/** What a person calls each job kind; `job.kind` itself is the code's word for it. */
+export const JOB_KIND_LABEL = {
+  snapshot: "Snapshot",
+  checkout: "Checkout",
+  import: "Import",
+  diff: "Comparison",
+  state_delete: "Delete state",
+  adapter_delete: "Delete adapter",
+  project_delete: "Delete project",
+  archive_import: "Import archive",
+  storage_migration: "Storage migration",
+  backup: "Backup",
+} as const;
 
 /** The keys the jobs push; anything else on the object is for the log, not for a person. */
 const progressSchema = v.object({
@@ -64,17 +87,38 @@ function countOf(progress: Progress): string {
   return total === undefined ? `${done} done` : `${done} of ${total} adapters`;
 }
 
+function parseProgress(progress: JsonObject | null): Progress | null {
+  if (progress === null) return null;
+  const parsed = v.safeParse(progressSchema, progress);
+  return parsed.success ? parsed.output : null;
+}
+
 /**
  * A sentence, not the record. It used to print every key, including the adapter's UUID, which
  * told the reader nothing and pushed the row onto two lines.
  */
 export function describeProgress(progress: JsonObject | null): string {
-  if (progress === null) return "";
-  const parsed = v.safeParse(progressSchema, progress);
-  if (!parsed.success) return "";
-  const parts = [phraseOf(parsed.output), parsed.output.table ?? ""].filter((part) => part !== "");
-  const count = countOf(parsed.output);
+  const parsed = parseProgress(progress);
+  if (parsed === null) return "";
+  const parts = [phraseOf(parsed), parsed.table ?? ""].filter((part) => part !== "");
+  const count = countOf(parsed);
   return count === "" ? parts.join(" ") : `${parts.join(" ")}, ${count}`;
+}
+
+function ratio(numerator: number | undefined, denominator: number | undefined): number | null {
+  if (numerator === undefined || denominator === undefined || denominator === 0) return null;
+  return numerator / denominator;
+}
+
+/** The same counters `countOf` reads, as a 0-1 fraction for a meter; null when nothing counts. */
+export function progressFraction(progress: JsonObject | null): number | null {
+  const parsed = parseProgress(progress);
+  if (parsed === null) return null;
+  return (
+    ratio(parsed.tables_done, parsed.tables_total) ??
+    ratio(parsed.rows, parsed.total) ??
+    ratio(parsed.done, parsed.total)
+  );
 }
 
 export function createJobsPresenter(): JobsPresenter {

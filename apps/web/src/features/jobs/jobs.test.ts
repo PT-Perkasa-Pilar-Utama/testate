@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { describeProgress } from "./jobs.presenter.ts";
+import { describeProgress, progressFraction } from "./jobs.presenter.ts";
 
 describe("describeProgress", () => {
   test("reads as a sentence and never shows an id", () => {
@@ -36,5 +36,21 @@ describe("describeProgress", () => {
   test("says nothing when there is nothing to say", () => {
     expect(describeProgress(null)).toBe("");
     expect(describeProgress({ phase: "stash" })).toBe("Stashing the live data");
+  });
+});
+
+describe("progressFraction", () => {
+  test("divides whichever counter the phase is counting", () => {
+    expect(progressFraction({ phase: "restore", tables_done: 12, tables_total: 42 })).toBeCloseTo(
+      12 / 42
+    );
+    expect(progressFraction({ phase: "write", rows: 500, total: 1200 })).toBeCloseTo(500 / 1200);
+    expect(progressFraction({ phase: "merge", done: 2, total: 4 })).toBe(0.5);
+  });
+
+  test("is null when there is nothing to divide", () => {
+    expect(progressFraction(null)).toBeNull();
+    expect(progressFraction({ phase: "stash" })).toBeNull();
+    expect(progressFraction({ phase: "restore", tables_done: 0, tables_total: 0 })).toBeNull();
   });
 });

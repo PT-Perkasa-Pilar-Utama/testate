@@ -13,11 +13,23 @@ import Button from "@/components/button.tsx";
 import ConfirmDialog from "@/components/confirm-dialog.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Dialog from "@/components/dialog.tsx";
+import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import { Cell, Head, Row, Table, TableFooter } from "@/components/table.tsx";
 import { ROLE_OPTIONS, createUsersPresenter } from "./users.presenter.ts";
 import type { UsersPresenter } from "./users.presenter.ts";
+
+/**
+ * Accent (`info`) is reserved for admin: the role that can do this to every other account. `qa`
+ * covers both the tester and the engineer (`docs/UI_REWORK.md`) and needs no emphasis; `viewer`
+ * reads quietest because it can change nothing.
+ */
+const ROLE_META = {
+  admin: { variant: "info", icon: "shield" },
+  qa: { variant: "outline", icon: undefined },
+  viewer: { variant: "secondary", icon: undefined },
+} as const;
 
 function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element {
   const guard = createFormGuard();
@@ -196,18 +208,38 @@ export default function UsersView(): JSX.Element {
                   <Cell class="font-semibold whitespace-nowrap">{user.username}</Cell>
                   <Cell>{user.display_name}</Cell>
                   <Cell>
-                    <Badge variant="outline">{user.role}</Badge>
+                    <Badge variant={ROLE_META[user.role].variant}>
+                      <Show when={ROLE_META[user.role].icon}>
+                        {(icon) => <Icon name={icon()} class="h-3 w-3" />}
+                      </Show>
+                      {user.role}
+                    </Badge>
                   </Cell>
                   <Cell>
-                    <span class="inline-flex gap-1">
-                      <Badge variant={user.disabled_at === null ? "success" : "secondary"}>
-                        {user.disabled_at === null ? "active" : "disabled"}
-                      </Badge>
+                    {/* Worst first: a locked or disabled account can't sign in no matter what
+                        else is true of it, so that fact leads. "active" only appears when none
+                        of the others do — a clean account needs one pill, not a default one. */}
+                    <span class="inline-flex flex-wrap gap-1">
+                      <Show when={user.locked_until !== null}>
+                        <Badge variant="error">
+                          <Icon name="lock" class="h-3 w-3" />
+                          locked
+                        </Badge>
+                      </Show>
+                      <Show when={user.disabled_at !== null}>
+                        <Badge variant="secondary">disabled</Badge>
+                      </Show>
                       <Show when={user.must_change_password}>
                         <Badge variant="warning">password change due</Badge>
                       </Show>
-                      <Show when={user.locked_until !== null}>
-                        <Badge variant="error">locked</Badge>
+                      <Show
+                        when={
+                          user.locked_until === null &&
+                          user.disabled_at === null &&
+                          !user.must_change_password
+                        }
+                      >
+                        <Badge variant="success">active</Badge>
                       </Show>
                     </span>
                   </Cell>

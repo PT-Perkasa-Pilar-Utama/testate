@@ -14,6 +14,7 @@ import { followJob } from "@/lib/sse.ts";
 import { adapterModel } from "../adapter/adapter.model.ts";
 import { adaptersModel } from "../adapters/adapters.model.ts";
 import {
+  defaultMappingName,
   draftFromMapping,
   guessColumns,
   mappingBody,
@@ -40,6 +41,8 @@ export type WizardPresenter = {
   storages: Refreshable<Adapter[]>;
   start: (source?: Source) => void;
   close: () => void;
+  /** Leaves the result on screen and returns to the mapping form, so a bad preview is fixable. */
+  back: () => void;
   upload: (file: File) => Promise<void>;
   useStorage: (adapterId: string, path: string) => Promise<void>;
   setSheet: (sheet: string) => Promise<void>;
@@ -137,6 +140,7 @@ export function createWizardPresenter(slug: () => string, onDone: () => void): W
       setOpen(false);
       reset();
     },
+    back: () => setReport(null),
     upload: (file) =>
       guarded(async () => {
         const uploaded = await importsModel.upload(slug(), file);
@@ -173,25 +177,39 @@ export function createWizardPresenter(slug: () => string, onDone: () => void): W
       const staticFound = tables().find((candidate) => tableKey(candidate) === table);
       const staticColumns = preview()?.columns ?? [];
       setMappingId("");
-      setDraftSignal((current) => ({
-        ...current,
-        table,
-        columns: staticFound === undefined ? [] : guessColumns(staticColumns, staticFound),
-      }));
+      setDraftSignal((current) => {
+        // The name follows the table until she types her own; then her choice sticks.
+        const untouched = current.name === "" || current.name === defaultMappingName(current.table);
+        return {
+          ...current,
+          table,
+          name: untouched ? defaultMappingName(table) : current.name,
+          columns: staticFound === undefined ? [] : guessColumns(staticColumns, staticFound),
+        };
+      });
     },
     pickMapping: (id) => {
       const found = mappings().find((mapping) => mapping.id === id);
       setMappingId(id);
       if (found !== undefined) setDraftSignal(draftFromMapping(found));
     },
-    setDraft: (patch) => setDraftSignal((current) => ({ ...current, ...patch })),
-    setColumn: (target, patch) =>
+    setDraft: (patch) => {
+      // Key columns live on the saved mapping, not the run; editing them makes the picked mapping
+      // stale, so the next run must save a fresh one instead of silently reusing the old keys.
+      if ("key_columns" in patch) setMappingId("");
+      setDraftSignal((current) => ({ ...current, ...patch }));
+    },
+    setColumn: (target, patch) => {
+      // Same reason: a column's source or transform lives on the mapping, so an edit here must not
+      // reuse whatever mapping id a previous preview happened to create or pick.
+      setMappingId("");
       setDraftSignal((current) => ({
         ...current,
         columns: current.columns.map((column) =>
           column.target === target ? { ...column, ...patch } : column
         ),
-      })),
+      }));
+    },
     run: (dryRun) => {
       const staticSource = source();
       const staticAdapter = adapterId();

@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import type { JsonObject, Project, Quota } from "@testate/shared";
+import type { JsonObject, Project } from "@testate/shared";
 import { idSchema, jobSchema, projectSchema, quotaSchema } from "@testate/shared";
 
 import { apiClient } from "@/lib/api-client.ts";
@@ -38,18 +38,25 @@ export const deletionPlanSchema = v.object({
 export type DeletionPlan = v.InferOutput<typeof deletionPlanSchema>;
 export type Job = v.InferOutput<typeof jobSchema>;
 
+const headBannerSchema = v.nullable(
+  v.object({ kind: v.literal("head_unknown"), message: v.string() })
+);
+export type HeadBanner = v.InferOutput<typeof headBannerSchema>;
+
+const overviewSchema = v.object({
+  project: projectSchema,
+  quota: quotaSchema,
+  banner: headBannerSchema,
+});
+export type Overview = v.InferOutput<typeof overviewSchema>;
+
 export const projectsModel = {
   list: (): Promise<Project[]> => apiClient.get("/projects", { schema: v.array(projectSchema) }),
   page: (cursor?: string): Promise<{ data: Project[]; next: string | null }> =>
     apiClient.page("/projects", projectSchema, cursor === undefined ? undefined : { cursor }),
-  get: async (slug: string): Promise<Project> => {
-    const overview = await apiClient.get(path(slug), {
-      schema: v.object({ project: projectSchema }),
-    });
-    return overview.project;
-  },
-  quota: (slug: string): Promise<Quota> =>
-    apiClient.get(`${path(slug)}/quota`, { schema: quotaSchema }),
+  /** One request for the project, its quota and the "why" behind an unknown HEAD, not three. */
+  overview: (slug: string): Promise<Overview> =>
+    apiClient.get(path(slug), { schema: overviewSchema }),
   create: (body: { slug: string; name: string }): Promise<Project> =>
     apiClient.post("/projects", { schema: projectSchema, body }),
   update: (slug: string, body: JsonObject): Promise<Project> =>

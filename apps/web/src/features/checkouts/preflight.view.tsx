@@ -7,7 +7,7 @@ import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Switch from "@/components/switch.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
-import { canCheckout, driftSummary, strategyLine } from "./preflight.presenter.ts";
+import { driftSummary, strategyLine } from "./preflight.presenter.ts";
 import type { PreflightAdapter, PreflightPresenter } from "./preflight.presenter.ts";
 
 function AdapterRow(props: { adapter: PreflightAdapter; force: boolean }): JSX.Element {
@@ -52,69 +52,81 @@ export default function PreflightDialog(props: { presenter: PreflightPresenter }
     void props.presenter.confirm();
   };
   return (
-    <Show when={props.presenter.target()}>
-      {(state) => (
-        <Dialog
-          open
-          onClose={() => props.presenter.close()}
-          title={`Check out ${state().name}`}
-          description="Testate restores every included adapter to this state's data."
-          size="xl"
+    <Dialog
+      open={props.presenter.target() !== null}
+      onClose={() => props.presenter.close()}
+      title={`Check out ${props.presenter.target()?.name ?? ""}`}
+      description="Testate restores every included database to this state's data."
+      size="xl"
+    >
+      <form class="grid gap-4" onSubmit={onSubmit}>
+        <Show when={props.presenter.preflight()} fallback={<p>Checking schemas...</p>}>
+          {(preflight) => (
+            <>
+              <Show when={preflight().stash_will_be_taken}>
+                <Banner variant="default">
+                  A stash state is taken first, so this checkout is reversible.
+                </Banner>
+              </Show>
+              <Table>
+                <thead>
+                  <tr>
+                    <Head>Database</Head>
+                    <Head>Schema</Head>
+                    <Head>Restore</Head>
+                  </tr>
+                </thead>
+                <tbody>
+                  <For each={preflight().adapters}>
+                    {(adapter) => <AdapterRow adapter={adapter} force={props.presenter.force()} />}
+                  </For>
+                </tbody>
+              </Table>
+            </>
+          )}
+        </Show>
+        {/*
+          Force is the way past drift, so its box carries what it will and will not restore every
+          time, and picks up a warning ring exactly when that is the thing standing in the way. The
+          old copy sat in a banner above the table, disconnected from the switch that resolves it.
+        */}
+        <div
+          class={[
+            "grid gap-2 rounded-lg p-3 ring",
+            props.presenter.blocked() ? "ring-warning/40" : "ring-line",
+          ]}
         >
-          <form class="grid gap-4" onSubmit={onSubmit}>
-            <Show when={props.presenter.preflight()} fallback={<p>Checking schemas...</p>}>
-              {(preflight) => (
-                <>
-                  <Show when={preflight().stash_will_be_taken}>
-                    <Banner variant="default">
-                      A stash state is taken first, so this checkout is reversible.
-                    </Banner>
-                  </Show>
-                  <Show when={!canCheckout(preflight(), props.presenter.force())}>
-                    <Banner variant="alert">
-                      The live schema drifted from this state. Turn on force to restore the tables
-                      and columns present on both sides; the rest is reported.
-                    </Banner>
-                  </Show>
-                  <Table>
-                    <thead>
-                      <tr>
-                        <Head>Adapter</Head>
-                        <Head>Schema</Head>
-                        <Head>Restore</Head>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <For each={preflight().adapters}>
-                        {(adapter) => (
-                          <AdapterRow adapter={adapter} force={props.presenter.force()} />
-                        )}
-                      </For>
-                    </tbody>
-                  </Table>
-                </>
-              )}
-            </Show>
-            <Switch
-              label="Force: restore what both sides share"
-              checked={props.presenter.force()}
-              disabled={props.presenter.busy()}
-              onChange={(next) => void props.presenter.setForce(next)}
-            />
-            <Show when={props.presenter.error()}>
-              {(message) => <Banner variant="error">{message()}</Banner>}
-            </Show>
-            <div class="flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={() => props.presenter.close()}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary" disabled={!props.presenter.ready()}>
-                Check out
-              </Button>
-            </div>
-          </form>
-        </Dialog>
-      )}
-    </Show>
+          <Switch
+            label="Force: restore what both sides share"
+            checked={props.presenter.force()}
+            disabled={props.presenter.busy()}
+            onChange={(next) => void props.presenter.setForce(next)}
+          />
+          <p class="text-sm text-muted">
+            Force restores only the tables and columns that exist in both this state and the live
+            database. Anything on just one side is skipped and listed after the restore — never
+            restored or deleted.
+          </p>
+        </div>
+        <Show when={props.presenter.error()}>
+          {(message) => <Banner variant="error">{message()}</Banner>}
+        </Show>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <Show when={!props.presenter.busy() && props.presenter.blocked()} fallback={<span />}>
+            <p class="text-sm text-warning-fg">
+              Schema drift is blocking this checkout — turn on Force above to continue.
+            </p>
+          </Show>
+          <div class="ml-auto flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => props.presenter.close()}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" disabled={!props.presenter.ready()}>
+              Check out
+            </Button>
+          </div>
+        </div>
+      </form>
+    </Dialog>
   );
 }

@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 import type { JsonObject } from "@testate/shared";
 
-import { attempt } from "@/lib/toast.ts";
+import { attempt, showToast } from "@/lib/toast.ts";
 import { toolsModel } from "./tools.model.ts";
 
 export const ALGORITHMS = ["argon2id", "bcrypt", "sha256", "sha512", "hmac_sha256"] as const;
@@ -26,6 +26,8 @@ export type ToolsPresenter = {
   runRandom: () => Promise<void>;
   uuids: () => string[];
   runUuid: (count: number) => Promise<void>;
+  /** Every result here exists to be pasted somewhere else; copy is the point of a scratchpad. */
+  copy: (text: string) => Promise<void>;
 };
 
 /** Builds the hash body; `secret` doubles as the HMAC key and as the seed for the others. */
@@ -72,6 +74,11 @@ export function createToolsPresenter(): ToolsPresenter {
       attempt(async () => {
         const result = await toolsModel.uuid({ version: 7, count });
         setUuids(result.values);
+      }),
+    copy: (text) =>
+      attempt(async () => {
+        await navigator.clipboard.writeText(text);
+        showToast("Copied to clipboard", "success");
       }),
   };
 }

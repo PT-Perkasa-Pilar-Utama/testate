@@ -6,12 +6,27 @@ import { TERMINAL_JOB_STATUSES } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
+import Icon from "@/components/icon.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import { Cell, Head, Row, Table, EmptyRow, TableFooter } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { subscribeJob } from "@/lib/sse.ts";
-import { CountersDialog, DetailDialog, RESULT_VARIANT } from "./checkouts.dialogs.view.tsx";
-import { createCheckoutsPresenter, retriable } from "./checkouts.presenter.ts";
+import {
+  CountersDialog,
+  DetailDialog,
+  PURPOSE_LABEL,
+  RESULT_LABEL,
+  RESULT_VARIANT,
+  STATUS_LABEL,
+} from "./checkouts.dialogs.view.tsx";
+import {
+  blockedAdapters,
+  createCheckoutsPresenter,
+  outcomeLine,
+  retriable,
+  retryBlockedReason,
+} from "./checkouts.presenter.ts";
+import type { CheckoutsPresenter } from "./checkouts.presenter.ts";
 
 const STATUS_VARIANT = {
   running: "info",
@@ -37,6 +52,56 @@ function Follow(props: { checkout: Checkout; onDone: () => void }): null {
   return null;
 }
 
+/** What happened: the status a person reads, plus the one line a failed or partial run left behind. */
+function Outcome(props: { checkout: Checkout }): JSX.Element {
+  return (
+    <div class="grid gap-1">
+      <Badge variant={STATUS_VARIANT[props.checkout.status]}>
+        {STATUS_LABEL[props.checkout.status]}
+      </Badge>
+      <Show when={outcomeLine(props.checkout) !== ""}>
+        <p class="text-muted text-xs">{outcomeLine(props.checkout)}</p>
+      </Show>
+    </div>
+  );
+}
+
+/**
+ * The three recovery actions this screen exists for. Terminate blockers used to live only inside
+ * the Details dialog, one adapter at a time; a failed restore now clears it from the row it landed
+ * on, and the dialog keeps its own copy for the moment someone is already in there reading why.
+ */
+function RecoveryActions(props: {
+  presenter: CheckoutsPresenter;
+  checkout: Checkout;
+}): JSX.Element {
+  return (
+    <Show when={hasRole("qa")}>
+      <Button
+        size="sm"
+        variant="secondary"
+        disabled={!retriable(props.checkout)}
+        title={retryBlockedReason(props.checkout)}
+        onClick={() => void props.presenter.retry(props.checkout)}
+      >
+        Retry
+      </Button>
+      <For each={blockedAdapters(props.checkout)}>
+        {(adapter) => (
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => void props.presenter.terminate(props.checkout, adapter)}
+          >
+            <Icon name="ban" class="h-3 w-3" />
+            Terminate blockers
+          </Button>
+        )}
+      </For>
+    </Show>
+  );
+}
+
 export default function CheckoutsView(props: {
   slug: string;
   onChanged?: () => void;
@@ -50,10 +115,9 @@ export default function CheckoutsView(props: {
       <Table>
         <thead>
           <tr>
-            <Head>State</Head>
-            <Head>Purpose</Head>
-            <Head>Status</Head>
-            <Head>Adapters</Head>
+            <Head>Restore</Head>
+            <Head>Result</Head>
+            <Head>Databases</Head>
             <Head>By</Head>
             <Head>Started</Head>
             <Head pinned>Actions</Head>
@@ -73,17 +137,21 @@ export default function CheckoutsView(props: {
               {(checkout) => (
                 <Row>
                   <Follow checkout={checkout} onDone={() => presenter.refresh()} />
-                  <Cell>{checkout.state.name}</Cell>
-                  <Cell>{checkout.purpose}</Cell>
                   <Cell>
-                    <Badge variant={STATUS_VARIANT[checkout.status]}>{checkout.status}</Badge>
+                    <div class="grid gap-0.5">
+                      <span class="text-heading font-medium">{checkout.state.name}</span>
+                      <span class="text-muted text-xs">{PURPOSE_LABEL[checkout.purpose]}</span>
+                    </div>
+                  </Cell>
+                  <Cell>
+                    <Outcome checkout={checkout} />
                   </Cell>
                   <Cell>
                     <span class="inline-flex flex-wrap gap-1">
                       <For each={checkout.adapters}>
                         {(adapter) => (
                           <Badge variant={RESULT_VARIANT[adapter.result]}>
-                            {adapter.name}: {adapter.result}
+                            {adapter.name}: {RESULT_LABEL[adapter.result]}
                           </Badge>
                         )}
                       </For>
@@ -107,16 +175,7 @@ export default function CheckoutsView(props: {
                       >
                         Counters
                       </Button>
-                      <Show when={hasRole("qa")}>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={!retriable(checkout)}
-                          onClick={() => void presenter.retry(checkout)}
-                        >
-                          Retry
-                        </Button>
-                      </Show>
+                      <RecoveryActions presenter={presenter} checkout={checkout} />
                     </div>
                   </Cell>
                 </Row>

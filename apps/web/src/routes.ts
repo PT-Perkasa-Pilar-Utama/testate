@@ -29,7 +29,9 @@ export const ROUTES: readonly RouteDef<RouteName>[] = [
   { name: "adapter", pattern: "/projects/:slug/adapters/:id", role: "viewer" },
   { name: "table", pattern: "/projects/:slug/adapters/:id/tables/:table", role: "viewer" },
   { name: "query", pattern: "/projects/:slug/adapters/:id/query", role: "viewer" },
-  { name: "policies", pattern: "/projects/:slug/adapters/:id/policies", role: "viewer" },
+  // Masking rules are admin work (docs/UI_REWORK.md). The engine stays load-bearing for the grid,
+  // imports, diffs and the agent surface; only the screen moves out of a tester's way.
+  { name: "policies", pattern: "/projects/:slug/adapters/:id/policies", role: "admin" },
   { name: "files", pattern: "/projects/:slug/adapters/:id/files", role: "viewer" },
   { name: "jobs", pattern: "/jobs", role: "viewer" },
   { name: "account", pattern: "/account", role: "viewer" },

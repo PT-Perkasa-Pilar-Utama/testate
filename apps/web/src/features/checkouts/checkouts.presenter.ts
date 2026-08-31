@@ -44,6 +44,30 @@ export function blockingSessions(adapter: Checkout["adapters"][number]): string[
   return parsed.success ? parsed.output : [];
 }
 
+/** The adapters this checkout is stuck behind a lock on — Terminate blockers acts on these. */
+export function blockedAdapters(checkout: Checkout): Checkout["adapters"] {
+  return checkout.adapters.filter((adapter) => blockingSessions(adapter).length > 0);
+}
+
+/** Why "Retry" is dead, next to the button rather than left for the row to explain by itself. */
+export function retryBlockedReason(checkout: Checkout): string | undefined {
+  if (checkout.status === "running") return "Wait for this restore to finish.";
+  if (!retriable(checkout)) return "Nothing to retry — every database finished cleanly.";
+  return undefined;
+}
+
+/** The one line a row has room for on a checkout that did not simply succeed. */
+export function outcomeLine(checkout: Checkout): string {
+  const failed = checkout.adapters.find((adapter) => adapter.error !== null);
+  if (failed?.error) return `${failed.name}: ${failed.error.message}`;
+  return checkout.adapters.map(skippedSummary).find((line) => line !== "") ?? "";
+}
+
+/** True when any counter failed to reset. `"…failed".endsWith("0 failed")` lies for 10, 20, 30. */
+export function hasFailure(result: Counters): boolean {
+  return result.adapters.some((adapter) => adapter.counters.some((counter) => !counter.ok));
+}
+
 /** "3 tables, 2 columns skipped · 1 column defaulted" or "" when a restore was complete. */
 export function skippedSummary(adapter: Checkout["adapters"][number]): string {
   const parts: string[] = [];

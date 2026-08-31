@@ -35,6 +35,13 @@ export function targetLabel(target: Diff["target"]): string {
   return "live" in target ? "live database" : target.name;
 }
 
+/** Why the Details button is disabled, next to itself rather than in a banner elsewhere. */
+export function detailBlockedReason(diff: Pick<Diff, "status">): string | undefined {
+  if (diff.status === "running") return "Still comparing.";
+  if (diff.status === "failed") return "This comparison failed.";
+  return undefined;
+}
+
 /** Sum of added + removed + changed rows over every compared table. */
 export function changedRows(diff: Pick<Diff, "adapters">): number {
   return diff.adapters

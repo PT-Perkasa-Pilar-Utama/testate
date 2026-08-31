@@ -132,13 +132,14 @@ export function createAdapterPresenter(slug: () => string, id: () => string): Ad
         });
         setPlan(null);
         showToast("Deletion job queued; the database returns to its init state first", "info");
-        // The project page lists adapters once on mount, so it opens after the job ends.
+        // The project page opens on States (UI_REWORK phase 2); send the admin back to the tab
+        // they were just working in, not the tester's front door.
         followJob(job, (done) => {
           showToast(
             `Adapter deletion ${done.status}`,
             done.status === "succeeded" ? "success" : "error"
           );
-          navigate(`/projects/${staticSlug}`);
+          navigate(`/projects/${staticSlug}?tab=adapters`);
         });
       });
     },

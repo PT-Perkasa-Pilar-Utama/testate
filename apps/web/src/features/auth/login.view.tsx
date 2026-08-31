@@ -4,6 +4,7 @@ import { Show } from "solid-js";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import FormErrors from "@/components/form-errors.tsx";
+import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import LayerCard from "@/components/layer-card.tsx";
 import { createFormGuard } from "@/lib/form.ts";
@@ -36,6 +37,7 @@ export default function LoginView(props: { next: string }): JSX.Element {
             <Input
               name="username"
               autocomplete="username"
+              autofocus
               required
               value={presenter.username()}
               onInput={(event) => presenter.setUsername(event.currentTarget.value)}
@@ -56,6 +58,9 @@ export default function LoginView(props: { next: string }): JSX.Element {
             {(message) => <Banner variant="error">{message()}</Banner>}
           </Show>
           <Button type="submit" variant="primary" disabled={presenter.busy()}>
+            <Show when={presenter.busy()}>
+              <Icon name="loader-circle" class="h-3.5 w-3.5 animate-spin" />
+            </Show>
             {presenter.busy() ? "Signing in..." : "Sign in"}
           </Button>
         </form>

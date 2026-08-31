@@ -14,6 +14,8 @@ export type PreflightPresenter = {
   busy: () => boolean;
   error: () => string | null;
   ready: () => boolean;
+  /** True while schema drift is the only thing standing between here and Check out. */
+  blocked: () => boolean;
   open: (state: State) => Promise<void>;
   close: () => void;
   setForce: (force: boolean) => Promise<void>;
@@ -37,14 +39,16 @@ export function driftSummary(drift: SchemaDrift | null): string {
     .join(" · ");
 }
 
+/** The included, still-present adapters whose live schema drifted from this state (story 77). */
+export function driftedAdapters(preflight: Preflight): PreflightAdapter[] {
+  return preflight.adapters.filter(
+    (adapter) => adapter.included && !adapter.removed && driftSummary(adapter.drift) !== ""
+  );
+}
+
 /** A checkout may start when no included adapter drifted, or force is on (stories 77, 78). */
 export function canCheckout(preflight: Preflight, force: boolean): boolean {
-  return (
-    force ||
-    preflight.adapters.every(
-      (adapter) => !adapter.included || adapter.removed || driftSummary(adapter.drift) === ""
-    )
-  );
+  return force || driftedAdapters(preflight).length === 0;
 }
 
 /** "truncate · session-disable FKs · atomic" (stories 82, 84). */
@@ -97,6 +101,10 @@ export function createPreflightPresenter(
     ready: () => {
       const current = preflight();
       return !busy() && current !== null && canCheckout(current, force());
+    },
+    blocked: () => {
+      const current = preflight();
+      return current !== null && !force() && !canCheckout(current, false);
     },
     open: (state) => {
       setTarget(state);

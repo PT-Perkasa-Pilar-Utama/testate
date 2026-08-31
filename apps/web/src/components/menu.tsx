@@ -28,12 +28,15 @@ export function MenuItem(props: {
   onClick: () => void;
   danger?: boolean;
   disabled?: boolean;
+  /** Why a disabled item is disabled. A control that cannot be used has to say so. */
+  title?: string | undefined;
   children: JSX.Element;
 }): JSX.Element {
   return (
     <button
       type="button"
       disabled={props.disabled}
+      title={props.title}
       class={[
         "cursor-pointer rounded-md px-2 py-1.5 text-left text-sm hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50",
         { "text-danger-fg": props.danger === true },

@@ -1,17 +1,65 @@
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
 import { For, Loading, Show } from "solid-js";
+import type { Settings } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
+import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import InputArea from "@/components/input-area.tsx";
 import LayerCard from "@/components/layer-card.tsx";
 import Switch from "@/components/switch.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import HealthCard from "./settings.health.view.tsx";
 import { SECTIONS, createSettingsPresenter } from "./settings.presenter.ts";
-import type { SettingsPresenter } from "./settings.presenter.ts";
+import type { SettingRow, SettingsPresenter } from "./settings.presenter.ts";
 import { MigrateDialog } from "./settings.store.view.tsx";
+
+/** What a person calls each key, never `retention.stash_keep`; the unit rides along in the label. */
+const LABELS = {
+  "retention.stash_keep": "Stashes to keep",
+  "retention.diff_days": "Diff history (days)",
+  "retention.query_history_days": "Query history (days)",
+  "retention.job_history_days": "Job history (days)",
+  "retention.audit_days": "Audit log (days)",
+  "retention.import_run_days": "Import run history (days)",
+  "quota.default_bytes": "Default project quota (bytes)",
+  "quota.instance_ceiling_bytes": "Instance quota ceiling (bytes)",
+  "limits.query_rows_default": "Default query row limit",
+  "limits.query_rows_max": "Maximum query rows",
+  "limits.query_bytes": "Query result size (bytes)",
+  "limits.query_timeout_ms": "Query timeout (ms)",
+  "limits.query_timeout_max_ms": "Maximum query timeout (ms)",
+  "limits.upload_mb": "Upload size limit (MB)",
+  "limits.token_requests_per_minute": "Token requests per minute",
+  "limits.agent_requests_per_minute": "Agent requests per minute",
+  "limits.write_session_idle_minutes": "Write session idle timeout (minutes)",
+  "limits.job_concurrency": "Concurrent jobs",
+} as const;
+
+/** `row.key` is built at runtime as `${section}.${name}`, so it is a plain string, not one of
+ *  LABELS's literal keys — the membership check below is what makes the lookup safe. */
+function labelFor(row: SettingRow): string {
+  if (!(row.key in LABELS)) return row.name;
+  // SAFETY: the `in` check above proved `row.key` names one of LABELS's own properties.
+  return LABELS[row.key as keyof typeof LABELS];
+}
+
+/** A labelled cluster of cards, so the stack reads as sections instead of one long scroll. */
+function Group(props: { title: string; description?: string; children: JSX.Element }): JSX.Element {
+  return (
+    <div class="grid gap-4 border-t border-line pt-6 first:border-t-0 first:pt-0">
+      <div class="grid gap-1.5">
+        <h3 class="text-base font-semibold text-heading">{props.title}</h3>
+        <Show when={props.description}>
+          <p class="text-sm text-muted">{props.description}</p>
+        </Show>
+      </div>
+      <div class="grid gap-4">{props.children}</div>
+    </div>
+  );
+}
 
 /** One editable section; keys set by the environment stay read-only (story 120). */
 function Section(props: {
@@ -26,7 +74,7 @@ function Section(props: {
     <LayerCard class="grid gap-3 px-5 py-4">
       <form class="grid gap-3" onSubmit={onSubmit}>
         <div class="flex items-center justify-between">
-          <h3 class="font-medium capitalize">{props.name}</h3>
+          <h3 class="text-base font-semibold text-heading capitalize">{props.name}</h3>
           <Button type="submit" size="sm" variant="primary">
             Save {props.name}
           </Button>
@@ -34,7 +82,7 @@ function Section(props: {
         <Table>
           <thead>
             <tr>
-              <Head>Key</Head>
+              <Head>Setting</Head>
               <Head>Value</Head>
               <Head>Source</Head>
             </tr>
@@ -44,14 +92,17 @@ function Section(props: {
               {(row) => (
                 <Row>
                   <Cell>
-                    <code>{row.key}</code>
+                    <div class="grid gap-0.5">
+                      <span>{labelFor(row)}</span>
+                      <code class="text-xs text-muted">{row.key}</code>
+                    </div>
                   </Cell>
                   <Cell>
                     <Input
                       size="sm"
                       type="number"
                       min="0"
-                      aria-label={row.key}
+                      aria-label={labelFor(row)}
                       disabled={row.locked}
                       value={props.presenter.drafts().get(row.key) ?? row.value}
                       onInput={(event) =>
@@ -60,9 +111,15 @@ function Section(props: {
                     />
                   </Cell>
                   <Cell>
-                    <Badge variant={row.locked ? "warning" : "outline"}>
-                      {row.locked ? "environment" : "editable"}
-                    </Badge>
+                    <Show
+                      when={row.locked}
+                      fallback={<span class="text-xs text-muted">editable</span>}
+                    >
+                      <Badge variant="outline">
+                        <Icon name="lock" class="h-3 w-3" />
+                        environment
+                      </Badge>
+                    </Show>
                   </Cell>
                 </Row>
               )}
@@ -74,61 +131,35 @@ function Section(props: {
   );
 }
 
-/** Backup of the metadata (and optionally every blob) as a job with a download link (story 121). */
-const CHECK_LABELS = [
-  ["metadata_db", "Metadata database"],
-  ["data_dir", "Data directory"],
-  ["snapshot_store", "Snapshot store"],
-  ["dispatcher", "Job dispatcher"],
-  ["log_sink", "Log sink"],
-  ["sealed_keys", "Sealed keys"],
-] as const;
-
-const DOT = { ok: "bg-success", degraded: "bg-warning", down: "bg-danger" } as const;
-
-/**
- * The health report, where an admin already is. It used to be its own screen at `/health` that
- * nothing in the app linked to, so you had to know the URL. A load balancer wants the API endpoint,
- * not a page, and that endpoint is unchanged.
- */
-function HealthCard(props: { presenter: SettingsPresenter }): JSX.Element {
+/** Snapshot driver at a glance; locked when the environment pins it, so Migrate has nothing to do. */
+function StoreCard(props: { presenter: SettingsPresenter }): JSX.Element {
+  const store = (): Settings["store"] => props.presenter.value().store;
   return (
-    <LayerCard class="grid gap-3 px-5 py-4">
-      <div class="flex items-center justify-between gap-3">
-        <h3 class="text-base font-semibold text-heading">Instance health</h3>
-        <Button size="sm" variant="secondary" onClick={() => props.presenter.health.refresh()}>
-          Refresh
-        </Button>
-      </div>
-      <Loading fallback={<p class="text-muted">Checking...</p>}>
-        <dl class="grid gap-2">
-          <For each={CHECK_LABELS}>
-            {([key, label]) => (
-              <div class="flex items-center justify-between gap-3 text-base">
-                <dt>{label}</dt>
-                <dd class="flex items-center gap-2 text-muted">
-                  <span
-                    class={[
-                      "h-2 w-2 shrink-0 rounded-full",
-                      DOT[props.presenter.health.value().checks[key].status],
-                    ]}
-                    aria-hidden="true"
-                  />
-                  <span>{props.presenter.health.value().checks[key].status}</span>
-                </dd>
-              </div>
-            )}
-          </For>
-        </dl>
-      </Loading>
+    <LayerCard class="flex flex-wrap items-center gap-3 px-5 py-4">
+      <span class="text-base">Snapshot store</span>
+      <Badge variant="outline">{store().driver}</Badge>
+      <Show
+        when={store().locked_by_env}
+        fallback={
+          <Button size="sm" variant="secondary" onClick={() => props.presenter.openMigrate()}>
+            Migrate store
+          </Button>
+        }
+      >
+        <Badge variant="outline">
+          <Icon name="lock" class="h-3 w-3" />
+          set by environment
+        </Badge>
+      </Show>
     </LayerCard>
   );
 }
 
+/** Backup of the metadata (and optionally every blob) as a job with a download link (story 121). */
 function BackupCard(props: { presenter: SettingsPresenter }): JSX.Element {
   return (
     <LayerCard class="grid gap-3 px-5 py-4">
-      <h3 class="font-medium">Backup</h3>
+      <h3 class="text-base font-semibold text-heading">Backup</h3>
       <div class="flex flex-wrap items-center gap-4">
         <Switch
           label="Include snapshot blobs"
@@ -171,7 +202,7 @@ function NetguardCard(props: { presenter: SettingsPresenter }): JSX.Element {
   return (
     <LayerCard class="grid gap-3 px-5 py-4">
       <div class="grid gap-1">
-        <h3 class="font-medium">Blocked hosts</h3>
+        <h3 class="text-base font-semibold text-heading">Blocked hosts</h3>
         <p class="text-sm text-muted">
           One host, CIDR or host:port per line. An adapter pointing at a blocked address is disabled
           when you save.
@@ -206,22 +237,18 @@ export default function SettingsView(): JSX.Element {
         description="Instance defaults. Values set by the environment cannot be edited here."
       />
       <Loading fallback={<p class="text-muted">Loading settings...</p>}>
-        <LayerCard class="flex flex-wrap items-center gap-3 px-5 py-4">
-          <span class="text-sm">Snapshot store</span>
-          <Badge variant="outline">{presenter.value().store.driver}</Badge>
-          <Badge variant={presenter.value().store.locked_by_env ? "warning" : "secondary"}>
-            {presenter.value().store.locked_by_env ? "set by environment" : "editable"}
-          </Badge>
-          <Show when={!presenter.value().store.locked_by_env}>
-            <Button size="sm" variant="secondary" onClick={() => presenter.openMigrate()}>
-              Migrate store
-            </Button>
-          </Show>
-        </LayerCard>
         <HealthCard presenter={presenter} />
-        <For each={SECTIONS}>{(name) => <Section presenter={presenter} name={name} />}</For>
+        <Group title="Storage" description="Where snapshots live, and how to get a copy out.">
+          <StoreCard presenter={presenter} />
+          <BackupCard presenter={presenter} />
+        </Group>
+        <Group
+          title="Instance defaults"
+          description="Limits and retention every new project inherits."
+        >
+          <For each={SECTIONS}>{(name) => <Section presenter={presenter} name={name} />}</For>
+        </Group>
         <NetguardCard presenter={presenter} />
-        <BackupCard presenter={presenter} />
       </Loading>
       <MigrateDialog presenter={presenter} />
     </section>

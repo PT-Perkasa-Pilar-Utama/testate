@@ -5,6 +5,7 @@ import { ROLES, TOKEN_KINDS } from "@testate/shared";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createPaged } from "@/lib/async.ts";
 import type { Paged } from "@/lib/async.ts";
+import type { CreatedToken } from "./tokens.model.ts";
 import { tokensModel } from "./tokens.model.ts";
 
 export const KIND_OPTIONS = TOKEN_KINDS.map((kind) => ({ value: kind, label: kind }));
@@ -18,7 +19,9 @@ export type TokensPresenter = Paged<ApiToken> & {
   creating: () => boolean;
   draft: () => TokenDraft;
   error: () => string | null;
-  created: () => string | null;
+  /** The freshly minted token plus the record it belongs to; null once dismissed. Testate never
+   *  shows the secret again after this, so the reveal reads from this signal and nowhere else. */
+  created: () => CreatedToken | null;
   openCreate: () => void;
   closeCreate: () => void;
   setDraft: (patch: Partial<TokenDraft>) => void;
@@ -46,7 +49,7 @@ export function createTokensPresenter(): TokensPresenter {
   const [creating, setCreating] = createSignal(false);
   const [draft, setDraftSignal] = createSignal<TokenDraft>(EMPTY_DRAFT);
   const [error, setError] = createSignal<string | null>(null);
-  const [created, setCreated] = createSignal<string | null>(null);
+  const [created, setCreated] = createSignal<CreatedToken | null>(null);
   const [revoking, setRevoking] = createSignal<ApiToken | null>(null);
   return {
     ...tokens,
@@ -64,7 +67,7 @@ export function createTokensPresenter(): TokensPresenter {
       setError(null);
       try {
         const result = await tokensModel.create(toCreateBody(draft()));
-        setCreated(result.token);
+        setCreated(result);
         setCreating(false);
         setDraftSignal(EMPTY_DRAFT);
         tokens.refresh();
@@ -76,7 +79,7 @@ export function createTokensPresenter(): TokensPresenter {
       const staticToken = created();
       if (staticToken === null) return Promise.resolve();
       return attempt(async () => {
-        await navigator.clipboard.writeText(staticToken);
+        await navigator.clipboard.writeText(staticToken.token);
         showToast("Token copied", "success");
       });
     },

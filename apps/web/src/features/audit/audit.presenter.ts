@@ -11,6 +11,8 @@ export const OUTCOMES = ["", "succeeded", "failed", "partial"] as const;
 export type AuditPresenter = Paged<AuditRow> & {
   filter: () => AuditFilter;
   setFilter: (patch: Partial<AuditFilter>) => void;
+  /** Back to no filter at all, for the one-click way out of a filtered view with nothing in it. */
+  clearFilter: () => void;
 };
 
 const EMPTY: AuditFilter = { action: "", actor: "", outcome: "" };
@@ -26,5 +28,6 @@ export function createAuditPresenter(): AuditPresenter {
     ...rows,
     filter,
     setFilter: (patch) => setFilterSignal((current) => ({ ...current, ...patch })),
+    clearFilter: () => setFilterSignal(EMPTY),
   };
 }

@@ -1,13 +1,12 @@
 import type { JSX } from "@solidjs/web";
 import { formatWhen } from "@/lib/format.ts";
 import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
-import { Errored, For, Loading, Show, Switch, Match } from "solid-js";
-import type { Entry, PreviewPayload } from "@testate/shared";
+import { Errored, For, Loading, Show } from "solid-js";
+import type { Entry } from "@testate/shared";
 
-import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
 import Button, { buttonClass } from "@/components/button.tsx";
-import Dialog from "@/components/dialog.tsx";
+import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import {
   Cell,
@@ -20,106 +19,73 @@ import {
 } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { formatBytes } from "../states/states.format.ts";
+import { PreviewDialog } from "./storage.preview.view.tsx";
 import { createStoragePresenter } from "./storage.presenter.ts";
 import type { StoragePresenter } from "./storage.presenter.ts";
 
-function Payload(props: { payload: PreviewPayload }): JSX.Element {
+/**
+ * A path bar, not a heading: the adapter you're in, then Up, then every folder between here and
+ * root. The current folder is plain text, the way GitHub's own breadcrumb never links to itself.
+ */
+function PathBar(props: { presenter: StoragePresenter; slug: string; id: string }): JSX.Element {
+  const atRoot = (): boolean => props.presenter.path() === "";
   return (
-    <Switch>
-      <Match when={props.payload.kind === "csv" ? props.payload : null}>
-        {(csv) => (
-          <div class="overflow-auto">
-            <Table>
-              <thead>
-                <tr>
-                  <For each={csv().columns}>{(column) => <Head>{column}</Head>}</For>
-                </tr>
-              </thead>
-              <tbody>
-                <For each={csv().rows}>
-                  {(row) => (
-                    <Row>
-                      <For each={row}>{(cell) => <Cell>{String(cell ?? "")}</Cell>}</For>
-                    </Row>
-                  )}
-                </For>
-              </tbody>
-            </Table>
-          </div>
-        )}
-      </Match>
-      <Match when={props.payload.kind === "json" ? props.payload : null}>
-        {(json) => (
-          <pre class="max-h-96 overflow-auto rounded-lg bg-fill p-3 text-xs">
-            {JSON.stringify(json().content, null, 2)}
-          </pre>
-        )}
-      </Match>
-      <Match when={props.payload.kind === "text" ? props.payload : null}>
-        {(text) => (
-          <pre class="max-h-96 overflow-auto rounded-lg bg-fill p-3 text-xs">{text().content}</pre>
-        )}
-      </Match>
-    </Switch>
-  );
-}
-
-function PreviewDialog(props: { presenter: StoragePresenter }): JSX.Element {
-  return (
-    <Show when={props.presenter.preview()}>
-      {(preview) => (
-        <Dialog
-          open
-          size="xl"
-          onClose={() => props.presenter.closePreview()}
-          title={preview().entry.name}
-          description={`${formatBytes(preview().entry.size_bytes ?? 0)} · ${preview().entry.modified_at ?? ""}`}
+    <div class="flex flex-wrap items-center gap-1.5 text-base">
+      <AdapterCrumb slug={props.slug} id={props.id} />
+      <Icon name="chevron-right" class="h-3.5 w-3.5 text-muted" aria-hidden="true" />
+      <Button
+        size="xs"
+        variant="ghost"
+        disabled={atRoot()}
+        title="Up one level"
+        aria-label="Up one level"
+        onClick={() => props.presenter.up()}
+      >
+        <Icon name="arrow-left" class="h-3.5 w-3.5" />
+      </Button>
+      <Show
+        when={!atRoot()}
+        fallback={
+          <span class="inline-flex items-center gap-1 font-medium text-heading">
+            <Icon name="house" class="h-3.5 w-3.5" />
+            root
+          </span>
+        }
+      >
+        <button
+          type="button"
+          class="inline-flex cursor-pointer items-center gap-1 text-muted hover:text-body hover:underline"
+          onClick={() => props.presenter.open("")}
         >
-          <div class="grid gap-3">
-            <Show when={props.presenter.binaryUrl()}>
-              {(url) => (
-                <iframe
-                  title={preview().entry.name}
-                  sandbox=""
-                  class="h-96 w-full rounded-lg bg-fill"
-                  src={url()}
-                />
-              )}
-            </Show>
-            <Show when={props.presenter.payload()}>
-              {(payload) => (
-                <>
-                  <Show when={payload().truncated}>
-                    <Badge variant="warning">truncated</Badge>
-                  </Show>
-                  <Payload payload={payload()} />
-                </>
-              )}
-            </Show>
-            <div class="flex justify-end gap-2">
-              <a
-                class="text-sm underline"
-                href={props.presenter.downloadUrl(preview().entry)}
-                download={preview().entry.name}
+          <Icon name="house" class="h-3.5 w-3.5" />
+          root
+        </button>
+      </Show>
+      <For each={props.presenter.crumbs()}>
+        {(crumb, index) => (
+          <>
+            <Icon name="chevron-right" class="h-3.5 w-3.5 text-muted" aria-hidden="true" />
+            <Show
+              when={index() < props.presenter.crumbs().length - 1}
+              fallback={<span class="font-medium text-heading">{crumb.name}</span>}
+            >
+              <button
+                type="button"
+                class="cursor-pointer text-muted hover:text-body hover:underline"
+                onClick={() => props.presenter.open(crumb.path)}
               >
-                Download
-              </a>
-              <Button type="button" variant="ghost" onClick={() => props.presenter.closePreview()}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </Dialog>
-      )}
-    </Show>
+                {crumb.name}
+              </button>
+            </Show>
+          </>
+        )}
+      </For>
+    </div>
   );
 }
 
+/** One entry; a folder icon or a file icon says what a click does before the click happens. */
 function EntryRow(props: { presenter: StoragePresenter; entry: Entry }): JSX.Element {
-  const openDir = (event: MouseEvent): void => {
-    event.preventDefault();
-    props.presenter.open(props.entry.path);
-  };
   return (
     <Row>
       <Cell>
@@ -128,16 +94,22 @@ function EntryRow(props: { presenter: StoragePresenter; entry: Entry }): JSX.Ele
           fallback={
             <button
               type="button"
-              class="cursor-pointer hover:underline"
+              class="inline-flex cursor-pointer items-center gap-2 hover:underline"
               onClick={() => void props.presenter.openPreview(props.entry)}
             >
+              <Icon name="file-text" class="h-4 w-4 shrink-0 text-muted" />
               {props.entry.name}
             </button>
           }
         >
-          <a class="font-medium hover:underline" href="#" onClick={openDir}>
-            {props.entry.name}/
-          </a>
+          <button
+            type="button"
+            class="inline-flex cursor-pointer items-center gap-2 font-medium hover:underline"
+            onClick={() => props.presenter.open(props.entry.path)}
+          >
+            <Icon name="folder" class="h-4 w-4 shrink-0 text-muted" />
+            {props.entry.name}
+          </button>
         </Show>
       </Cell>
       <Cell numeric>
@@ -153,11 +125,21 @@ function EntryRow(props: { presenter: StoragePresenter; entry: Entry }): JSX.Ele
             href={props.presenter.downloadUrl(props.entry)}
             download={props.entry.name}
           >
+            <Icon name="download" class="h-3.5 w-3.5" />
             Download
           </a>
         </Show>
       </Cell>
     </Row>
+  );
+}
+
+/** What the empty row means: an honestly empty folder, or a filter that matched nothing. */
+function EmptyMessage(props: { q: string }): JSX.Element {
+  return (
+    <Show when={props.q !== ""} fallback={<>Nothing here. This directory is empty.</>}>
+      No files match "{props.q}".
+    </Show>
   );
 }
 
@@ -169,53 +151,8 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
   );
   return (
     <section class="grid gap-4">
-      <h2 class="flex flex-wrap items-center gap-1 text-lg font-semibold">
-        <AdapterCrumb slug={props.slug} id={props.id} />
-        <span>/</span>
-        <button
-          type="button"
-          class="cursor-pointer hover:underline"
-          onClick={() => presenter.open("")}
-        >
-          root
-        </button>
-        <For each={presenter.crumbs()}>
-          {(crumb) => (
-            <>
-              <span>/</span>
-              <button
-                type="button"
-                class="cursor-pointer hover:underline"
-                onClick={() => presenter.open(crumb.path)}
-              >
-                {crumb.name}
-              </button>
-            </>
-          )}
-        </For>
-      </h2>
-      <TableToolbar
-        actions={
-          <>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={presenter.path() === ""}
-              onClick={() => presenter.up()}
-            >
-              Up
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={presenter.depth() === 0}
-              onClick={() => presenter.previous()}
-            >
-              Previous
-            </Button>
-          </>
-        }
-      >
+      <PathBar presenter={presenter} slug={props.slug} id={props.id} />
+      <TableToolbar>
         <Input
           size="sm"
           class="w-56!"
@@ -250,7 +187,11 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
             <tbody>
               <Show
                 when={presenter.page.value().data.length > 0}
-                fallback={<EmptyRow>Nothing here. This directory is empty.</EmptyRow>}
+                fallback={
+                  <EmptyRow>
+                    <EmptyMessage q={presenter.q()} />
+                  </EmptyRow>
+                }
               >
                 <For each={presenter.page.value().data}>
                   {(entry) => <EntryRow presenter={presenter} entry={entry} />}
@@ -263,6 +204,11 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
             noun="entries"
             hasMore={presenter.page.value().page.next_cursor !== null}
           >
+            <Show when={presenter.depth() > 0}>
+              <Button size="sm" variant="secondary" onClick={() => presenter.previous()}>
+                Previous page
+              </Button>
+            </Show>
             <Show when={presenter.page.value().page.next_cursor !== null}>
               <Button size="sm" variant="secondary" onClick={() => presenter.next()}>
                 Next page

@@ -7,6 +7,7 @@ import Button, { buttonClass } from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
+import { modeLabel } from "./imports.helpers.ts";
 import { countsLabel, createImportsPresenter } from "./imports.presenter.ts";
 import ReportPanel from "./imports.report.view.tsx";
 import { createWizardPresenter } from "./imports.wizard.presenter.ts";
@@ -34,9 +35,9 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
           <thead>
             <tr>
               <Head>Run</Head>
-              <Head>Mode</Head>
-              <Head>Dry run</Head>
-              <Head>Counts</Head>
+              <Head>What happens</Head>
+              <Head>Type</Head>
+              <Head>Result</Head>
               <Head>By</Head>
               <Head>Started</Head>
               <Head pinned>Actions</Head>
@@ -47,7 +48,8 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
               when={presenter.value().length > 0}
               fallback={
                 <EmptyRow>
-                  No imports yet. Load a CSV or XLSX into a table, with a dry run first.
+                  No imports yet. Bring in a CSV or XLSX file and preview it before anything
+                  changes.
                 </EmptyRow>
               }
             >
@@ -57,10 +59,10 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
                     <Cell>
                       <code>{run.id.slice(-8)}</code>
                     </Cell>
-                    <Cell>{run.mode}</Cell>
+                    <Cell>{modeLabel(run.mode)}</Cell>
                     <Cell>
                       <Badge variant={run.dry_run ? "info" : "outline"}>
-                        {run.dry_run ? "yes" : "no"}
+                        {run.dry_run ? "Preview" : "Import"}
                       </Badge>
                     </Cell>
                     <Cell>{countsLabel(run)}</Cell>

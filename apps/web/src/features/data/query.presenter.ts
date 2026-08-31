@@ -192,6 +192,9 @@ export function createQueryPresenter(slug: () => string, id: () => string): Quer
         setError(cause instanceof Error ? cause.message : String(cause));
         return Promise.resolve();
       }
+      // The row cap limits the on-screen preview only; an export runs the same query again
+      // without it, up to the server's own row and byte budgets.
+      delete staticBody.row_cap;
       return attempt(async () => {
         saveBlob(await dataModel.exportQuery(staticSlug, staticId, staticBody, format));
       });

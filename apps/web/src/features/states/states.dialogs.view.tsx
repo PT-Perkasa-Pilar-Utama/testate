@@ -9,7 +9,7 @@ import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
 import InputArea from "@/components/input-area.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
-import { formatBytes } from "./states.format.ts";
+import { consistencyLabel, formatBytes, sortLabel } from "./states.format.ts";
 import type { StatesPresenter } from "./states.presenter.ts";
 
 function DraftFields(props: { presenter: StatesPresenter }): JSX.Element {
@@ -66,7 +66,7 @@ export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
       open={props.presenter.taking()}
       onClose={() => props.presenter.close()}
       title="Take state"
-      description="Every database adapter is snapshotted at one point in time. Untick adapters to take a partial state."
+      description="Every database is snapshotted at one point in time. Untick one to take a partial state."
     >
       <form
         class="grid gap-4"
@@ -80,7 +80,7 @@ export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
         <FormErrors errors={guard.errors()} />
         <DraftFields presenter={props.presenter} />
         <fieldset class="grid gap-1.5 text-sm">
-          <legend>Adapters</legend>
+          <legend>Databases</legend>
           <Loading fallback={<p class="text-muted">Listing adapters...</p>}>
             <For each={props.presenter.databases.value()}>
               {(adapter) => (
@@ -176,15 +176,15 @@ export function DeleteDialog(props: { presenter: StatesPresenter }): JSX.Element
 
 export function DetailDialog(props: { presenter: StatesPresenter }): JSX.Element {
   return (
-    <Show when={props.presenter.detail()}>
-      {(detail) => (
-        <Dialog
-          open
-          onClose={() => props.presenter.close()}
-          title={detail().name}
-          description={detail().notes ?? "No notes."}
-          size="xl"
-        >
+    <Dialog
+      open={props.presenter.detail() !== null}
+      onClose={() => props.presenter.close()}
+      title={props.presenter.detail()?.name ?? ""}
+      description={props.presenter.detail()?.notes ?? "No notes."}
+      size="xl"
+    >
+      <Show when={props.presenter.detail()}>
+        {(detail) => (
           <div class="grid gap-4">
             <For each={detail().adapters}>
               {(adapter) => (
@@ -192,8 +192,9 @@ export function DetailDialog(props: { presenter: StatesPresenter }): JSX.Element
                   <h3 class="font-medium">
                     {adapter.adapter_name}{" "}
                     <span class="text-muted">
-                      {adapter.engine} {adapter.engine_version} · {adapter.consistency} ·{" "}
-                      {adapter.row_count} rows · {formatBytes(adapter.byte_count)}
+                      {adapter.engine} {adapter.engine_version} ·{" "}
+                      {consistencyLabel(adapter.consistency)} · {adapter.row_count} rows ·{" "}
+                      {formatBytes(adapter.byte_count)}
                     </span>
                   </h3>
                   <Show when={adapter.warnings.length > 0}>
@@ -219,7 +220,7 @@ export function DetailDialog(props: { presenter: StatesPresenter }): JSX.Element
                             </Cell>
                             <Cell>{table.rows}</Cell>
                             <Cell>{formatBytes(table.bytes)}</Cell>
-                            <Cell>{table.sort}</Cell>
+                            <Cell>{sortLabel(table.sort)}</Cell>
                           </Row>
                         )}
                       </For>
@@ -234,8 +235,8 @@ export function DetailDialog(props: { presenter: StatesPresenter }): JSX.Element
               </Button>
             </div>
           </div>
-        </Dialog>
-      )}
-    </Show>
+        )}
+      </Show>
+    </Dialog>
   );
 }

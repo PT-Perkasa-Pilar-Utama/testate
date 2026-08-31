@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import type { JsonObject, Project, Quota } from "@testate/shared";
+import type { JsonObject } from "@testate/shared";
 
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
@@ -7,7 +7,7 @@ import type { Refreshable } from "@/lib/async.ts";
 import { navigate, search } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { projectsModel } from "../projects/projects.model.ts";
-import type { DeletionPlan } from "../projects/projects.model.ts";
+import type { DeletionPlan, Overview } from "../projects/projects.model.ts";
 
 /**
  * The work first, the plumbing last. This used to open on Adapters, which is the one tab a tester
@@ -31,11 +31,9 @@ const DEFAULT_TAB: ProjectTab = "states";
 export type ProjectDraft = { name: string; description: string; quota_gib: string };
 
 export type ProjectPresenter = {
-  project: Refreshable<Project>;
-  quota: Refreshable<Quota>;
+  overview: Refreshable<Overview>;
   tab: () => ProjectTab;
   setTab: (tab: ProjectTab) => void;
-  usedPercent: () => number;
   editing: () => boolean;
   draft: () => ProjectDraft;
   openEdit: () => void;
@@ -62,8 +60,7 @@ export function toUpdateBody(draft: ProjectDraft, admin: boolean): JsonObject {
 }
 
 export function createProjectPresenter(slug: () => string): ProjectPresenter {
-  const project = createRefreshable(() => projectsModel.get(slug()));
-  const quota = createRefreshable(() => projectsModel.quota(slug()));
+  const overview = createRefreshable(() => projectsModel.overview(slug()));
   /**
    * The tab lives in the URL, not in a signal. A signal meant a reload always landed on the first
    * tab and a tab could not be sent to anyone. `search` is a signal, so this stays reactive.
@@ -85,20 +82,13 @@ export function createProjectPresenter(slug: () => string): ProjectPresenter {
   const [plan, setPlan] = createSignal<DeletionPlan | null>(null);
   const [confirmSlug, setConfirmSlug] = createSignal("");
   return {
-    project,
-    quota,
+    overview,
     tab,
     setTab,
-    usedPercent: () => {
-      const current = quota.value();
-      return current.quota_bytes === 0
-        ? 0
-        : Math.min(100, Math.round((current.used_bytes / current.quota_bytes) * 100));
-    },
     editing,
     draft,
     openEdit: () => {
-      const current = project.value();
+      const current = overview.value().project;
       setDraftSignal({
         name: current.name,
         description: current.description ?? "",
@@ -114,8 +104,7 @@ export function createProjectPresenter(slug: () => string): ProjectPresenter {
       return attempt(async () => {
         await projectsModel.update(staticSlug, staticBody);
         setEditing(false);
-        project.refresh();
-        quota.refresh();
+        overview.refresh();
       });
     },
     plan,

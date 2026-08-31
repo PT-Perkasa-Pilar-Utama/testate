@@ -1,30 +1,19 @@
 import type { JSX } from "@solidjs/web";
 import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
-import { For, Loading, Show } from "solid-js";
-import type { QueryResult } from "@testate/shared";
+import { Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
+import EmptyState from "@/components/empty-state.tsx";
+import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import InputArea from "@/components/input-area.tsx";
 import Select from "@/components/select.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
-import { cellText } from "./grid.presenter.ts";
 import { MONGO_OPS, createQueryPresenter } from "./query.presenter.ts";
+import ResultTable from "./query-result.view.tsx";
 import SidePanel from "./query-side.view.tsx";
 import type { QueryPresenter } from "./query.presenter.ts";
-
-const ENFORCEMENT_VARIANT = {
-  transaction: "success",
-  credential: "success",
-  filter: "warning",
-} as const;
-const ENFORCEMENT_TEXT = {
-  transaction: "read-only transaction",
-  credential: "read-only credential",
-  filter: "application filter only",
-} as const;
 
 function MongoForm(props: { presenter: QueryPresenter }): JSX.Element {
   const draft = (): ReturnType<QueryPresenter["mongo"]> => props.presenter.mongo();
@@ -51,7 +40,7 @@ function MongoForm(props: { presenter: QueryPresenter }): JSX.Element {
             <span>Pipeline (JSON array)</span>
             <InputArea
               rows={8}
-              class="font-mono"
+              class="bg-sunken! font-mono"
               value={draft().pipeline}
               onInput={(event) => props.presenter.setMongo({ pipeline: event.currentTarget.value })}
             />
@@ -62,7 +51,7 @@ function MongoForm(props: { presenter: QueryPresenter }): JSX.Element {
           <span>Filter (JSON)</span>
           <InputArea
             rows={4}
-            class="font-mono"
+            class="bg-sunken! font-mono"
             value={draft().filter}
             onInput={(event) => props.presenter.setMongo({ filter: event.currentTarget.value })}
           />
@@ -92,49 +81,36 @@ function MongoForm(props: { presenter: QueryPresenter }): JSX.Element {
   );
 }
 
-function ResultTable(props: { result: QueryResult }): JSX.Element {
+/** The editor's own title bar, so the query box reads as a console rather than a plain textarea. */
+function ConsoleLabel(props: { mongo: boolean }): JSX.Element {
   return (
-    <div class="grid gap-2">
-      <div class="flex flex-wrap items-center gap-2 text-xs">
-        <Badge variant={ENFORCEMENT_VARIANT[props.result.read_only_enforcement]}>
-          {ENFORCEMENT_TEXT[props.result.read_only_enforcement]}
-        </Badge>
-        <span class="text-muted">
-          {props.result.rows.length} row(s) · {props.result.duration_ms} ms
-        </span>
-        <Show when={props.result.truncated.rows}>
-          <Badge variant="warning">row cap hit</Badge>
-        </Show>
-        <Show when={props.result.truncated.bytes}>
-          <Badge variant="warning">byte budget hit</Badge>
-        </Show>
-        <Show when={props.result.truncated.time}>
-          <Badge variant="warning">time budget hit</Badge>
-        </Show>
-        <Show when={props.result.masked_columns.length > 0}>
-          <span class="text-muted">masked: {props.result.masked_columns.join(", ")}</span>
-        </Show>
-      </div>
-      <div class="overflow-x-auto">
-        <Table>
-          <thead>
-            <tr>
-              <For each={props.result.columns}>{(column) => <Head>{column.name}</Head>}</For>
-            </tr>
-          </thead>
-          <tbody>
-            <For each={props.result.rows}>
-              {(row) => (
-                <Row>
-                  <For each={props.result.columns}>
-                    {(column) => <Cell>{cellText(row[column.name])}</Cell>}
-                  </For>
-                </Row>
-              )}
-            </For>
-          </tbody>
-        </Table>
-      </div>
+    <div class="flex items-center gap-1.5 text-xs text-muted">
+      <Icon name="terminal" class="h-3.5 w-3.5" />
+      <span>{props.mongo ? "Mongo operation" : "SQL"}</span>
+      <Badge variant="secondary">read-only</Badge>
+    </div>
+  );
+}
+
+/** Runs read-only, on-screen only: the row cap trims what renders below, never what an export gets. */
+function RowCapField(props: { presenter: QueryPresenter }): JSX.Element {
+  return (
+    <div class="grid gap-0.5">
+      <label class="flex items-center gap-2 text-xs text-muted">
+        <span>Row cap</span>
+        <Input
+          size="sm"
+          class="w-20!"
+          type="number"
+          min="1"
+          max="5000"
+          value={props.presenter.rowCap()}
+          onInput={(event) => props.presenter.setRowCap(event.currentTarget.value)}
+        />
+      </label>
+      <span class="text-xs text-muted">
+        Limits rows shown here — exports aren't capped by this.
+      </span>
     </div>
   );
 }
@@ -150,7 +126,8 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
   };
   return (
     <section class="grid gap-4">
-      <h2 class="text-lg font-semibold">
+      <h2 class="flex items-center gap-2 text-lg font-semibold">
+        <Icon name="terminal" class="h-4 w-4 text-muted" />
         <AdapterCrumb slug={props.slug} id={props.id} /> / query console
       </h2>
       <Loading fallback={<p class="text-muted">Loading adapter...</p>}>
@@ -159,35 +136,28 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
             <Show
               when={presenter.isMongo()}
               fallback={
-                <InputArea
-                  rows={8}
-                  class="font-mono"
-                  aria-label="SQL"
-                  placeholder="SELECT ..."
-                  value={presenter.sql()}
-                  onInput={(event) => presenter.setSql(event.currentTarget.value)}
-                />
+                <div class="grid gap-1.5">
+                  <ConsoleLabel mongo={false} />
+                  <InputArea
+                    rows={8}
+                    class="bg-sunken! font-mono"
+                    aria-label="SQL"
+                    placeholder="SELECT ..."
+                    value={presenter.sql()}
+                    onInput={(event) => presenter.setSql(event.currentTarget.value)}
+                  />
+                </div>
               }
             >
+              <ConsoleLabel mongo />
               <MongoForm presenter={presenter} />
             </Show>
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <div class="flex flex-wrap items-center gap-2">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex flex-wrap items-center gap-3">
                 <Button type="submit" variant="primary" disabled={presenter.busy()}>
                   {presenter.busy() ? "Running..." : "Run (read-only)"}
                 </Button>
-                <label class="flex items-center gap-2 text-xs text-muted">
-                  <span>Row cap</span>
-                  <Input
-                    size="sm"
-                    class="w-24!"
-                    type="number"
-                    min="1"
-                    max="5000"
-                    value={presenter.rowCap()}
-                    onInput={(event) => presenter.setRowCap(event.currentTarget.value)}
-                  />
-                </label>
+                <RowCapField presenter={presenter} />
               </div>
               <div class="flex flex-wrap items-center gap-2">
                 <Button
@@ -196,6 +166,7 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
                   variant="secondary"
                   onClick={() => void presenter.exportAs("csv")}
                 >
+                  <Icon name="download" class="h-3.5 w-3.5" />
                   Export CSV
                 </Button>
                 <Button
@@ -204,6 +175,7 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
                   variant="secondary"
                   onClick={() => void presenter.exportAs("json")}
                 >
+                  <Icon name="download" class="h-3.5 w-3.5" />
                   Export JSON
                 </Button>
               </div>
@@ -211,7 +183,18 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
             <Show when={presenter.error()}>
               {(message) => <Banner variant="error">{message()}</Banner>}
             </Show>
-            <Show when={presenter.result()}>{(result) => <ResultTable result={result()} />}</Show>
+            <Show
+              when={presenter.result()}
+              fallback={
+                <Show when={presenter.error() === null}>
+                  <EmptyState icon="terminal" title="Nothing run yet">
+                    Write a query above and press Run. It executes read-only, whatever you enter.
+                  </EmptyState>
+                </Show>
+              }
+            >
+              {(result) => <ResultTable result={result()} />}
+            </Show>
           </form>
           <SidePanel presenter={presenter} />
         </div>

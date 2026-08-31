@@ -3,7 +3,9 @@ import FormErrors from "@/components/form-errors.tsx";
 import { createFormGuard } from "@/lib/form.ts";
 import PageHeader from "@/components/page-header.tsx";
 import { For, Loading, Show } from "solid-js";
+import type { ApiToken } from "@testate/shared";
 
+import { formatWhen } from "@/lib/format.ts";
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
@@ -11,11 +13,21 @@ import ConfirmDialog from "@/components/confirm-dialog.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
-import LayerCard from "@/components/layer-card.tsx";
 import Select from "@/components/select.tsx";
 import { Cell, Head, Row, Table, EmptyRow, TableFooter } from "@/components/table.tsx";
 import { KIND_OPTIONS, ROLE_OPTIONS, createTokensPresenter } from "./tokens.presenter.ts";
 import type { TokensPresenter } from "./tokens.presenter.ts";
+import RevealDialog from "./tokens.reveal.view.tsx";
+
+/** A revoked token stays "revoked" forever; short of that, a token past its own date reads
+ *  as "expired" rather than the misleading "active" a stale expiry check used to leave it at. */
+function tokenStatus(token: ApiToken) {
+  if (token.revoked_at !== null) return { label: "revoked", variant: "secondary" } as const;
+  if (token.expires_at !== null && new Date(token.expires_at).getTime() < Date.now()) {
+    return { label: "expired", variant: "warning" } as const;
+  }
+  return { label: "active", variant: "success" } as const;
+}
 
 function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
   const guard = createFormGuard();
@@ -91,29 +103,6 @@ function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
   );
 }
 
-function CreatedBanner(props: { presenter: TokensPresenter }): JSX.Element {
-  return (
-    <Show when={props.presenter.created()}>
-      {(token) => (
-        <LayerCard class="grid gap-3 px-5 py-4">
-          <Banner variant="alert">Copy the token now. Testate shows it once.</Banner>
-          <output class="block break-all rounded-md bg-hover px-3 py-2 font-mono text-sm">
-            {token()}
-          </output>
-          <div class="flex gap-2">
-            <Button size="sm" variant="primary" onClick={() => void props.presenter.copyCreated()}>
-              Copy
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => props.presenter.dismissCreated()}>
-              Done
-            </Button>
-          </div>
-        </LayerCard>
-      )}
-    </Show>
-  );
-}
-
 export default function TokensView(): JSX.Element {
   const presenter = createTokensPresenter();
   return (
@@ -127,7 +116,6 @@ export default function TokensView(): JSX.Element {
           </Button>
         }
       />
-      <CreatedBanner presenter={presenter} />
       <Loading fallback={<p class="text-muted">Loading tokens...</p>}>
         <Table>
           <thead>
@@ -152,38 +140,47 @@ export default function TokensView(): JSX.Element {
               }
             >
               <For each={presenter.value()}>
-                {(token) => (
-                  <Row>
-                    <Cell class="font-semibold">{token.name}</Cell>
-                    <Cell>
-                      <Badge variant={token.kind === "agent" ? "info" : "outline"}>
-                        {token.kind}
-                      </Badge>
-                    </Cell>
-                    <Cell>{token.role}</Cell>
-                    <Cell>
-                      <code>{token.prefix}</code>
-                    </Cell>
-                    <Cell>{token.last_used_at ?? "never"}</Cell>
-                    <Cell>{token.expires_at ?? "no expiry"}</Cell>
-                    <Cell>
-                      <Badge variant={token.revoked_at === null ? "success" : "secondary"}>
-                        {token.revoked_at === null ? "active" : "revoked"}
-                      </Badge>
-                    </Cell>
-                    <Cell pinned>
-                      <Show when={token.revoked_at === null}>
-                        <Button
-                          size="xs"
-                          variant="destructive"
-                          onClick={() => presenter.askRevoke(token)}
-                        >
-                          Revoke
-                        </Button>
-                      </Show>
-                    </Cell>
-                  </Row>
-                )}
+                {(token) => {
+                  const status = tokenStatus(token);
+                  return (
+                    <Row>
+                      <Cell class="font-semibold">{token.name}</Cell>
+                      <Cell>
+                        <Badge variant={token.kind === "agent" ? "info" : "outline"}>
+                          {token.kind}
+                        </Badge>
+                      </Cell>
+                      <Cell>{token.role}</Cell>
+                      <Cell>
+                        <code>{token.prefix}</code>
+                      </Cell>
+                      <Cell class="whitespace-nowrap">
+                        <Show when={token.last_used_at} fallback="never">
+                          {(at) => formatWhen(at())}
+                        </Show>
+                      </Cell>
+                      <Cell class="whitespace-nowrap">
+                        <Show when={token.expires_at} fallback="no expiry">
+                          {(at) => formatWhen(at())}
+                        </Show>
+                      </Cell>
+                      <Cell>
+                        <Badge variant={status.variant}>{status.label}</Badge>
+                      </Cell>
+                      <Cell pinned>
+                        <Show when={token.revoked_at === null}>
+                          <Button
+                            size="xs"
+                            variant="destructive"
+                            onClick={() => presenter.askRevoke(token)}
+                          >
+                            Revoke
+                          </Button>
+                        </Show>
+                      </Cell>
+                    </Row>
+                  );
+                }}
               </For>
             </Show>
           </tbody>
@@ -193,6 +190,7 @@ export default function TokensView(): JSX.Element {
         </TableFooter>
       </Loading>
       <CreateDialog presenter={presenter} />
+      <RevealDialog presenter={presenter} />
       <ConfirmDialog
         open={presenter.revoking() !== null}
         title={`Revoke ${presenter.revoking()?.name ?? ""}`}

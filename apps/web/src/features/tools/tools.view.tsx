@@ -3,6 +3,8 @@ import PageHeader from "@/components/page-header.tsx";
 import { For, Show } from "solid-js";
 
 import Button from "@/components/button.tsx";
+import Icon from "@/components/icon.tsx";
+import type { IconName } from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import LayerCard from "@/components/layer-card.tsx";
 import Select from "@/components/select.tsx";
@@ -12,13 +14,27 @@ import type { ToolsPresenter } from "./tools.presenter.ts";
 const ALGORITHM_OPTIONS = ALGORITHMS.map((value) => ({ value, label: value }));
 const ENCODING_OPTIONS = ENCODINGS.map((value) => ({ value, label: value }));
 
-function Result(props: { value: string | null }): JSX.Element {
+/** A card's own name, so three generators read as three tools and not three settings sections. */
+function CardTitle(props: { icon: IconName; children: JSX.Element }): JSX.Element {
+  return (
+    <h3 class="flex items-center gap-1.5 text-base font-semibold text-heading">
+      <Icon name={props.icon} class="h-4 w-4 text-muted" />
+      {props.children}
+    </h3>
+  );
+}
+
+/** A generated value: monospace, and one press from the clipboard, which is what it is for. */
+function Result(props: { value: string | null; onCopy: (value: string) => void }): JSX.Element {
   return (
     <Show when={props.value}>
       {(value) => (
-        <output class="block break-all rounded-md bg-hover px-3 py-2 font-mono text-sm">
-          {value()}
-        </output>
+        <div class="flex items-center gap-2 rounded-md bg-hover px-3 py-2">
+          <output class="min-w-0 flex-1 truncate font-mono text-sm">{value()}</output>
+          <Button size="xs" variant="ghost" aria-label="Copy" onClick={() => props.onCopy(value())}>
+            <Icon name="copy" class="h-3.5 w-3.5" />
+          </Button>
+        </div>
       )}
     </Show>
   );
@@ -28,18 +44,25 @@ function HashCard(props: { presenter: ToolsPresenter }): JSX.Element {
   return (
     <LayerCard class="grid gap-4 px-5 py-4">
       <div class="grid gap-1">
-        <h3 class="font-medium">Hash</h3>
-        <p class="text-muted text-sm">
+        <CardTitle icon="key-round">Hash</CardTitle>
+        <p class="text-sm text-muted">
           The same functions column policies apply, so a hashed column never receives raw input.
         </p>
       </div>
-      <div class="grid gap-3 sm:grid-cols-2">
+      <div class="grid gap-3">
         <label class="grid gap-1.5 text-base">
           <span>Algorithm</span>
           <Select
             options={ALGORITHM_OPTIONS}
             value={props.presenter.algorithm()}
             onChange={(value) => props.presenter.setAlgorithm(value)}
+          />
+        </label>
+        <label class="grid gap-1.5 text-base">
+          <span>Value</span>
+          <Input
+            value={props.presenter.value()}
+            onInput={(event) => props.presenter.setValue(event.currentTarget.value)}
           />
         </label>
         <label class="grid gap-1.5 text-base">
@@ -51,20 +74,11 @@ function HashCard(props: { presenter: ToolsPresenter }): JSX.Element {
             onInput={(event) => props.presenter.setSecret(event.currentTarget.value)}
           />
         </label>
-        <label class="grid gap-1.5 text-sm sm:col-span-2">
-          <span>Value</span>
-          <Input
-            value={props.presenter.value()}
-            onInput={(event) => props.presenter.setValue(event.currentTarget.value)}
-          />
-        </label>
       </div>
-      <div>
-        <Button variant="primary" onClick={() => void props.presenter.runHash()}>
-          Hash
-        </Button>
-      </div>
-      <Result value={props.presenter.hash()} />
+      <Button variant="primary" onClick={() => void props.presenter.runHash()}>
+        Hash
+      </Button>
+      <Result value={props.presenter.hash()} onCopy={(value) => void props.presenter.copy(value)} />
     </LayerCard>
   );
 }
@@ -72,8 +86,8 @@ function HashCard(props: { presenter: ToolsPresenter }): JSX.Element {
 function RandomCard(props: { presenter: ToolsPresenter }): JSX.Element {
   return (
     <LayerCard class="grid gap-4 px-5 py-4">
-      <h3 class="font-medium">Random bytes</h3>
-      <div class="grid gap-3 sm:grid-cols-2">
+      <CardTitle icon="zap">Random bytes</CardTitle>
+      <div class="grid gap-3">
         <label class="grid gap-1.5 text-base">
           <span>Bytes (8 to 1024)</span>
           <Input
@@ -93,30 +107,42 @@ function RandomCard(props: { presenter: ToolsPresenter }): JSX.Element {
           />
         </label>
       </div>
-      <div>
-        <Button variant="primary" onClick={() => void props.presenter.runRandom()}>
-          Generate
-        </Button>
-      </div>
-      <Result value={props.presenter.random()} />
+      <Button variant="primary" onClick={() => void props.presenter.runRandom()}>
+        Generate
+      </Button>
+      <Result
+        value={props.presenter.random()}
+        onCopy={(value) => void props.presenter.copy(value)}
+      />
     </LayerCard>
   );
 }
 
 function UuidCard(props: { presenter: ToolsPresenter }): JSX.Element {
+  const text = (): string => props.presenter.uuids().join("\n");
   return (
     <LayerCard class="grid gap-4 px-5 py-4">
-      <h3 class="font-medium">UUID v7</h3>
-      <div class="flex gap-2">
+      <CardTitle icon="database">UUID v7</CardTitle>
+      <div class="flex flex-wrap gap-2">
         <Button variant="primary" onClick={() => void props.presenter.runUuid(1)}>
           One
         </Button>
         <Button variant="secondary" onClick={() => void props.presenter.runUuid(10)}>
           Ten
         </Button>
+        <Show when={props.presenter.uuids().length > 0}>
+          <Button
+            variant="ghost"
+            onClick={() => void props.presenter.copy(text())}
+            class="ml-auto"
+          >
+            <Icon name="copy" class="h-3.5 w-3.5" />
+            Copy all
+          </Button>
+        </Show>
       </div>
       <ul class="grid gap-1 font-mono text-sm">
-        <For each={props.presenter.uuids()}>{(id) => <li>{id}</li>}</For>
+        <For each={props.presenter.uuids()}>{(id) => <li class="truncate">{id}</li>}</For>
       </ul>
     </LayerCard>
   );
@@ -126,10 +152,15 @@ export default function ToolsView(): JSX.Element {
   const presenter = createToolsPresenter();
   return (
     <section class="grid gap-6">
-      <PageHeader title="Tools" description="Generators for test data and credentials." />
-      <HashCard presenter={presenter} />
-      <RandomCard presenter={presenter} />
-      <UuidCard presenter={presenter} />
+      <PageHeader
+        title="Tools"
+        description="A scratchpad: hash a value, draw random bytes, mint a UUID. Nothing here is saved."
+      />
+      <div class="grid items-start gap-4 lg:grid-cols-3">
+        <HashCard presenter={presenter} />
+        <RandomCard presenter={presenter} />
+        <UuidCard presenter={presenter} />
+      </div>
     </section>
   );
 }
