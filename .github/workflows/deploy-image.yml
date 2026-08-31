@@ -234,11 +234,19 @@ jobs:
       - name: Confirm both platforms are in the published manifest
         run: |
           if [ ! -f digests/amd64 ]; then exit 0; fi
-          manifest=$(docker buildx imagetools inspect --raw "${{ steps.img.outputs.image }}:${{ steps.img.outputs.version }}")
+          # Read the platforms out of the JSON rather than grepping it: `--raw` is pretty-printed,
+          # so a pattern like "architecture":"amd64" matches nothing and the check fails on a
+          # manifest that is perfectly correct.
+          platforms=$(docker buildx imagetools inspect --raw "${{ steps.img.outputs.image }}:${{ steps.img.outputs.version }}" \
+            | jq -r '[.manifests[]? | select(.platform.os == "linux") | .platform.architecture] | sort | join(",")')
+          echo "published platforms: ${platforms:-none}"
           for arch in amd64 arm64; do
-            echo "$manifest" | grep -q "\"architecture\":\"${arch}\"" || {
-              echo "::error::linux/${arch} is missing from the published manifest"
-              exit 1
-            }
+            case ",${platforms}," in
+              *",${arch},"*) ;;
+              *)
+                echo "::error::linux/${arch} is missing from the published manifest"
+                exit 1
+                ;;
+            esac
           done
           echo "manifest carries linux/amd64 and linux/arm64"
