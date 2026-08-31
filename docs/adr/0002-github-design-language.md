@@ -6,7 +6,7 @@
 
 ## Context
 
-The four-team review (`docs/review/`) returned 27 interface findings, and the product owner's
+The four-team review returned 27 interface findings, and the product owner's
 verdict on the interface was that it is bad. The direction is concrete rather than a matter of
 taste: **make it look and behave like GitHub**. Every developer and tester already has GitHub open,
 and the product's own pitch is "git for your test database", so borrowing that language costs the

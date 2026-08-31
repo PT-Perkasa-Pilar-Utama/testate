@@ -151,9 +151,11 @@ b9131cd test(e2e): cover the contract and agent stories over the API
 
 **In flight:** nothing. The tree was clean when this was written; `git status` should agree.
 
-**The review and what came out of it (2026-08-30).** Four two-agent teams, reports in
-`docs/review/`: 48 findings, 37 confirmed, 5 refuted. Every confirmed blocker and major is fixed,
-each with a test that fails when the fix is removed:
+**The review and what came out of it (2026-08-30).** Four two-agent teams returned 48 findings,
+37 confirmed, 5 refuted. Every confirmed blocker and major is fixed, each with a test that fails
+when the fix is removed. The reports and their screenshots are not kept: the findings are closed and
+the screenshots showed the interface as it was before the redesign, so they described a product that
+no longer exists. Read the fixes in the git history instead, which is where they are anyway:
 
 | Fixed | Where |
 | --- | --- |
@@ -213,8 +215,7 @@ not fetched at runtime, on purpose: the README promises nothing leaves your netw
 GitHub patterns before inventing one: a neutral surface with a single accent, borders rather than
 shadows, dense tables that still breathe, one button hierarchy used everywhere, empty states that
 name the next action, inline validation, a delete dialog that lists what it destroys, a visible
-focus ring, breadcrumbs carrying the real object name. `docs/review/ui-ux.md` and
-`docs/review/interface.md` list what breaks this today.
+focus ring, breadcrumbs carrying the real object name.
 
 **README:** it opens with what Testate does, one screenshot per capability, then the status, how to
 run it, the limits, then operating it. Password recovery is not in it: it lives in the deployment

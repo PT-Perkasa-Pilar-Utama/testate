@@ -255,6 +255,18 @@ Pulling a new image, rolling back a failed migration, scheduling backups, and ro
 
 If you want to build or change Testate itself rather than run it, start at [CLAUDE.md](CLAUDE.md) for the commands, layout, and conventions.
 
+To run it from source rather than from the image:
+
+```sh
+bun install
+cp apps/api/.env.example apps/api/.env
+bun scripts/generate-key.ts          # paste into TESTATE_SECRETS_ACTIVE_KEY
+# set TESTATE_ADMIN_PASSWORD too, then:
+bun run dev                          # API on :3000, web on :5173
+```
+
+The file belongs in `apps/api/`, not the repo root. Bun reads `.env` from the working directory and does not look upwards, and `bun run dev` starts the API with `apps/api` as its working directory. `deploy/.env.example` is the container's version of the same variables and is wrong for a source run: it points `TESTATE_DATA_DIR` at `/data`.
+
 ## Docs
 
 Docs live in `docs/`: the [PRD](docs/PRD.md), the [technical specs](docs/technical-specs/_index.md), the [API specs](docs/api-specs/_index.md), [agent access](docs/AGENT_ACCESS.md), the [deployment plan](docs/DEPLOYMENT_PLAN.md), and [key rotation](docs/KEY_ROTATION.md).

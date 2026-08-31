@@ -18,6 +18,7 @@ apps/api/data/
 .env
 .env.*
 !deploy/.env.example
+!apps/api/.env.example
 
 # caches
 .cache
