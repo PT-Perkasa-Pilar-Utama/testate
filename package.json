@@ -1,6 +1,6 @@
 {
   "name": "testate",
-  "version": "1.0.1-alpha",
+  "version": "1.0.2-alpha",
   "private": true,
   "description": "Git for your test database. Reset the database, not the developer.",
   "license": "MIT",

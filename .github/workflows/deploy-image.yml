@@ -5,18 +5,30 @@ name: Deploy image
 on:
   workflow_dispatch:
 
-# Least-privilege default; the build job opts into the `packages: write` it needs
+# Least-privilege default; the jobs opt into the `packages: write` they need
 # to push to ghcr.io.
 permissions:
   contents: read
 
 jobs:
-  build-and-push:
-    name: Build, slim, and push to ghcr.io
-    runs-on: ubuntu-latest
+  # One job per architecture, each on a native runner. Emulated builds of Bun are slow and have
+  # their own failure modes, and docker-slim cannot slim a manifest list anyway: it works on one
+  # loaded image. So each arch is built, profiled and slimmed where it runs, pushed by digest, and
+  # the merge job below joins the digests under the real tags.
+  build:
+    name: Build and slim (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
 
     steps:
       - name: Checkout
@@ -29,7 +41,7 @@ jobs:
           version=$(jq -r .version package.json)
           echo "image=ghcr.io/${repo}" >> "$GITHUB_OUTPUT"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "Resolved ghcr.io/${repo}:${version}"
+          echo "Resolved ghcr.io/${repo}:${version} for linux/${{ matrix.arch }}"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
@@ -48,6 +60,8 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # `load` rather than `platforms`: the runner is already the target architecture, and the
+      # slim step needs the image in the local daemon.
       - name: Build fat image
         if: steps.published.outputs.skip != 'true'
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
@@ -100,6 +114,28 @@ jobs:
           printf 'FROM testate:slim\nCOPY --chown=bun:bun .slim-data-keep/ /data/\n' > Dockerfile.slim-data
           docker build -f Dockerfile.slim-data -t testate:slim .
 
+      # It boots on the architecture it was built for before anything is pushed. An image that
+      # cannot start is worth catching here rather than after someone pulls it.
+      - name: Prove the slimmed image boots
+        if: steps.published.outputs.skip != 'true'
+        run: |
+          docker run -d --name smoke -p 3000:3000 -v smoke-data:/data \
+            -e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
+            -e TESTATE_ADMIN_PASSWORD=deploy-smoke-password-1 \
+            testate:slim
+          for _ in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/v1/health/live || true)
+            [ "$code" = "204" ] && break
+            sleep 2
+          done
+          if [ "$code" != "204" ]; then
+            echo "::error::the slimmed ${{ matrix.arch }} image did not answer /health/live; it returned '$code'"
+            docker logs smoke
+            exit 1
+          fi
+          echo "linux/${{ matrix.arch }} answered 204 on a fresh volume"
+          docker rm -f smoke
+
       # docker-slim-action does its own docker login and clobbers the
       # credential store, so re-authenticate before pushing.
       - name: Re-login to GitHub Container Registry
@@ -110,10 +146,99 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Tag and push (version + latest)
+      # Pushed by digest under a throwaway tag, never under the release tag: a per-arch tag would
+      # publish a single-platform image at the name people pull, which is the thing this whole
+      # change exists to stop.
+      - name: Push this architecture by digest
+        if: steps.published.outputs.skip != 'true'
+        id: push
+        run: |
+          staging="${{ steps.img.outputs.image }}:staging-${{ steps.img.outputs.version }}-${{ matrix.arch }}"
+          docker tag testate:slim "$staging"
+          # Read the digest off the push itself. `docker inspect` reports RepoDigests, which can
+          # hold more than one entry once an image has been tagged into several repositories.
+          digest=$(docker push "$staging" | awk '/digest: sha256:/ { print $3 }')
+          if [ -z "$digest" ]; then
+            echo "::error::the push did not report a digest for linux/${{ matrix.arch }}"
+            exit 1
+          fi
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+          echo "pushed linux/${{ matrix.arch }} as ${digest}"
+
+      - name: Record the digest for the merge job
         if: steps.published.outputs.skip != 'true'
         run: |
-          for tag in "${{ steps.img.outputs.version }}" latest; do
-            docker tag testate:slim "${{ steps.img.outputs.image }}:${tag}"
-            docker push "${{ steps.img.outputs.image }}:${tag}"
+          mkdir -p digests
+          echo "${{ steps.push.outputs.digest }}" > "digests/${{ matrix.arch }}"
+
+      - name: Upload the digest
+        if: steps.published.outputs.skip != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: digest-${{ matrix.arch }}
+          path: digests/*
+          retention-days: 1
+
+  # One manifest list over both digests, published under the version and `latest`. Until this job
+  # runs, the only tags on the registry are the staging ones, so a half-finished deploy never
+  # leaves a single-architecture image at the name people pull.
+  merge:
+    name: Publish the multi-architecture tags
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Resolve image name + version
+        id: img
+        run: |
+          repo=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          version=$(jq -r .version package.json)
+          echo "image=ghcr.io/${repo}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Collect the digests
+        id: digests
+        uses: actions/download-artifact@v7
+        with:
+          path: digests
+          pattern: digest-*
+          merge-multiple: true
+
+      - name: Join both architectures under the release tags
+        run: |
+          if [ ! -f digests/amd64 ] || [ ! -f digests/arm64 ]; then
+            echo "::notice::no digests to merge; the version was already published."
+            exit 0
+          fi
+          image="${{ steps.img.outputs.image }}"
+          version="${{ steps.img.outputs.version }}"
+          docker buildx imagetools create \
+            --tag "${image}:${version}" \
+            --tag "${image}:latest" \
+            "${image}@$(cat digests/amd64)" \
+            "${image}@$(cat digests/arm64)"
+          echo "published ${image}:${version} for linux/amd64 and linux/arm64"
+
+      - name: Confirm both platforms are in the published manifest
+        run: |
+          if [ ! -f digests/amd64 ]; then exit 0; fi
+          manifest=$(docker buildx imagetools inspect --raw "${{ steps.img.outputs.image }}:${{ steps.img.outputs.version }}")
+          for arch in amd64 arm64; do
+            echo "$manifest" | grep -q "\"architecture\":\"${arch}\"" || {
+              echo "::error::linux/${arch} is missing from the published manifest"
+              exit 1
+            }
           done
+          echo "manifest carries linux/amd64 and linux/arm64"

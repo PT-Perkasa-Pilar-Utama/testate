@@ -21,7 +21,7 @@ One container, no configuration file, to see what it does:
 docker run -d --name testate -p 3000:3000 -v testate-data:/data \
   -e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
   -e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
-  ghcr.io/pt-perkasa-pilar-utama/testate:1.0.1-alpha
+  ghcr.io/pt-perkasa-pilar-utama/testate:1.0.2-alpha
 ```
 
 Open <http://localhost:3000> and sign in as `admin` with that password. Testate makes you change it on the first login.

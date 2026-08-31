@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.0.2-alpha
+
+Published for `linux/arm64` as well as `linux/amd64`.
+
+Earlier releases were amd64 only, so Apple Silicon and ARM servers ran the image under emulation:
+slower, and with Bun and SQLite that is a failure mode of its own rather than only a delay. Docker
+said so on every run:
+
+```
+WARNING: The requested image's platform (linux/amd64) does not match the detected host platform
+(linux/arm64/v8) and no specific platform was requested
+```
+
+Each architecture is now built and slimmed on a runner of its own architecture, boots on that
+architecture before anything is pushed, and the two are joined into one manifest list. The same tag
+serves both, so nothing changes about how you pull it.
+
 ## 1.0.1-alpha
 
 Republishes 1.0.0-alpha, whose image could not start.
