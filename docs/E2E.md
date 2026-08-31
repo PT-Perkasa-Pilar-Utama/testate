@@ -3,6 +3,23 @@
 `bun run e2e` runs Playwright against a fresh API (`.e2e/data`) and the Vite dev server. Compose
 engines must be up (`docker compose -f deploy/compose.engines.yml up --wait`).
 
+**The engines also need their schema.** A fresh stack brings up an empty `shop` on every engine,
+and the seeded demo adapters introspect zero tables from it, which fails a third of the suite with
+"adapter ... has no tables". The tables are created by the contract suites, so run them once after
+starting a fresh stack:
+
+```sh
+docker compose -f deploy/compose.engines.yml up -d --wait
+docker compose -f deploy/compose.engines.yml run --rm minio-init
+bun run contract        # creates the schema the demo adapters read
+bun run e2e
+```
+
+Each suite drops and recreates its own schema, so repeating it is harmless. A long-lived stack
+already holds the schema, which is why this only bites a fresh checkout or CI. On the first start
+the `ftp` container can die with `adduser: /ftp/testate: No such file or directory`; bring it up
+again (`up -d ftp`) and it stays.
+
 ## Layout
 
 | Project     | Spec                                                            | What it proves                                                       |
