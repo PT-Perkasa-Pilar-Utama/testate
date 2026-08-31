@@ -133,6 +133,9 @@ jobs:
       # recreates its own schema, so running them first is idempotent.
       - name: create the demo schema in the engines
         run: bun run contract
+      # `boot.e2e.ts` starts an instance from `apps/api/dist/index.js` on purpose: story 123 is
+      # about the artifact the image runs, not the sources. Nothing else in this job builds it.
+      - run: bun run build
       - run: bun run e2e
       - uses: actions/upload-artifact@v7
         if: always()

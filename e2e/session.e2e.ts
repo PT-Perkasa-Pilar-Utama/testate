@@ -51,11 +51,11 @@ test("@story-8 a session ends after twelve idle hours and after seven days eithe
 /** The password `adminSession` leaves an instance on; the lock has to refuse this one too. */
 const BOOT_PASSWORD = "boot-admin-password-1";
 
-type UserRow = { failed_attempts: number; locked_until: string | null };
+type UserRow = { failed_login_count: number; locked_until: string | null };
 
 function adminRow(dir: string): UserRow {
   const rows = runSqlite<UserRow[]>(dir, [
-    "SELECT failed_attempts, locked_until FROM users WHERE username = 'admin'",
+    "SELECT failed_login_count, locked_until FROM users WHERE username = 'admin'",
   ]);
   const row = rows[0];
   if (row === undefined) throw new Error("the instance holds no admin");
@@ -72,18 +72,26 @@ test("@story-7 five wrong passwords lock the account for fifteen minutes", async
   const booted = await bootApi(bootEnv(dir, newKey(), 3114));
   const wrong = { username: "admin", password: "not-the-password" };
 
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+  const refuse = async (): Promise<number> => {
     const refused = await fetch(`${booted.base}/api/v1/auth/login`, {
       method: "POST",
       headers: { "content-type": "application/json", "X-Testate-Request": "1" },
       body: JSON.stringify(wrong),
     });
-    expect(refused.status).toBe(401);
-  }
+    return refused.status;
+  };
 
-  // The fifth failure is what arms it, and the row says so.
+  // Four failures count and leave the account usable.
+  for (let attempt = 0; attempt < 4; attempt += 1) expect(await refuse()).toBe(401);
+  const counting = adminRow(dir);
+  expect(counting.failed_login_count).toBe(4);
+  expect(counting.locked_until).toBeNull();
+
+  // The fifth arms the lock, and arming it retires the counter: the lock is the state that
+  // matters from here, so `failed_login_count` goes back to zero rather than climbing.
+  expect(await refuse()).toBe(401);
   const locked = adminRow(dir);
-  expect(locked.failed_attempts).toBe(5);
+  expect(locked.failed_login_count).toBe(0);
   const until = Date.parse(String(locked.locked_until));
   expect(until - Date.now()).toBeGreaterThan(14 * 60 * 1000);
   expect(until - Date.now()).toBeLessThanOrEqual(15 * 60 * 1000);
@@ -105,6 +113,6 @@ test("@story-7 five wrong passwords lock the account for fifteen minutes", async
     body: JSON.stringify({ username: "admin", password: BOOT_PASSWORD }),
   });
   expect(after.status).toBe(200);
-  expect(adminRow(dir).failed_attempts).toBe(0);
+  expect(adminRow(dir).failed_login_count).toBe(0);
   expect(await booted.stop()).toBe(0);
 });
