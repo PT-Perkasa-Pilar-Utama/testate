@@ -12,7 +12,7 @@ import { currentActor, requestMeta } from "../../lib/http/auth.ts";
 import { AppError, ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.ts";
 import type { Handler } from "../../lib/http/index.ts";
 import { firstQuery } from "../../lib/http/query.ts";
-import { exportStream } from "./data.export.ts";
+import { exportStream, pagedExportStream } from "./data.export.ts";
 import type { DataService, SavedQueryInput } from "./data.service.ts";
 
 export type DataHandlers = {
@@ -24,6 +24,7 @@ export type DataHandlers = {
   endWriteSession: Handler;
   rowEdits: Handler;
   query: Handler;
+  tableExport: Handler;
   queryExport: Handler;
   runningQueries: Handler;
   cancelQuery: Handler;
@@ -52,6 +53,17 @@ const rowsQuery = v.object({
   order: v.optional(v.array(v.picklist(["asc", "desc"]))),
   filter: v.optional(v.array(v.string())),
 });
+const tableExportQuery = v.object({
+  ...rowsQuery.entries,
+  format: v.optional(v.array(v.picklist(["csv", "json"]))),
+});
+
+/** A table name becomes a file name: `public.orders` is `public-orders.csv`, nothing else changes. */
+export function fileNameOf(table: string): string {
+  const cleaned = table.replace(/[^A-Za-z0-9._-]/g, "").replace(/\./g, "-");
+  return cleaned === "" ? "table" : cleaned;
+}
+
 const lookupQuerySchema = v.object({
   column: v.array(v.string()),
   q: v.optional(v.array(v.string())),
@@ -112,6 +124,25 @@ export function createDataHandlers(service: DataService, trustProxy: boolean): D
         toPageQuery(parseQuery(c, rowsQuery))
       );
       return c.json(page, { status: 200 });
+    },
+    /**
+     * The whole table as a file, filters and sort included, with no row cap. It is a GET so the
+     * browser can follow a plain link and stream straight to disk; the session cookie carries the
+     * auth, exactly as the state archive download does.
+     */
+    tableExport: async (c) => {
+      const parsed = parseQuery(c, tableExportQuery);
+      const format = firstQuery(parsed.format) ?? "csv";
+      const table = param(c, "table");
+      const pages = service.exportTable(
+        currentActor(c),
+        param(c, "id"),
+        table,
+        toPageQuery(parsed)
+      );
+      c.header("Content-Type", format === "csv" ? "text/csv; charset=utf-8" : "application/json");
+      c.header("Content-Disposition", `attachment; filename="${fileNameOf(table)}.${format}"`);
+      return c.body(pagedExportStream(pages, format), 200);
     },
     lookup: async (c) => {
       const query = parseQuery(c, lookupQuerySchema);

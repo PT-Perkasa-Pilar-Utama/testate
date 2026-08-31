@@ -13,6 +13,7 @@ import type {
 import type { PageQuery } from "../../lib/engines/index.ts";
 import type { RequestMeta } from "../../lib/http/auth.ts";
 import type { PolicyBody, RowEditsResult } from "./data.editing.ts";
+import type { ExportPage } from "./data.export.ts";
 import type { FixtureRequest } from "./data.fixture.ts";
 import type { RowEdit } from "./data.forms.ts";
 import type { LookupRow } from "./data.lookup.ts";
@@ -29,6 +30,16 @@ export type DataService = {
     table: string,
     query?: Partial<PageQuery>
   ): Promise<RowsPage>;
+  /**
+   * Every row of one table, page by page, for a download. Same filters, sort and masks as `rows`;
+   * a tester should not have to write SQL to get a table out.
+   */
+  exportTable(
+    actor: Actor,
+    adapterId: string,
+    table: string,
+    query: Partial<PageQuery>
+  ): AsyncGenerator<ExportPage>;
   lookup(
     adapterId: string,
     table: string,

@@ -41,6 +41,8 @@ export type GridPresenter = {
   order: () => "asc" | "desc";
   toggleSort: (column: string) => void;
   filters: () => Filter[];
+  /** A download link for what is on screen, filters and sort included. */
+  exportUrl: (format: "csv" | "json") => string;
   addFilter: (filter: Filter) => void;
   removeFilter: (index: number) => void;
   limit: () => PageSize;
@@ -144,10 +146,22 @@ export function createGridPresenter(
     return schema.value().tables.find((item) => qualifiedName(item) === wanted) ?? null;
   });
   const editing = createEditingPresenter(slug, id, table_, table, () => page.refresh());
+  const exportUrl = (format: "csv" | "json"): string => {
+    const query = { order: order(), filter: filters().map(filterText) };
+    const sorted = sort();
+    return dataModel.tableExportUrl(
+      slug(),
+      id(),
+      table_(),
+      sorted === undefined ? query : { ...query, sort: sorted },
+      format
+    );
+  };
   return {
     page,
     adapter,
     table,
+    exportUrl,
     editing,
     editable: () => {
       const current = adapter.value();

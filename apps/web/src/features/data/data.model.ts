@@ -43,6 +43,25 @@ export const dataModel = {
       `${adapterPath(slug, id)}/tables/${encodeURIComponent(table)}/rows${rowsQueryString(query)}`,
       { schema: rowsPageSchema }
     ),
+  /**
+   * A link, not a fetch: the browser streams the file straight to disk and the session cookie
+   * carries the auth, the same way a state archive downloads. The filters and sort travel with it,
+   * so what you exported is what you were looking at. No row cap and no cursor.
+   */
+  tableExportUrl: (
+    slug: string,
+    id: string,
+    table: string,
+    query: Omit<RowsQuery, "cursor" | "limit">,
+    format: "csv" | "json"
+  ): string => {
+    const params = new URLSearchParams({ order: query.order, format });
+    if (query.sort !== undefined) params.set("sort", query.sort);
+    for (const item of query.filter) params.append("filter", item);
+    return apiClient.url(
+      `${adapterPath(slug, id)}/tables/${encodeURIComponent(table)}/export?${params.toString()}`
+    );
+  },
   query: (slug: string, id: string, body: QueryRequest): Promise<QueryResult> =>
     apiClient.post(`${adapterPath(slug, id)}/query`, {
       schema: queryResultSchema,

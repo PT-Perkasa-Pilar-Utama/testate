@@ -34,6 +34,12 @@ export function createDataRouter(h: DataHandlers): Hono {
     h.rows
   );
   router.get(
+    `${A}/tables/:table/export`,
+    requireRole("viewer"),
+    describe("data", "Export a whole table as CSV or JSON", v.unknown()),
+    h.tableExport
+  );
+  router.get(
     `${A}/tables/:table/lookup`,
     requireRole("viewer"),
     describe("data", "FK lookup", v.array(lookupResultSchema)),

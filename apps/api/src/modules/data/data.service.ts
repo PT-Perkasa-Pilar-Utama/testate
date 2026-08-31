@@ -21,6 +21,12 @@ import { createWriteSessions } from "./data.sessions.ts";
 import type { DataService } from "./data.contract.ts";
 
 export type { DataService, SavedQueryInput } from "./data.contract.ts";
+
+/**
+ * Rows per round trip during an export, not a cap: the loop follows the cursor to the end either
+ * way. `limit` overrides it, which is how a test forces more than one page out of a small table.
+ */
+const EXPORT_PAGE_ROWS = 1000;
 import type { SessionDeps } from "./data.sessions.ts";
 
 export type DataDeps = RestoreDeps & {
@@ -136,6 +142,34 @@ export function createDataService(deps: DataDeps): DataService {
         columns: result.columns,
         masked_columns: masked.masked_columns,
       };
+    },
+    async *exportTable(actor, adapterId, table, query) {
+      const adapter = adapterOf(adapterId);
+      const { engine, conn } = await connect(adapter);
+      const ref = parseTableRef(table);
+      const policies = deps.policies.list(adapter.id, tableKey(ref));
+      let cursor = query.cursor;
+      // Bounded by the cursor, not by a row count: `pageRows` returns a null cursor at the end, and
+      // a page that repeats its cursor would loop forever, so a repeat ends the export too.
+      for (;;) {
+        const page: PageQuery = {
+          table: ref,
+          limit: query.limit ?? EXPORT_PAGE_ROWS,
+          order: query.order ?? "asc",
+          filters: query.filters ?? [],
+        };
+        if (cursor !== undefined) page.cursor = cursor;
+        if (query.sort !== undefined) page.sort = query.sort;
+        const result = await guarded(adapter, () => engine.pageRows(conn, page));
+        const masked = maskRows(
+          actor,
+          result.rows.map((row) => engine.decodeRow(row)),
+          policies
+        );
+        yield { columns: result.columns, rows: masked.rows, nextCursor: result.nextCursor };
+        if (result.nextCursor === null || result.nextCursor === cursor) return;
+        cursor = result.nextCursor;
+      }
     },
     lookup: (adapterId, table, column, q, limit) =>
       editing.lookup(adapterId, table, column, q, limit),
