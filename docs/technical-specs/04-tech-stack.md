@@ -18,7 +18,7 @@ Every choice below was confirmed in the architecture grill on 2026-08-28. Versio
 | HTTP framework | Hono 4.13.5 (verified) | Small, Bun-native adapter, middleware model fits the wide-event and auth chain |
 | Validation | valibot 1.4.2 (verified) at every trust boundary; types via `InferOutput` | Tree-shakable, standard-schema compliant, shared with the SPA through `@testate/shared` |
 | OpenAPI | `hono-openapi` 1.3.1 + `@hono/standard-validator` 0.2.x + `@valibot/to-json-schema` 1.7.1 (verified), Scalar UI via `@scalar/hono-api-reference` (pinned at scaffold) | valibot rules out `@hono/zod-openapi`; the standard-schema bridge generates the document from the same schemas the handlers validate with |
-| Metadata database | SQLite through `Bun.SQL` (`sqlite://`), WAL, `busy_timeout` 5000 ms | Zero external service; one process; about 28 tables of simple queries |
+| Metadata database | SQLite through `Bun.SQL` (`sqlite://`), WAL, `busy_timeout` 5000 ms | Zero external service; one process; about 26 tables of simple queries |
 | Data access | Hand-written SQL in repositories, rows parsed with valibot | No ORM; Drizzle would add a second query language and a build step for nothing |
 | Migrations | Numbered `.sql` files, in-house runner at boot, `schema_migrations` ledger | Files resolved relative to `import.meta.dir`, connection from the environment; see 06 §6.9 |
 | Target engines | Postgres and MySQL/MariaDB through `Bun.SQL`; MongoDB through `mongodb` 7.6.0 (verified); `mysql2` 3.24.2 as the MariaDB fallback if the Sprint 0 spike fails | Native driver where Bun has one; official driver where it does not |
@@ -93,7 +93,7 @@ Every choice below was confirmed in the architecture grill on 2026-08-28. Versio
 | Not used | Reason |
 | --- | --- |
 | Node, npm, pnpm, yarn | Bun project; npm would compile ssh2's native addon, which crashes under Bun |
-| Drizzle, Prisma, Kysely | 28 simple tables; an ORM adds a second query language for no query complexity |
+| Drizzle, Prisma, Kysely | 26 simple tables; an ORM adds a second query language for no query complexity |
 | Zod | valibot is the schema library; one library on both sides |
 | `@hono/zod-openapi` | Zod-only |
 | `hono-wide-logger`, pino, winston | Package covers the HTTP half only; the in-house logger handles jobs, files, and rotation |

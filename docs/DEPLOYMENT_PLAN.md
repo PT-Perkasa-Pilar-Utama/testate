@@ -8,7 +8,7 @@ One image, one volume, one process. Design: [technical-specs/22-base-path-and-bo
 | --- | --- |
 | Host | Docker 24+ with Compose v2; 1 CPU, 1 GiB RAM minimum |
 | Volume | `/data`: metadata.db, blobs, logs, uploads, `run/`. Size it for snapshots; states are compressed data dumps |
-| Network | Outbound to every target database, file store, and REST host; inbound from the proxy only |
+| Network | Outbound to every target database and file store; inbound from the proxy only |
 | Proxy | TLS termination; `client_max_body_size` above `TESTATE_MAX_UPLOAD_MB`; buffering off for `/jobs/*/events` (SSE) |
 
 ## Install
@@ -133,7 +133,7 @@ One JSON line per request or job in `/data/logs/testate-YYYY-MM-DD.jsonl`, mirro
 ## Checklist before go-live
 
 - [ ] TLS at the proxy; `TESTATE_TRUST_PROXY=true`
-- [ ] `TESTATE_PUBLIC_URL` set; health does not report `origin_shared`
+- [ ] `TESTATE_PUBLIC_URL` set
 - [ ] Key stored in the secret manager; rotation runbook read
 - [ ] Bootstrap password removed from `.env`; `TESTATE_ADMIN_PASSWORD_RESET` unset
 - [ ] A second admin account exists, so a forgotten password needs no restart

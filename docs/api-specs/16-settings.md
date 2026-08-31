@@ -23,7 +23,7 @@ S3 secrets appear as sealed fields. **Traceability.** Stories 118, 120.
 
 ## 16.2 `PATCH /settings`
 
-**Purpose.** Update any editable key. **Access.** `admin`. **Input.** Body: a partial of the object above; S3 secrets as values or `"keep"`. **Behavior.** Keys in `locked_by_env` answer `CONFLICT`; a change to `netguard.deny` re-checks every adapter and REST target and disables matches (story 33), audited as `settings.deny_list_changed` with the disabled ids; the store driver cannot be changed here (16.3). Audit `settings.updated`. **Output.** `200` settings plus `{ "disabled_adapters": [...] }` when the deny list changed. **Errors.** `CONFLICT`, `VALIDATION_ERROR`. **Traceability.** Stories 32, 33, 120.
+**Purpose.** Update any editable key. **Access.** `admin`. **Input.** Body: a partial of the object above; S3 secrets as values or `"keep"`. **Behavior.** Keys in `locked_by_env` answer `CONFLICT`; a change to `netguard.deny` re-checks every adapter and disables matches (story 33), audited as `settings.deny_list_changed` with the disabled ids; the store driver cannot be changed here (16.3). Audit `settings.updated`. **Output.** `200` settings plus `{ "disabled_adapters": [...] }` when the deny list changed. **Errors.** `CONFLICT`, `VALIDATION_ERROR`. **Traceability.** Stories 32, 33, 120.
 
 ## 16.3 `POST /settings/store-migration`
 

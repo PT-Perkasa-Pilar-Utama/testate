@@ -58,7 +58,6 @@ Roles are cumulative. A cell shows the minimum role.
 | Start write session, inline edit, write-mode query, MongoDB write forms | | yes | |
 | Import: mappings, dry run, run, rejected rows | | yes | |
 | Create diff | | yes | |
-| REST requests: create, run; hooks: create, order | | yes | |
 | Accept SFTP host key | | yes | |
 | Cancel a job | own jobs: qa | | any: admin |
 | Delete adapter (with return to init) | | yes | |
@@ -96,4 +95,4 @@ A `viewer` token or user never triggers a job. A `qa` token scoped to one projec
 
 ## 9.7 Audit actions
 
-`auth.login`, `auth.login_failed`, `auth.locked`, `auth.logout`, `auth.password_changed`, `user.created`, `user.updated`, `user.disabled`, `user.deleted`, `user.password_reset`, `token.created`, `token.revoked`, `adapter.created`, `adapter.updated`, `adapter.credential_replaced`, `adapter.mode_tightened`, `adapter.mode_loosened`, `adapter.deleted`, `adapter.disabled_by_policy`, `project.created`, `project.updated`, `project.deleted`, `state.created`, `state.protected`, `state.unprotected`, `state.deleted`, `state.archived`, `state.imported`, `checkout.created`, `checkout.retried`, `checkout.forced`, `write_session.started`, `write_session.ended`, `import.run`, `hook.run`, `diff.created`, `settings.updated`, `settings.deny_list_changed`, `store.migrated`, `backup.created`, `host_key.accepted`, `reset_state.run`, `policy.created`, `policy.updated`, `policy.removed`, `policy.locked`, `write_session.fk_checks_off`, `fixture.extracted`, `agent.tool_call`. Each row carries actor, target, project slug, adapter name, details, and outcome.
+`auth.login`, `auth.login_failed`, `auth.locked`, `auth.logout`, `auth.password_changed`, `user.created`, `user.updated`, `user.disabled`, `user.deleted`, `user.password_reset`, `token.created`, `token.revoked`, `adapter.created`, `adapter.updated`, `adapter.credential_replaced`, `adapter.mode_tightened`, `adapter.mode_loosened`, `adapter.deleted`, `adapter.disabled_by_policy`, `project.created`, `project.updated`, `project.deleted`, `state.created`, `state.protected`, `state.unprotected`, `state.deleted`, `state.archived`, `state.imported`, `checkout.created`, `checkout.retried`, `checkout.forced`, `write_session.started`, `write_session.ended`, `import.run`, `diff.created`, `settings.updated`, `settings.deny_list_changed`, `store.migrated`, `backup.created`, `host_key.accepted`, `reset_state.run`, `policy.created`, `policy.updated`, `policy.removed`, `policy.locked`, `write_session.fk_checks_off`, `fixture.extracted`, `agent.tool_call`. Each row carries actor, target, project slug, adapter name, details, and outcome.

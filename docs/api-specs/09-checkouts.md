@@ -35,7 +35,7 @@ Checkout object:
 
 **Input.** Body: `state_id` or `state_name` (exactly one); `force` boolean; `adapter_ids` optional. Headers: `Idempotency-Key`. Query: `wait`.
 
-**Behavior.** Per [13 §13.2](../technical-specs/13-checkout-and-restore.md): claim adapters (`JOB_IN_PROGRESS`), create the checkout row, enqueue job `checkout`; the job stashes (story 76), runs `before_checkout` hooks, restores each adapter in parallel with drift refusal unless force (stories 77, 78), records per-adapter results (story 80), resets counters as a tracked step (story 81), runs `after_checkout` hooks, moves HEAD or sets it unknown. Audit `checkout.created`, plus `checkout.forced` when `force`.
+**Behavior.** Per [13 §13.2](../technical-specs/13-checkout-and-restore.md): claim adapters (`JOB_IN_PROGRESS`), create the checkout row, enqueue job `checkout`; the job stashes (story 76), restores each adapter in parallel with drift refusal unless force (stories 77, 78), records per-adapter results (story 80), resets counters as a tracked step (story 81), moves HEAD or sets it unknown. Audit `checkout.created`, plus `checkout.forced` when `force`.
 
 **Output.** `202 { "data": { "checkout": {...}, "job": {...} } }`; with `wait` and a terminal job, `200` with the finished checkout.
 

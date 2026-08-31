@@ -70,7 +70,7 @@ Numbers here are targets. Sprint 0 measures the engine numbers and records the r
 | Item | Requirement |
 | --- | --- |
 | Logs | One wide event per request and per job to `${TESTATE_DATA_DIR}/logs`, 30-day retention, stdout mirror; see 21 |
-| Health | `/health`, `/health/live`, `/health/ready` per 05 §5.17 |
+| Health | `/health`, `/health/live`, `/health/ready` per 05 §5.15 |
 | Audit | Every listed action in `audit_logs` with actor and outcome |
 | Metrics | None in scope (PRD §6) |
 

@@ -10,7 +10,7 @@ All configuration enters through `lib/config`, parsed once at boot with a valibo
 | `TESTATE_ENV` | `development` \| `test` \| `production`, default `production` | Gates the reset-state route and dev conveniences | `development` | `test` | `production` |
 | `TESTATE_DATA_DIR` | path, `/data` | Volume root | `./data` | temp dir | `/data` |
 | `TESTATE_BASE_PATH` | path, `/` | Sub-path the app is served under; asset rewrite, API prefix, cookie path | `/` | `/` | `/` or `/testate` |
-| `TESTATE_PUBLIC_URL` | url, optional | Absolute links in downloads; own-hostname warning against REST adapters | `http://localhost:7379` | unset | `https://testate.example.internal` |
+| `TESTATE_PUBLIC_URL` | url, optional | Parsed and validated at boot; no current feature reads it | `http://localhost:7379` | unset | `https://testate.example.internal` |
 | `TESTATE_SECRETS_ACTIVE_KEY` | list of base64 32-byte keys, required | Sealed values; first key seals | one key | one key | one key, two during rotation |
 | `TESTATE_SECRETS_ACCEPT_UNREADABLE` | bool, `false` | Declared-loss mode | `false` | `false` | `false` unless recovering |
 | `TESTATE_ADMIN_USER` | string, `admin` | Bootstrap admin when `users` is empty | `admin` | `admin` | set |

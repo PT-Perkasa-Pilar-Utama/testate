@@ -36,7 +36,7 @@ Kinds: `init`, `manual`, `stash`; `diff` states are hidden and never listed (sto
 **Behavior.**
 1. Validate the name (`CONFLICT` on collision or UUID look-alike, story 64); quota check (`QUOTA_EXCEEDED`).
 2. Create the state `creating` with `parent_state_id` = HEAD; enqueue job `snapshot` claiming the adapters (`JOB_IN_PROGRESS`).
-3. The job reads each adapter at one instant (story 63), writes blobs with pins, commits manifests, sets `ready`, moves HEAD to the state, runs hooks `after_snapshot`; progress per table (story 74). Audit `state.created`.
+3. The job reads each adapter at one instant (story 63), writes blobs with pins, commits manifests, sets `ready`, moves HEAD to the state; progress per table (story 74). Audit `state.created`.
 
 **Output.** `202 { "data": { "state": {...creating}, "job": {...} } }`. **Errors.** `CONFLICT`, `QUOTA_EXCEEDED`, `JOB_IN_PROGRESS`, `ADAPTER_UNREACHABLE`, `VALIDATION_ERROR`. **Traceability.** Stories 61, 62, 63, 64, 65, 70, 72, 73, 74, 114.
 

@@ -28,7 +28,7 @@ Three costs follow:
 
 Testate is a self-hosted tool that gives QA "git for the test database". It runs as one Docker image next to the database, on the same intranet. Nobody adds code to the application under test.
 
-A QA engineer opens the dashboard, creates a project, connects one or more databases, and takes a state. A state is a data snapshot of every connected database in the project. Later, QA jumps back to any state with one click or one API call. Testate also lets QA browse tables, run queries, import CSV or XLSX files through saved column mappings, compare two states row by row, browse files on S3, SFTP, and FTP, and call the application's REST endpoints before or after a jump.
+A QA engineer opens the dashboard, creates a project, connects one or more databases, and takes a state. A state is a data snapshot of every connected database in the project. Later, QA jumps back to any state with one click or one API call. Testate also lets QA browse tables, run queries, import CSV or XLSX files through saved column mappings, compare two states row by row, and browse files on S3, SFTP, and FTP.
 
 Everything in the dashboard is also available as a versioned REST API, so a CI pipeline can reset a database to a named state before every run.
 
@@ -39,7 +39,7 @@ Roles are cumulative: `admin` includes `qa`, and `qa` includes `viewer`.
 | Role | Adds |
 | --- | --- |
 | `viewer` | Browse projects, adapters, states, tables, files, jobs, diffs, and the audit log. Run read-only queries. Download. |
-| `qa` | Create and edit projects, adapters, states, mappings, hooks, REST requests. Checkout, import, write-mode queries, inline edits. Tighten an adapter from `sandbox` to `read-only`. Delete an adapter, which returns its database to init first. |
+| `qa` | Create and edit projects, adapters, states, mappings. Checkout, import, write-mode queries, inline edits. Tighten an adapter from `sandbox` to `read-only`. Delete an adapter, which returns its database to init first. |
 | `admin` | Users, API tokens, global settings, backups. Loosen an adapter from `read-only` to `sandbox`. Delete a project, which returns every database to init first. |
 
 The first admin comes from environment variables. On first login Testate forces a password change. The admin then creates the other users. A new user receives a temporary password that must change on first login; the admin hands it over outside Testate.
@@ -48,8 +48,8 @@ The first admin comes from environment variables. On first login Testate forces 
 
 | Term | Meaning |
 | --- | --- |
-| Project | A system under test. Owns adapters, states, mappings, hooks, and a quota. |
-| Adapter | A connection owned by a project, with an immutable id. Kinds: database (Postgres, MySQL, MariaDB, MongoDB), storage (S3, SFTP, FTP), REST (an HTTP base URL). |
+| Project | A system under test. Owns adapters, states, mappings, and a quota. |
+| Adapter | A connection owned by a project, with an immutable id. Kinds: database (Postgres, MySQL, MariaDB, MongoDB), storage (S3, SFTP, FTP). |
 | Adapter mode | `sandbox` allows checkout, import, and writes. `read-only` refuses all writes. |
 | State | A data-only snapshot of one or more database adapters in a project. Never a snapshot of Testate itself. |
 | Init state | The protected, single-adapter state Testate takes when a database adapter first connects, or when its connection target changes. |
@@ -62,7 +62,6 @@ The first admin comes from environment variables. On first login Testate forces 
 | Drift | The live schema differs from the fingerprint in the state. |
 | Mapping | A saved rule set that maps file columns to one table of a Tabular adapter. |
 | Import run | One execution of a mapping against one file. |
-| Hook | A saved REST request that runs before or after checkout, after snapshot, or after import. |
 | Return to init | The restore of a database adapter to its current init state that runs before the adapter or its project is deleted. |
 | Deletion plan | The per-adapter list of what a deletion will do: restore, force over drift, or skip with a reason. Confirmed by the actor before the job starts. |
 | Job | A long-running operation with progress, a queue position, and a terminal status. Kinds: snapshot, checkout, import, diff, state delete, adapter delete, project delete, archive import, storage migration, backup. Queries are not jobs. |
@@ -210,7 +209,7 @@ The first admin comes from environment variables. On first login Testate forces 
 
 ### Audit
 
-108. As an admin, I want an audit log of every login, user change, token change, adapter change including mode changes, checkout, import, write session, hook run, and deletion with its per-adapter results, with actor, target, and time, so that every destructive action has a name on it.
+108. As an admin, I want an audit log of every login, user change, token change, adapter change including mode changes, checkout, import, write session, and deletion with its per-adapter results, with actor, target, and time, so that every destructive action has a name on it.
 109. As an admin, I want audit rows to outlive the project and adapter they describe, so that a deleted project's history is still reviewable.
 110. As a viewer, I want to filter the audit log by project, actor, action, and date, and export it as CSV, so that an incident review is quick.
 
@@ -238,7 +237,7 @@ The first admin comes from environment variables. On first login Testate forces 
 127. As an operator, I want a declared-loss mode that boots, names every unreadable sealed value, and lets users re-enter them until none remain, so that a truly lost key is recoverable by re-entry.
 128. As an operator, I want a backup to record which key fingerprints sealed its values, so that I know which keys a restore needs.
 129. As an operator, I want a health endpoint, structured logs, and graceful shutdown, so that Testate behaves behind nginx and inside compose.
-130. As an operator, I want Testate to serve under a sub-path from the same prebuilt image, and to warn me when that sub-path shares a hostname with the application under test, so that it fits an existing nginx without a silent security downgrade.
+130. As an operator, I want Testate to serve under a sub-path from the same prebuilt image, so that it fits an existing nginx.
 
 ### Tools
 
@@ -345,7 +344,7 @@ An online schema rebuild that changes nothing in the included set produces the s
 - Kinds: `init` (protected forever), `manual`, `stash`. Protection is a flag users can set on manual states. Protection guards against single-state deletion; an admin deleting the project removes every state, protected or not, after typing the slug.
 - Adding a database adapter, or changing its host, port, or database, takes an init state for that adapter. The first adapter of a project produces the state named `init`; later ones produce `init-<adapter>`. Renaming an adapter changes nothing else.
 - Deleting an adapter keeps its data in every state that references it. Manifests show the adapter as removed. Checkout skips removed adapters and reports them.
-- Deletion returns databases to init first. Project deletion (admin) and adapter deletion (qa) are jobs that start with a deletion plan. The plan lists each database adapter with one action: restore to the adapter's current init state (the most recent init state for that adapter id), force over drift, or skip with a reason (read-only, unreachable, removed). Restore is the default; the actor may change an adapter to force or skip and confirms the plan, typing the slug for a project. The job runs the planned restores exactly like checkouts, hooks included, without a stash, and only after every planned restore succeeded does it remove the project or adapter, its states and blobs by reference count, mappings, hooks, and project-scoped tokens. A failed restore leaves everything in place, sets HEAD unknown for the failed adapters, and offers a retry of the failed adapters only. Audit rows outlive the deleted project and adapter.
+- Deletion returns databases to init first. Project deletion (admin) and adapter deletion (qa) are jobs that start with a deletion plan. The plan lists each database adapter with one action: restore to the adapter's current init state (the most recent init state for that adapter id), force over drift, or skip with a reason (read-only, unreachable, removed). Restore is the default; the actor may change an adapter to force or skip and confirms the plan, typing the slug for a project. The job runs the planned restores exactly like checkouts, without a stash, and only after every planned restore succeeded does it remove the project or adapter, its states and blobs by reference count, mappings, and project-scoped tokens. A failed restore leaves everything in place, sets HEAD unknown for the failed adapters, and offers a retry of the failed adapters only. Audit rows outlive the deleted project and adapter.
 - Stash runs before checkout, before replace import, and on the first write of a write session. Stash retention keeps the last N per project; protecting a stash converts it to a manual state.
 - Checkout of a state that drifted returns a `SCHEMA_DRIFT` error with the differing tables and columns. `force` restores the intersection and reports what was skipped and which live columns received defaults.
 - A checkout job restores adapters in parallel under the concurrency cap and records a result per adapter: restored, skipped, rolled back, or unknown. Any failure sets project HEAD to unknown. The checkout resource offers a retry limited to the failed adapters.
@@ -377,13 +376,7 @@ An online schema rebuild that changes nothing in the included set produces the s
 - S3 driver uses Bun's S3 client with bucket, prefix, region, optional endpoint, and the virtual-hosted-style flag off for path-style endpoints. SFTP uses password or private key with trust-on-first-use host keys; a changed host key blocks the connection until an admin or QA accepts the new key. FTP supports plain and explicit TLS.
 - Operations: list a directory (paged), stat, read as a stream. No write, no delete.
 - Preview cap and download stream through Testate, so the browser never sees storage credentials.
-- Storage and REST connections pass the same address check as database adapters on every connection.
-
-### 4.9 REST adapters and hooks
-
-- Requests run from the server, so intranet targets work and CORS does not apply. Redirects are never followed; a redirect response is shown as is. Response body cap and timeout come from the adapter. Secrets in headers are encrypted at rest and masked in the UI.
-- Saved requests keep the last fifty runs. Placeholders `{{project.slug}}`, `{{state.name}}`, `{{state.id}}`, and `{{job.id}}` expand in path, query, headers, and body.
-- Hooks bind a saved request to a trigger with an order and a fail policy. Hook results attach to the job. Testate never snapshots or restores through REST; that would require the dev-only endpoints Testate exists to remove.
+- Storage connections pass the same address check as database adapters on every connection.
 
 ### 4.10 Jobs
 
@@ -393,7 +386,7 @@ An online schema rebuild that changes nothing in the included set produces the s
 
 ### 4.11 REST API
 
-- Base path `/api/v1`. Bearer tokens for automation, HTTP-only cookie sessions for the dashboard, CSRF protection through same-site cookies plus a custom header check. Testate must run on its own hostname when the application under test is not fully trusted; a shared hostname makes both the same origin, and the deployment guide and the boot log say so.
+- Base path `/api/v1`. Bearer tokens for automation, HTTP-only cookie sessions for the dashboard, CSRF protection through same-site cookies plus a custom header check.
 - Success codes: `200` for get, list, update, and actions that finish inline; `201` for create; `202` for every job-backed operation, including job-backed deletes of projects, adapters, and states; `204` for inline deletes.
 - Envelope: `{ "data": ... }` on success, `{ "error": { "code", "message", "details" } }` on failure. Lists return `{ "data": [], "page": { "next_cursor", "limit" } }`. Default page size fifty, maximum two hundred. Each list documents its filter and sort fields in the API specification.
 - Projects are addressed by slug, everything else by UUID version 7. A checkout body names `state_id` or `state_name`, never both. A state lookup by name is a list filter.
@@ -415,8 +408,6 @@ Resources:
 | `projects/{slug}/checkouts` | list, create, get, retry failed adapters |
 | `projects/{slug}/diffs` | list, create, get summary, get table rows, delete, export |
 | `projects/{slug}/storage/{id}` | list entries, stat, preview, download, accept host key |
-| `projects/{slug}/rest/{id}/requests` | list, create, update, delete, run, runs |
-| `projects/{slug}/hooks` | list, create, update, reorder, delete |
 | `jobs` | list, get, cancel, events |
 | `audit-logs` | list, export |
 | `settings` | get, update, migrate storage, backup |
@@ -426,14 +417,14 @@ Error codes: `VALIDATION_ERROR` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `ADAPT
 
 ### 4.12 Security
 
-- Sealed values: database passwords and connection strings, S3 keys, SFTP passwords and private keys, FTP passwords, REST adapter and hook header secrets, and the snapshot-store credentials in settings. Each is encrypted with AES-256-GCM under the first key of the active key list, with a fresh random ninety-six-bit nonce per record, and stored with the fingerprint of the key that sealed it. Sealed values never leave the server: API responses, exports, state archives, and audit rows omit them; the dashboard shows "set", the date, and the key fingerprint. Update forms accept a new value or keep the old one. Passwords and API tokens are hashed, not sealed.
+- Sealed values: database passwords and connection strings, S3 keys, SFTP passwords and private keys, FTP passwords, and the snapshot-store credentials in settings. Each is encrypted with AES-256-GCM under the first key of the active key list, with a fresh random ninety-six-bit nonce per record, and stored with the fingerprint of the key that sealed it. Sealed values never leave the server: API responses, exports, state archives, and audit rows omit them; the dashboard shows "set", the date, and the key fingerprint. Update forms accept a new value or keep the old one. Passwords and API tokens are hashed, not sealed.
 - Active key list, after the Reconflower procedure: the environment holds one to five base64 thirty-two-byte keys, comma separated, new key first. Testate refuses to start without it. At boot, before jobs start, Testate opens every sealed value with the list and re-seals under the first key anything sealed by another key. The boot log prints a framed banner: `SECRET KEY ROTATION COMPLETE` with the count, `SECRET KEY ROTATION NOT YET COMPLETE` when a value changed mid-sweep, or `EXTRA VALUE STILL CONFIGURED` while a retired key remains listed. The info log carries the active key fingerprint, which changes on a real rotation.
 - Refusals are loud, name the cause and the fix, and happen before anything is written: no stored value opens with the configured keys; N of M values open with no configured key; an empty, malformed, or wrong-length value; the same key twice; more than five values. Rolling back is a rotation in reverse, with the key to revert to listed first. Declared loss: a flag in the environment lets Testate boot, name each unreadable value in the error log, and accept re-entry; remove the flag when a boot reports zero unreadable values.
 - Backups store sealed values as they are and record the key fingerprints they need. A restored backup boots only with those keys listed.
 - Passwords are hashed with Bun's password API (argon2id). Minimum length twelve. API tokens are random, prefixed for display, and stored as SHA-256 hashes compared in constant time; token checks stay fast on the CI path.
 - Sessions are opaque server-side tokens in HTTP-only, same-site cookies. Idle timeout twelve hours, absolute seven days. A password change revokes every session of the user.
 - Tokens carry a role, a project scope, and an optional expiry.
-- Address check on every outbound connection (database, storage, REST): Testate resolves the host and refuses link-local ranges, cloud metadata addresses, and its own listening address without an off switch. Admins manage a deny list of hostname patterns and networks; loopback is on it by default and removable. Changing the list re-checks every adapter and disables matches. Deny-list checks run at connection time, not only at save time.
+- Address check on every outbound connection (database, storage): Testate resolves the host and refuses link-local ranges, cloud metadata addresses, and its own listening address without an off switch. Admins manage a deny list of hostname patterns and networks; loopback is on it by default and removable. Changing the list re-checks every adapter and disables matches. Deny-list checks run at connection time, not only at save time.
 - Changes to Testate's own entities (users, tokens, adapters, settings) write their audit row in the same metadata transaction. Actions on a target database (checkout, import, write session, deletion restore) get an audit row when accepted, updated with the outcome, because no transaction spans Testate's metadata store and the target engine. Audit rows carry the project slug and adapter name as text, so they survive deletion of what they describe.
 - Testate runs as a non-root user in the container.
 
@@ -449,7 +440,7 @@ Error codes: `VALIDATION_ERROR` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `ADAPT
 
 ### 4.14 Data model
 
-Metadata entities: user, session, token, project, adapter, adapter capability, state, state adapter manifest, blob, checkout, checkout adapter result, job, hook, hook run, import mapping, import run, saved query, query history, rest request, rest request run, diff, diff table, audit log, setting, idempotency key.
+Metadata entities: user, session, token, project, adapter, adapter capability, state, state adapter manifest, blob, checkout, checkout adapter result, job, import mapping, import run, saved query, query history, diff, diff table, audit log, setting, idempotency key.
 
 Every mutable entity carries an id, created and updated timestamps. Every sealed value carries its nonce and the fingerprint of the key that sealed it. Migrations for the metadata database are numbered SQL files applied at boot by a runner that resolves them relative to the application, never by absolute path.
 

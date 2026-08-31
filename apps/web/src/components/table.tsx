@@ -1,5 +1,5 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
-import { Show, omit } from "solid-js";
+import { Show, children, omit } from "solid-js";
 
 /**
  * The table shell, in the shape shadcn's data table settled on: a toolbar over a bordered table,
@@ -20,11 +20,13 @@ export function Table(props: ComponentProps<"table">): JSX.Element {
 
 /** Controls that belong to the table below them: a filter on the left, an action on the right. */
 export function TableToolbar(props: { children: JSX.Element; actions?: JSX.Element }): JSX.Element {
+  // See the note in page-header.tsx: a JSX prop read inside `when` is read outside tracking.
+  const actions = children(() => props.actions);
   return (
     <div class="flex flex-wrap items-end justify-between gap-3">
       <div class="flex flex-wrap items-end gap-2">{props.children}</div>
-      <Show when={props.actions}>
-        <div class="flex flex-wrap items-center gap-2">{props.actions}</div>
+      <Show when={actions()}>
+        <div class="flex flex-wrap items-center gap-2">{actions()}</div>
       </Show>
     </div>
   );
@@ -41,14 +43,16 @@ export function TableFooter(props: {
   hasMore?: boolean;
   children?: JSX.Element;
 }): JSX.Element {
+  // See the note in page-header.tsx: a JSX prop read inside `when` is read outside tracking.
+  const extra = children(() => props.children);
   return (
     <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
       <span>
         {props.shown} {props.noun}
         {props.hasMore === true ? " so far" : ""}
       </span>
-      <Show when={props.children}>
-        <div class="flex items-center gap-2">{props.children}</div>
+      <Show when={extra()}>
+        <div class="flex items-center gap-2">{extra()}</div>
       </Show>
     </div>
   );

@@ -9,7 +9,7 @@ Testate holds credentials to databases and can empty them. Every control below e
 | Dashboard and API | Credential stuffing, session theft, CSRF | Lockout, argon2id, opaque sessions, same-site cookies plus header check, HTTPS behind nginx |
 | API tokens | Leaked CI token | Role cap, project scope, expiry, revoke, hashed at rest, rate budget |
 | Stored credentials | Volume or backup theft | Sealed values (AES-256-GCM), key outside the volume, rotation |
-| Outbound connections | SSRF into the intranet, metadata endpoints, Testate itself | Resolve-and-check on every physical connection, fixed denies, admin deny list, no redirects |
+| Outbound connections | SSRF into the intranet, metadata endpoints, Testate itself | Resolve-and-check on every physical connection, fixed denies, admin deny list |
 | Destructive operations | Wrong target, wrong click | Adapter mode, admin-only loosening, stash, protection, typed-slug delete, return to init, audit |
 | Uploads | Oversized or hostile files | Size limit, streaming parse, per-run directory, deletion after the job |
 | Logs | Secrets in logs | Structural redaction in the wide event; no query text, rows, or credentials |
@@ -32,7 +32,7 @@ The full role matrix is in [09-authentication.md](09-authentication.md).
 
 | Concern | Implementation |
 | --- | --- |
-| What is sealed | Every column in the sealed registry ([17-sealed-values.md](17-sealed-values.md) §17.4): adapter secrets, read-only credentials, REST headers, S3 store keys |
+| What is sealed | Every column in the sealed registry ([17-sealed-values.md](17-sealed-values.md) §17.4): adapter secrets, read-only credentials, S3 store keys |
 | Cipher | AES-256-GCM through WebCrypto, 96-bit random nonce per record, envelope `v1.<kid>.<nonce>.<ciphertext+tag>` base64url |
 | Keys | `TESTATE_SECRETS_ACTIVE_KEY`: one to five base64 32-byte keys, comma separated, first seals; refusal to boot when missing, malformed, duplicated, or unable to open stored values |
 | Rotation | Boot sweep re-seals under the first key; banners; declared-loss flag; procedure in `../KEY_ROTATION.md` |
@@ -41,7 +41,7 @@ The full role matrix is in [09-authentication.md](09-authentication.md).
 
 ## 7.4 Outbound connection policy
 
-Every physical connection Testate opens (database, S3, SFTP, FTP, REST, S3 snapshot store) goes through `lib/netguard.check(host, port)` at connect time, not at save time. The check resolves the host and refuses: loopback and link-local ranges (`127.0.0.0/8`, `::1`, `169.254.0.0/16`, `fe80::/10`), cloud metadata addresses (`169.254.169.254`, `fd00:ec2::254`, `metadata.google.internal`), Testate's own listening address and port, and every entry of the admin deny list (`netguard.deny`, hostname globs and CIDRs). Loopback is on the default deny list and removable by an admin; the rest is fixed. DNS answers are used for the connection that was checked, never re-resolved by the driver; when a driver resolves on its own (MongoDB SRV), Testate resolves first and passes addresses. REST responses with a redirect status are returned as is; the client never follows. Details in [18-outbound-address-policy.md](18-outbound-address-policy.md).
+Every physical connection Testate opens (database, S3, SFTP, FTP, S3 snapshot store) goes through `lib/netguard.check(host, port)` at connect time, not at save time. The check resolves the host and refuses: loopback and link-local ranges (`127.0.0.0/8`, `::1`, `169.254.0.0/16`, `fe80::/10`), cloud metadata addresses (`169.254.169.254`, `fd00:ec2::254`, `metadata.google.internal`), Testate's own listening address and port, and every entry of the admin deny list (`netguard.deny`, hostname globs and CIDRs). Loopback is on the default deny list and removable by an admin; the rest is fixed. DNS answers are used for the connection that was checked, never re-resolved by the driver; when a driver resolves on its own (MongoDB SRV), Testate resolves first and passes addresses. Details in [18-outbound-address-policy.md](18-outbound-address-policy.md).
 
 ## 7.5 Request hardening
 

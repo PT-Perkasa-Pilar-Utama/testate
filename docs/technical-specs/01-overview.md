@@ -1,10 +1,10 @@
 # 1. Overview
 
-Testate is a self-hosted tool that gives QA "git for the test database". It runs as one Docker container next to the databases under test, on the same intranet, and never adds code to the application under test. A QA engineer connects a project's databases, takes a state (a data-only snapshot of every connected database), and later checks that state out again with one click or one API call. Around that core sit a table browser and query runner, CSV and XLSX import through saved mappings, row-level diff between states, a read-only browser for S3, SFTP, and FTP, and REST hooks that call the application before or after a checkout.
+Testate is a self-hosted tool that gives QA "git for the test database". It runs as one Docker container next to the databases under test, on the same intranet, and never adds code to the application under test. A QA engineer connects a project's databases, takes a state (a data-only snapshot of every connected database), and later checks that state out again with one click or one API call. Around that core sit a table browser and query runner, CSV and XLSX import through saved mappings, row-level diff between states, and a read-only browser for S3, SFTP, and FTP.
 
 This document set is the technical specification. It says how Testate is built. The product requirements document (`../PRD.md`) says what is built and why; where the two disagree, the PRD wins and this set is corrected.
 
-> **Terminology.** Every domain term (project, adapter, state, init state, stash, HEAD, checkout, diff, schema fingerprint, drift, mapping, hook, job, token, sealed value, active key list, deletion plan) is defined in `../PRD.md` §2.2 and mirrored in `../GLOSSARY.md`. This set uses those words and no synonyms. One clash to watch: the product calls a stored connection an *adapter*; the architecture vocabulary also uses *adapter* for a concrete implementation behind a seam. In this set, "adapter" alone means the product entity, and "engine adapter", "store adapter", or "file adapter" means the implementation.
+> **Terminology.** Every domain term (project, adapter, state, init state, stash, HEAD, checkout, diff, schema fingerprint, drift, mapping, job, token, sealed value, active key list, deletion plan) is defined in `../PRD.md` §2.2 and mirrored in `../GLOSSARY.md`. This set uses those words and no synonyms. One clash to watch: the product calls a stored connection an *adapter*; the architecture vocabulary also uses *adapter* for a concrete implementation behind a seam. In this set, "adapter" alone means the product entity, and "engine adapter", "store adapter", or "file adapter" means the implementation.
 
 > **Language policy.** UI copy, API fields, identifiers, logs, and documentation are English. Testate is a public image; there is no second UI language.
 
@@ -37,7 +37,7 @@ In scope: create, list, update, slug, HEAD and its status, quota and instance ce
 
 ### 1.2.4 `adapters`
 
-In scope: database, storage, and REST adapters; draft connection test and re-test; probe, capabilities, strategy, version floor; mode changes with admin-only loosening; read-only credential; excluded tables and schemas; init state on connect and on target change; rename; deletion plan and adapter-delete job; address check and deny-list re-check; sealed credentials. Stories 15 to 31, 90, 95.
+In scope: database and storage adapters; draft connection test and re-test; probe, capabilities, strategy, version floor; mode changes with admin-only loosening; read-only credential; excluded tables and schemas; init state on connect and on target change; rename; deletion plan and adapter-delete job; address check and deny-list re-check; sealed credentials. Stories 15 to 31, 90, 95.
 
 ### 1.2.5 `data`
 
@@ -63,43 +63,35 @@ In scope: diff between two states or a state and live, per-table counts, row dri
 
 In scope: browse, filter, stat, preview, download on S3, SFTP, FTP; host key trust on first use and blocking on change. Stories 90 to 94.
 
-### 1.2.11 `rest`
-
-In scope: saved requests, run, run history, placeholders, no redirects. Stories 95 to 97, 100.
-
-### 1.2.12 `hooks`
-
-In scope: hook triggers, order, fail policy, results attached to jobs. Stories 98, 99.
-
-### 1.2.13 `jobs`
+### 1.2.11 `jobs`
 
 In scope: persisted queue, dispatcher with global cap and per-adapter exclusivity, queue position, server-sent events, `wait`, idempotency keys, cancel with engine-level cancel, boot recovery with HEAD unknown. Stories 101 to 104.
 
-### 1.2.14 `audit`
+### 1.2.12 `audit`
 
 In scope: audit rows for every listed action, filters, CSV export, retention, rows that outlive their subject. Stories 105, 106.
 
-### 1.2.15 `settings`
+### 1.2.13 `settings`
 
 In scope: snapshot store choice and migration job, backup job, deny list, retention values, quota defaults, rate limits, upload limit. Stories 114 to 117.
 
-### 1.2.16 `ops`
+### 1.2.14 `ops`
 
 In scope: health endpoint, reset-state endpoint outside production, boot sequence, pre-migration copy, graceful shutdown, sub-path serving. Stories 118 to 122.
 
-### 1.2.17 `tools`
+### 1.2.15 `tools`
 
 In scope: stateless hash generator (argon2id, bcrypt, sha256, sha512, hmac with secret, optional salt), random secret generator, UUID v4 and v7 generator. Stories 131 to 133.
 
-### 1.2.18 `agent`
+### 1.2.16 `agent`
 
 In scope: read-only MCP server for AI agents with agent-kind tokens, masked results, lower caps, fixture extraction, per-call audit. Stories 134 to 139.
 
-### 1.2.19 Editing, policies, and fixtures (inside `data` and `imports`)
+### 1.2.17 Editing, policies, and fixtures (inside `data` and `imports`)
 
 In scope: relation view, FK lookups, typed insert and edit forms with functions, bulk insert, foreign-key-checks toggle, column input policies with required functions and masks, sample files from the schema, fixture extraction. Stories 140 to 150. Single source: [24-table-editing.md](24-table-editing.md).
 
-### 1.2.20 Out of scope
+### 1.2.18 Out of scope
 
 Firebase and Firestore; SQLite as a target; snapshot or restore through the application's REST API; schema migrations of the target; Postgres large-object content; MongoDB import and MongoDB write forms (the Document tier is view, state, diff, extract); branches and merges between states; single sign-on, LDAP, email; multi-tenant hosting; metrics and tracing; internationalized UI. See `../PRD.md` §6.
 
@@ -121,14 +113,14 @@ qa, first project
   add database adapter(config, mode=sandbox)
     -> address check -> probe (version floor, privileges, strategy) -> save sealed
     -> init state job (single adapter, protected)
-  add storage adapter, REST adapter
+  add storage adapter
   run app seed once (outside Testate)
   take state "seeded-baseline" (all adapters, one instant each)
   protect it
 
 qa, every test cycle
   checkout "seeded-baseline"
-    -> stash -> drift check -> restore per adapter -> counters -> hooks -> HEAD moves
+    -> stash -> drift check -> restore per adapter -> counters -> HEAD moves
   run tests (outside Testate)
   diff "seeded-baseline" vs live          -> what the test changed
   import fixtures.xlsx via saved mapping   -> dry run -> run

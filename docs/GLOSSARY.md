@@ -5,8 +5,8 @@ Terms as the code, the API, and the UI use them. One meaning each. Specs cite th
 | Term | Meaning | Not |
 | --- | --- | --- |
 | **Project** | The unit of ownership: a slug, a set of adapters, a set of states, one HEAD, one quota | A Testate deployment |
-| **Adapter** | A connection Testate owns to one target: a database, a file store, or an HTTP API | The engine driver code |
-| **Engine** | The target technology behind an adapter: `postgres`, `mysql`, `mariadb`, `mongodb`, `s3`, `sftp`, `ftp`, `rest` | A version |
+| **Adapter** | A connection Testate owns to one target: a database or a file store | The engine driver code |
+| **Engine** | The target technology behind an adapter: `postgres`, `mysql`, `mariadb`, `mongodb`, `s3`, `sftp`, `ftp` | A version |
 | **Tier** | What an engine supports: **Tabular** (view, state, diff, extract, edit, import), **Document** (view, state, diff, extract), **Files** (view, download) | A pricing plan |
 | **State** | A data-only snapshot of every database adapter in a project, taken at one moment, named, and stored as blobs | A snapshot of Testate's own metadata |
 | **Init state** | The state taken when an adapter joins a project. Protected. The target returns to it before a project or adapter deletion | A backup |

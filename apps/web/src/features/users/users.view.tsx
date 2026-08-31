@@ -245,7 +245,7 @@ export default function UsersView(): JSX.Element {
                   </Cell>
                   <Cell class="whitespace-nowrap">
                     <Show when={user.last_login_at} fallback="never">
-                      {(at) => formatWhen(at())}
+                      {(at) => <>{formatWhen(at())}</>}
                     </Show>
                   </Cell>
                   <Cell pinned>

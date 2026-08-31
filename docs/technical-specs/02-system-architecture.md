@@ -2,7 +2,7 @@
 
 ## 2.1 Style
 
-Testate is a modular monolith in one process: a Hono API that also serves the built single-page app, a job dispatcher in the same process, a SQLite metadata store on the container volume, and a snapshot store on the volume or in S3. Eighteen vertical modules own the features; ten shared libraries hold the infrastructure every module needs.
+Testate is a modular monolith in one process: a Hono API that also serves the built single-page app, a job dispatcher in the same process, a SQLite metadata store on the container volume, and a snapshot store on the volume or in S3. Sixteen vertical modules own the features; ten shared libraries hold the infrastructure every module needs.
 
 ### 2.1.1 Why this shape
 
@@ -24,7 +24,7 @@ graph TB
     Hono[Hono API /api/v1]
     Static[Static SPA server]
     Jobs[Job dispatcher]
-    Modules[18 vertical modules]
+    Modules[16 vertical modules]
     Engines[lib/engines port]
     Blob[lib/blobstore port]
     Files[lib/files port]
@@ -41,7 +41,6 @@ graph TB
     MO[(MongoDB)]
     S3[(S3 bucket)]
     SFTP[(SFTP / FTP)]
-    APP[App under test REST]
   end
   Nginx[nginx] --> Hono
   Nginx --> Static
@@ -65,7 +64,6 @@ graph TB
   Blob --> S3
   Files --> S3
   Files --> SFTP
-  Modules -->|rest, hooks| APP
 ```
 
 ## 2.2 Request lifecycle
@@ -98,7 +96,6 @@ sequenceDiagram
   else ok or force
     J->>E: checkout(conn, plan) per adapter (parallel under cap)
     E->>DB: empty, insert in dependency order, commit, counters
-    J->>H: hooks after_checkout (rest module)
     J->>M: checkout adapter results, HEAD = state, job succeeded
   end
   H-->>CI: 202 {data: job} when wait expires, or 200 {data: job(terminal)}
@@ -131,16 +128,14 @@ Production is one container and one volume. There is no cluster mode. Upgrades r
 | --- | --- | --- | --- |
 | `auth` | `sessions`, `api_tokens` | `users` (read), `audit` | every route (middleware) |
 | `users` | `users` | `auth` (revoke sessions), `audit` | `auth` |
-| `projects` | `projects` | `checkouts` (return to init), `states` (delete), `adapters`, `hooks`, `auth` (revoke scoped tokens), `jobs`, `audit` | `adapters`, `states`, `checkouts`, `diffs`, `imports` |
-| `adapters` | `adapters`, `known_host_keys` | `lib/engines`, `lib/files`, `lib/netguard`, `lib/sealed`, `states` (init state), `checkouts` (return to init), `jobs`, `audit` | `data`, `imports`, `states`, `checkouts`, `diffs`, `storage`, `rest`, `projects` |
+| `projects` | `projects` | `checkouts` (return to init), `states` (delete), `adapters`, `auth` (revoke scoped tokens), `jobs`, `audit` | `adapters`, `states`, `checkouts`, `diffs`, `imports` |
+| `adapters` | `adapters`, `known_host_keys` | `lib/engines`, `lib/files`, `lib/netguard`, `lib/sealed`, `states` (init state), `checkouts` (return to init), `jobs`, `audit` | `data`, `imports`, `states`, `checkouts`, `diffs`, `storage`, `projects` |
 | `data` | `saved_queries`, `query_history`, `write_sessions` | `adapters`, `lib/engines`, `states` (stash), `audit` | none |
-| `imports` | `import_mappings`, `import_runs` | `adapters`, `lib/engines`, `lib/files`, `states` (stash), `hooks`, `jobs`, `audit` | none |
-| `states` | `states`, `state_adapters`, `blobs`, `blob_pins` | `adapters`, `lib/engines`, `lib/blobstore`, `lib/snapshot`, `hooks`, `jobs`, `audit` | `checkouts`, `diffs`, `data`, `imports`, `projects`, `adapters` |
-| `checkouts` | `checkouts`, `checkout_adapters` | `states`, `adapters`, `lib/engines`, `lib/blobstore`, `hooks`, `jobs`, `audit`, `projects` (HEAD) | `projects`, `adapters` |
+| `imports` | `import_mappings`, `import_runs` | `adapters`, `lib/engines`, `lib/files`, `states` (stash), `jobs`, `audit` | none |
+| `states` | `states`, `state_adapters`, `blobs`, `blob_pins` | `adapters`, `lib/engines`, `lib/blobstore`, `lib/snapshot`, `jobs`, `audit` | `checkouts`, `diffs`, `data`, `imports`, `projects`, `adapters` |
+| `checkouts` | `checkouts`, `checkout_adapters` | `states`, `adapters`, `lib/engines`, `lib/blobstore`, `jobs`, `audit`, `projects` (HEAD) | `projects`, `adapters` |
 | `diffs` | `diffs`, `diff_tables` | `states`, `adapters`, `lib/engines`, `lib/blobstore`, `lib/snapshot`, `jobs` | none |
 | `storage` | none (host keys live in `adapters`) | `adapters`, `lib/files` | `imports` (source file) |
-| `rest` | `rest_requests`, `rest_request_runs` | `adapters`, `lib/netguard`, `lib/sealed`, `audit` | `hooks` |
-| `hooks` | `hooks`, `hook_runs` | `rest` | `checkouts`, `states`, `imports` |
 | `jobs` | `jobs`, `idempotency_keys` | none (job kinds are registered at the composition root) | every job-backed module |
 | `audit` | `audit_logs` | none | every module |
 | `settings` | `settings` | `lib/blobstore` (migration), `states` (retention), `diffs`, `data`, `jobs`, `audit` (retention) | `projects` (quota), `data` (limits), `jobs` (cap) |
@@ -153,7 +148,6 @@ Production is one container and one volume. There is no cluster mode. Upgrades r
 - A module imports another module only through that module's `*.service.ts` exports and the schemas in `@testate/shared`. Repositories, handlers, and routers are private to their module.
 - `lib/*` never imports a module. `lib/engines` calls `lib/netguard` and `lib/logger`; that is the only lib-to-lib dependency besides `lib/http` using `lib/logger`.
 - Job kinds are registered at the composition root (`apps/api/src/index.ts`), so `jobs` depends on no module while every job-backed module depends on `jobs`.
-- Cycles are broken by events, not imports: `checkouts` and `states` call `hooks.run(trigger, context)`; `hooks` never calls back.
 - The `WideEvent` for a request or job is created by `lib/logger` and passed down. No module creates a second logger.
 
 ## 2.6 Data flow summary
@@ -161,9 +155,8 @@ Production is one container and one volume. There is no cluster mode. Upgrades r
 | Flow | Path |
 | --- | --- |
 | Snapshot | `states` job → `lib/engines.snapshot` per adapter → sorted `RowChunk`s → `lib/snapshot` gzip and hash → `lib/blobstore.put` → manifest rows in `state_adapters` |
-| Checkout | `checkouts` job → stash (snapshot flow) → `diffSchema` → `lib/engines.checkout` with `lib/blobstore.get` streams → counters → `hooks` → HEAD |
+| Checkout | `checkouts` job → stash (snapshot flow) → `diffSchema` → `lib/engines.checkout` with `lib/blobstore.get` streams → counters → HEAD |
 | Diff | `diffs` job → two manifests (or one plus a hidden `diff` snapshot) → `lib/snapshot.merge` per table → diff files in the blob store → `diff_tables` |
 | Import | `imports` job → parser → mapping transforms → `validateImportRow` → `lib/engines.writeRows` batches → report and `/data/imports/<run>/rejected.csv` |
 | Query | `data` request → `lib/engines.runQuery` on a reserved connection → capped rows → `query_history` |
 | Storage browse | `storage` request → `lib/files.list/stat/read` → stream to client |
-| Hook | `hooks.run` → `rest.run(request, placeholders)` → `hook_runs` and job event |

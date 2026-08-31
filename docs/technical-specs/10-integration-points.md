@@ -32,17 +32,7 @@ A store switch runs the migration job (copy every referenced blob, verify, then 
 
 Previews stream through Testate with a 5 MB cap; the browser never receives storage credentials.
 
-## 10.4 REST adapters and hooks
-
-| Item | Contract |
-| --- | --- |
-| Request | Method, path, query, headers (secret headers sealed), body; base URL and default headers from the adapter; timeout from the adapter (default 30 s); response body cap (default 1 MiB) |
-| Placeholders | `{{project.slug}}`, `{{state.name}}`, `{{state.id}}`, `{{job.id}}` expanded in path, query, headers, body; unknown placeholders are an error |
-| Redirects | Never followed; a 3xx is the result |
-| TLS | Verified by default; an adapter option disables verification for intranet self-signed targets, shown as a warning |
-| Failure | Timeout, connection error, non-2xx: recorded on the run; a hook with policy `abort` fails the job; `continue` records and proceeds |
-
-## 10.5 Reverse proxy
+## 10.4 Reverse proxy
 
 | Header | Direction | Use |
 | --- | --- | --- |
@@ -53,10 +43,15 @@ Previews stream through Testate with a 5 MB cap; the browser never receives stor
 
 The nginx example sets `client_max_body_size` to the upload limit plus headroom, `proxy_read_timeout 330s` for `wait` and SSE, `proxy_buffering off` for `/api/v1/jobs/*/events`, and forwards the headers above.
 
-## 10.6 Browser
+## 10.5 Browser
 
 The SPA talks only to `/api/v1` on its own origin with cookies. It opens one `EventSource` per watched job. It never receives credentials, connection strings, or raw driver errors.
 
-## 10.7 CI matrix services
+## 10.6 CI matrix services
 
 `deploy/compose.engines.yml` runs: Postgres 13 and 17, MySQL 8.0 and 8.4, MariaDB 10.6 and 11.4, MongoDB 6.0 and 8.0 (replica set of one for snapshot reads), MinIO, an OpenSSH SFTP container, and a vsftpd container. The contract suites run against each service through the ports only; no service is mocked.
+
+## 10.7 What this does not do
+
+- No calls to the application under test. Testate never talks to the system it snapshots: no saved HTTP requests, no webhooks, nothing fires before or after a checkout, a snapshot, or an import.
+- No `rest` adapter kind and no `http` engine; an adapter is `database` or `storage` only, targeting Postgres, MySQL, MariaDB, MongoDB, S3, SFTP, or FTP.

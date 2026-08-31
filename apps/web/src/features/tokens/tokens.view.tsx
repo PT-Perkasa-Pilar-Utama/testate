@@ -156,12 +156,12 @@ export default function TokensView(): JSX.Element {
                       </Cell>
                       <Cell class="whitespace-nowrap">
                         <Show when={token.last_used_at} fallback="never">
-                          {(at) => formatWhen(at())}
+                          {(at) => <>{formatWhen(at())}</>}
                         </Show>
                       </Cell>
                       <Cell class="whitespace-nowrap">
                         <Show when={token.expires_at} fallback="no expiry">
-                          {(at) => formatWhen(at())}
+                          {(at) => <>{formatWhen(at())}</>}
                         </Show>
                       </Cell>
                       <Cell>

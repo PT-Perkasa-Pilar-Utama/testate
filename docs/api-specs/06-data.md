@@ -38,11 +38,25 @@ Masks: responses to `viewer` users and agent tokens apply column masks; `masked_
 
 **Errors.** `VALIDATION_ERROR` (unknown column), `ADAPTER_UNREACHABLE`, `NOT_FOUND`. **Traceability.** Stories 36, 140.
 
-## 6.3 `GET .../tables/{table}/lookup` (Tabular)
+## 6.3 `GET .../tables/{table}/export`
+
+**Purpose.** The whole table as a downloadable file: the grid's Export CSV and Export JSON links, and the answer for a mapping or a tester who cannot write SQL.
+
+**Access.** `viewer`.
+
+**Input.** Query: the same `cursor`, `limit` (default 100, max 500), `sort`, `order`, and `filter` as 6.2, plus `format`: `csv` | `json`, default `csv`.
+
+**Behavior.** Walks the table with the same keyset cursor 6.2 pages with, one `limit`-row page at a time, and keeps looping until the cursor is exhausted — nothing caps the row count, unlike 6.9's query export. Filters, sort, and column masks apply exactly as they do to a grid page. It is a `GET` so the browser follows a plain link and streams straight to disk; the session cookie carries the auth, the way a state archive download does.
+
+**Output.** `200`, `Content-Type` `text/csv; charset=utf-8` or `application/json`, `Content-Disposition: attachment; filename="<table>.<format>"` (`public.orders` → `public-orders.csv`); a CSV header row followed by one line per row, or a single JSON array of row objects.
+
+**Errors.** `VALIDATION_ERROR` (unknown column, bad filter), `ADAPTER_UNREACHABLE`, `NOT_FOUND`. **Traceability.** `docs/UI_REWORK.md` phase 3.
+
+## 6.4 `GET .../tables/{table}/lookup` (Tabular)
 
 **Purpose.** Candidates for an FK column in forms and the grid (story 142). **Access.** `viewer`. **Input.** Query: `column` required (an FK column of `{table}`), `q` string, `limit` (default 20, max 50). **Behavior.** Searches the referenced table by primary-key prefix and the display column. **Output.** `200 { "data": [ { "key": [5120], "display": "Dina Putri" } ] }`. **Errors.** `VALIDATION_ERROR` (not an FK column). **Traceability.** Story 142.
 
-## 6.4 `POST .../write-sessions` (Tabular)
+## 6.5 `POST .../write-sessions` (Tabular)
 
 **Purpose.** Start a write session; required for row edits and write-mode queries. **Access.** `qa`; adapter `sandbox`.
 
@@ -54,11 +68,11 @@ Masks: responses to `viewer` users and agent tokens apply column masks; `masked_
 
 **Errors.** `ADAPTER_READ_ONLY`, `CONFLICT` (session open), `NOT_FOUND`. **Traceability.** Stories 40, 41, 145.
 
-## 6.5 `PATCH .../write-sessions/{sid}` and `DELETE .../write-sessions/{sid}`
+## 6.6 `PATCH .../write-sessions/{sid}` and `DELETE .../write-sessions/{sid}`
 
 **Purpose.** Toggle foreign-key checks; end the session. **Access.** `qa`, the session's owner. **Input.** `PATCH` body: `foreign_key_checks` boolean. **Behavior.** Off maps per [12 §12.3](../technical-specs/12-engine-port.md); refused with the reason when the engine cannot honor it (`ENGINE_UNSUPPORTED { "reason": "fk_toggle" }`); audit `write_session.fk_checks_off`. Delete ends the session; audit `write_session.ended`. **Output.** `200` session; `204`. **Errors.** `ENGINE_UNSUPPORTED`, `NOT_FOUND`. **Traceability.** Story 145.
 
-## 6.6 `POST .../tables/{table}/row-edits` (Tabular)
+## 6.7 `POST .../tables/{table}/row-edits` (Tabular)
 
 **Purpose.** Insert, update, and delete rows in one transaction: bulk insert forms, inline edits, deletes (stories 42, 141, 143, 144).
 
@@ -87,7 +101,7 @@ Masks: responses to `viewer` users and agent tokens apply column masks; `masked_
 
 **Errors.** `VALIDATION_ERROR` (policy, shape), `CONFLICT` (no primary key, session closed), `ADAPTER_READ_ONLY`, `ADAPTER_UNREACHABLE` (`details.failed_index`, `details.engine_message`). **Traceability.** Stories 42, 141, 143, 144, 146.
 
-## 6.7 `POST .../query`
+## 6.8 `POST .../query`
 
 **Purpose.** Run a read-only or write-mode query.
 
@@ -114,23 +128,23 @@ Masks: responses to `viewer` users and agent tokens apply column masks; `masked_
 
 **Errors.** `VALIDATION_ERROR`, `FORBIDDEN` (write without session, viewer write), `ADAPTER_READ_ONLY`, `RATE_LIMITED`, `ADAPTER_UNREACHABLE` (`details.engine_message` for syntax errors, `details.cancelled: true`). **Traceability.** Stories 37, 38, 39, 40, 43, 44.
 
-## 6.8 `POST .../query/export`
+## 6.9 `POST .../query/export`
 
-**Purpose.** The same query streamed as a file. **Access.** As 6.7, read mode only. **Input.** 6.7 body plus `format`: `csv` | `json`. **Output.** `200` stream, `Content-Disposition: attachment; filename="<adapter>-<timestamp>.csv"`; masks apply. **Traceability.** Story 47.
+**Purpose.** The same query streamed as a file. **Access.** As 6.8, read mode only. **Input.** 6.8 body plus `format`: `csv` | `json`. **Output.** `200` stream, `Content-Disposition: attachment; filename="<adapter>-<timestamp>.csv"`; masks apply. **Traceability.** Story 47.
 
-## 6.9 `GET .../queries` and `DELETE .../queries/{query_id}`
+## 6.10 `GET .../queries` and `DELETE .../queries/{query_id}`
 
 **Purpose.** Running queries and cancel. **Access.** `viewer` lists own and others' queries with tags; cancel is the query's owner or `admin`. **Behavior.** Cancel issues the engine's cancel from a second connection; the running query fails with `details.cancelled: true`. **Output.** `200 { "data": [ { "query_id", "tag", "actor", "mode", "started_at", "duration_ms" } ] }`; `204`. **Errors.** `NOT_FOUND`, `FORBIDDEN`. **Traceability.** Story 48.
 
-## 6.10 Saved queries
+## 6.11 Saved queries
 
-`GET .../saved-queries`, `POST .../saved-queries` (body `name`, `body` = a 6.7 body without limits), `PATCH .../saved-queries/{qid}`, `DELETE .../saved-queries/{qid}`. **Access.** `viewer` reads; `qa` writes. Names unique per adapter. **Errors.** `CONFLICT`, `NOT_FOUND`. **Traceability.** Story 45.
+`GET .../saved-queries`, `POST .../saved-queries` (body `name`, `body` = a 6.8 body without limits), `PATCH .../saved-queries/{qid}`, `DELETE .../saved-queries/{qid}`. **Access.** `viewer` reads; `qa` writes. Names unique per adapter. **Errors.** `CONFLICT`, `NOT_FOUND`. **Traceability.** Story 45.
 
-## 6.11 `GET .../query-history`
+## 6.12 `GET .../query-history`
 
 **Purpose.** The caller's history. **Access.** `viewer` (own rows); `admin` sees all with `user_id`. **Input.** Query: `cursor`, `limit`, `mode`. **Output.** `200` list of `{ id, query_hash, query_text, mode, duration_ms, row_count, error, created_at }`. **Traceability.** Story 46.
 
-## 6.12 Column policies (Tabular)
+## 6.13 Column policies (Tabular)
 
 `GET .../policies` lists; `PUT .../policies/{table}/{column}` upserts `{ "required_function": { "name", "params" } | null, "mask": "redact" | "partial" | "hash" | null, "display": boolean }`; `DELETE .../policies/{table}/{column}` removes; `POST .../policies/{table}/{column}/lock` and `/unlock` (admin).
 
@@ -140,7 +154,7 @@ Masks: responses to `viewer` users and agent tokens apply column masks; `masked_
 
 **Output.** `200` policy `{ "table", "column", "required_function", "mask", "display", "locked", "updated_at" }`; `204` on delete. **Errors.** `FORBIDDEN`, `NOT_FOUND` (column), `VALIDATION_ERROR`. **Traceability.** Stories 146, 147, 148.
 
-## 6.13 `POST .../fixture`
+## 6.14 `POST .../fixture`
 
 **Purpose.** Extract a row and its related rows for local reproduction (stories 136, 150).
 

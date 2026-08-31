@@ -25,7 +25,7 @@ docker run -d --name testate -p 7378:7378 -v testate-data:/data \
 
 Open <http://localhost:7378> and sign in as `admin` with that password. Testate makes you change it on the first login.
 
-From there: add a database under **Adapters**, take a snapshot under **States**, break something, then put it back under **Checkouts**. Where to point the host is the one thing that catches people out, so read [section 3](#3-connecting-to-a-database) before you add the adapter.
+From there: add a database under **Adapters**, take a snapshot under **States**, break something, then click **Check out** on that state to put it back. Where to point the host is the one thing that catches people out, so read [section 3](#3-connecting-to-a-database) before you add the adapter.
 
 That command keeps everything in one Docker volume and is fine for a look. For anything you rely on, use Compose and an `.env` file: [How to install](#1-how-to-install).
 
@@ -58,26 +58,29 @@ states you take of them, and everything you do to them.
 
 **Point it at the databases behind the system under test.** Each adapter reports its engine and
 version, what your login is allowed to do, and whether the database is safe to reset. Object storage
-and REST endpoints sit in the same list.
+sits in the same list.
 
 ![The adapters tab, listing every adapter in the project with its engine, tier, mode and status](docs/assets/screens/adapters.png)
 
 **Snapshot them.** A state is data only, taken across every database in the project at once, and it
-says who took it and what it cost.
+says who took it and what it cost. A project opens on this tab, a timeline with the current HEAD
+marked.
 
-![The states tab, listing snapshots with kind, status, adapters, size and author](docs/assets/screens/states.png)
+![The states tab, a timeline of snapshots with HEAD marked, kind, size and author](docs/assets/screens/states.png)
 
-**Put them back.** A checkout restores the state you pick and reports what happened per database.
+**Put them back.** Click **Check out** on any state to restore it; the History tab lists every
+checkout with its per-adapter results and a retry action.
 
-![The checkouts tab, listing restores with per-adapter results and a retry action](docs/assets/screens/checkouts.png)
+![The History tab, listing checkouts with per-adapter results and a retry action](docs/assets/screens/checkouts.png)
 
 **See what a test run changed.** Diff two states, or a state against the live database, and drill
 into the rows.
 
 ![A diff opened, listing added, removed and changed rows per table across four databases](docs/assets/screens/diffs.png)
 
-**Read and edit the rows.** Filter, page by keyset, follow a foreign key, or turn on write mode and
-edit a row with the types the column actually has.
+**Read and edit the rows.** Filter, page by keyset, follow a foreign key, export a whole table as
+CSV or JSON with no row cap, or turn on write mode and edit a row with the types the column
+actually has.
 
 ![The data grid for a table, with filters, write mode and typed columns](docs/assets/screens/grid.png)
 
@@ -96,7 +99,7 @@ cannot write.
 
 ## 1. How to install
 
-Requirements: Docker 24 or later with Compose v2, 1 CPU and 1 GiB RAM minimum, a volume for `/data`, and outbound network access from the host to every database, file store, and REST host you plan to connect.
+Requirements: Docker 24 or later with Compose v2, 1 CPU and 1 GiB RAM minimum, a volume for `/data`, and outbound network access from the host to every database and file store you plan to connect.
 
 ```sh
 mkdir -p /opt/testate && cd /opt/testate
@@ -223,7 +226,7 @@ The full REST API is available for automation; nothing here is dashboard-only. T
 | `/api/v1/docs`         | the reference, rendered by [Scalar](https://scalar.com)  |
 | `/api/v1/openapi.json` | the same contract as OpenAPI 3.1, for a client generator |
 
-Open <http://localhost:7378/api/v1/docs> after the quick start above. It is generated from the routes rather than written by hand, so it describes the version you are running: 101 paths at 1.1.0-alpha.
+Open <http://localhost:7378/api/v1/docs> after the quick start above. It is generated from the routes rather than written by hand, so it describes the version you are running.
 
 Both addresses answer without a token, since they describe the shape of the API and never touch your data. Put them behind your proxy if you would rather they were not public.
 

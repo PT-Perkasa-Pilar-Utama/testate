@@ -4,7 +4,7 @@ How to rotate the key that seals credentials without losing one. Design: [techni
 
 ## What the key protects
 
-Every secret an admin enters is sealed with AES-256-GCM before it reaches SQLite: adapter passwords and connection strings, S3 keys, SFTP private keys, secret REST headers, the S3 store credentials in settings. A sealed value looks like `v1.<kid>.<nonce>.<ciphertext>`. `kid` is the fingerprint of the key that sealed it.
+Every secret an admin enters is sealed with AES-256-GCM before it reaches SQLite: adapter passwords and connection strings, S3 keys, SFTP private keys, the S3 store credentials in settings. A sealed value looks like `v1.<kid>.<nonce>.<ciphertext>`. `kid` is the fingerprint of the key that sealed it.
 
 `TESTATE_SECRETS_ACTIVE_KEY` holds one to five base64 keys, comma separated. **The first key seals. Every listed key opens.**
 

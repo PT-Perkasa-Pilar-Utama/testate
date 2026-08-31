@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { Show } from "solid-js";
+import { Show, children } from "solid-js";
 
 import Icon from "./icon.tsx";
 import type { IconName } from "./icon.tsx";
@@ -22,6 +22,8 @@ export type EmptyStateProps = {
  * end.
  */
 export default function EmptyState(props: EmptyStateProps): JSX.Element {
+  // See the note in page-header.tsx: a JSX prop read inside `when` is read outside tracking.
+  const action = children(() => props.action);
   return (
     <div class="grid justify-items-center gap-3 rounded-lg px-6 py-10 text-center ring ring-line">
       <span class="grid h-10 w-10 place-items-center rounded-full bg-fill text-muted">
@@ -31,7 +33,7 @@ export default function EmptyState(props: EmptyStateProps): JSX.Element {
         <p class="font-medium text-heading">{props.title}</p>
         <p class="max-w-prose text-muted">{props.children}</p>
       </div>
-      <Show when={props.action}>{props.action}</Show>
+      <Show when={action()}>{action()}</Show>
     </div>
   );
 }

@@ -57,7 +57,7 @@ Module: `imports` ([../technical-specs/05-module-definitions.md §5.7](../techni
 | `foreign_key_checks` | boolean | no | default true |
 | `options` | object | no | overrides sheet, header row, delimiter |
 
-**Behavior.** Enqueue job `import` claiming the adapter (`JOB_IN_PROGRESS`); the job follows [19 §19.3](../technical-specs/19-import-pipeline.md): stash when required (story 57), policy check, parse, transforms, validation (story 56), batches with the FK setting (story 145), report, rejected rows file (story 58), hooks `after_import`. Audit `import.run`.
+**Behavior.** Enqueue job `import` claiming the adapter (`JOB_IN_PROGRESS`); the job follows [19 §19.3](../technical-specs/19-import-pipeline.md): stash when required (story 57), policy check, parse, transforms, validation (story 56), batches with the FK setting (story 145), report, rejected rows file (story 58). Audit `import.run`.
 
 **Output.** `202` job; the job's `result` is the report `{ "run_id", "dry_run", "inserted", "updated", "skipped", "failed", "duration_ms", "errors_preview": [ { "row_number": 12, "reason": "joined_at: not a date" } ], "rejected_available": true, "stash_state_id": "01J..." }`.
 

@@ -17,18 +17,18 @@ Adapter object (secrets never included):
   "read_only_enforcement": "transaction", "last_probe_at": "...", "created_at": "...", "updated_at": "..." }
 ```
 
-`config` fields by kind: database `{ host, port, database, user, ssl, schemas? }` or `{ connection_string_set: true }`; storage s3 `{ bucket, prefix, region, endpoint?, virtual_hosted }`, sftp and ftp `{ host, port, user, root_path, tls? }`; rest `{ base_url, timeout_ms, verify_tls, default_headers: { "X-Api-Version": "2" }, secret_header_names: ["Authorization"] }`.
+`config` fields by kind: database `{ host, port, database, user, ssl, schemas? }` or `{ connection_string_set: true }`; storage s3 `{ bucket, prefix, region, endpoint?, virtual_hosted }`, sftp and ftp `{ host, port, user, root_path, tls? }`.
 
 Draft body (create, test, update):
 
 | field | type | required | notes |
 | --- | --- | --- | --- |
-| `kind` | `database` \| `storage` \| `rest` | create | immutable after create |
-| `engine` | `postgres` \| `mysql` \| `mariadb` \| `mongodb` \| `s3` \| `sftp` \| `ftp` \| `http` | create | immutable |
+| `kind` | `database` \| `storage` | create | immutable after create |
+| `engine` | `postgres` \| `mysql` \| `mariadb` \| `mongodb` \| `s3` \| `sftp` \| `ftp` | create | immutable |
 | `name` | string | create | unique per project, case-insensitive |
 | `mode` | `sandbox` \| `read_only` | no | database kind only; default `sandbox` |
 | `config` | object | create | public fields per kind as above |
-| `secrets` | object | create | sealed fields per kind: `password` or `connection_string`; `access_key_id` and `secret_access_key`; `password` or `private_key` (+ `passphrase`); `headers` map. On update each value is a new value or `"keep"` |
+| `secrets` | object | create | sealed fields per kind: `password` or `connection_string`; `access_key_id` and `secret_access_key`; `password` or `private_key` (+ `passphrase`). On update each value is a new value or `"keep"` |
 | `readonly_secrets` | object | no | database kind; same shape; `null` removes |
 | `excluded_tables` | string[] | no | default from the engine's list |
 | `restore_mode` | `atomic` \| `fast` | no | MySQL and MariaDB only |
@@ -71,7 +71,7 @@ Draft body (create, test, update):
 **Behavior.**
 1. Address check, probe as in 5.2; store capabilities, strategy, version, dialect, tier, `target_hash`.
 2. Seal `secrets` and `readonly_secrets` (story 34).
-3. Storage and REST kinds are always `read_only`.
+3. Storage kind is always `read_only`.
 4. Database kind: enqueue job `snapshot` with `init: true` producing the protected state named `init` (first adapter) or `init-<name>` (later adapters). The name is frozen at creation for display; the init state is associated with the adapter by its immutable id, so a later rename changes nothing and return-to-init resolves the latest `init` kind state for that adapter id (stories 27, 29).
 5. Audit `adapter.created`.
 
@@ -106,7 +106,7 @@ Draft body (create, test, update):
 
 **Behavior.** Loosening audits `adapter.mode_loosened`; tightening audits `adapter.mode_tightened`; tightening ends open write sessions on the adapter.
 
-**Output.** `200` adapter. **Errors.** `FORBIDDEN` (qa loosening), `NOT_FOUND`, `VALIDATION_ERROR` (storage or rest kind). **Traceability.** Stories 21, 22.
+**Output.** `200` adapter. **Errors.** `FORBIDDEN` (qa loosening), `NOT_FOUND`, `VALIDATION_ERROR` (storage kind). **Traceability.** Stories 21, 22.
 
 ## 5.7 `POST /projects/{slug}/adapters/{id}/retest`
 
@@ -124,6 +124,6 @@ Draft body (create, test, update):
 
 **Input.** Body: `plan_id` required; `action` required: `restore` | `force` | `skip`.
 
-**Behavior.** Enqueue job `adapter_delete`; the job restores per the action (hooks included, no stash), then marks the adapter removed in every manifest, deletes mappings, saved queries, policies, and the adapter row only after the restore succeeded or was skipped (stories 30, 31). Audit `adapter.deleted` with the result.
+**Behavior.** Enqueue job `adapter_delete`; the job restores per the action (no stash), then marks the adapter removed in every manifest, deletes mappings, saved queries, policies, and the adapter row only after the restore succeeded or was skipped (stories 30, 31). Audit `adapter.deleted` with the result.
 
 **Output.** `202` job. **Errors.** `CONFLICT` (stale plan), `JOB_IN_PROGRESS`, `NOT_FOUND`. **Traceability.** Stories 30, 31.

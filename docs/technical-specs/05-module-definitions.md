@@ -75,7 +75,7 @@ deletionPlan(actor, slug): Promise<DeletionPlan>    // per database adapter: res
 deleteProject(actor, slug, { confirmSlug; plan: PlanChoice[] }, event): Promise<Job>   // job kind project_delete
 ```
 
-| Invariants | Slug is `[a-z0-9-]{2,64}`, unique. Deletion requires `confirmSlug === slug` and the admin role. The delete job runs the plan through `checkouts.returnToInit`; removal happens only after every planned restore succeeded; a failure leaves the project, sets HEAD unknown on failed adapters, and the job offers retry. Removal order: project-scoped tokens revoked, hooks, mappings, states (blob refcounts), adapters, project. Audit rows outlive the project. |
+| Invariants | Slug is `[a-z0-9-]{2,64}`, unique. Deletion requires `confirmSlug === slug` and the admin role. The delete job runs the plan through `checkouts.returnToInit`; removal happens only after every planned restore succeeded; a failure leaves the project, sets HEAD unknown on failed adapters, and the job offers retry. Removal order: project-scoped tokens revoked, mappings, states (blob refcounts), adapters, project. Audit rows outlive the project. |
 | Ordering | `deletionPlan` must be fetched before `deleteProject`; the plan is re-validated at job start (adapter mode, reachability) and the job fails on a mismatch. |
 | Error modes | `CONFLICT` (slug taken, wrong confirm slug, plan stale), `JOB_IN_PROGRESS` (any job on the project), `FORBIDDEN`. |
 
@@ -83,7 +83,7 @@ deleteProject(actor, slug, { confirmSlug; plan: PlanChoice[] }, event): Promise<
 
 ## 5.5 `adapters`
 
-**Responsibility.** Connection records of all three kinds, their sealed configs, probing, modes, and their lifecycle events (init state, target change, deletion).
+**Responsibility.** Connection records of both kinds, their sealed configs, probing, modes, and their lifecycle events (init state, target change, deletion).
 
 ```ts
 testDraft(actor, draft: AdapterDraft, event): Promise<ProbeResult>                   // stateless; runs netguard + probe
@@ -94,7 +94,6 @@ setMode(actor, slug, id, mode, event): Promise<Adapter>                         
 list(actor, slug): Promise<Adapter[]>                                                  // never returns sealed fields; returns "set", set_at, key fingerprint
 resolveDatabase(id): Promise<{ ref: ConnectionRef; readOnlyRef: ConnectionRef | null; excluded: TableRef[]; schemas: string[]; mode; lockTimeoutMs; restoreMode }>   // for modules; decrypts in memory
 resolveFiles(id): Promise<FileSource>                                                  // storage kind
-resolveRest(id): Promise<RestTarget>                                                   // rest kind
 deletionPlan(actor, slug, id): Promise<DeletionPlan>
 remove(actor, slug, id, { plan }, event): Promise<Job>                                 // job kind adapter_delete
 recheckDenyList(event): Promise<{ disabled: AdapterId[] }>                             // called by settings on list change
@@ -122,9 +121,10 @@ endWriteSession(actor, sessionId, event): Promise<void>
 savedQueries: { list; create; update; remove }
 history(actor, adapterId, page): Promise<Page<QueryHistoryRow>>
 exportResult(actor, adapterId, q, format: "csv" | "json", event): ReadableStream
+exportTable(actor, adapterId, table, query: Partial<PageQuery>): AsyncGenerator<ExportPage>   // GET .../tables/{table}/export
 ```
 
-| Invariants | Read mode opens a read-only transaction on the SQL engines; on MongoDB it uses the read-only credential when present, else the operation filter, and the response says which. Row cap default 500, max 5000; byte and time budgets from settings; the engine clamps. Inline edit requires a primary key. The first write in a session (query in write mode, edit, MongoDB write form) takes a stash through `states.stash(project, "write-session")`; the session ends on explicit end or after thirty minutes idle. Query history stores the text; the wide event stores only the hash and byte count. |
+| Invariants | Read mode opens a read-only transaction on the SQL engines; on MongoDB it uses the read-only credential when present, else the operation filter, and the response says which. Row cap default 500, max 5000; byte and time budgets from settings; the engine clamps. Inline edit requires a primary key. The first write in a session (query in write mode, edit, MongoDB write form) takes a stash through `states.stash(project, "write-session")`; the session ends on explicit end or after thirty minutes idle. Query history stores the text; the wide event stores only the hash and byte count. `exportTable` streams a whole table one keyset page at a time with the same filters, sort, and masks as `rows`; unlike `exportResult`, it has no row cap, because it exists to replace the old query export's silent truncation at 500 rows. |
 | Error modes | `ADAPTER_READ_ONLY`, `FORBIDDEN` (no session, viewer), `VALIDATION_ERROR`, `ADAPTER_UNREACHABLE`, `CONFLICT` (no primary key), `RATE_LIMITED`. |
 
 Tabular editing additions (`lookup`, `insertRows`, `updateRow`, `deleteRow`, `setWriteSessionOptions`, `policies`, `extractFixture`) and the mask rules are specified in [24-table-editing.md](24-table-editing.md); MongoDB adapters expose browse, read query, and `extractFixture` only.
@@ -180,7 +180,7 @@ pruneStashes(slug, keep: number, event): Promise<void>                          
 
 ## 5.9 `checkouts`
 
-**Responsibility.** Restore a state: pre-flight, stash, drift, strategy, per-adapter execution, counters, hooks, HEAD, retry, and return-to-init for deletions.
+**Responsibility.** Restore a state: pre-flight, stash, drift, strategy, per-adapter execution, counters, HEAD, retry, and return-to-init for deletions.
 
 ```ts
 preflight(actor, slug, stateRef, { force }): Promise<CheckoutPreflight>     // per adapter: drift diff, strategy, atomicity and locking notice, skipped (removed) adapters
@@ -188,10 +188,10 @@ create(actor, slug, { stateId | stateName; force?; adapterIds? }, event): Promis
 retryFailed(actor, slug, checkoutId, event): Promise<{ checkout: Checkout; job: Job }>
 list(actor, slug, page): Promise<Page<Checkout>>
 get(actor, slug, id): Promise<CheckoutDetail>                                 // per adapter result
-returnToInit(slug, plan: PlanChoice[], event): Promise<AdapterResult[]>       // used by project and adapter delete jobs; no stash; hooks run
+returnToInit(slug, plan: PlanChoice[], event): Promise<AdapterResult[]>       // used by project and adapter delete jobs; no stash, no hooks
 ```
 
-| Invariants | Order inside the job: stash → hooks `before_checkout` → per adapter (parallel under the cap): introspect, `diffSchema`, refuse on drift unless force, `selectRestoreStrategy`, `lib/engines.checkout` → counters step → hooks `after_checkout` → HEAD. Any adapter failure sets HEAD `unknown` and the checkout `partial`; retry re-runs failed adapters only with the same stash. A removed adapter in the state is reported `skipped`. The strategy and the atomicity and locking notice shown in `preflight` are the ones the job uses; the job re-probes privileges at start and degrades the strategy rather than failing mid-restore. |
+| Invariants | Order inside the job: stash → per adapter (parallel under the cap): introspect, `diffSchema`, refuse on drift unless force, `selectRestoreStrategy`, `lib/engines.checkout` → counters step → HEAD. Any adapter failure sets HEAD `unknown` and the checkout `partial`; retry re-runs failed adapters only with the same stash. A removed adapter in the state is reported `skipped`. The strategy and the atomicity and locking notice shown in `preflight` are the ones the job uses; the job re-probes privileges at start and degrades the strategy rather than failing mid-restore. |
 | Error modes | `SCHEMA_DRIFT` (409, with tables and columns), `CHECKOUT_BLOCKED` (409, with blocking sessions and the terminate option when the probe allows), `ADAPTER_READ_ONLY`, `JOB_IN_PROGRESS`, `NOT_FOUND` (state), `CONFLICT` (both `stateId` and `stateName`). |
 
 **Owns.** `checkouts`, `checkout_adapters`. **Stories.** 72 to 84. **Seams.** `lib/engines` (`checkout`, `repairCounters`, `introspect`), `lib/blobstore`. **Deep because** the whole restore recipe, including the deletion variant, is one function with one report shape.
@@ -230,32 +230,7 @@ acceptHostKey(actor, adapterId, fingerprint, event): Promise<void>
 
 **Owns.** none (host keys belong to `adapters`). **Stories.** 91 to 94. **Seams.** `lib/files`. **Deep because** three protocols look like one directory tree.
 
-## 5.12 `rest`
-
-**Responsibility.** Saved HTTP requests against REST adapters, with runs and placeholders.
-
-```ts
-requests: { list; create; update; remove }
-run(actor, adapterId, requestId, placeholders: Placeholders, event): Promise<RestRun>   // server-side, no redirects
-runs(actor, requestId, page): Promise<Page<RestRun>>
-```
-
-| Invariants | Requests run from the server through `lib/netguard`; redirects are returned as is; response body cap and timeout come from the adapter; header secrets are sealed and masked. Placeholders `{{project.slug}}`, `{{state.name}}`, `{{state.id}}`, `{{job.id}}` expand in path, query, headers, and body. The last fifty runs per request are kept. |
-
-**Owns.** `rest_requests`, `rest_request_runs`. **Stories.** 96, 97, 100. **Deep because** hooks and the dashboard share one runner.
-
-## 5.13 `hooks`
-
-**Responsibility.** Bind saved requests to job triggers and run them in order with a fail policy.
-
-```ts
-hooks: { list; create; update; reorder; remove }
-run(slug, trigger: "before_checkout" | "after_checkout" | "after_snapshot" | "after_import", context: HookContext, event): Promise<HookRunResult[]>   // throws HookAbort when a hook with policy abort fails
-```
-
-**Owns.** `hooks`, `hook_runs`. **Stories.** 98, 99. **Deep because** every job gets hook execution from one call and never imports `rest`.
-
-## 5.14 `jobs`
+## 5.12 `jobs`
 
 **Responsibility.** The persisted queue and dispatcher for every long operation.
 
@@ -276,7 +251,7 @@ heartbeat(): { alive: boolean; runningCount: number }
 
 **Owns.** `jobs`, `idempotency_keys`. **Stories.** 101 to 104. **Deep because** every module gets queueing, progress, wait, cancel, and recovery from `enqueue`.
 
-## 5.15 `audit`
+## 5.13 `audit`
 
 **Responsibility.** The durable record of who did what.
 
@@ -291,7 +266,7 @@ prune(retentionDays, event): Promise<number>
 
 **Owns.** `audit_logs`. **Stories.** 105, 106. **Deep because** one `write` call gives every module the same shape and retention.
 
-## 5.16 `settings`
+## 5.14 `settings`
 
 **Responsibility.** Global configuration, the snapshot store switch and migration, backups, the deny list, and retention sweeps.
 
@@ -307,7 +282,7 @@ runRetention(event): Promise<RetentionReport>                           // daily
 
 **Owns.** `settings`. **Stories.** 114 to 117. **Deep because** retention for seven kinds of data is one daily sweep.
 
-## 5.17 `ops`
+## 5.15 `ops`
 
 **Responsibility.** Operational endpoints and the boot and shutdown sequence.
 
@@ -332,13 +307,13 @@ runRetention(event): Promise<RetentionReport>                           // daily
 
 `status` is `down` when the metadata database or the data directory fails, `degraded` when the store, the sink, or the dispatcher fails. `GET /api/v1/health/live` returns `204` for load balancers; `GET /api/v1/health/ready` returns `204` only after boot finished.
 
-**Reset-state endpoint.** `POST /api/v1/admin/reset-state` with body `{ "seed": "dev" | "qa" }`, admin only. It is registered at route-registration time only when `TESTATE_ENV` is not `production`; in production the route does not exist and returns `404` like any unknown path. It refuses while jobs run, then: closes the dispatcher, deletes every metadata table, deletes the local snapshot store, uploads, import artifacts, and diff blobs, re-applies migrations, runs the chosen seed, restarts the dispatcher, and returns `200` with the seed name and counts. `dev` seeds the bootstrap admin, a `qa` user and a `viewer` user with known passwords, one project `demo` with database adapters pointing at the compose engines, a storage adapter at MinIO, a REST adapter at MinIO's health endpoint (never the API itself: 18 §18.3 refuses `self`), and one manual state. `qa` seeds the bootstrap admin only. Seeds are idempotent scripts under `modules/ops/seeds/`, selected by the body field; `TESTATE_RESET_SEED` sets the default when the body omits it.
+**Reset-state endpoint.** `POST /api/v1/admin/reset-state` with body `{ "seed": "dev" | "qa" }`, admin only. It is registered at route-registration time only when `TESTATE_ENV` is not `production`; in production the route does not exist and returns `404` like any unknown path. It refuses while jobs run, then: closes the dispatcher, deletes every metadata table, deletes the local snapshot store, uploads, import artifacts, and diff blobs, re-applies migrations, runs the chosen seed, restarts the dispatcher, and returns `200` with the seed name and counts. `dev` seeds the bootstrap admin, a `qa` user and a `viewer` user with known passwords, one project `demo` with database adapters pointing at the compose engines, a storage adapter at MinIO, and one manual state. `qa` seeds the bootstrap admin only. Seeds are idempotent functions in `modules/ops/ops.seeds.ts`, selected by the body field; `TESTATE_RESET_SEED` sets the default when the body omits it.
 
 **Boot and shutdown.** See [22-base-path-and-boot.md](22-base-path-and-boot.md).
 
 **Owns.** none. **Stories.** 118 to 122. **Deep because** health, reset, boot, and shutdown are the operator's whole contract in one module.
 
-## 5.18 `tools`
+## 5.16 `tools`
 
 **Responsibility.** Stateless helpers for QA: hash, random secret, UUID.
 
@@ -352,7 +327,7 @@ uuid(actor, { version: 4 | 7; count?: number }): { values: string[] }
 
 **Owns.** none. **Stories.** 131 to 133. **Deep because** the same hashing code serves the tools menu, the form functions, and the import transform.
 
-## 5.19 `agent`
+## 5.17 `agent`
 
 **Responsibility.** The read-only MCP server for AI agents. Single source: [23-agent-access.md](23-agent-access.md).
 
@@ -365,7 +340,7 @@ requireAgentToken(): Middleware           // token kind agent; refused elsewhere
 
 **Owns.** none. **Stories.** 134 to 139. **Deep because** an agent learns a dozen tools and never a connection string.
 
-## 5.20 Shared libraries
+## 5.18 Shared libraries
 
 | Library | Port | Adapters | Cited spec |
 | --- | --- | --- | --- |

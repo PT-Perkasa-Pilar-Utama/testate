@@ -30,11 +30,13 @@ starts its ephemeral range at 49152, which is why this only ever failed in CI.
 | `coverage`  | `e2e/coverage.e2e.ts`                                            | Every `@story-N` tag names a PRD story; writes `.e2e/coverage.md`     |
 | `routes`    | `e2e/routes.e2e.ts`                                              | Each screen renders or refuses per role; sidebar matches the role     |
 | `api`       | `e2e/api.e2e.ts`, `agent.e2e.ts`                                 | Contract, token, and MCP stories over `request`; no browser           |
-| `flows`     | `e2e/flows.e2e.ts`, `stories.e2e.ts`, `hooks`, `gaps`, `admin`   | One test per user story the dashboard can act on                      |
+| `flows`     | `e2e/flows.e2e.ts`, `stories.e2e.ts`, `gaps`, `admin`            | One test per user story the dashboard can act on                      |
 | `states`    | `e2e/states.e2e.ts`                                              | Snapshot, checkout, and diff stories; serial, alone, after flows      |
 | `state-api` | `e2e/state-api.e2e.ts`                                           | State and job stories with no control of their own; holds the adapters |
 | `adapter`   | `e2e/adapter.e2e.ts`                                             | Adapter settings and deletion (init snapshot, restore)                |
 | `crawl`     | `e2e/buttons.e2e.ts`                                             | Clicks every visible control per role; no 5xx, no console error       |
+| `screens`   | `e2e/screens.e2e.ts`                                             | README screenshots off the seeded demo; skipped unless `SHOTS=1`      |
+| `stress`    | `e2e/stress.e2e.ts`                                              | Hunts the reactive-loop warning on the grid; skipped unless `STRESS=1` |
 | `boot`      | `e2e/boot.e2e.ts`, `engine`, `types`, `session`, `storage`       | Stories that need their own instance, engine, or clock                |
 
 Projects run in that order (`dependencies`), tests inside a project run on 3 workers.
@@ -57,8 +59,9 @@ the browser projects starve the crawl. Rules that keep it honest:
 ## Story tags
 
 Put `@story-N` in the test title. `.e2e/coverage.md` lists each PRD story as `covered`,
-`no-screen`, `api`, or `uncovered`. All 150 are `covered`, and both exception lists in
-`e2e/lib/stories.ts` are empty. Add an id back only when a story truly cannot be exercised.
+`no-screen`, `api`, or `uncovered`. 142 of the 144 stories in `docs/PRD.md` are `covered`, and
+both exception lists in `e2e/lib/stories.ts` are empty. Add an id back only when a story truly
+cannot be exercised.
 
 ## Rules
 

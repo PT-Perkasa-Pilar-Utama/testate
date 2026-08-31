@@ -145,7 +145,7 @@ export default function ProjectsView(): JSX.Element {
                           when={project.head.changed_at}
                           fallback={<span class="text-muted">—</span>}
                         >
-                          {(changedAt) => formatWhen(changedAt())}
+                          {(changedAt) => <>{formatWhen(changedAt())}</>}
                         </Show>
                       </Cell>
                     </Row>

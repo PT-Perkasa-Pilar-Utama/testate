@@ -1,6 +1,6 @@
 # 13. Checkout and Restore
 
-A checkout returns every adapter in a state to the data in that state. This document is the single source for the recipe around the engine: pre-flight, stash, drift, force, per-adapter execution, counters, hooks, HEAD, retry, and the return-to-init variant that project and adapter deletion use. Cite it; do not restate it.
+A checkout returns every adapter in a state to the data in that state. This document is the single source for the recipe around the engine: pre-flight, stash, drift, force, per-adapter execution, counters, HEAD, retry, and the return-to-init variant that project and adapter deletion use. Cite it; do not restate it.
 
 ## 13.1 Decision matrix
 
@@ -14,10 +14,9 @@ A checkout returns every adapter in a state to the data in that state. This docu
 | Partial states | Adapters not in the state stay untouched and are reported `skipped`; removed adapters likewise | Story 76 |
 | Counters | Post-commit tracked step per adapter; failure leaves `counters_failed` with a repair action; HEAD unknown until repaired | Story 78; `setval` does not roll back; `ALTER TABLE` commits implicitly |
 | Lock wait | `lock_timeout` from the adapter (default 60 s); failure `CHECKOUT_BLOCKED` with blocking sessions; terminate option only when the probe proved the privilege | Story 82 |
-| Hooks | `before_checkout` after the stash, `after_checkout` after counters; `abort` policy fails the job before any restore when it fires in `before_checkout` | Story 98, 99 |
 | HEAD | Moves to the state when every adapter is `restored`; `unknown` otherwise | Story 77, 104 |
 | Retry | `POST .../checkouts/{id}/retry` re-runs adapters not in `restored`, same stash, same plan | Story 77 |
-| Return to init | Same recipe with `purpose: return_to_init`, no stash, plan from the deletion plan, hooks run, results per adapter | PRD §4.5 |
+| Return to init | Same recipe with `purpose: return_to_init`, no stash, plan from the deletion plan, results per adapter | PRD §4.5 |
 
 ## 13.2 The job, step by step
 
@@ -25,8 +24,7 @@ A checkout returns every adapter in a state to the data in that state. This docu
 checkout job (project P, state S, force F, adapters A = S.adapters ∩ P.adapters ∩ requested)
  1. validate: P has no running job on any adapter in A            -> JOB_IN_PROGRESS
  2. stash: states.stash(P, "checkout")                             -> stash id on the checkout row
- 3. hooks.run("before_checkout")                                   -> abort policy fails here, nothing touched
- 4. for each adapter a in A, in parallel under the cap:
+ 3. for each adapter a in A, in parallel under the cap:
       probe(a)                                                     -> capabilities, strategy (degrade if needed)
       live = introspect(a)
       drift = diffSchema(S.introspection[a], live)
@@ -36,9 +34,8 @@ checkout job (project P, state S, force F, adapters A = S.adapters ∩ P.adapter
       result = await run.result                                    -> restored | rolled_back | unknown
       counters step inside engine.checkout after commit            -> counters_failed when it fails
       record checkout_adapters row
- 5. hooks.run("after_checkout")                                    -> results attached; abort policy marks the job partial
- 6. HEAD: every adapter restored -> at_state(S); else unknown
- 7. job status: succeeded | partial | failed | cancelled
+ 4. HEAD: every adapter restored -> at_state(S); else unknown
+ 5. job status: succeeded | partial | failed | cancelled
 ```
 
 Drift refusal happens per adapter before that adapter is emptied; other adapters proceed. A checkout where one adapter refused on drift is `partial` with HEAD unknown, which is the honest state: some databases are at S, one is not.

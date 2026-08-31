@@ -25,7 +25,6 @@ erDiagram
   projects ||--o{ states : owns
   projects ||--o{ checkouts : owns
   projects ||--o{ diffs : owns
-  projects ||--o{ hooks : owns
   projects ||--o{ import_runs : owns
   projects ||--o{ jobs : scopes
   adapters ||--o{ known_host_keys : trusts
@@ -34,17 +33,12 @@ erDiagram
   adapters ||--o{ saved_queries : has
   adapters ||--o{ query_history : has
   adapters ||--o{ write_sessions : has
-  adapters ||--o{ rest_requests : has
   states ||--o{ state_adapters : contains
   states o|--o{ states : parent
   state_adapters }o--o{ blobs : references
   blobs ||--o{ blob_pins : pinned_by
   checkouts ||--o{ checkout_adapters : results
   checkouts }o--|| states : restores
-  jobs ||--o{ hook_runs : ran
-  hooks ||--o{ hook_runs : produced
-  hooks }o--|| rest_requests : calls
-  rest_requests ||--o{ rest_request_runs : ran
   import_mappings ||--o{ import_runs : used_by
   diffs ||--o{ diff_tables : per_table
   api_tokens ||--o{ idempotency_keys : owns
@@ -117,12 +111,12 @@ erDiagram
 | --- | --- | --- | --- | --- | --- |
 | id | TEXT | no | | PK | immutable; states, mappings, and queries key on it |
 | project_id | TEXT | no | | FK projects | |
-| kind | TEXT | no | | | `database`, `storage`, `rest` |
-| engine | TEXT | no | | | `postgres`, `mysql`, `mariadb`, `mongodb`, `s3`, `sftp`, `ftp`, `http` |
+| kind | TEXT | no | | | `database`, `storage` |
+| engine | TEXT | no | | | `postgres`, `mysql`, `mariadb`, `mongodb`, `s3`, `sftp`, `ftp` |
 | name | TEXT | no | | UNIQUE (project_id, name) NOCASE | example `orders-db` |
-| mode | TEXT | no | `sandbox` | | `sandbox`, `read_only`; storage and rest are always `read_only` |
-| config_public | TEXT | no | | | JSON of non-secret fields: host, port, database, user, schemas, bucket, prefix, base_url, timeout |
-| config_sealed | TEXT | no | | | sealed JSON of secret fields: password, connection string, access keys, private key, headers |
+| mode | TEXT | no | `sandbox` | | `sandbox`, `read_only`; storage is always `read_only` |
+| config_public | TEXT | no | | | JSON of non-secret fields: host, port, database, user, schemas, bucket, prefix |
+| config_sealed | TEXT | no | | | sealed JSON of secret fields: password, connection string, access keys, private key |
 | readonly_config_sealed | TEXT | yes | | | optional read-only credential (database kind) |
 | excluded_tables | TEXT | no | `[]` | | JSON array of `schema.table` |
 | restore_mode | TEXT | no | `atomic` | | `atomic`, `fast` (MySQL and MariaDB only) |
@@ -276,7 +270,7 @@ erDiagram
 | job_id | TEXT | no | | FK jobs | |
 | expires_at | TEXT | no | | | twenty-four hours |
 
-## 6.7 Data, imports, REST, hooks
+## 6.7 Data and imports
 
 ### IMPORT_MAPPINGS (UI label: "Mappings")
 
@@ -330,20 +324,6 @@ erDiagram
 | saved_queries | id, adapter_id FK CASCADE, name UNIQUE (adapter_id, name) NOCASE, body JSON (`{ dialect: "sql", text }` or `{ dialect: "mongo", op, ... }`), created_by, created_at, updated_at |
 | query_history | id, adapter_id, user_id, query_hash, query_text, mode, duration_ms, row_count, error, created_at; retention setting |
 | write_sessions | id, adapter_id, user_id, started_at, last_write_at, ended_at, stash_state_id, write_count, foreign_key_checks INTEGER default 1 |
-
-### REST_REQUESTS, REST_REQUEST_RUNS
-
-| table | columns |
-| --- | --- |
-| rest_requests | id, adapter_id FK CASCADE, name UNIQUE (adapter_id, name) NOCASE, method, path, query JSON, headers_sealed, body, expected_status, created_at, updated_at |
-| rest_request_runs | id, request_id FK CASCADE, job_id, hook_run_id, status_code, duration_ms, response_headers JSON, response_body (capped), error, created_at; last fifty kept per request |
-
-### HOOKS, HOOK_RUNS
-
-| table | columns |
-| --- | --- |
-| hooks | id, project_id FK CASCADE, trigger (`before_checkout`, `after_checkout`, `after_snapshot`, `after_import`), rest_request_id FK, position INTEGER, enabled INTEGER, fail_policy (`abort`, `continue`), created_at, updated_at |
-| hook_runs | id, hook_id, job_id, request_run_id, status (`succeeded`, `failed`, `skipped`), started_at, finished_at |
 
 ## 6.8 Audit and settings
 
@@ -462,4 +442,4 @@ export async function migrate(sql: SQL): Promise<{ applied: string[] }> {
 
 The Dockerfile copies `db/migrations/` next to `dist/index.js`, so the relative resolution holds inside the image. Forbidden anywhere: an absolute migrations path, an inlined connection string, or a raw read of one `.sql` file outside the ledger.
 
-Seeding: there is no production seed beyond the bootstrap admin, which `ops` creates at boot from `TESTATE_ADMIN_USER` and `TESTATE_ADMIN_PASSWORD` when the `users` table is empty. The `dev` and `qa` seeds live under `modules/ops/seeds/` as idempotent TypeScript scripts, selected by the reset-state endpoint (05 §5.17) and never mounted in production.
+Seeding: there is no production seed beyond the bootstrap admin, which `ops` creates at boot from `TESTATE_ADMIN_USER` and `TESTATE_ADMIN_PASSWORD` when the `users` table is empty. The `dev` and `qa` seeds live in `modules/ops/ops.seeds.ts` as idempotent functions, selected by the reset-state endpoint (05 §5.15) and never mounted in production.

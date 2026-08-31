@@ -33,7 +33,7 @@ Roles are cumulative: `admin` ⊇ `qa` ⊇ `viewer`. Each operation names its mi
 | Role | Adds |
 | --- | --- |
 | `viewer` | Read everything in scope, read-only queries, downloads, tools, masked fixtures |
-| `qa` | Create and edit projects, adapters, states, mappings, hooks, requests, policies; checkout, import, write sessions, row edits; tighten to read-only; delete adapters |
+| `qa` | Create and edit projects, adapters, states, mappings, policies; checkout, import, write sessions, row edits; tighten to read-only; delete adapters |
 | `admin` | Users, tokens, settings, backup, store migration, deny list; loosen to sandbox; lock policies; delete projects; reset-state outside production |
 
 ## 1.4 Envelope
@@ -120,7 +120,7 @@ Error:
 
 ## 1.9 Sealed fields
 
-Write: send the plain value, or the string `"keep"` on update to leave it unchanged. Read: never the value; always `{ "set": true, "set_at": "...", "key_fingerprint": "9f3c..." }` or `{ "set": false }`. Applies to `password`, `connection_string`, `access_key_id`, `secret_access_key`, `private_key`, `passphrase`, secret request headers, and the S3 store keys.
+Write: send the plain value, or the string `"keep"` on update to leave it unchanged. Read: never the value; always `{ "set": true, "set_at": "...", "key_fingerprint": "9f3c..." }` or `{ "set": false }`. Applies to `password`, `connection_string`, `access_key_id`, `secret_access_key`, `private_key`, `passphrase`, and the S3 store keys.
 
 ## 1.10 Rate limit headers
 
