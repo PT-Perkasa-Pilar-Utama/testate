@@ -1,8 +1,9 @@
-# The flush loop: cause found, repair not found
+# The flush loop: cause, fix, and how it was found
 
-**Status:** open. The cause is established by measurement and reported upstream as
-`solidjs/solid#3140`. Two candidate repairs were tried and both rejected, one of them after it was
-briefly committed here. **We ship no patch.** The loop is still present.
+**Status:** cause established, fixed here by
+`patches/@solidjs%2Fsignals@2.0.0-rc.4.patch`, and submitted upstream as `solidjs/solid#3143`
+(which closes `solidjs/solid#3140`). Drop the patch when a release carries the fix. Two earlier
+repairs were tried and both were wrong; they are recorded below so nobody repeats them.
 
 ## The cause
 
@@ -33,6 +34,20 @@ Nothing recomputes. The dirty queue is empty, nothing is scheduled, no effects a
 no pending nodes, no async reporters and no lanes. The dev build throws at 100,000 iterations. The
 production scheduler runs the same loop with no counter, so there it hangs instead.
 
+## The fix
+
+`commitPendingNodes` clears the stamp on the node it just committed:
+
+```js
+const node = pendingNodes[i];
+commitPendingNode(node);
+node._transition = null;
+```
+
+Commit is where a node leaves the transaction. This is the same clearing `reassignPendingTransition`
+performs at completion, extended to nodes a drain removes first. Solid's own suite passes with and
+without it (114 files, 1432 tests).
+
 ## The two repairs that failed
 
 **Refusing the finished transition inside `initTransition`.** It opens a fresh batch instead, and
@@ -60,7 +75,11 @@ condition and the runaway match exactly:
 | Arm | Runs meeting the condition | Runaways | `Invalid array length` |
 | --- | --- | --- | --- |
 | unpatched | 5 of 10 | 5 of 5 | 0 |
-| stamp cleared at the write | 4 of 14 | 0 of 4 | 2 of those 4 |
+| stamp cleared at the write (rejected) | 4 of 14 | 0 of 4 | 2 of those 4 |
+| stamp cleared on commit (shipped) | 0 of 12 | 0 | 0 |
+
+The shipped arm met the condition in none of its 12 runs. The counter that records it is
+observe-only, so zero means the stale stamp never forms, rather than that its symptom was masked.
 
 Ten for ten on the unpatched side: every run that met the condition span, every run that did not was
 clean. Any future candidate must be judged the same way, and must count every page error, not only

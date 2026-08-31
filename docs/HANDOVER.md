@@ -172,14 +172,14 @@ each with a test that fails when the fix is removed:
 inline error. Replacing it means a validation state per field in every dialog, and the crawler
 leans on native validation to fill forms; the gain did not look worth that.
 
-**The reactive loop: cause found, no repair, still open.** `setSignal` in `@solidjs/signals`
-re-opens a node's transition before it checks whether the write changes anything. A `Loading` boundary
-writes the same boolean on every pass of a drain, so a node stamped with an already-finished
-transition re-arms it and the drain never ends. Reported upstream as `solidjs/solid#3140` with the
-full evidence. We ship no patch: two candidate repairs were tried and both rejected, and the second
-one was briefly committed as `25c28e9` before its own measurements condemned it, so read that commit
-as a mistake rather than as history worth restoring. `docs/upstream-solid-flush-loop.md` holds the
-cause, both dead ends, and the reproduction recipe.
+**The reactive loop is fixed by a patch, and the cause was upstream.** A node's `_transition` stamp
+survived the drain that committed it, so it kept pointing at a transition that later finished, and
+re-arming a finished transition made `flush()` spin forever. `commitPendingNodes` now clears the
+stamp on commit: `patches/@solidjs%2Fsignals@2.0.0-rc.4.patch`, submitted upstream as
+`solidjs/solid#3143`. Drop the patch when a release carries it. Two earlier repairs were wrong and
+one shipped briefly (`25c28e9`, reverted in `39dd504`); `patches/README.md` names both so nobody
+tries them again. `docs/upstream-solid-flush-loop.md` holds the evidence and the reproduction
+recipe.
 
 Judging any future candidate: a crawl run is evidence only if the stale-stamp condition arose in it,
 and the run must be scored on every page error rather than on the loop alone. Counting only the loop

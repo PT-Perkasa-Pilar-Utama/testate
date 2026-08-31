@@ -1,0 +1,48 @@
+diff --git a/dist/dev.js b/dist/dev.js
+index 56eb5f5b689ac07b2d0537b607d1b56e8b2fb357..4236e3194b6d724d50f5e79143f4e71f22975979 100644
+--- a/dist/dev.js
++++ b/dist/dev.js
+@@ -1747,7 +1747,10 @@ function setPatchCommitHook(fn) {
+ function commitPendingNodes() {
+   const pendingNodes = currentBatch._pendingNodes;
+   for (let i = 0; i < pendingNodes.length; i++) {
+-    commitPendingNode(pendingNodes[i]);
++    const node = pendingNodes[i];
++    commitPendingNode(node);
++    // solidjs/solid#3143: a committed node must not keep a stamp on a finished transition.
++    node._transition = null;
+   }
+   pendingNodes.length = 0;
+   storeCommitHook?.();
+diff --git a/dist/node.cjs b/dist/node.cjs
+index e903e7f9b7f19ee226b54bca97772e7e87cd0059..1fa677190d001e0495cf5f2c5422db7f4aeb2e66 100644
+--- a/dist/node.cjs
++++ b/dist/node.cjs
+@@ -1030,7 +1030,10 @@ function setPatchCommitHook(e) {
+ function commitPendingNodes() {
+     const e = currentBatch.X;
+     for (let t = 0; t < e.length; t++) {
+-        commitPendingNode(e[t]);
++        const n = e[t];
++        commitPendingNode(n);
++        // solidjs/solid#3143: a committed node must not keep a stamp on a finished transition.
++        n.O = null;
+     }
+     e.length = 0;
+     storeCommitHook?.();
+diff --git a/dist/prod/core/scheduler.js b/dist/prod/core/scheduler.js
+index ef1a396a6f0c2c654a5edbe3892353fda7d21f18..004df1f2b50c43b584c81bd057e6deb85a448698 100644
+--- a/dist/prod/core/scheduler.js
++++ b/dist/prod/core/scheduler.js
+@@ -669,7 +669,10 @@ function setPatchCommitHook(e) {
+ function commitPendingNodes() {
+     const e = currentBatch.yt;
+     for (let t = 0; t < e.length; t++) {
+-        commitPendingNode(e[t]);
++        const n = e[t];
++        commitPendingNode(n);
++        // solidjs/solid#3143: a committed node must not keep a stamp on a finished transition.
++        n._e = null;
+     }
+     e.length = 0;
+     storeCommitHook?.();
