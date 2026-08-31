@@ -1,11 +1,20 @@
 import { expect, test } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 
 import { demoAdapter, firstTable } from "./lib/api.ts";
-import { rowMenu, settle, watch } from "./lib/crawl.ts";
+import { rowMenu, settle, stateRow, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
 const STAMP = Date.now().toString(36);
+
+/**
+ * A ready state prints no status badge, so "ready" is not a string to wait for. What a tester
+ * actually waits for is the moment the state can be checked out, and that is the assertion.
+ */
+async function ready(row: Locator): Promise<void> {
+  await expect(row.getByRole("button", { name: "Check out" })).toBeEnabled({ timeout: 60_000 });
+}
 
 // State jobs share the demo adapters; the two qa stories must not race each other.
 test.describe.configure({ mode: "serial" });
@@ -29,8 +38,8 @@ test.describe("state stories", () => {
     await take.getByLabel("Tags (comma separated)").fill("e2e, smoke");
     await take.getByRole("button", { name: "Take" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
-    const row = page.locator("tr", { hasText: name });
-    await expect(row.getByText("ready")).toBeVisible({ timeout: 60_000 });
+    const row = stateRow(page, name);
+    await ready(row);
     await expect(row.getByText("smoke")).toBeVisible();
     await page.getByRole("button", { name: "Take state" }).click();
     await page.locator("dialog[open]").getByLabel("Name").fill(name);
@@ -41,7 +50,7 @@ test.describe("state stories", () => {
     await page.locator("dialog[open]").getByLabel("Name").fill(`${name}-renamed`);
     await page.locator("dialog[open]").getByRole("button", { name: "Save" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
-    const renamed = page.locator("tr", { hasText: `${name}-renamed` });
+    const renamed = stateRow(page, `${name}-renamed`);
     await expect(renamed).toBeVisible();
     await (await rowMenu(renamed)).getByRole("button", { name: "Protect" }).click();
     await expect(renamed.getByText("protected")).toBeVisible();
@@ -53,10 +62,17 @@ test.describe("state stories", () => {
     expect(archive.status()).toBe(200);
     expect(archive.headers()["content-disposition"]).toContain("attachment");
     await page.getByRole("tab", { name: "Tree" }).click();
-    await expect(page.locator("main li", { hasText: `${name}-renamed` }).last()).toBeVisible();
+    // The tree nests <li> inside <li>, so every ancestor of the node matches a hasText filter.
+    // The name itself appears once.
+    await expect(
+      page
+        .getByRole("list", { name: "State history" })
+        .getByText(`${name}-renamed`, { exact: true })
+    ).toBeVisible();
     await page.getByRole("tab", { name: "List" }).click();
     await (await rowMenu(renamed)).getByRole("button", { name: "Details" }).click();
-    await expect(page.locator("dialog[open]").getByText("primary-key").first()).toBeVisible();
+    // The manifest says how a table was walked in words now, not in the API's own punctuation.
+    await expect(page.locator("dialog[open]").getByText("primary key order").first()).toBeVisible();
     await page.locator("dialog[open]").getByText("Close", { exact: true }).click();
     await (await rowMenu(renamed)).getByRole("button", { name: "Delete" }).click();
     // One job per adapter (story 86): a parallel checkout or snapshot makes the first submit refuse.
@@ -64,9 +80,7 @@ test.describe("state stories", () => {
       await page.locator("dialog[open]").getByRole("button", { name: "Delete state" }).click();
       await expect(page.locator("dialog[open]")).toHaveCount(0, { timeout: 3_000 });
     }).toPass({ timeout: 90_000 });
-    await expect(page.locator("tr", { hasText: `${name}-renamed` })).toHaveCount(0, {
-      timeout: 60_000,
-    });
+    await expect(stateRow(page, `${name}-renamed`)).toHaveCount(0, { timeout: 60_000 });
     expect(issues).toStrictEqual([]);
   });
 
@@ -79,7 +93,7 @@ test.describe("state stories", () => {
     await page.goto("/projects/demo");
     await settle(page);
     await page.getByRole("tab", { name: "States" }).click();
-    const row = page.locator("tr", { hasText: "seeded-baseline" });
+    const row = stateRow(page, "seeded-baseline");
     await row.getByRole("button", { name: "Check out" }).click();
     const dialog = page.locator("dialog[open]");
     await expect(dialog.getByText("schema matches").first()).toBeVisible({ timeout: 30_000 });
@@ -87,13 +101,17 @@ test.describe("state stories", () => {
     await expect(dialog.getByText("A stash state is taken first")).toBeVisible();
     await dialog.getByRole("button", { name: "Check out" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
-    await page.getByRole("tab", { name: "Checkouts" }).click();
+    await page.getByRole("tab", { name: "History" }).click();
     const history = page.locator("tr", { hasText: "seeded-baseline" }).first();
-    await expect(history.getByText("succeeded")).toBeVisible({ timeout: 90_000 });
-    await expect(history.getByText("restored").first()).toBeVisible();
+    // The list reports the outcome in a person's words: a succeeded job reads "restored".
+    await expect(history.getByText("restored", { exact: true }).first()).toBeVisible({
+      timeout: 90_000,
+    });
+    // And every database it touched says so by name, which is the whole point of story 84.
+    await expect(history.getByText(/^\S.*: restored$/).first()).toBeVisible();
     await page.getByRole("tab", { name: "States" }).click();
     await page.getByRole("switch", { name: "Show stashes" }).click();
-    await expect(page.locator("tr", { hasText: "stash" }).first()).toBeVisible();
+    await expect(stateRow(page, "stash").first()).toBeVisible();
     expect(issues).toStrictEqual([]);
   });
 
@@ -104,7 +122,7 @@ test.describe("state stories", () => {
     watch(page, issues);
     await page.goto("/projects/demo");
     await settle(page);
-    await page.getByRole("tab", { name: "Checkouts" }).click();
+    await page.getByRole("tab", { name: "History" }).click();
     const history = page.locator("tr", { hasText: "seeded-baseline" }).first();
     await expect(history.getByRole("button", { name: "Retry" })).toBeDisabled();
     await history.getByRole("button", { name: "Details" }).click();
@@ -162,11 +180,13 @@ test.describe("state stories", () => {
     await expect(page.locator("dialog[open]")).toHaveCount(1);
     await page.keyboard.press("Escape");
     await expect(page.locator("dialog[open]")).toHaveCount(0);
-    const csv = await row.getByRole("link", { name: "CSV" }).getAttribute("href");
+    // Export and delete moved into the row's overflow; Details is the only control still out front.
+    const menu = await rowMenu(row);
+    const csv = await menu.getByRole("link", { name: "Export CSV" }).getAttribute("href");
     const exported = await page.request.get(String(csv));
     expect(exported.status()).toBe(200);
     expect(exported.headers()["content-type"]).toContain("text/csv");
-    await row.getByRole("button", { name: "Delete" }).click();
+    await menu.getByRole("button", { name: "Delete" }).click();
     await expect(page.locator("tr", { hasText: "live database" })).toHaveCount(0);
     expect(issues).toStrictEqual([]);
   });
@@ -190,32 +210,34 @@ test.describe("state stories", () => {
       buffer: Buffer.from(csv),
     });
     await expect(wizard.getByRole("columnheader", { name: "email" })).toBeVisible();
-    await wizard.getByLabel("Database adapter").selectOption({ label: postgres.name });
-    await wizard.getByLabel("Table").selectOption(table);
-    await expect(wizard.getByLabel("email source")).toHaveValue("email");
-    await wizard.getByLabel("email transform").selectOption("trim");
-    await wizard.getByLabel("Mapping name").fill(`map-${STAMP}`);
-    const sample = await wizard.getByRole("link", { name: "CSV" }).getAttribute("href");
+    await wizard.getByRole("combobox", { name: "Database" }).selectOption({ label: postgres.name });
+    await wizard.getByRole("combobox", { name: "Table" }).selectOption(table);
+    await expect(wizard.getByLabel("email: file column")).toHaveValue("email");
+    await wizard.getByLabel("email: adjust the value").selectOption("trim");
+    await wizard.getByLabel("Save this mapping as").fill(`map-${STAMP}`);
+    const sample = await wizard.getByRole("link", { name: "Sample CSV" }).getAttribute("href");
     expect((await page.request.get(String(sample))).status()).toBe(200);
-    await wizard.getByRole("button", { name: "Dry run" }).click();
-    await expect(wizard.getByText(/Dry run: .*skipped 1 · failed 1/)).toBeVisible({
+    await wizard.getByRole("button", { name: "Preview import" }).click();
+    await expect(wizard.getByText("Preview only — nothing has been imported yet.")).toBeVisible({
       timeout: 90_000,
     });
+    // The counts as a sentence: one row of the two validated, the other did not (defect 1).
+    await expect(wizard.getByText("1 row ready. 1 row will be rejected.")).toBeVisible();
     await expect(wizard.getByText(/row \d+: balance/)).toBeVisible();
-    await wizard.getByRole("button", { name: "Run import" }).click();
-    await expect(wizard.getByText(/Import: inserted 1 .* failed 1/)).toBeVisible({
-      timeout: 90_000,
-    });
+    await wizard.getByRole("button", { name: "Import 1 row", exact: true }).click();
+    await expect(wizard.getByText("Import complete.")).toBeVisible({ timeout: 90_000 });
+    await expect(wizard.getByText("Imported 1 row. 1 row was rejected.")).toBeVisible();
     await expect(wizard.getByText("A stash was taken first")).toBeVisible();
     const rejected = await wizard.getByRole("link", { name: "Rejected rows" }).getAttribute("href");
     const rejectedFile = await page.request.get(String(rejected));
     expect(rejectedFile.status()).toBe(200);
     expect(await rejectedFile.text()).toContain(`imp-${STAMP}-2@x.io`);
-    await wizard.getByText("Close", { exact: true }).click();
-    const run = page.locator("main tbody tr", { hasText: "inserted 1" }).first();
-    await expect(run.getByText("failed 1")).toBeVisible();
+    await wizard.getByRole("button", { name: "Done" }).click();
+    const run = page
+      .locator("main tbody tr", { hasText: "Imported 1 row. 1 row was rejected." })
+      .first();
     await run.getByRole("button", { name: "Report" }).click();
-    await expect(page.locator("dialog[open]").getByText(/Import: inserted 1/)).toBeVisible();
+    await expect(page.locator("dialog[open]").getByText("Import complete.")).toBeVisible();
     await page.keyboard.press("Escape");
     await run.getByRole("button", { name: "Re-import rejected" }).click();
     await expect(
@@ -223,13 +245,13 @@ test.describe("state stories", () => {
     ).toBeVisible();
     await page
       .locator("dialog[open]")
-      .getByLabel("Database adapter")
+      .getByRole("combobox", { name: "Database" })
       .selectOption({ label: postgres.name });
     await page
       .locator("dialog[open]")
-      .getByLabel("Saved mapping")
+      .getByLabel("Reuse a saved mapping")
       .selectOption({ label: `map-${STAMP}` });
-    await expect(page.locator("dialog[open]").getByLabel("Mapping name")).toHaveValue(
+    await expect(page.locator("dialog[open]").getByLabel("Save this mapping as")).toHaveValue(
       `map-${STAMP}`
     );
     await page.keyboard.press("Escape");
@@ -252,8 +274,8 @@ test.describe("state stories", () => {
     // Ticking one adapter turns the default "every adapter" into that subset (story 62).
     await take.locator("fieldset label", { hasText: postgres.name }).locator("input").click();
     await take.getByRole("button", { name: "Take" }).click();
-    const row = page.locator("tr", { hasText: name });
-    await expect(row.getByText("ready")).toBeVisible({ timeout: 60_000 });
+    const row = stateRow(page, name);
+    await ready(row);
     await expect(row).toContainText(postgres.name);
     await expect(row).not.toContainText("shop-mongo");
     await row.getByRole("button", { name: "Check out" }).click();
@@ -261,9 +283,11 @@ test.describe("state stories", () => {
     await expect(dialog.getByText("not in state").first()).toBeVisible({ timeout: 30_000 });
     await dialog.getByRole("button", { name: "Check out" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
-    await page.getByRole("tab", { name: "Checkouts" }).click();
+    await page.getByRole("tab", { name: "History" }).click();
     const history = page.locator("tr", { hasText: name }).first();
-    await expect(history.getByText("succeeded")).toBeVisible({ timeout: 90_000 });
+    await expect(history.getByText("restored", { exact: true }).first()).toBeVisible({
+      timeout: 90_000,
+    });
     await expect(history.getByText(`${postgres.name}: restored`)).toBeVisible();
     // Untouched adapters are not checkout rows: the preflight said so, the history stays honest.
     await expect(history).not.toContainText("shop-mongo");
@@ -273,7 +297,7 @@ test.describe("state stories", () => {
       await page.locator("dialog[open]").getByRole("button", { name: "Delete state" }).click();
       await expect(page.locator("dialog[open]")).toHaveCount(0, { timeout: 3_000 });
     }).toPass({ timeout: 90_000 });
-    await expect(page.locator("tr", { hasText: name })).toHaveCount(0, { timeout: 60_000 });
+    await expect(stateRow(page, name)).toHaveCount(0, { timeout: 60_000 });
     expect(issues).toStrictEqual([]);
   });
 });
@@ -287,9 +311,9 @@ test.describe("viewer state stories", () => {
     await page.goto("/projects/demo");
     await settle(page);
     await page.getByRole("tab", { name: "States" }).click();
-    await expect(page.locator("tr", { hasText: "seeded-baseline" })).toBeVisible();
+    await expect(stateRow(page, "seeded-baseline")).toBeVisible();
     // The footer counts the rows it is showing, so a wrong or missing count fails here.
-    const rows = await page.locator("main tbody tr").count();
+    const rows = await page.getByRole("list", { name: "States" }).locator("li").count();
     await expect(page.getByText(new RegExp(`^${rows} states( so far)?$`))).toBeVisible();
     await expect(page.getByRole("button", { name: "Take state" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Check out" })).toHaveCount(0);

@@ -63,9 +63,14 @@ test.describe("README screens", () => {
       await form.getByLabel("Tags (comma separated)").fill(tags);
       await form.getByRole("button", { name: "Take" }).click();
       await expect(page.locator("dialog[open]")).toHaveCount(0);
-      await expect(page.locator("tr", { hasText: name }).getByText("ready")).toBeVisible({
-        timeout: 60_000,
-      });
+      // A ready state prints no badge; it becomes checkout-able, and that is what to wait for.
+      await expect(
+        page
+          .getByRole("list", { name: "States" })
+          .locator("li")
+          .filter({ hasText: name })
+          .getByRole("button", { name: "Check out" })
+      ).toBeEnabled({ timeout: 60_000 });
     };
     await take("checkout-flow-baseline", "release-2.4");
     await take("after-the-failed-refund", "bug-4182");
@@ -85,7 +90,7 @@ test.describe("README screens", () => {
     await shoot("/projects", "projects");
     await shoot("/projects/demo", "adapters", "Adapters");
     await shoot("/projects/demo", "states", "States");
-    await shoot("/projects/demo", "checkouts", "Checkouts");
+    await shoot("/projects/demo", "checkouts", "History");
     await shoot("/projects/demo", "imports", "Imports");
 
     // The diff is worth showing open: the list says how many rows changed, the dialog says which.

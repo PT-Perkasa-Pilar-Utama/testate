@@ -30,7 +30,7 @@ test.describe("jobs", () => {
     const finished = page.locator("main tbody tr", { hasText: "succeeded" }).first();
     await expect(finished).toBeVisible();
     // A snapshot, a checkout, an import: whichever ran first, the row says which kind it was.
-    await expect(finished).toContainText(/snapshot|checkout|import|diff/);
+    await expect(finished).toContainText(/snapshot|checkout|import|diff/i);
     // The one deterministic half of cancel: a job that already succeeded cannot be stopped, so the
     // control must not be there to press.
     await expect(finished.getByRole("button", { name: "Cancel" })).toHaveCount(0);

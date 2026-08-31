@@ -31,7 +31,6 @@ const SKIP = new Set([
   "Retry",
   "Repair counters",
   "New diff",
-  "New hook",
   "New import",
   "Migrate store",
   "Edit adapter",
@@ -172,8 +171,14 @@ export async function crawl(page: Page, path: string, seed: number): Promise<Cli
     }
     const control = interactive(page).nth(index);
     if ((await control.count()) === 0) break;
-    const label = ((await control.textContent()) ?? "").trim().slice(0, 40);
-    if (SKIP.has(label) || (await control.isDisabled())) continue;
+    // Every read gets the same deadline as the click. A screen that falls into its error boundary
+    // between two of these calls leaves the locator waiting for an element that is never coming
+    // back, and an untimed read then burns the whole test's budget instead of one step's.
+    const label = ((await control.textContent({ timeout: CLICK_TIMEOUT }).catch(() => null)) ?? "")
+      .trim()
+      .slice(0, 40);
+    const disabled = await control.isDisabled({ timeout: CLICK_TIMEOUT }).catch(() => true);
+    if (SKIP.has(label) || disabled) continue;
     await control.click({ timeout: CLICK_TIMEOUT }).catch(() => undefined);
     await settle(page);
     const result = await afterClick(page, path, seed * 100 + index);
@@ -207,6 +212,14 @@ async function afterClick(
 export async function rowMenu(row: Locator): Promise<Locator> {
   await row.getByRole("group").click();
   return row;
+}
+
+/**
+ * One entry in the states timeline, which replaced the states table. The list carries an
+ * accessible name so a spec addresses an entry without guessing at markup.
+ */
+export function stateRow(page: Page, name: string): Locator {
+  return page.getByRole("list", { name: "States" }).locator("li").filter({ hasText: name });
 }
 
 /** The rows holding data. The empty state is a row as well, and counting it hides an empty table. */

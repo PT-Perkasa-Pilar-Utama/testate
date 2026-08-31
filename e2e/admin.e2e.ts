@@ -1,11 +1,26 @@
 import { expect, test } from "@playwright/test";
 
-import { demoAdapter } from "./lib/api.ts";
+import { apiContext, demoAdapter } from "./lib/api.ts";
 import { settle, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
 const STAMP = Date.now().toString(36);
+
+/**
+ * The PolicyDialog names its exact target ("Policy for public.users.email", policies.view.tsx),
+ * so read that back instead of guessing a table from row order. The column never holds a dot; the
+ * table might (schema.table), so the split takes the last dot.
+ */
+function parsePolicyDialogTitle(title: string | null) {
+  const match = /^Policy for (.+)\.([^.]+)$/.exec(title ?? "");
+  const table = match?.[1];
+  const column = match?.[2];
+  if (table === undefined || column === undefined) {
+    throw new Error(`could not read table/column from dialog title "${String(title)}"`);
+  }
+  return { table, column };
+}
 
 test.describe("admin gap stories", () => {
   test.use({ storageState: statePath("admin") });
@@ -63,7 +78,12 @@ test.describe("admin gap stories", () => {
       .fill("1");
     await page.getByRole("button", { name: "Save" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
-    await expect(page.getByText(/% used/)).toBeVisible();
+    // The quota chip (project.view.tsx QuotaChip) reports bytes on a meter, not a percentage;
+    // check the meter itself picked up the new 1 GiB ceiling.
+    await expect(page.getByRole("meter", { name: "Quota" })).toHaveAttribute(
+      "aria-valuemax",
+      "1073741824"
+    );
     await page.getByRole("button", { name: "Delete" }).click();
     const plan = page.locator("dialog[open]");
     // The modal says what goes before it takes the slug: the restore, and the rows behind it.
@@ -93,19 +113,34 @@ test.describe("admin gap stories", () => {
     await settle(page);
     const row = page.locator("tr", { hasText: "email" }).first();
     await row.getByRole("button", { name: "Add" }).click();
+    const target = parsePolicyDialogTitle(
+      await page.locator("dialog[open]").getByRole("heading", { level: 2 }).textContent()
+    );
     await page.locator("dialog[open]").getByLabel("Mask").selectOption("redact");
     await page.getByRole("button", { name: "Save" }).click();
     await expect(row.getByText("mask redact")).toBeVisible();
     await row.getByRole("button", { name: "Lock" }).click();
     await expect(row.getByText("locked")).toBeVisible();
+
+    // The screen moved behind `admin` (docs/UI_REWORK.md: "keep the engine, hide the screen"), so
+    // qa gets the role banner, not the table — checking for a missing Remove button would now pass
+    // whether or not locking still works. Hit the engine directly instead: the router lets qa
+    // through the DELETE (data.router.ts requireRole("qa")); only the lock check in
+    // data.policies.ts refuses it.
     const qa = await browser.newContext({ storageState: statePath("qa") });
     const qaPage = await qa.newPage();
     await qaPage.goto(path);
     await settle(qaPage);
-    const qaRow = qaPage.locator("tr", { hasText: "email" }).first();
-    await expect(qaRow.getByText("locked")).toBeVisible();
-    await expect(qaRow.getByRole("button", { name: "Remove" })).toHaveCount(0);
+    await expect(qaPage.getByText("Your role cannot open this page.")).toBeVisible();
+    await expect(qaPage.locator("tr", { hasText: "email" })).toHaveCount(0);
     await qa.close();
+    const qaApi = await apiContext("qa");
+    const denied = await qaApi.delete(
+      `projects/demo/adapters/${postgres.id}/policies/${encodeURIComponent(target.table)}/${encodeURIComponent(target.column)}`
+    );
+    expect(denied.status()).toBe(403);
+    await qaApi.dispose();
+
     await row.getByRole("button", { name: "Unlock" }).click();
     await expect(row.getByText("locked")).toHaveCount(0);
     await row.getByRole("button", { name: "Remove" }).click();
@@ -119,15 +154,17 @@ test.describe("admin gap stories", () => {
     watch(page, issues);
     await page.goto("/settings");
     await settle(page);
-    const field = page.getByLabel("retention.stash_keep");
+    // Labels were rewritten into plain language (settings.view.tsx LABELS); the raw key never
+    // reaches the screen.
+    const field = page.getByLabel("Stashes to keep");
     const before = Number(await field.inputValue());
     await field.fill(String(before + 1));
     await page.getByRole("button", { name: "Save retention" }).click();
     await expect(page.getByText("retention saved")).toBeVisible();
     await page.reload();
     await settle(page);
-    await expect(page.getByLabel("retention.stash_keep")).toHaveValue(String(before + 1));
-    await page.getByLabel("retention.stash_keep").fill(String(before));
+    await expect(page.getByLabel("Stashes to keep")).toHaveValue(String(before + 1));
+    await page.getByLabel("Stashes to keep").fill(String(before));
     await page.getByRole("button", { name: "Save retention" }).click();
     await expect(page.getByText("retention saved")).toBeVisible();
     expect(issues).toStrictEqual([]);

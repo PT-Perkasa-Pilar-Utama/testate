@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { demoAdapter, firstTable } from "./lib/api.ts";
-import { openTab, settle, watch } from "./lib/crawl.ts";
+import { dataRows, openTab, rowMenu, settle, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
@@ -26,17 +26,17 @@ test.describe("qa stories", () => {
     await page.getByRole("link", { name: `E2E ${STAMP}` }).click();
     await settle(page);
     await expect(page.getByRole("heading", { name: `E2E ${STAMP}` })).toBeVisible();
-    await expect(page.getByText("HEAD:")).toBeVisible();
+    await expect(page.getByText("HEAD", { exact: true })).toBeVisible();
     await expect(page.getByText(`e2e-${STAMP}`, { exact: true })).toBeVisible();
-    // A new project is every table's empty case: it used to be a header row over blank space, and
-    // the demo project the rest of the suite runs against is never empty enough to show it.
-    await expect(page.getByText("No adapters yet.")).toBeVisible();
+    // A project opens on States now, so its empty case needs no tab switch; every other tab's is
+    // every table's empty case: it used to be a header row over blank space, and the demo project
+    // the rest of the suite runs against is never empty enough to show it.
+    await expect(page.getByText("No states yet.")).toBeVisible();
     for (const [tab, message] of [
-      ["States", "No states yet."],
-      ["Checkouts", "No checkouts yet."],
-      ["Diffs", "No diffs yet."],
       ["Imports", "No imports yet."],
-      ["Hooks", "No hooks yet."],
+      ["Diffs", "No diffs yet."],
+      ["History", "No restores yet."],
+      ["Adapters", "No adapters yet."],
     ] as const) {
       await openTab(page, tab);
       await expect(page.getByText(message)).toBeVisible();
@@ -49,7 +49,7 @@ test.describe("qa stories", () => {
   }) => {
     const issues: Issue[] = [];
     watch(page, issues);
-    await page.goto("/projects/demo");
+    await page.goto("/projects/demo?tab=adapters");
     await settle(page);
     await page.getByRole("button", { name: "New adapter" }).click();
     const dialog = page.locator("dialog[open]");
@@ -110,16 +110,14 @@ test.describe("qa stories", () => {
     await expect(page.locator("dialog[open]")).toHaveCount(0);
     await expect(mine).toHaveCount(before + 2);
     const row = page.locator("main tbody tr", { hasText: uuidV7 }).first();
-    await row.getByRole("button", { name: "Fixture" }).click();
+    // Fixture and Delete moved into the row's overflow menu; Edit is the only action left plain.
+    await (await rowMenu(row)).getByRole("button", { name: "Extract fixture" }).click();
     await expect(page.locator("dialog[open]").getByText(/INSERT INTO/)).toBeVisible();
     await page.locator("dialog[open]").getByText("Close", { exact: true }).click();
     // Wait for each delete to land before clicking the next: the grid reloads between them.
     for (const remaining of [before + 1, before]) {
-      await page
-        .locator("main tbody tr", { hasText: uuidV7 })
-        .first()
-        .getByRole("button", { name: "Delete" })
-        .click();
+      const target = page.locator("main tbody tr", { hasText: uuidV7 }).first();
+      await (await rowMenu(target)).getByRole("button", { name: "Delete row" }).click();
       await expect(mine).toHaveCount(remaining);
     }
     await page.getByRole("switch", { name: "Write mode" }).click();
@@ -132,7 +130,9 @@ test.describe("qa stories", () => {
     const storage = await demoAdapter({ kind: "storage" });
     await page.goto(`/projects/demo/adapters/${storage.id}/files`);
     await settle(page);
-    await page.locator("main a", { hasText: /\/$/ }).first().click();
+    // Entries are buttons now, not anchors; the dev seed's only object is imports/customers.csv,
+    // so root shows exactly one folder named for that prefix.
+    await page.getByRole("button", { name: "imports" }).click();
     await settle(page);
     const href = await page.locator("main a", { hasText: "Download" }).first().getAttribute("href");
     expect(href).toContain("/entries/download?path=");
@@ -176,7 +176,10 @@ test.describe("viewer stories", () => {
     await page.goto(`/projects/demo/adapters/${postgres.id}/tables/${encodeURIComponent(table)}`);
     await settle(page);
     await expect(page.getByText("Write mode")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Fixture" }).first()).toBeVisible();
+    // Fixture extraction lives in the row's overflow menu now; a viewer still has it, unlike write mode.
+    const row = dataRows(page).first();
+    await rowMenu(row);
+    await expect(row.getByRole("button", { name: "Extract fixture" })).toBeVisible();
   });
 });
 
@@ -243,7 +246,8 @@ test.describe("admin stories", () => {
     await page.getByLabel("Action").fill("auth.login");
     await expect(page.getByText("auth.login").first()).toBeVisible();
     await page.getByLabel("Action").fill("nothing.matches.this");
-    await expect(page.getByText("Nothing in the audit log yet.")).toBeVisible();
+    // A filter that matches nothing reads differently from a log with nothing in it at all.
+    await expect(page.getByText("No rows match this filter.")).toBeVisible();
     expect(issues).toStrictEqual([]);
   });
 
@@ -276,7 +280,9 @@ test.describe("admin stories", () => {
     watch(page, issues);
     await page.goto("/settings");
     await settle(page);
-    await expect(page.getByText("Snapshot store")).toBeVisible();
+    // "Snapshot store" also names a row in the health card above; scope to the storage section's
+    // own span (the health card's version is a <dt>) so this stays a single match.
+    await expect(page.locator("main span", { hasText: "Snapshot store" })).toBeVisible();
     await expect(page.locator("main code").first()).toBeVisible();
     expect(issues).toStrictEqual([]);
   });

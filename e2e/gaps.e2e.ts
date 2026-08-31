@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 import { demoAdapter, demoTables, swallow } from "./lib/api.ts";
 import { dataRows, settle, watch } from "./lib/crawl.ts";
@@ -12,6 +13,29 @@ async function tableNamed(adapterId: string, suffix: string): Promise<string> {
   const found = (await demoTables(adapterId)).find((name) => name.endsWith(suffix));
   if (found === undefined) throw new Error(`no table ends with ${suffix}`);
   return found;
+}
+
+/**
+ * A qa write session on an adapter is one at a time (`data.sessions.ts`, keyed by adapter + user)
+ * with a 30-minute idle timeout, so a session another spec leaves open by dying mid-write-mode
+ * blocks every later `start()` for the rest of the run with a 409, and the switch in the toolbar
+ * never turns the "Insert row" button on. Opening (then closing) our own session first clears a
+ * stale one before this test needs the real thing.
+ */
+async function clearWriteSession(page: Page, slug: string, adapterId: string): Promise<void> {
+  const base = `http://localhost:${API_PORT}/api/v1/projects/${slug}/adapters/${adapterId}/write-sessions`;
+  const headers = { "X-Testate-Request": "1" };
+  const opened = await page.request.post(base, { headers, data: { foreign_key_checks: true } });
+  if (opened.status() === 201) {
+    const body: { data: { id: string } } = await opened.json();
+    await page.request.delete(`${base}/${body.data.id}`, { headers });
+    return;
+  }
+  if (opened.status() === 409) {
+    const body: { error: { details?: { write_session_id?: string } } } = await opened.json();
+    const stale = body.error.details?.write_session_id;
+    if (stale !== undefined) await page.request.delete(`${base}/${stale}`, { headers });
+  }
 }
 
 test.describe("qa gap stories", () => {
@@ -34,7 +58,9 @@ test.describe("qa gap stories", () => {
     await page.getByLabel("Filter value").fill(`nobody-${STAMP}@x.io`);
     await page.getByRole("button", { name: "Add filter" }).click();
     await settle(page);
-    await expect(page.getByText("No rows match. Clear a filter to see more.")).toBeVisible();
+    await expect(
+      page.getByText("No rows match your filters. Remove one above to see more.")
+    ).toBeVisible();
     await expect(dataRows(page)).toHaveCount(0);
     await page.getByRole("button", { name: "Remove filter" }).click();
     await settle(page);
@@ -102,6 +128,7 @@ test.describe("qa gap stories", () => {
     const table = await tableNamed(postgres.id, "orders");
     await page.goto(`/projects/demo/adapters/${postgres.id}/tables/${encodeURIComponent(table)}`);
     await settle(page);
+    await clearWriteSession(page, "demo", postgres.id);
     await page.getByRole("switch", { name: "Write mode" }).click();
     await page.getByRole("button", { name: "Insert row" }).click();
     const field = page
@@ -143,13 +170,16 @@ test.describe("qa gap stories", () => {
     await expect(wizard.getByRole("columnheader", { name: "email" })).toBeVisible({
       timeout: 60_000,
     });
-    await wizard.getByLabel("Database adapter").selectOption({ label: postgres.name });
-    await wizard.getByLabel("Table").selectOption(table);
-    await wizard.getByLabel("Mapping name").fill(`storage-${STAMP}`);
-    await wizard.getByRole("button", { name: "Dry run" }).click();
-    await expect(wizard.getByText(/Dry run: .*skipped 2 · failed 0/)).toBeVisible({
+    await wizard.getByRole("combobox", { name: "Database" }).selectOption({ label: postgres.name });
+    await wizard.getByRole("combobox", { name: "Table" }).selectOption(table);
+    await wizard.getByLabel("Save this mapping as").fill(`storage-${STAMP}`);
+    await wizard.getByRole("button", { name: "Preview import" }).click();
+    await expect(wizard.getByText("Preview only — nothing has been imported yet.")).toBeVisible({
       timeout: 90_000,
     });
+    // Only rendered when failed===0 and skipped===2, so this still pins the dry run's known
+    // 2-skipped/0-failed result, not just its rewritten wording.
+    await expect(wizard.getByText("All 2 rows look ready to import.")).toBeVisible();
     await page.keyboard.press("Escape");
     expect(issues).toStrictEqual([]);
   });

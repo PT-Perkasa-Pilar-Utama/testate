@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import { demoAdapter, firstTable } from "./lib/api.ts";
-import { dataRows, settle, watch } from "./lib/crawl.ts";
+import { dataRows, rowMenu, settle, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
@@ -65,28 +65,11 @@ test.describe("qa flows", () => {
     await (await fieldInput(page, "email")).fill("e2e-edited@x.io");
     await page.getByRole("button", { name: "Save" }).click();
     await expect(page.getByText("e2e-edited@x.io")).toBeVisible();
-    await page
-      .locator("tr", { hasText: "e2e-edited@x.io" })
-      .getByRole("button", { name: "Delete" })
-      .click();
+    const editedRow = page.locator("tr", { hasText: "e2e-edited@x.io" });
+    await (await rowMenu(editedRow)).getByRole("button", { name: "Delete row" }).click();
     await expect(page.getByText("e2e-edited@x.io")).toHaveCount(0);
     await page.getByRole("switch", { name: "Write mode" }).click();
     await expect(page.getByRole("button", { name: "Insert row" })).toHaveCount(0);
-    expect(issues).toStrictEqual([]);
-  });
-
-  test("@story-146 a column policy is added, shown in the form, and removed", async ({ page }) => {
-    const issues: Issue[] = [];
-    watch(page, issues);
-    await page.goto(`${await postgresBase()}/policies`);
-    await settle(page);
-    const row = page.locator("tr", { hasText: "email" }).first();
-    await row.getByRole("button", { name: "Add" }).click();
-    await page.locator("dialog[open]").getByLabel("Mask").selectOption("redact");
-    await page.getByRole("button", { name: "Save" }).click();
-    await expect(row.getByText("mask redact")).toBeVisible();
-    await row.getByRole("button", { name: "Remove" }).click();
-    await expect(row.getByText("mask redact")).toHaveCount(0);
     expect(issues).toStrictEqual([]);
   });
 
@@ -102,7 +85,7 @@ test.describe("qa flows", () => {
     await expect(page.getByText(new RegExp(`^${rows} entries( so far)?$`))).toBeVisible();
     await page.getByPlaceholder("filter by name").fill("no-such-file-anywhere");
     await settle(page);
-    await expect(page.getByText("Nothing here. This directory is empty.")).toBeVisible();
+    await expect(page.getByText('No files match "no-such-file-anywhere".')).toBeVisible();
     await expect(page.getByText("0 entries")).toBeVisible();
     expect(issues).toStrictEqual([]);
   });
@@ -115,13 +98,35 @@ test.describe("qa flows", () => {
     const storage = await demoAdapter({ kind: "storage" });
     await page.goto(`/projects/demo/adapters/${storage.id}/files`);
     await settle(page);
-    const folder = page.locator("main a", { hasText: /\/$/ }).first();
-    await folder.click();
+    // The seed writes exactly one file, imports/customers.csv (ops.seeds.ts), so the root holds one
+    // folder and that folder holds one file: entries are buttons now, not anchors, and carry no
+    // trailing slash.
+    await page.getByRole("button", { name: "imports" }).click();
     await settle(page);
-    const file = page.locator("main tbody button").first();
-    await file.click();
+    await page.getByRole("button", { name: "customers.csv" }).click();
     await expect(page.locator("dialog[open]")).toBeVisible();
     await page.locator("dialog[open]").getByText("Close", { exact: true }).click();
+    expect(issues).toStrictEqual([]);
+  });
+});
+
+// Column policies are admin work now (routes.ts: masking rules moved out of a tester's way), so
+// this story runs with an admin session rather than under "qa flows".
+test.describe("admin data flows", () => {
+  test.use({ storageState: statePath("admin") });
+
+  test("@story-146 a column policy is added, shown in the form, and removed", async ({ page }) => {
+    const issues: Issue[] = [];
+    watch(page, issues);
+    await page.goto(`${await postgresBase()}/policies`);
+    await settle(page);
+    const row = page.locator("tr", { hasText: "email" }).first();
+    await row.getByRole("button", { name: "Add" }).click();
+    await page.locator("dialog[open]").getByLabel("Mask").selectOption("redact");
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(row.getByText("mask redact")).toBeVisible();
+    await row.getByRole("button", { name: "Remove" }).click();
+    await expect(row.getByText("mask redact")).toHaveCount(0);
     expect(issues).toStrictEqual([]);
   });
 });

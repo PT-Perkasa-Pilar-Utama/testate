@@ -76,8 +76,15 @@ test.describe("the grid under a hand that never waits", () => {
         .catch(() => undefined);
       // The two things the crawler does here that the first version of this spec did not: the
       // fixture dialog and the row form, both of which mount their own async reads over the grid.
+      // Extracting a fixture moved into the row's overflow menu, so the menu has to open first.
       await page
-        .getByRole("button", { name: "Fixture" })
+        .locator("main tbody")
+        .getByRole("group")
+        .first()
+        .click(optional)
+        .catch(() => undefined);
+      await page
+        .getByRole("button", { name: "Extract fixture" })
         .first()
         .click(optional)
         .catch(() => undefined);

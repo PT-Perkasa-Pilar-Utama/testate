@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { settle, watch } from "./lib/crawl.ts";
+import { settle, stateRow, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
@@ -16,7 +16,8 @@ test.describe("adapter settings stories", () => {
     test.setTimeout(180_000);
     const issues: Issue[] = [];
     watch(page, issues);
-    await page.goto("/projects/demo");
+    // A project opens on States now; adapters are plumbing and no longer the front door.
+    await page.goto("/projects/demo?tab=adapters");
     await settle(page);
     await page.getByRole("button", { name: "New adapter" }).click();
     const create = page.locator("dialog[open]");
@@ -29,7 +30,7 @@ test.describe("adapter settings stories", () => {
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
     await page.getByRole("tab", { name: "States" }).click();
-    await expect(page.locator("tr", { hasText: `init-cfg-${STAMP}` })).toBeVisible({
+    await expect(stateRow(page, `init-cfg-${STAMP}`)).toBeVisible({
       timeout: 60_000,
     });
     await page.getByRole("tab", { name: "Adapters" }).click();
@@ -55,7 +56,7 @@ test.describe("adapter settings stories", () => {
     await page.goto("/projects/demo");
     await settle(page);
     await page.getByRole("tab", { name: "States" }).click();
-    await expect(page.locator("tr", { hasText: `init-cfg-${STAMP}-2` })).toBeVisible({
+    await expect(stateRow(page, `init-cfg-${STAMP}-2`)).toBeVisible({
       timeout: 60_000,
     });
     await page.getByRole("tab", { name: "Adapters" }).click();
@@ -65,14 +66,15 @@ test.describe("adapter settings stories", () => {
     const plan = page.locator("dialog[open]");
     await expect(plan.getByText(/init state/)).toBeVisible();
     await plan.locator('button[type="submit"]').click();
-    await expect(page).toHaveURL(/\/projects\/demo$/);
+    // Deleting drops you back on the tab you came from, not on the project's front door.
+    await expect(page).toHaveURL(/\/projects\/demo\?tab=adapters$/);
     await settle(page);
     await expect(page.getByRole("link", { name: `cfg-${STAMP}-2` })).toHaveCount(0, {
       timeout: 60_000,
     });
     await page.getByRole("tab", { name: "States" }).click();
     // Both init states outlive the adapter (story 31): the first target and the retarget.
-    await expect(page.locator("tr", { hasText: `init-cfg-${STAMP}` })).toHaveCount(2);
+    await expect(stateRow(page, `init-cfg-${STAMP}`)).toHaveCount(2);
     expect(issues).toStrictEqual([]);
   });
 });

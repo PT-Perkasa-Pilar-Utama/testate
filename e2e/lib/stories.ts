@@ -13,10 +13,6 @@ const ROOT = join(import.meta.dirname, "..", "..");
  */
 const NON_UI: [number, number][] = [];
 
-/**
- * Stories whose screen does not exist in the SPA yet (the project tabs list states, checkouts,
- * diffs, imports, and hooks but offer no actions). E2E cannot cover them until those cards land.
- */
 /** Stories whose screen does not exist in the SPA yet; empty since 2026-08-29. */
 const NO_SCREEN: [number, number][] = [];
 
