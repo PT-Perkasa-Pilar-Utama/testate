@@ -215,7 +215,18 @@ Full detail: [docs/AGENT_ACCESS.md](docs/AGENT_ACCESS.md).
 
 ## 6. How to integrate into a CI/CD pipeline
 
-The full REST API is available for automation; nothing here is dashboard-only. The endpoint matrix (every resource, its operations, and their status) lives in [docs/api-specs/_index.md](docs/api-specs/_index.md), with one detail document per resource alongside it. A live, generated copy of the same contract is served at `GET /api/v1/openapi.json` from a running instance.
+The full REST API is available for automation; nothing here is dashboard-only. The endpoint matrix (every resource, its operations, and their status) lives in [docs/api-specs/_index.md](docs/api-specs/_index.md), with one detail document per resource alongside it.
+
+**Browse the API in the running instance.** Every endpoint, its parameters and its responses, with a request you can send from the page:
+
+| Address                | What it serves                                           |
+| ---------------------- | -------------------------------------------------------- |
+| `/api/v1/docs`         | the reference, rendered by [Scalar](https://scalar.com)  |
+| `/api/v1/openapi.json` | the same contract as OpenAPI 3.1, for a client generator |
+
+Open <http://localhost:7378/api/v1/docs> after the quick start above. It is generated from the routes rather than written by hand, so it describes the version you are running: 101 paths at 1.1.0-alpha.
+
+Both addresses answer without a token, since they describe the shape of the API and never touch your data. Put them behind your proxy if you would rather they were not public.
 
 **Authentication.** Create a token under **Tokens** (or `POST /api/v1/tokens`, admin only) with kind `standard` and a role. `qa` can run checkouts, imports, and snapshots; `viewer` can only read. Send it as `Authorization: Bearer tst_<token>`. There is no cookie and no CSRF header to add; those apply to the dashboard's own session only.
 
