@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import type { Job, JsonObject, Settings } from "@testate/shared";
+import type { HealthAdmin, Job, JsonObject, Settings } from "@testate/shared";
 
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
@@ -21,6 +21,8 @@ export type S3Draft = {
 };
 
 export type SettingsPresenter = Refreshable<Settings> & {
+  /** The same report `GET /health` serves an admin; the standalone screen nothing linked to is gone. */
+  health: Refreshable<HealthAdmin>;
   rows: (section: Section) => SettingRow[];
   drafts: () => Map<string, string>;
   setValue: (key: string, value: string) => void;
@@ -94,6 +96,7 @@ export function migrationBody(driver: "local" | "s3", s3: S3Draft): JsonObject {
 
 export function createSettingsPresenter(): SettingsPresenter {
   const settings = createRefreshable(() => settingsModel.get());
+  const health = createRefreshable(() => settingsModel.health());
   const [drafts, setDrafts] = createSignal(new Map<string, string>());
   const [denyDraft, setDenyDraft] = createSignal<string | null>(null);
   const [migrating, setMigrating] = createSignal(false);
@@ -112,6 +115,7 @@ export function createSettingsPresenter(): SettingsPresenter {
   };
   return {
     ...settings,
+    health,
     rows,
     drafts,
     denyDraft,

@@ -64,8 +64,8 @@ export default function CheckoutsView(props: {
             when={presenter.value().length > 0}
             fallback={
               <EmptyRow>
-                No checkouts yet. Check out a state to put every database in this project back to
-                it.
+                No restores yet. This tab is the record of past restores and the place to retry a
+                failed one. To start a restore, open the States tab and press Check out on a state.
               </EmptyRow>
             }
           >

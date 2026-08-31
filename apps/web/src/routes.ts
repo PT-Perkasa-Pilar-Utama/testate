@@ -17,7 +17,6 @@ export const ROUTE_NAMES = [
   "users",
   "tokens",
   "tools",
-  "health",
 ] as const;
 export type RouteName = (typeof ROUTE_NAMES)[number];
 
@@ -39,5 +38,4 @@ export const ROUTES: readonly RouteDef<RouteName>[] = [
   { name: "users", pattern: "/users", role: "admin" },
   { name: "tokens", pattern: "/tokens", role: "admin" },
   { name: "tools", pattern: "/tools", role: "viewer" },
-  { name: "health", pattern: "/health", role: null },
 ];

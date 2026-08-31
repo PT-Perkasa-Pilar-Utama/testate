@@ -4,19 +4,29 @@ import type { JsonObject, Project, Quota } from "@testate/shared";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
-import { navigate } from "@/lib/router.ts";
+import { navigate, search } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { projectsModel } from "../projects/projects.model.ts";
 import type { DeletionPlan } from "../projects/projects.model.ts";
 
+/**
+ * The work first, the plumbing last. This used to open on Adapters, which is the one tab a tester
+ * never needs: an admin connects the database once and nobody touches it again.
+ *
+ * "Checkouts" is called History because the tab cannot start one. Check out is a button on a state,
+ * which is where a person looks for it, and the tab is where you go when a restore went wrong.
+ */
 export const PROJECT_TABS = [
-  { id: "adapters", label: "Adapters" },
   { id: "states", label: "States" },
-  { id: "checkouts", label: "Checkouts" },
-  { id: "diffs", label: "Diffs" },
   { id: "imports", label: "Imports" },
+  { id: "diffs", label: "Diffs" },
+  { id: "checkouts", label: "History" },
+  { id: "adapters", label: "Adapters" },
 ] as const;
 export type ProjectTab = (typeof PROJECT_TABS)[number]["id"];
+
+const TAB_IDS: readonly string[] = PROJECT_TABS.map((tab) => tab.id);
+const DEFAULT_TAB: ProjectTab = "states";
 
 export type ProjectDraft = { name: string; description: string; quota_gib: string };
 
@@ -54,7 +64,18 @@ export function toUpdateBody(draft: ProjectDraft, admin: boolean): JsonObject {
 export function createProjectPresenter(slug: () => string): ProjectPresenter {
   const project = createRefreshable(() => projectsModel.get(slug()));
   const quota = createRefreshable(() => projectsModel.quota(slug()));
-  const [tab, setTab] = createSignal<ProjectTab>("adapters");
+  /**
+   * The tab lives in the URL, not in a signal. A signal meant a reload always landed on the first
+   * tab and a tab could not be sent to anyone. `search` is a signal, so this stays reactive.
+   */
+  const tab = (): ProjectTab => {
+    const wanted = new URLSearchParams(search()).get("tab") ?? "";
+    // SAFETY: the membership test above narrows `wanted` to one of the literal ids.
+    return TAB_IDS.includes(wanted) ? (wanted as ProjectTab) : DEFAULT_TAB;
+  };
+  // Pushed, not replaced, so Back walks the tabs instead of leaving the project.
+  const setTab = (next: ProjectTab): void =>
+    navigate(`/projects/${encodeURIComponent(slug())}?tab=${next}`);
   const [editing, setEditing] = createSignal(false);
   const [draft, setDraftSignal] = createSignal<ProjectDraft>({
     name: "",

@@ -15,7 +15,6 @@ import AuditView from "@/features/audit/audit.view.tsx";
 import { signOut } from "@/features/auth/auth.presenter.ts";
 import ChangePasswordView from "@/features/auth/change-password.view.tsx";
 import LoginView from "@/features/auth/login.view.tsx";
-import HealthView from "@/features/health/health.view.tsx";
 import JobsView from "@/features/jobs/jobs.view.tsx";
 import ProjectView from "@/features/project/project.view.tsx";
 import ProjectsView from "@/features/projects/projects.view.tsx";
@@ -118,9 +117,6 @@ function Page(props: { match: RouteMatch | null }): JSX.Element {
       </Match>
       <Match when={name() === "account"}>
         <AccountView />
-      </Match>
-      <Match when={name() === "health"}>
-        <HealthView />
       </Match>
     </Switch>
   );
