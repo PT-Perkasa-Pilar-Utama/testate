@@ -32,6 +32,9 @@ export function DetailDialog(props: { presenter: DiffsPresenter }): JSX.Element 
       {(diff) => {
         const totals = createMemo(() => diffTotals(diff()));
         const hidden = createMemo(() => hiddenCount(diff()));
+        const tableCount = createMemo(() =>
+          diff().adapters.reduce((sum, adapter) => sum + adapter.tables.length, 0)
+        );
         const adapters = createMemo(() =>
           diff().adapters.map((adapter) => ({
             adapter,
@@ -48,7 +51,7 @@ export function DetailDialog(props: { presenter: DiffsPresenter }): JSX.Element 
             size="xl"
           >
             <div class="grid gap-4">
-              <Summary totals={totals()} adapters={diff().adapters.length} />
+              <Summary totals={totals()} tables={tableCount()} adapters={diff().adapters.length} />
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <Input
                   type="search"
@@ -100,7 +103,7 @@ export function DetailDialog(props: { presenter: DiffsPresenter }): JSX.Element 
 }
 
 /** The answer to "did anything change", before any scrolling. */
-function Summary(props: { totals: Totals; adapters: number }): JSX.Element {
+function Summary(props: { totals: Totals; tables: number; adapters: number }): JSX.Element {
   const quiet = (): boolean => props.totals.tables === 0;
   return (
     <div class="grid gap-1.5 rounded-lg bg-kumo-elevated px-4 py-3 ring ring-kumo-line">
@@ -112,9 +115,8 @@ function Summary(props: { totals: Totals; adapters: number }): JSX.Element {
         </p>
       </Show>
       <p class="text-xs text-kumo-subtle">
-        {props.totals.tables} of{" "}
-        {props.totals.tables === 1 ? "1 table" : `${props.totals.tables} tables`} touched across{" "}
-        {props.adapters === 1 ? "1 adapter" : `${props.adapters} adapters`}
+        {props.totals.tables} of {props.tables} {props.tables === 1 ? "table" : "tables"} touched,
+        across {props.adapters} {props.adapters === 1 ? "adapter" : "adapters"}
       </p>
     </div>
   );
