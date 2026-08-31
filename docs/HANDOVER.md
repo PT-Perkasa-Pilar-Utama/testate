@@ -172,21 +172,21 @@ each with a test that fails when the fix is removed:
 inline error. Replacing it means a validation state per field in every dialog, and the crawler
 leans on native validation to fill forms; the gain did not look worth that.
 
-**The reactive loop is fixed, and the cause was upstream.** `setSignal` in `@solidjs/signals`
+**The reactive loop: cause found, no repair, still open.** `setSignal` in `@solidjs/signals`
 re-opens a node's transition before it checks whether the write changes anything. A `Loading` boundary
 writes the same boolean on every pass of a drain, so a node stamped with an already-finished
-transition re-arms it forever and the drain never ends. One line in
-`patches/@solidjs%2Fsignals@2.0.0-rc.4.patch` drops the dead stamp. Filed upstream as
-`solidjs/solid#3140`; drop the patch when a release carries their own fix. The full instrumentation
-record, the measurement and the reproduction recipe are in `docs/upstream-solid-flush-loop.md`, and
-`patches/README.md` says why the guard sits at the write rather than inside `initTransition`.
+transition re-arms it and the drain never ends. Reported upstream as `solidjs/solid#3140` with the
+full evidence. We ship no patch: two candidate repairs were tried and both rejected, and the second
+one was briefly committed as `25c28e9` before its own measurements condemned it, so read that commit
+as a mistake rather than as history worth restoring. `docs/upstream-solid-flush-loop.md` holds the
+cause, both dead ends, and the reproduction recipe.
 
-Along the way solid-js and @solidjs/web went from 2.0.0-rc.3 to rc.4. That upgrade did not end the
-loop, and neither did rewriting the data layer onto `refresh()` and a memo, nor removing the grid's
-table-change effect. All three are worth keeping on their own merits, and none of them was the
-cause. Do not read a run of clean suites as proof of anything here: the loop met its trigger in
-about half of crawl runs, so the only readable measurement is one that counts whether the trigger
-occurred at all. `docs/upstream-solid-flush-loop.md` explains how to count it.
+Judging any future candidate: a crawl run is evidence only if the stale-stamp condition arose in it,
+and the run must be scored on every page error rather than on the loop alone. Counting only the loop
+is exactly how the bad patch passed. Unpatched, the condition and the runaway match ten times out of
+ten, which is what makes the comparison readable. Along the way the rc.3 to rc.4 upgrade, the data
+layer rewrite onto `refresh()` and a memo, and removing the grid's table-change effect all failed to
+end it. All three are worth keeping on their own merits and none of them was the cause.
 
 
 **The redesign (2026-08-30).** ADR 0002 records the decision; `docs/design/github.md` is the
