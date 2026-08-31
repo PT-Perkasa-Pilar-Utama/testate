@@ -212,7 +212,14 @@ function Sidebar(props: { current: string | undefined }): JSX.Element {
               >
                 {current().label} · {current().role}
               </a>
-              <Button size="sm" variant="ghost" onClick={() => void signOut()}>
+              {/* A button centres its label; the account link above it reads from the left edge,
+                  and the two sitting in one grid column have to line up on that edge. */}
+              <Button
+                size="sm"
+                variant="ghost"
+                class="justify-start"
+                onClick={() => void signOut()}
+              >
                 Sign out
               </Button>
             </>
