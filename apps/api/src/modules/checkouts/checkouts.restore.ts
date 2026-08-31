@@ -48,8 +48,10 @@ const CODE_OF_KIND = new Map<EngineErrorKind, ErrorCode>([
   ["unsupported", "ENGINE_UNSUPPORTED"],
   ["version_too_old", "ENGINE_UNSUPPORTED"],
   ["privilege_missing", "ENGINE_UNSUPPORTED"],
-  // A statement the engine rejected (syntax, cast, constraint) or cancelled is the adapter's answer, never a 500 (06 §6.7).
-  ["batch_failed", "ADAPTER_UNREACHABLE"],
+  // A statement the engine rejected (syntax, cast, constraint) is the database answering, so it is
+  // the caller's conflict to fix, not a 5xx. `ADAPTER_UNREACHABLE` is 502 and told an operator the
+  // database was down while it was up and refusing a duplicate key.
+  ["batch_failed", "CONFLICT"],
   ["cancelled", "ADAPTER_UNREACHABLE"],
   ["document_too_large", "VALIDATION_ERROR"],
 ]);

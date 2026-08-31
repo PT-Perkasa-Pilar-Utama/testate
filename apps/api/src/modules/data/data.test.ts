@@ -1,9 +1,11 @@
 import { describe, expect, it } from "bun:test";
+import * as v from "valibot";
 import {
   columnPolicySchema,
   fixtureSchema,
   introspectionSchema,
   queryResultSchema,
+  rowEditSchema,
   rowsPageSchema,
   writeSessionSchema,
 } from "@testate/shared";
@@ -49,6 +51,14 @@ describe("data", () => {
     expect(() => parseFilter("status:between:1")).toThrow("invalid filter");
   });
 
+  it("refuses an update that sets no columns, which every engine answers with a syntax error", () => {
+    const pk = { id: 1 };
+    const one = { kind: "update", pk, values: { email: { kind: "value", value: "a@x.io" } } };
+    expect(v.safeParse(rowEditSchema, one).success).toBe(true);
+    // `UPDATE t SET  WHERE id = ?` is what an empty values map builds, in Postgres and in MySQL.
+    expect(v.safeParse(rowEditSchema, { kind: "update", pk, values: {} }).success).toBe(false);
+  });
+
   it("introspects the live schema and pages rows with sort, filter, and cursor", async () => {
     const h = await createDataHarness();
     const schema = await h.data.schema(h.adapterId);
@@ -81,9 +91,11 @@ describe("data", () => {
     });
     expect(result.rows).toEqual([{ id: 1, customer_id: 1, total: "10.00" }]);
     expect(result.columns.map((column) => column.name)).toEqual(["id", "customer_id", "total"]);
+    // The database refused the statement, which is a conflict with the caller's read-only session,
+    // not the adapter being unreachable. A 502 there says "the database is down" when it is up.
     await expect(
       h.data.query(h.viewer, h.adapterId, { dialect: "sql", text: "DELETE FROM x", mode: "read" })
-    ).rejects.toMatchObject({ code: "ADAPTER_UNREACHABLE" });
+    ).rejects.toMatchObject({ code: "CONFLICT" });
     await expect(
       h.data.query(h.viewer, h.adapterId, { dialect: "sql", text: "DELETE FROM x", mode: "write" })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });

@@ -129,7 +129,12 @@ export const rowEditSchema = v.variant("kind", [
   v.object({
     kind: v.literal("update"),
     pk: jsonObjectSchema,
-    values: v.record(v.string(), formValueSchema),
+    // An update with nothing to set builds `UPDATE t SET  WHERE ...`, which every engine answers
+    // with a syntax error. It is refused here, once, rather than in each engine's SQL builder.
+    values: v.pipe(
+      v.record(v.string(), formValueSchema),
+      v.check((values) => Object.keys(values).length > 0, "an update needs at least one column")
+    ),
   }),
   v.object({ kind: v.literal("delete"), pk: jsonObjectSchema }),
 ]);

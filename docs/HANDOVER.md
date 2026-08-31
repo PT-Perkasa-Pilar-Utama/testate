@@ -193,9 +193,10 @@ and the evidence; read it before touching a screen. What a next agent has to kno
 - **`bun run check:classes` is a gate step** (`scripts/check-theme-tokens.ts`, last in
   `complete-check`). Tailwind emits nothing for a token that does not exist, so `text-error`
   renders uncoloured and type-checks clean. That shipped once. The script fails on it now.
-- **Cut: hooks, saved REST requests, the `rest` adapter kind, the `http` engine, the Tools page,
-  the standalone Health screen.** Migration `0002` drops four tables. PRD stories 98-103 went with
-  them, so coverage is 144, not 150.
+- **Cut: hooks, saved REST requests, the `rest` adapter kind, the `http` engine, the standalone
+  Health screen.** Migration `0002` drops four tables. PRD stories 98-103 went with them, so
+  coverage is 144, not 150. The plan also listed the Tools page; it was kept, and
+  `docs/UI_REWORK.md` says why.
 - **A project opens on States, and the tab lives in the URL** (`?tab=`). Checkouts is labelled
   History. Column policies moved behind `admin`; the masking engine underneath is load-bearing for
   the grid, imports, diffs, fixtures and MCP, and cutting it would serve real passwords to an agent.

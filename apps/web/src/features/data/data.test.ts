@@ -10,7 +10,7 @@ import {
   fkLink,
   parseFilterText,
 } from "./grid.presenter.ts";
-import { pkOf, toFormValue, valuesOf } from "./editing.presenter.ts";
+import { editsFor, pkOf, toFormValue, valuesOf } from "./editing.presenter.ts";
 import { NONE, policyBody } from "./policies.presenter.ts";
 import { buildRequest } from "./query.presenter.ts";
 
@@ -70,6 +70,20 @@ describe("data feature", () => {
     // A null or empty FK renders as nothing to filter on, so it must not be a link at all.
     expect(fkLink("demo", "a1", orders, "customer_id", null)).toBeNull();
     expect(fkLink("demo", "a1", orders, "customer_id", "")).toBeNull();
+  });
+
+  test("Save on a row nobody changed sends nothing, because an empty update is invalid SQL", () => {
+    const draft = new Map();
+    const changed = { email: { kind: "value" as const, value: "b@x.io" } };
+    expect(editsFor({ kind: "update", pk: { id: 1 }, original: {}, draft }, changed, 1)).toEqual([
+      { kind: "update", pk: { id: 1 }, values: changed },
+    ]);
+    expect(editsFor({ kind: "update", pk: { id: 1 }, original: {}, draft }, {}, 1)).toBeNull();
+    // An insert with no values is still an insert: every column takes its default.
+    expect(editsFor({ kind: "insert", draft }, {}, 2)).toEqual([
+      { kind: "insert", values: {} },
+      { kind: "insert", values: {} },
+    ]);
   });
 
   test("buildRequest sends SQL text or a parsed mongo operation with the row cap", () => {

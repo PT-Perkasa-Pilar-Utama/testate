@@ -113,6 +113,23 @@ function draftOf(table: TableSchema, row: JsonObject | null): RowDraft {
   return draft;
 }
 
+/**
+ * The edits a submitted form sends, or null when it has nothing to say. An update whose row nobody
+ * changed sets no columns, and `UPDATE t SET  WHERE ...` is a syntax error in Postgres and MySQL
+ * alike, so that edit must never leave the browser.
+ */
+export function editsFor(
+  state: FormState,
+  values: JsonObject,
+  copies: number
+): JsonObject[] | null {
+  if (state.kind === "insert") {
+    return Array.from({ length: copies }, () => ({ kind: "insert", values }));
+  }
+  if (Object.keys(values).length === 0) return null;
+  return [{ kind: "update", pk: state.pk, values }];
+}
+
 /** Update edits carry only the fields that changed from the row; inserts carry every non-default field. */
 export function valuesOf(
   draft: RowDraft,
@@ -235,10 +252,12 @@ export function createEditingPresenter(
       if (schema === null || staticOpen === null || state === null) return Promise.resolve();
       const values = valuesOf(state.draft, schema, state.kind === "update" ? state.original : null);
       const copies = Math.min(Math.max(options.copies ?? 1, 1), MAX_COPIES);
-      const edits: JsonObject[] =
-        state.kind === "insert"
-          ? Array.from({ length: copies }, () => ({ kind: "insert", values }))
-          : [{ kind: "update", pk: state.pk, values }];
+      const edits = editsFor(state, values, copies);
+      // Nothing to send: Save on a row nobody changed means close the form, not fail on it.
+      if (edits === null) {
+        setForm(null);
+        return Promise.resolve();
+      }
       const keepOpen = options.more === true && state.kind === "insert";
       setError(null);
       return attempt(async () => {
