@@ -113,6 +113,22 @@ services:
       ADDRESS: 127.0.0.1
       MIN_PORT: 21100
       MAX_PORT: 21110
+    # The image's own adduser cannot create this home directory, so on a fresh stack the container
+    # dies with "adduser: /ftp/testate: No such file or directory" and every ftp contract test
+    # skips. Docker creates a mount point before the entrypoint runs, so the volume is what makes
+    # the directory exist.
+    volumes:
+      - ftp-home:/ftp/testate
     ports:
       - "21210:21"
       - "21100-21110:21100-21110"
+    # Without this `up --wait` only waits for "running", and a container that dies a moment later
+    # still counts as started. That is how a dead ftp reached the test run.
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 21"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  ftp-home:

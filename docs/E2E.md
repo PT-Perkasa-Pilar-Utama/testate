@@ -16,9 +16,7 @@ bun run e2e
 ```
 
 Each suite drops and recreates its own schema, so repeating it is harmless. A long-lived stack
-already holds the schema, which is why this only bites a fresh checkout or CI. On the first start
-the `ftp` container can die with `adduser: /ftp/testate: No such file or directory`; bring it up
-again (`up -d ftp`) and it stays.
+already holds the schema, which is why this only bites a fresh checkout or CI.
 
 ## Layout
 
