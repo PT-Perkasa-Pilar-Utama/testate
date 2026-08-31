@@ -27,8 +27,10 @@ jobs:
         include:
           - arch: amd64
             runner: ubuntu-latest
+            slim_asset: dist_linux.tar.gz
           - arch: arm64
             runner: ubuntu-24.04-arm
+            slim_asset: dist_linux_arm64.tar.gz
 
     steps:
       - name: Checkout
@@ -89,18 +91,36 @@ jobs:
       # The container boots, migrates SQLite, rewrites the SPA assets, and answers
       # the probes, so docker-slim sees every file the runtime actually uses.
       # /app is force-kept so migrations and web assets survive whatever the probes miss.
+      # Slim's own binary rather than an action wrapping it. The wrapper only downloaded this and
+      # ran it, and it is stuck on Node 20, which the runners now force onto Node 24 with a warning
+      # on every job. Calling it directly drops that warning and one third-party action.
       - name: Slim the image
         if: steps.published.outputs.skip != 'true'
-        uses: kitabisa/docker-slim-action@6a9a64eaf0c08b1251c148514dd70be1495bff12 # v1.2.0
         env:
-          DSLIM_HTTP_PROBE: true
-          DSLIM_HTTP_PROBE_CMD: "/api/v1/health/live,/api/v1/health/ready,/api/v1/health,/api/v1/openapi.json,/,/login"
-          DSLIM_CONTINUE_AFTER: 20
-          DSLIM_INCLUDE_PATH: /app
-          DSLIM_ENV_FILE: profile.env
-        with:
-          target: testate:fat
-          tag: "slim"
+          SLIM_VERSION: "1.40.11"
+        run: |
+          curl -fsSL -o slim.tar.gz \
+            "https://github.com/slimtoolkit/slim/releases/download/${SLIM_VERSION}/${{ matrix.slim_asset }}"
+          tar -xzf slim.tar.gz
+          slim_bin="$(find . -maxdepth 3 -type f -name slim -perm -u+x | head -1)"
+          if [ -z "$slim_bin" ]; then
+            echo "::error::the slim ${SLIM_VERSION} archive did not contain a slim binary"
+            exit 1
+          fi
+          # One --http-probe-cmd per path: the flag repeats, it does not take a list.
+          "$slim_bin" build \
+            --target testate:fat \
+            --tag testate:slim \
+            --http-probe \
+            --http-probe-cmd /api/v1/health/live \
+            --http-probe-cmd /api/v1/health/ready \
+            --http-probe-cmd /api/v1/health \
+            --http-probe-cmd /api/v1/openapi.json \
+            --http-probe-cmd / \
+            --http-probe-cmd /login \
+            --continue-after 20 \
+            --include-path /app \
+            --env-file profile.env
 
       # docker-slim drops /data. It is empty in the image (the app writes into it at runtime and
       # the volume hides it), so nothing touched it during profiling. Without the directory Docker
@@ -136,8 +156,8 @@ jobs:
           echo "linux/${{ matrix.arch }} answered 204 on a fresh volume"
           docker rm -f smoke
 
-      # docker-slim-action does its own docker login and clobbers the
-      # credential store, so re-authenticate before pushing.
+      # Cheap insurance: the slim run drives the Docker daemon, and a re-login costs nothing
+      # next to a push that fails after the image is already built.
       - name: Re-login to GitHub Container Registry
         if: steps.published.outputs.skip != 'true'
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0

@@ -32,3 +32,6 @@ apps/api/data/
 # smoke test output
 .smoke
 .e2e
+
+# docker-slim writes this next to the invocation
+slim.report.json
