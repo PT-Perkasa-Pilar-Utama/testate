@@ -50,20 +50,20 @@ describe("check", () => {
       "fe80::1",
       "metadata.google.internal",
     ]) {
-      const verdict = await check({ host, port: 80, purpose: "rest" }, empty, SELF);
+      const verdict = await check({ host, port: 80, purpose: "database" }, empty, SELF);
       expect(verdict).toMatchObject({ allowed: false, reason: "fixed" });
     }
   });
 
   it("refuses Testate's own address and port only", async () => {
     expect(
-      await check({ host: "10.0.0.9", port: 3000, purpose: "rest" }, DEFAULT, SELF)
+      await check({ host: "10.0.0.9", port: 3000, purpose: "database" }, DEFAULT, SELF)
     ).toMatchObject({
       allowed: false,
       reason: "self",
     });
     expect(
-      (await check({ host: "10.0.0.9", port: 8080, purpose: "rest" }, DEFAULT, SELF)).allowed
+      (await check({ host: "10.0.0.9", port: 8080, purpose: "database" }, DEFAULT, SELF)).allowed
     ).toBe(true);
   });
 

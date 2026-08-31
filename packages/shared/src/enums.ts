@@ -84,14 +84,6 @@ export const CHECKOUT_RESULTS = [
 ] as const;
 export const checkoutResultSchema = v.picklist(CHECKOUT_RESULTS);
 
-export const HOOK_TRIGGERS = [
-  "before_checkout",
-  "after_checkout",
-  "after_snapshot",
-  "after_import",
-] as const;
-export const hookTriggerSchema = v.picklist(HOOK_TRIGGERS);
-
 export const ERROR_CODES = [
   "VALIDATION_ERROR",
   "UNAUTHORIZED",

@@ -37,7 +37,7 @@ export const DEV_PASSWORDS = { qa: "qa-password-1234", viewer: "viewer-password-
 const META: RequestMeta = { ip: "", user_agent: "seed", request_id: null };
 const INIT_WAIT_SECONDS = 60;
 
-/** MinIO's liveness endpoint: a REST target that is not the API itself, which 18 §18.3 refuses. */
+/** The sample file the dev seed writes into the compose MinIO bucket, for the import wizard. */
 export const SAMPLE_CSV_PATH = "imports/customers.csv";
 const SAMPLE_CSV = "email,balance,big\nseed-1@x.io,1.5,1\nseed-2@x.io,2.5,2\n";
 

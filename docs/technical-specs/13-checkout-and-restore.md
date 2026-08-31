@@ -86,7 +86,7 @@ Per collection: `deleteMany({})` then `insertMany(batch, { ordered: false })` wi
 
 ## 13.7 Return to init
 
-Input: the deletion plan (per adapter: `restore`, `force`, `skip` with reason). For each `restore` or `force` adapter, the recipe from §13.2 runs with `purpose: return_to_init`, the adapter's current init state (the latest `init` kind state for that adapter id), no stash, hooks included. The deletion job removes anything only after every non-skipped adapter reports `restored`. A failure leaves everything, sets HEAD unknown on the failed adapters, and the job offers retry.
+Input: the deletion plan (per adapter: `restore`, `force`, `skip` with reason). For each `restore` or `force` adapter, the recipe from §13.2 runs with `purpose: return_to_init`, the adapter's current init state (the latest `init` kind state for that adapter id), no stash. The deletion job removes anything only after every non-skipped adapter reports `restored`. A failure leaves everything, sets HEAD unknown on the failed adapters, and the job offers retry.
 
 ## 13.8 Performance targets
 
@@ -95,7 +95,6 @@ Input: the deletion plan (per adapter: `restore`, `force`, `skip` with reason). 
 | Pre-flight | under 5 s per adapter (probe plus introspect plus diff) | 12 §12.6 |
 | Restore throughput | per 12 §12.6 | Spike |
 | Stash cost | one snapshot; dedup makes an unchanged database near free | 15 |
-| Hook budget | adapter timeout each, sequential in position order | 10 §10.4 |
 
 ## 13.9 Security constraints
 
@@ -110,7 +109,7 @@ Input: the deletion plan (per adapter: `restore`, `force`, `skip` with reason). 
 - No schema repair; drift is a refusal, force is an intersection.
 - No cross-adapter atomicity; each adapter is its own transaction or best effort.
 - No automatic terminate of blocking sessions; always an explicit action.
-- No hooks on `return_to_init` skips.
+- No hooks or other callbacks run around a checkout.
 
 ## 13.12 Cross-references
 

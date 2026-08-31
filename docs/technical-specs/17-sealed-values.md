@@ -1,6 +1,6 @@
 # 17. Sealed Values
 
-A sealed value is a secret Testate must present to another system: a database password, a connection string, an S3 key, an SFTP password or private key, an FTP password, a REST header, the snapshot-store credentials. Sealed values are encrypted at rest under the active key list, never displayed after entry, and re-sealed when the key rotates. This document is the single source for the envelope, the key list, the boot sweep, the refusals, declared loss, and the registry of sealed columns. The operator procedure lives in `../KEY_ROTATION.md`, which cites this document.
+A sealed value is a secret Testate must present to another system: a database password, a connection string, an S3 key, an SFTP password or private key, an FTP password, the snapshot-store credentials. Sealed values are encrypted at rest under the active key list, never displayed after entry, and re-sealed when the key rotates. This document is the single source for the envelope, the key list, the boot sweep, the refusals, declared loss, and the registry of sealed columns. The operator procedure lives in `../KEY_ROTATION.md`, which cites this document.
 
 ## 17.1 Decision matrix
 
@@ -37,7 +37,6 @@ Registry entry shape:
 export const SEALED_COLUMNS = [
   { table: "adapters",       column: "config_sealed",          owner: "adapter" },
   { table: "adapters",       column: "readonly_config_sealed", owner: "adapter" },
-  { table: "rest_requests",  column: "headers_sealed",         owner: "rest_request" },
   { table: "settings",       column: "value",  key: "store.s3", owner: "settings" },   // sealed fields inside the JSON
 ] as const;
 ```
@@ -69,9 +68,8 @@ The health check exposes `active_fingerprint` and `extra_values` for admins, so 
 
 | Table | Column | Contents | Owner entity | Shown as |
 | --- | --- | --- | --- | --- |
-| `adapters` | `config_sealed` | JSON: `password`, `connectionString`, `accessKeyId`, `secretAccessKey`, `privateKey`, `passphrase`, `defaultHeaders` secrets | adapter | `credential: { set, set_at, key_fingerprint }` |
+| `adapters` | `config_sealed` | JSON: `password`, `connection_string`, `access_key_id`, `secret_access_key`, `private_key`, `passphrase` secrets | adapter | `credential: { set, set_at, key_fingerprint }` |
 | `adapters` | `readonly_config_sealed` | JSON: read-only credential | adapter | `readonly_credential: { set, ... }` |
-| `rest_requests` | `headers_sealed` | JSON map of secret headers | REST request | header names with `***` values |
 | `settings` | `value` for key `store.s3` | `accessKeyId`, `secretAccessKey` inside the JSON | settings | `{ set, ... }` |
 
 Rule: adding a `*_sealed` column, or a sealed field inside a JSON setting, updates `lib/sealed/registry.ts` and this table in the same pull request. A lint test scans the migrations for `_sealed` column names and fails when the registry lacks one.
@@ -92,7 +90,7 @@ Rolling back a rotation is a rotation in reverse: the key to revert to goes firs
 
 ## 17.6 Declared loss
 
-With `TESTATE_SECRETS_ACCEPT_UNREADABLE=true`: boot proceeds; each unreadable value is named in the error log (`table`, `column`, owner name); adapters and REST requests owning one are set to status `disabled` with reason `credential_unreadable`; the dashboard shows them with a re-enter action; each save seals under the active key; when a boot reports zero unreadable values the flag is removed. The flag never deletes a value.
+With `TESTATE_SECRETS_ACCEPT_UNREADABLE=true`: boot proceeds; each unreadable value is named in the error log (`table`, `column`, owner name); adapters owning one are set to status `disabled` with reason `credential_unreadable`; the dashboard shows them with a re-enter action; each save seals under the active key; when a boot reports zero unreadable values the flag is removed. The flag never deletes a value.
 
 ## 17.7 Performance targets
 
@@ -104,7 +102,7 @@ With `TESTATE_SECRETS_ACCEPT_UNREADABLE=true`: boot proceeds; each unreadable va
 
 ## 17.8 Security constraints
 
-Keys come from the environment only, never from the volume or the database. The ring lives in process memory; keys are non-extractable `CryptoKey` objects. Sealed values never appear in API responses, audit rows, wide events, archives, or error messages. `open` is called only inside `adapters.resolve*`, `rest.run`, and the store driver factory; the plaintext lives in the connection config object that the engine pool and file drivers hold in memory and never return.
+Keys come from the environment only, never from the volume or the database. The ring lives in process memory; keys are non-extractable `CryptoKey` objects. Sealed values never appear in API responses, audit rows, wide events, archives, or error messages. `open` is called only inside `adapters.resolve*` and the store driver factory; the plaintext lives in the connection config object that the engine pool and file drivers hold in memory and never return.
 
 ## 17.9 Component and contract
 
@@ -123,8 +121,8 @@ Keys come from the environment only, never from the volume or the database. The 
 | --- | --- |
 | Operator procedure | `../KEY_ROTATION.md` |
 | Which fields are secret per adapter | 06 §6.4 `config_public` versus `config_sealed` |
-| Health exposure | 05 §5.17 |
-| Backups | 05 §5.16, [22-base-path-and-boot.md](22-base-path-and-boot.md) |
+| Health exposure | 05 §5.15 |
+| Backups | 05 §5.14, [22-base-path-and-boot.md](22-base-path-and-boot.md) |
 
 ## 17.12 Open follow-ups
 

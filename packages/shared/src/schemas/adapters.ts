@@ -55,7 +55,7 @@ export const probeResultSchema = v.object({
 });
 export type ProbeResult = v.InferOutput<typeof probeResultSchema>;
 
-/** The Files tier and REST adapters have no engine to probe; the test reports reachability only. */
+/** The Files tier has no engine to probe; the test reports reachability only. */
 export const fileProbeResultSchema = v.object({
   engine: engineSchema,
   tier: tierSchema,

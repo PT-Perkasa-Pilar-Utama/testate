@@ -5,7 +5,7 @@ import { BlockList, isIP } from "node:net";
 export type Check = {
   host: string;
   port: number;
-  purpose: "database" | "files" | "rest" | "store";
+  purpose: "database" | "files" | "store";
 };
 
 export type Verdict =

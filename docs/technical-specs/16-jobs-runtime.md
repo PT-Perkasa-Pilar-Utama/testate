@@ -116,7 +116,7 @@ write one boot wide event with the counts
 
 | Concern | Source |
 | --- | --- |
-| Job kinds and their runners | 05 §5.4 to §5.16 |
+| Job kinds and their runners | 05 §5.4 to §5.14 |
 | Recovery effect on HEAD | 06 §6.9, [13-checkout-and-restore.md](13-checkout-and-restore.md) |
 | Pins | [15-snapshot-store.md](15-snapshot-store.md) §15.1 |
 | Wide event per job | [21-wide-event-logging.md](21-wide-event-logging.md) |

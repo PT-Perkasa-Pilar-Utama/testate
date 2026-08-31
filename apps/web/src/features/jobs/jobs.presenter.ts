@@ -66,7 +66,6 @@ function phraseOf(progress: Progress): string {
   if (phase === "stash") return "Stashing the live data";
   if (phase === "merge") return "Comparing";
   if (phase === "write") return "Writing rows";
-  if (phase === "hooks") return `Running the ${progress.trigger ?? ""} hooks`.replace("  ", " ");
   return phase === "" ? "Working" : phase;
 }
 

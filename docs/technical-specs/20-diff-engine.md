@@ -87,7 +87,7 @@ Keys compare as tuples: numbers numerically, strings by code point, UUID strings
 | Blob determinism and layout | [15-snapshot-store.md](15-snapshot-store.md) |
 | Hidden diff states | 05 §5.10, 06 §6.5 |
 | Masks | [24-table-editing.md](24-table-editing.md) §24.4 |
-| Retention | 05 §5.16 |
+| Retention | 05 §5.14 |
 
 ## 20.9 Open follow-ups
 

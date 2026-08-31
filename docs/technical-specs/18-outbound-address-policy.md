@@ -1,19 +1,18 @@
 # 18. Outbound Address Policy
 
-Testate opens connections to whatever address a user types: databases, buckets, SFTP and FTP hosts, REST base URLs. That is a server-side request forgery surface by design. This document is the single source for the checks that run on every physical connection, the fixed denies, the admin deny list, re-checks, and the no-redirect rule. Cite it; do not restate it.
+Testate opens connections to whatever address a user types: databases, buckets, SFTP and FTP hosts. That is a server-side request forgery surface by design. This document is the single source for the checks that run on every physical connection, the fixed denies, the admin deny list, and re-checks. Cite it; do not restate it.
 
 ## 18.1 Decision matrix
 
 | Concern | Decision | Rationale |
 | --- | --- | --- |
-| When | At every physical connect, inside the engine pool, the file drivers, the REST runner, and the S3 store driver; never only at save time | A hostname allowed at save time can point elsewhere later |
+| When | At every physical connect, inside the engine pool, the file drivers, and the S3 store driver; never only at save time | A hostname allowed at save time can point elsewhere later |
 | How | Resolve the hostname (A and AAAA), check every resolved address and the port, then connect to a checked address | DNS rebinding and TOCTOU are closed by connecting to what was checked |
 | Fixed denies | Loopback is not fixed (see below); fixed: link-local `169.254.0.0/16`, `fe80::/10`; cloud metadata `169.254.169.254`, `fd00:ec2::254`, `metadata.google.internal`, `100.100.100.200`; unspecified `0.0.0.0`, `::`; multicast; Testate's own listening address and port | The classic SSRF targets and self-targeting |
 | Default deny list | `127.0.0.0/8`, `::1/128`, editable and removable by an admin | A native dev setup with a local database needs loopback |
 | Admin deny list | Hostname globs (`*.prod.internal`), CIDRs, and exact host:port pairs | Story 29 |
 | Allow overrides | None; a deny is a deny | Simplicity and story 23's intent |
-| Re-check | Changing the list re-resolves and re-checks every adapter and REST target; matches become `disabled` with reason `policy`; a later retest that passes re-enables | Story 30 |
-| Redirects | The REST runner never follows a redirect; a 3xx is the result | OWASP SSRF guidance; a redirect is a resolution the check did not see |
+| Re-check | Changing the list re-resolves and re-checks every adapter; matches become `disabled` with reason `policy`; a later retest that passes re-enables | Story 30 |
 | SRV and driver-side resolution | MongoDB `mongodb+srv://` is resolved by Testate first; the checked addresses are passed to the driver as a seed list | The driver must not resolve on its own |
 | Proxies | No outbound proxy support; connections are direct | Intranet deployment |
 
@@ -21,7 +20,7 @@ Testate opens connections to whatever address a user types: databases, buckets, 
 
 ```ts
 // lib/netguard/index.ts
-type Check = { host: string; port: number; purpose: "database" | "files" | "rest" | "store" };
+type Check = { host: string; port: number; purpose: "database" | "files" | "store" };
 type Verdict = { allowed: true; addresses: string[] } | { allowed: false; reason: "fixed" | "policy" | "self" | "unresolvable"; matched: string };
 check(input: Check, policy: DenyList, self: { addresses: string[]; port: number }): Promise<Verdict>;
 matchesDenyList(host: string, addresses: string[], port: number, policy: DenyList): string | null;   // pure
@@ -49,7 +48,6 @@ Hostname globs match case-insensitively against the typed host and against rever
 | `adapters.testDraft`, `create`, `update`, `retest` | Before probe | `HOST_BLOCKED` 422 with `reason` and `matched` |
 | `lib/engines` pool | Every new physical connection | `EngineError{ kind: "unreachable", details: { reason: "blocked_address" } }` → `HOST_BLOCKED` |
 | `lib/files` drivers | Every connect (SFTP, FTP) and every S3 request host | `HOST_BLOCKED` |
-| `rest.run` and hooks | Before the request | Run recorded as failed with `blocked_address`; hook policy applies |
 | `lib/blobstore` S3 driver | Every request host | Job fails; health reports the store |
 | `settings.update` (deny list) | After save | `adapters.recheckDenyList` disables matches; audit `settings.deny_list_changed` with the disabled ids |
 
@@ -82,7 +80,6 @@ The check is the same code for every caller; no caller may bypass it. The resolu
 | --- | --- |
 | Threat model | 07 §7.1, §7.4 |
 | Pool | [12-engine-port.md](12-engine-port.md) §12.1 |
-| REST runner | 05 §5.12, 10 §10.4 |
 | Setting key | 06 §6.8 `netguard.deny` |
 
 ## 18.10 Open follow-ups

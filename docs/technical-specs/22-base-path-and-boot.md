@@ -10,7 +10,6 @@ Testate ships one prebuilt image that must serve under any sub-path, survive upg
 | Base path at boot | Copy `/app/web` to `${TESTATE_DATA_DIR}/run/web/`, replacing `/__TESTATE_BASE__/` with the configured path in `.html`, `.js`, `.css`, and `.json` files; the directory is deleted and rebuilt on every boot | Boot-fresh: an image upgrade never serves stale assets |
 | API prefix | `${TESTATE_BASE_PATH}/api/v1`; the SPA reads the base from `<base href>` in the rewritten `index.html` | One variable drives assets, API, router, cookies |
 | Cookie path | `Path=${TESTATE_BASE_PATH}` | Two Testates on one host do not share cookies |
-| Own hostname | Boot warns and health reports `origin_shared` when `TESTATE_PUBLIC_URL`'s host equals a REST adapter's host | 07 §7.2 |
 | Boot order | keys → data dir → pre-migration copy → migrations → sealed sweep → base path rewrite → bootstrap admin → admin password reset → job recovery → retention sweep → dispatcher → listen | Each step can refuse before anything later runs |
 | Admin password reset | `TESTATE_ADMIN_PASSWORD_RESET=true` with `TESTATE_ADMIN_PASSWORD` gives the account named by `TESTATE_ADMIN_USER` that password, forces a change, ends its sessions, and clears its lockout. It never creates or promotes an account: an unknown name, or a name that is not an admin, refuses the boot (exit 78). A framed banner names the user, never the password, and says to remove the flag | The last admin cannot reset itself, and no other account may delete or demote it (03 §3.4); whoever sets the variable already owns the volume |
 | Pre-migration copy | `metadata.db` copied to `${TESTATE_DATA_DIR}/run/metadata-<boot_id>.db` before migrations; the last three kept | Story 118: an upgrade can roll back |
@@ -108,7 +107,7 @@ The backup contains sealed values as sealed; a restore needs the listed key fing
 | Environment | 11 |
 | Keys and sweep | [17-sealed-values.md](17-sealed-values.md) |
 | Recovery rules | [16-jobs-runtime.md](16-jobs-runtime.md) §16.5 |
-| Health shape | 05 §5.17 |
+| Health shape | 05 §5.15 |
 | Deployment runbook | `../DEPLOYMENT_PLAN.md` |
 
 ## 22.11 Open follow-ups

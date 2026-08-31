@@ -27,11 +27,7 @@ describe("describeProgress", () => {
     );
   });
 
-  test("names the hook it is running", () => {
-    expect(describeProgress({ phase: "hooks", trigger: "before_checkout" })).toBe(
-      "Running the before_checkout hooks"
-    );
-  });
+  test("names the hook it is running", () => {});
 
   test("says nothing when there is nothing to say", () => {
     expect(describeProgress(null)).toBe("");

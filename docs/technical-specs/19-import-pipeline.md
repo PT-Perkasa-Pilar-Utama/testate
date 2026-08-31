@@ -61,7 +61,7 @@ run job:
        real run: batch valid rows; invalid rows go to rejected.csv with reason
   5. writeRows(batch, mode, keyColumns, foreignKeyChecks) inside one transaction where the engine allows
        batch failure: retry row by row; failing rows to rejected.csv with the engine's message
-  6. commit; report counts; hooks.run("after_import")
+  6. commit; report counts
   7. delete the upload; keep rejected.csv
 ```
 
@@ -112,7 +112,7 @@ XLSX: sheet `data` with headers and the example row; sheet `schema` with the sam
 | Column policies and hash functions | [24-table-editing.md](24-table-editing.md) |
 | Storage source | 05 §5.11, 10 §10.3 |
 | Stash | 05 §5.8 |
-| Retention | 05 §5.16 |
+| Retention | 05 §5.14 |
 
 ## 19.10 Open follow-ups
 

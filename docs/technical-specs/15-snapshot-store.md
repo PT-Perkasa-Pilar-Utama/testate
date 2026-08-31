@@ -122,7 +122,7 @@ Blobs contain data, never credentials or query text. The local store is inside `
 | Row format | ADR 0001, [12-engine-port.md](12-engine-port.md) §12.4 |
 | Diff over blobs | [20-diff-engine.md](20-diff-engine.md) |
 | Quota stories | `../PRD.md` §4.4, story 14 |
-| Backup job | 05 §5.16, [22-base-path-and-boot.md](22-base-path-and-boot.md) |
+| Backup job | 05 §5.14, [22-base-path-and-boot.md](22-base-path-and-boot.md) |
 
 ## 15.14 Open follow-ups
 

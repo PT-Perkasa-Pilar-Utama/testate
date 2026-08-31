@@ -18,8 +18,7 @@ export function toPublic(record: AdapterRecord): Adapter {
 }
 
 export function purposeOf(kind: Adapter["kind"]): Check["purpose"] {
-  if (kind === "database") return "database";
-  return kind === "storage" ? "files" : "rest";
+  return kind === "database" ? "database" : "files";
 }
 
 /** A denied target answers HOST_BLOCKED; an unresolvable one ADAPTER_UNREACHABLE (05 §5.2). */

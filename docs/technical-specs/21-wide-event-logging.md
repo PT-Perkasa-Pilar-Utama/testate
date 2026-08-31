@@ -37,7 +37,7 @@ Testate logs one wide event per request and one per job, after https://loggingsu
 }
 ```
 
-Job event: `kind: "job"`, section `job` `{ id, kind, status, queued_ms, duration_ms, parent_request_id, cancel_requested }`, `op` with per-adapter and per-hook arrays, `engine` `{ strategy, lock_wait_ms, batches, counters_reset, warnings }`.
+Job event: `kind: "job"`, section `job` `{ id, kind, status, queued_ms, duration_ms, parent_request_id, cancel_requested }`, `op` with a per-adapter array, `engine` `{ strategy, lock_wait_ms, batches, counters_reset, warnings }`.
 
 | Section | Filled by | Fields |
 | --- | --- | --- |
@@ -46,7 +46,7 @@ Job event: `kind: "job"`, section `job` `{ id, kind, status, queued_ms, duration
 | `job` | dispatcher | `id`, `kind`, `status`, `queued_ms`, `duration_ms`, `parent_request_id`, `cancel_requested` |
 | `actor` | auth middleware | `user_id`, `role`, `token_id`, `auth`, `agent` |
 | `project`, `adapter` | handler or runner | ids, slug, name, engine, version, mode |
-| `op` | service or runner | `name`, ids and names acted on, counts, bytes, `adapters[]`, `hooks[]`, `query_hash`, `query_bytes`, `rows`, `mode` |
+| `op` | service or runner | `name`, ids and names acted on, counts, bytes, `adapters[]`, `query_hash`, `query_bytes`, `rows`, `mode` |
 | `engine` | driver | `strategy`, `lock_wait_ms`, `batches`, `counters_reset`, `cancelled`, `warnings` |
 | `error` | `event.error()` | `code`, `type`, `message`, `retriable`, `details`, `stack` only with `TESTATE_LOG_STACKS` |
 
@@ -108,8 +108,8 @@ Log files are readable only by the container user. Events never carry credential
 | Concern | Source |
 | --- | --- |
 | Agent-facing rules | `.claude/skills/wide-event-logging/SKILL.md` |
-| Audit versus log | 05 §5.15 |
-| Request id and proxy | 10 §10.5 |
+| Audit versus log | 05 §5.13 |
+| Request id and proxy | 10 §10.4 |
 | Environment | 11 §11.1 |
 
 ## 21.10 Open follow-ups
