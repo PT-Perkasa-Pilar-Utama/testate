@@ -75,11 +75,10 @@ export async function demoTables(adapterId: string): Promise<string[]> {
   return body.data.tables.map((t) => (t.schema === null ? t.name : `${t.schema}.${t.name}`));
 }
 
-/** The sub-screens an adapter offers: query/policies/grid for databases, files for storage, requests for REST. */
+/** The sub-screens an adapter offers: query/policies/grid for databases, files for storage. */
 export async function adapterScreens(adapter: AdapterRow): Promise<string[]> {
   const base = `/projects/demo/adapters/${adapter.id}`;
   if (adapter.kind === "storage") return [`${base}/files`];
-  if (adapter.kind === "rest") return [`${base}/requests`];
   const paths = [`${base}/query`];
   if (adapter.tier === "tabular") paths.push(`${base}/policies`);
   const [table] = await demoTables(adapter.id);

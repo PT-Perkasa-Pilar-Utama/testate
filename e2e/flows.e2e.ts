@@ -90,37 +90,6 @@ test.describe("qa flows", () => {
     expect(issues).toStrictEqual([]);
   });
 
-  test("@story-98 @story-99 @story-100 a REST request is saved, run against MinIO, and deleted", async ({
-    page,
-  }) => {
-    const issues: Issue[] = [];
-    watch(page, issues);
-    const rest = await demoAdapter({ kind: "rest" });
-    await page.goto(`/projects/demo/adapters/${rest.id}/requests`);
-    await settle(page);
-    await page.getByRole("button", { name: "New request" }).click();
-    await page.locator("dialog[open]").getByLabel("Name").fill("e2e ping");
-    await page.locator("dialog[open]").getByLabel("Expected status (blank for any)").fill("200");
-    await page.getByRole("button", { name: "Save" }).click();
-    await expect(page.locator("dialog[open]")).toHaveCount(0);
-    const row = page.locator("tr", { hasText: "e2e ping" });
-    await row.getByRole("button", { name: "Run" }).click();
-    await expect(page.getByText("Recent runs")).toBeVisible();
-    await expect(
-      page
-        .locator("aside")
-        .getByText(/^\d{3}$/)
-        .first()
-    ).toBeVisible();
-    await row.getByRole("button", { name: "Delete" }).click();
-    await expect(row).toHaveCount(0);
-    // The demo's REST adapter holds nothing else, so deleting the one request shows the empty state.
-    await expect(
-      page.getByText("No saved requests yet. Save one to run it around a checkout, or by hand.")
-    ).toBeVisible();
-    expect(issues).toStrictEqual([]);
-  });
-
   test("@story-94 an empty listing says so and the footer counts what is there", async ({
     page,
   }) => {

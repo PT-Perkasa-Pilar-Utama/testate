@@ -89,6 +89,16 @@ tab cannot be shared as a link.
    `lucide-static` (ISC, no dependencies, 2049 SVGs); `lucide-solid` calls `mergeProps` 8,962 times
    and cannot run on Solid 2.
 
+## Progress
+
+| Phase | State | Evidence |
+| --- | --- | --- |
+| 1. Cuts | done | 3,366 lines out; `/hooks` 404s; no `hook` or `rest` table survives a fresh boot |
+| 2. Navigation | done | project opens on States; `?tab=` survives a reload; health folded into Settings |
+| 3. Export gap | done | 2,502 of 2,502 rows exported against a live Postgres, where the old path gave 500 |
+| 4. Components | in progress | 67 icons, `EmptyState`, the states timeline; then every screen |
+| 5. E2E | pending | the suite is knowingly red until phase 4 lands |
+
 ## Known, accepted
 
 - **The browser suite breaks and stays broken until phase 4 ends.** This is deliberate and was

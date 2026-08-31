@@ -201,15 +201,6 @@ The first admin comes from environment variables. On first login Testate forces 
 96. As a viewer, I want to download a file, so that I can inspect it locally.
 97. As a QA engineer, I want SFTP to remember the host key from the first connection and refuse to connect when it changes until I accept the new key, so that a swapped host is caught, not logged.
 
-### REST adapters and hooks
-
-98. As a QA engineer, I want to add a REST adapter with a base URL, default headers, and a timeout, so that I can call the application under test from Testate.
-99. As a QA engineer, I want to save named requests (method, path, headers, query, body) and run them from the dashboard, so that verification calls are one click.
-100. As a viewer, I want to see status, headers, body, and duration of each run, and the last runs of each request, so that I can compare results over time.
-101. As a QA engineer, I want to attach saved requests as hooks that run before checkout, after checkout, after snapshot, or after import, in order, so that the application clears caches or reindexes after a data reset.
-102. As a QA engineer, I want each hook to say whether a failure aborts or continues the job, so that a flaky notification does not block a checkout.
-103. As a QA engineer, I want placeholders for the project, state, and job in a hook request, so that the application knows which state landed.
-
 ### Jobs
 
 104. As any user, I want every long operation to return a job with progress and a queue position that I can watch live, so that a queued checkout does not look hung.

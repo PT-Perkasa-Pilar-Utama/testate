@@ -40,7 +40,7 @@ export default defineConfig({
 
     {
       name: "flows",
-      testMatch: /(flows|stories|hooks|gaps|admin)\.e2e\.ts/,
+      testMatch: /(flows|stories|gaps|admin)\.e2e\.ts/,
       dependencies: ["routes"],
     },
     // Checkouts restore the demo databases; nothing else may edit them meanwhile.
