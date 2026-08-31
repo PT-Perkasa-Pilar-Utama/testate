@@ -2,10 +2,10 @@
 
 ## Testate
 
-**Version:** 1.0.0
-**Date:** 2026-08-28
-**Author:** Tech Lead
-**Status:** Active
+- **Version:** 1.0.0
+- **Date:** 2026-08-28
+- **Author:** Tech Lead
+- **Status:** Active
 
 Rules marked **(enforced)** are checked by oxlint, oxfmt, tsc, or a git hook; reviewers do not check them by hand. Every other rule is on the [code review checklist](CODE_REVIEW_CHECKLIST.md). The seed rules from Sprint 0 (§1 and §2) stand unchanged.
 

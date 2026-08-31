@@ -1,9 +1,9 @@
 # ADR 0001: The `DbEngine` interface
 
-**Date:** 2026-08-28
-**Status:** Accepted
-**Deciders:** Tech Lead
-**Alternatives on record:** [alternatives/](0001-dbengine-interface/alternatives/) (four independent drafts: minimal, flexible, common caller first, ports and adapters)
+- **Date:** 2026-08-28
+- **Status:** Accepted
+- **Deciders:** Tech Lead
+- **Alternatives on record:** [alternatives/](0001-dbengine-interface/alternatives/) (four independent drafts: minimal, flexible, common caller first, ports and adapters)
 
 ## Context
 

@@ -2,15 +2,15 @@
 
 ## Testate
 
-**Version:** 0.3.0
-**Date:** 2026-08-28
-**Author:** Tech Lead
-**Publisher:** PT. Perkasa Pilar Utama
-**License:** MIT
-**Status:** Draft for review
-**Changes in 0.2.0:** adjudicated 54 findings from two adversarial reviews (product lens, engineering lens). Every finding produced a visible change in this document.
-**Changes in 0.2.1:** project and adapter deletion return every database to its init state before anything is removed. Entered credentials are sealed (write-only). Encryption key rotation follows the Reconflower procedure.
-**Changes in 0.3.0:** adapter tiers (Files, Document, Tabular); phpMyAdmin-style editing with functions, lookups, bulk insert, and a foreign-key-checks toggle; column policies with required functions and masks; tools menu; sample files from the schema; fixture extraction; read-only agent access over MCP. MongoDB import and MongoDB write forms are cut.
+- **Version:** 0.3.0
+- **Date:** 2026-08-28
+- **Author:** Tech Lead
+- **Publisher:** PT. Perkasa Pilar Utama
+- **License:** MIT
+- **Status:** Draft for review
+- **Changes in 0.2.0:** adjudicated 54 findings from two adversarial reviews (product lens, engineering lens). Every finding produced a visible change in this document.
+- **Changes in 0.2.1:** project and adapter deletion return every database to its init state before anything is removed. Entered credentials are sealed (write-only). Encryption key rotation follows the Reconflower procedure.
+- **Changes in 0.3.0:** adapter tiers (Files, Document, Tabular); phpMyAdmin-style editing with functions, lookups, bulk insert, and a foreign-key-checks toggle; column policies with required functions and masks; tools menu; sample files from the schema; fixture extraction; read-only agent access over MCP. MongoDB import and MongoDB write forms are cut.
 
 ---
 

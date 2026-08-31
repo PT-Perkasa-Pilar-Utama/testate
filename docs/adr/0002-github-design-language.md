@@ -1,8 +1,8 @@
 # ADR 0002: GitHub's design language, on Kumo's tokens
 
-**Date:** 2026-08-30
-**Status:** Accepted
-**Deciders:** Product owner (design direction), Tech Lead (implementation)
+- **Date:** 2026-08-30
+- **Status:** Accepted
+- **Deciders:** Product owner (design direction), Tech Lead (implementation)
 
 ## Context
 
