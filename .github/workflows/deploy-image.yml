@@ -88,6 +88,18 @@ jobs:
           target: testate:fat
           tag: "slim"
 
+      # docker-slim drops /data. It is empty in the image (the app writes into it at runtime and
+      # the volume hides it), so nothing touched it during profiling. Without the directory Docker
+      # creates the volume's mount point as root, the container runs as `bun`, and boot refuses
+      # with "TESTATE_DATA_DIR is not writable: /data/blobs". Putting the directory back is enough:
+      # a fresh named volume inherits the ownership of the path it covers.
+      - name: Put back the data directory the slim step drops
+        if: steps.published.outputs.skip != 'true'
+        run: |
+          mkdir -p .slim-data-keep
+          printf 'FROM testate:slim\nCOPY --chown=bun:bun .slim-data-keep/ /data/\n' > Dockerfile.slim-data
+          docker build -f Dockerfile.slim-data -t testate:slim .
+
       # docker-slim-action does its own docker login and clobbers the
       # credential store, so re-authenticate before pushing.
       - name: Re-login to GitHub Container Registry
