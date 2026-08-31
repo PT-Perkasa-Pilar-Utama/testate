@@ -1,12 +1,33 @@
 # Changelog
 
+## 1.0.1-alpha
+
+Republishes 1.0.0-alpha, whose image could not start.
+
+`docker-slim` dropped `/data` from the published image. The directory is empty there, because the
+app writes into it at runtime and the volume hides it, so nothing touched it while the slimmer
+profiled the container. A fresh named volume inherits the ownership of the path it covers, so with
+no `/data` in the image Docker created the mount point as root, the container ran as `bun`, and boot
+refused:
+
+```
+Testate refused to start
+TESTATE_DATA_DIR is not writable: /data/blobs (EACCES: permission denied, mkdir '/data/blobs')
+```
+
+Only the published artifact was affected. Local builds and the CI image job build the unslimmed
+image, where `/data` has always been present and owned by `bun`. The deploy workflow now puts the
+directory back after slimming.
+
+Do not use 1.0.0-alpha. It cannot boot against an empty volume, which is every first install.
+
 ## 1.0.0-alpha
 
 First release. Testate snapshots the databases behind a system under test, puts them back on
 demand, and shows what changed in between.
 
 ```sh
-docker pull ghcr.io/pt-perkasa-pilar-utama/testate:1.0.0-alpha
+docker pull ghcr.io/pt-perkasa-pilar-utama/testate:1.0.1-alpha
 ```
 
 The [README](README.md) walks through install, first boot, and connecting a database in three

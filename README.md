@@ -13,8 +13,26 @@ Testate is a self-hosted tool for QA teams. It takes data-only snapshots ("state
 
 REST adapters hold no data of their own. They store the requests you save and the hooks that run around a checkout. Version 1.0.0-alpha. Every engine in the table is real, not a stand-in.
 
+## Quick start
+
+One container, no configuration file, to see what it does:
+
+```sh
+docker run -d --name testate -p 3000:3000 -v testate-data:/data \
+  -e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
+  -e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
+  ghcr.io/pt-perkasa-pilar-utama/testate:1.0.1-alpha
+```
+
+Open <http://localhost:3000> and sign in as `admin` with that password. Testate makes you change it on the first login.
+
+From there: add a database under **Adapters**, take a snapshot under **States**, break something, then put it back under **Checkouts**. Where to point the host is the one thing that catches people out, so read [section 3](#3-connecting-to-a-database) before you add the adapter.
+
+That command keeps everything in one Docker volume and is fine for a look. For anything you rely on, use Compose and an `.env` file: [How to install](#1-how-to-install).
+
 ## Contents
 
+- [Quick start](#quick-start)
 - [What you get](#what-you-get)
 - [1. How to install](#1-how-to-install)
 - [2. First-time setup](#2-first-time-setup)
