@@ -479,7 +479,7 @@
 
   <section class="hero">
     <div class="copy">
-      <p class="eyebrow">Self-hosted, version 1.0.2-alpha</p>
+      <p class="eyebrow">Self-hosted, version 1.1.0-alpha</p>
       <h1>Git for your test database.</h1>
       <p class="lead">
         Snapshot the databases behind a system under test. Break them. Put them back in seconds, and
@@ -630,7 +630,7 @@
         <div class="cont">-p 7378:7378 -v testate-data:/data \</div>
         <div class="cont">-e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \</div>
         <div class="cont">-e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \</div>
-        <div class="cont">ghcr.io/pt-perkasa-pilar-utama/testate:1.0.2-alpha</div>
+        <div class="cont">ghcr.io/pt-perkasa-pilar-utama/testate:1.1.0-alpha</div>
         <div class="out">&nbsp;</div>
         <div class="prompt">curl -s -o /dev/null -w '%{http_code}\n' \</div>
         <div class="cont">localhost:7378/api/v1/health/live</div>

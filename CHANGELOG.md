@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.0-alpha
 
 ### Breaking
 
@@ -20,6 +20,16 @@ port moved, so the mapping has to move with it:
 
 You can keep reaching it on 3000 from outside by mapping `3000:7378`, and `PORT=3000` still works
 if you would rather not move at all.
+
+### New
+
+**The sidebar folds away.** It takes 15rem whether or not you are using it, which on a grid with
+twenty columns is the difference between reading a row and scrolling for it. The choice is
+remembered per browser.
+
+**Action columns stay put.** Edit and Delete used to scroll off the right edge of a wide table, so
+you found the row you wanted and then scrolled back to act on it. The column is frozen in all
+thirteen tables that have one.
 
 ## 1.0.2-alpha
 
