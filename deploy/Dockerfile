@@ -16,6 +16,9 @@ COPY package.json bun.lock bunfig.toml tsconfig.base.json ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
+# Patched dependencies are an input to the install, so they have to land before it. See
+# patches/README.md for what the current one fixes and when to drop it.
+COPY patches patches
 RUN bun install --frozen-lockfile --ignore-scripts
 COPY apps apps
 COPY packages packages
