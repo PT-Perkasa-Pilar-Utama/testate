@@ -9,8 +9,8 @@ import { defineConfig } from "@playwright/test";
  * signs in each role once (storage state per role under `.e2e/`).
  */
 export const E2E_DIR = fileURLToPath(new URL(".e2e", import.meta.url));
-export const API_PORT = 3000;
-export const WEB_PORT = 5173;
+export const API_PORT = 7378;
+export const WEB_PORT = 7379;
 export const ADMIN_PASSWORD = "admin-password-1234";
 
 /**

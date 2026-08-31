@@ -44,7 +44,7 @@ LABEL org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.created=""
 
 ENV NODE_ENV=production \
-    PORT=3000 \
+    PORT=7378 \
     TESTATE_DATA_DIR=/data \
     TESTATE_BASE_PATH=/
 
@@ -57,8 +57,8 @@ RUN find ./dist ./web -name "*.map" -delete
 RUN mkdir -p /data && chown -R bun:bun /data /app
 USER bun
 VOLUME ["/data"]
-EXPOSE 3000
+EXPOSE 7378
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD bun -e "const b=(Bun.env.TESTATE_BASE_PATH||'/').replace(/\/$/,'');fetch('http://127.0.0.1:'+(Bun.env.PORT||3000)+b+'/api/v1/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD bun -e "const b=(Bun.env.TESTATE_BASE_PATH||'/').replace(/\/$/,'');fetch('http://127.0.0.1:'+(Bun.env.PORT||7378)+b+'/api/v1/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 STOPSIGNAL SIGTERM
 CMD ["bun", "dist/index.js"]

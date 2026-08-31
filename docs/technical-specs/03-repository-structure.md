@@ -109,6 +109,6 @@ testate/                                  # github.com/pt-perkasa-pilar-utama/te
 | --- | --- | --- |
 | `bun run build:web` | `apps/web/dist/` with `/__TESTATE_BASE__/` baked into asset URLs | Dockerfile, copied to `/app/web` |
 | `bun run build:api` | `apps/api/dist/index.js` (single file, `--target=bun`) plus `dist/migrations/*.sql` copied alongside | Dockerfile, `CMD ["bun", "dist/index.js"]` |
-| `bun run dev` | Vite on `:5173` proxying `/api` to the API on `:3000` (`bun --hot`) | Development |
+| `bun run dev` | Vite on `:7379` proxying `/api` to the API on `:7378` (`bun --hot`) | Development |
 
 The runtime image carries `dist/`, `web/`, and the production `node_modules` for the API only. No TypeScript sources, no dev dependencies, no docs.

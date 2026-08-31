@@ -6,7 +6,7 @@ services:
     image: ghcr.io/pt-perkasa-pilar-utama/testate:latest
     env_file: .env
     ports:
-      - "3000:3000"
+      - "7378:7378"
     volumes:
       - testate-data:/data
     restart: unless-stopped

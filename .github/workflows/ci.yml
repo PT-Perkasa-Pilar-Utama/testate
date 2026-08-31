@@ -51,7 +51,7 @@ jobs:
           bun apps/api/dist/index.js &
           echo $! > api.pid
           for i in $(seq 1 30); do
-            if curl -fs -o /dev/null http://localhost:3000/api/v1/health/ready; then exit 0; fi
+            if curl -fs -o /dev/null http://localhost:7378/api/v1/health/ready; then exit 0; fi
             sleep 1
           done
           echo "API did not become ready" >&2

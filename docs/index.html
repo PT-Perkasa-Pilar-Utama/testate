@@ -609,7 +609,7 @@
             <div>
               <h3>Sign in</h3>
               <p>
-                Open <code>localhost:3000</code> as <code>admin</code>. Testate makes you change the
+                Open <code>localhost:7378</code> as <code>admin</code>. Testate makes you change the
                 password on the first login.
               </p>
             </div>
@@ -627,13 +627,13 @@
       </div>
       <div class="terminal" aria-label="Install command">
         <div class="prompt">docker run -d --name testate \</div>
-        <div class="cont">-p 3000:3000 -v testate-data:/data \</div>
+        <div class="cont">-p 7378:7378 -v testate-data:/data \</div>
         <div class="cont">-e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \</div>
         <div class="cont">-e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \</div>
         <div class="cont">ghcr.io/pt-perkasa-pilar-utama/testate:1.0.2-alpha</div>
         <div class="out">&nbsp;</div>
         <div class="prompt">curl -s -o /dev/null -w '%{http_code}\n' \</div>
-        <div class="cont">localhost:3000/api/v1/health/live</div>
+        <div class="cont">localhost:7378/api/v1/health/live</div>
         <div class="out">204</div>
       </div>
     </div>

@@ -12,11 +12,11 @@ export default defineConfig(({ command }) => ({
   plugins: [solidPlugin(), tailwindcss()],
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   server: {
-    port: 5173,
+    port: 7379,
     // No keep-alive: Bun closes idle sockets and the proxy would answer the next request with a 502.
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:3000",
+        target: "http://127.0.0.1:7378",
         agent: new Agent({ keepAlive: false }),
         configure: (proxy) => {
           proxy.on("error", (error, req) => {

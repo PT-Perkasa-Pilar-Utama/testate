@@ -18,13 +18,13 @@ REST adapters hold no data of their own. They store the requests you save and th
 One container, no configuration file, to see what it does:
 
 ```sh
-docker run -d --name testate -p 3000:3000 -v testate-data:/data \
+docker run -d --name testate -p 7378:7378 -v testate-data:/data \
   -e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
   -e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
   ghcr.io/pt-perkasa-pilar-utama/testate:1.0.2-alpha
 ```
 
-Open <http://localhost:3000> and sign in as `admin` with that password. Testate makes you change it on the first login.
+Open <http://localhost:7378> and sign in as `admin` with that password. Testate makes you change it on the first login.
 
 From there: add a database under **Adapters**, take a snapshot under **States**, break something, then put it back under **Checkouts**. Where to point the host is the one thing that catches people out, so read [section 3](#3-connecting-to-a-database) before you add the adapter.
 
@@ -118,13 +118,13 @@ docker compose up -d
 docker compose logs -f testate   # wait for the boot line
 ```
 
-Testate listens on port 3000 inside the container; `docker-compose.yml` publishes it as `3000:3000`. All state lives on the `testate-data` volume, mounted at `/data` (`metadata.db`, blobs, logs, uploads). The container filesystem is otherwise read-only.
+Testate listens on port 7378 inside the container; `docker-compose.yml` publishes it as `7378:7378`. All state lives on the `testate-data` volume, mounted at `/data` (`metadata.db`, blobs, logs, uploads). The container filesystem is otherwise read-only.
 
 To serve Testate under a sub-path instead of the domain root, set `TESTATE_BASE_PATH=/testate` (leading slash, no trailing slash) and restart. `deploy/nginx.conf` is a matching reverse-proxy example.
 
 ## 2. First-time setup
 
-Open the address you set as `TESTATE_PUBLIC_URL` (or `http://<host>:3000` with no proxy in front).
+Open the address you set as `TESTATE_PUBLIC_URL` (or `http://<host>:7378` with no proxy in front).
 
 The admin account comes from the environment on first boot only. `TESTATE_ADMIN_PASSWORD` is read while the users table is empty; once one user exists, Testate ignores it. Sign in as `TESTATE_ADMIN_USER` (default `admin`) with that password. The first login forces a password change. After that, remove `TESTATE_ADMIN_PASSWORD` from `.env`. It has no further effect, and there is no reason to leave a plaintext password sitting in the file.
 
@@ -280,7 +280,7 @@ bun install
 cp apps/api/.env.example apps/api/.env
 bun scripts/generate-key.ts          # paste into TESTATE_SECRETS_ACTIVE_KEY
 # set TESTATE_ADMIN_PASSWORD too, then:
-bun run dev                          # API on :3000, web on :5173
+bun run dev                          # API on :7378, web on :7379
 ```
 
 The file belongs in `apps/api/`, not the repo root. Bun reads `.env` from the working directory and does not look upwards, and `bun run dev` starts the API with `apps/api` as its working directory. `deploy/.env.example` is the container's version of the same variables and is wrong for a source run: it points `TESTATE_DATA_DIR` at `/data`.

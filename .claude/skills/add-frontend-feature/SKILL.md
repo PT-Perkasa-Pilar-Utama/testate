@@ -53,7 +53,7 @@ export function createThingsPresenter(slug: () => string): ThingsPresenter {
 ## 5. Check
 
 - `bun run type-check && bun run lint` (the `solid/reactivity` rule flags props read outside JSX or tracked scopes).
-- `bun run dev`, open `http://localhost:5173`, sign in as `admin` (any password with 12+ characters in the scaffold), and click through the screen.
+- `bun run dev`, open `http://localhost:7379`, sign in as `admin` (any password with 12+ characters in the scaffold), and click through the screen.
 - The build bakes `/__TESTATE_BASE__/`; never hard-code `/api` or `/assets` paths outside `lib/`.
 
 ## Port a Kumo component

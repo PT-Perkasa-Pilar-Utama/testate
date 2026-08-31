@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+### Breaking
+
+**The default port moves from 3000 to 7378, and the dev server from 5173 to 7379.**
+
+Port 3000 is the default for Next, Rails, Express and most of the JavaScript world, and 5173 is
+Vite's, so Testate collided with whatever else you were running. It now uses two ports that IANA
+does not assign and nothing else reaches for by habit.
+
+Nothing changes if you set `PORT` yourself. If you rely on the default, the container's internal
+port moved, so the mapping has to move with it:
+
+```diff
+-  ports: ["3000:3000"]
++  ports: ["7378:7378"]
+```
+
+You can keep reaching it on 3000 from outside by mapping `3000:7378`, and `PORT=3000` still works
+if you would rather not move at all.
+
 ## 1.0.2-alpha
 
 Published for `linux/arm64` as well as `linux/amd64`.

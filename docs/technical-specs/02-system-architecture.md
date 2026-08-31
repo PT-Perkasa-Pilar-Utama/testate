@@ -110,7 +110,7 @@ sequenceDiagram
 graph LR
   subgraph Host["QA host or VM"]
     subgraph Compose["docker compose"]
-      T[testate:1.x\n:3000]
+      T[testate:1.x\n:7378]
       V[(volume /data\nmetadata.db, blobs, logs, uploads, run/web)]
       T --- V
     end

@@ -27,7 +27,7 @@ const basePath = v.pipe(
 );
 
 export const configSchema = v.object({
-  PORT: integer(3000, 1, 65535),
+  PORT: integer(7378, 1, 65535),
   TESTATE_ENV: v.optional(v.picklist(["development", "test", "production"]), "production"),
   TESTATE_DATA_DIR: v.optional(v.string(), "/data"),
   TESTATE_BASE_PATH: basePath,

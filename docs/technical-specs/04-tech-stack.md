@@ -84,7 +84,7 @@ Every choice below was confirmed in the architecture grill on 2026-08-28. Versio
 | Component | Technology |
 | --- | --- |
 | Image | `oven/bun:1.4-slim` runtime stage, `ghcr.io/pt-perkasa-pilar-utama/testate:<semver>` and `:latest` |
-| Process | `bun dist/index.js`, port 3000, `SIGTERM` graceful shutdown |
+| Process | `bun dist/index.js`, port 7378, `SIGTERM` graceful shutdown |
 | Reverse proxy | nginx example in `deploy/nginx.conf`; any proxy that forwards `X-Forwarded-Proto` and `X-Request-Id` works |
 | Orchestration | docker compose example; no cluster mode |
 

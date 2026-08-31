@@ -4,6 +4,7 @@ import { demoAdapter, demoTables, swallow } from "./lib/api.ts";
 import { dataRows, settle, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
+import { API_PORT } from "../playwright.config.ts";
 
 const STAMP = Date.now().toString(36);
 
@@ -71,7 +72,7 @@ test.describe("qa gap stories", () => {
     await expect(page.locator("main").getByText(`select 1 as h${STAMP}`)).toBeVisible();
     const slow = swallow(
       page.request.post(
-        `http://localhost:3000/api/v1/projects/demo/adapters/${postgres.id}/query`,
+        `http://localhost:${API_PORT}/api/v1/projects/demo/adapters/${postgres.id}/query`,
         {
           headers: { "X-Testate-Request": "1" },
           data: { dialect: "sql", mode: "read", row_cap: 10, text: "select pg_sleep(20)" },
