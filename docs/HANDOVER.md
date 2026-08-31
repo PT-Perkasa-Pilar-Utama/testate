@@ -1,4 +1,4 @@
-# Handover: Testate build session, 2026-08-28 to 2026-08-30
+# Handover: Testate build session, 2026-08-28 to 2026-08-31
 
 Read this first, then `CLAUDE.md`, then `docs/E2E.md`. Memory notes live in
 `~/.claude/projects/-Users-vexeee-Documents-project-testate/memory/` (auto-loaded via `MEMORY.md`).
@@ -7,13 +7,21 @@ Read this first, then `CLAUDE.md`, then `docs/E2E.md`. Memory notes live in
 
 "Git for your test database". Bun 1.4 monorepo: `apps/api` (Hono), `apps/web` (SolidJS 2 RC),
 `packages/shared` (valibot contract). Every PRD card is built and committed on `main`. Nothing is
-pushed; the user pushes. There is no open feature work, only ceilings marked `// ponytail:` (12
+pushed; the user pushes. There is no open feature work, only ceilings marked `// ponytail:` (27
 left; `grep -rn "ponytail:" apps packages e2e scripts`).
+
+**Shipped and signed off.** `1.1.0-alpha` is published to
+`ghcr.io/pt-perkasa-pilar-utama/testate` for linux/amd64 and linux/arm64, with a GitHub release, a
+homepage at <https://pt-perkasa-pilar-utama.github.io/testate/> served from `docs/`, and the head of
+engineering's green light. **Beta is the next phase and a lot is expected to change.**
 
 E2E: ~120 Playwright tests, ~3 min, coverage **150/150 stories covered**. `NON_UI` in
 `e2e/lib/stories.ts` is empty: what no screen shows, an API or boot test covers.
 
-The version is `1.0.0-alpha`. It lives in the root `package.json`, which the release workflow tags
+The version is `1.1.0-alpha`. The API listens on **7378** and the dev web server on **7379**;
+3000 and 5173 were abandoned because they collide with every other project on the machine. The
+compose engines publish below port 32768 on purpose (13306, 13307, 15432, 15433): Linux hands out
+ephemeral ports above that, so a host port inside the range fails to bind at random in CI. It lives in the root `package.json`, which the release workflow tags
 the image with, and `bun run bump-version <version>` writes it into the four `package.json` files
 and `apps/api/src/version.ts` at once. `bun run bump-version --check` reports drift, and
 `version.test.ts` fails the gate on it.
@@ -148,6 +156,27 @@ b9131cd test(e2e): cover the contract and agent stories over the API
 - Test harness knobs: `harness.fakeOptions.failCheckout`, `harness.quota.current`.
 
 ## 8. In flight and next
+
+### Owed before beta (carried out of the release, nobody has done these)
+
+- **`1.0.0-alpha` is still pullable from ghcr and cannot boot.** docker-slim dropped `/data`, so a
+  first run against an empty volume refuses. Deleting a published package version needs a scope the
+  agent does not have; the owner runs it.
+- **The deploy leaves `staging-*` tags on the package.** Harmless, visible, prunable.
+- **The Solid patch has an expiry.** `patches/@solidjs%2Fsignals@2.0.0-rc.4.patch` is superseded by
+  `solidjs/solid#3143`, merged to `next` as `28a1eaff`, with `solidjs/solid#3148` still open for the
+  complementary `initTransition` guard. npm is still on `rc.4`, so the patch stays until a release
+  carries it. `docs/upstream-solid-flush-loop.md` still reads as unresolved and wants updating then.
+
+### Decisions beta forces (do not settle these alone)
+
+- **`/api/v1/docs` and `/api/v1/openapi.json` answer without a token.** Verified, not assumed. Fine
+  for alpha; a deliberate choice for beta, since it advertises every endpoint on a reachable box.
+- **27 `ponytail:` shortcuts stand.** Each names its own ceiling. Beta is when someone decides which
+  stop being acceptable.
+- **The three README limits are the product boundary, not bugs.** Databases restore one after
+  another, Testate only touches what you add, microservices are untested. Two are architectural.
+
 
 **In flight:** nothing. The tree was clean when this was written; `git status` should agree.
 
