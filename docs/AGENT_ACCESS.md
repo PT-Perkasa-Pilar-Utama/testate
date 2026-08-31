@@ -33,7 +33,7 @@ the list knows what each one answers and what it costs.
 
 ```sh
 claude mcp add --transport http testate https://testate.example.internal/api/v1/mcp \
-  --header "Authorization: Bearer tst_agent_..."
+  --header "Authorization: Bearer tst_..."
 ```
 
 With a sub-path: `https://example.internal/testate/api/v1/mcp`.
@@ -46,7 +46,7 @@ With a sub-path: `https://example.internal/testate/api/v1/mcp`.
     "testate": {
       "type": "http",
       "url": "https://testate.example.internal/api/v1/mcp",
-      "headers": { "Authorization": "Bearer tst_agent_..." }
+      "headers": { "Authorization": "Bearer tst_..." }
     }
   }
 }

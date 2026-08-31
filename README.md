@@ -183,14 +183,15 @@ Once an adapter is saved, `POST /api/v1/projects/{slug}/adapters/{id}/retest` re
 Testate exposes a read-only MCP (Model Context Protocol) endpoint so an agent can inspect a project's databases without ever getting a write path.
 
 1. As an admin, open **Tokens** and create a token of kind **agent**. Choose a name, a project scope, and an expiry (default 90 days, maximum 365).
-2. Copy the token: Testate shows it once. Give the agent the endpoint and the token.
+2. Copy the token: Testate shows it once. It reads `tst_` followed by 43 characters. Give the agent the endpoint and the token.
 
 Claude Code:
 
 ```sh
-claude mcp add --transport http testate https://testate.example.internal/api/v1/mcp \
-  --header "Authorization: Bearer tst_agent_..."
+claude mcp add --transport http testate https://testate.example.internal/api/v1/mcp --header "Authorization: Bearer tst_YOUR_TOKEN"
 ```
+
+Keep the `--header` value on one line. A header value cannot contain a newline, so a line break pasted inside those quotes is refused by the client before it reaches Testate, with `Header 'Authorization' has invalid value`.
 
 With a sub-path: `https://example.internal/testate/api/v1/mcp`.
 
@@ -202,7 +203,7 @@ Any MCP client:
     "testate": {
       "type": "http",
       "url": "https://testate.example.internal/api/v1/mcp",
-      "headers": { "Authorization": "Bearer tst_agent_..." }
+      "headers": { "Authorization": "Bearer tst_YOUR_TOKEN" }
     }
   }
 }
