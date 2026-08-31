@@ -54,14 +54,33 @@ export function TableFooter(props: {
   );
 }
 
-export function Head(props: ComponentProps<"th"> & { numeric?: boolean }): JSX.Element {
-  const rest = omit(props, "class", "numeric");
+/**
+ * `pinned` freezes a column against the right edge while the table scrolls sideways. It exists for
+ * the action column: a row's Edit and Delete are the reason you scrolled to that row, and losing
+ * them off-screen means scrolling back to act on what you just found.
+ *
+ * A frozen cell needs its own background, or the columns it covers show through. It therefore also
+ * needs to follow the row's hover, which is why `Row` is a `group`.
+ */
+const PINNED_HEAD =
+  "sticky right-0 z-20 bg-kumo-elevated shadow-[inset_1px_0_0_0_var(--color-kumo-hairline)]";
+// No standing z-index: every frozen cell is positioned, so they paint in row order, and a row menu
+// opening downwards would be covered by the next row's frozen cell, which swallows the click on
+// its items. The cell lifts itself only while its own menu is open, which `<details open>` says.
+const PINNED_CELL =
+  "sticky right-0 bg-kumo-base group-hover:bg-kumo-tint has-[details[open]]:z-30 shadow-[inset_1px_0_0_0_var(--color-kumo-hairline)]";
+
+export function Head(
+  props: ComponentProps<"th"> & { numeric?: boolean; pinned?: boolean }
+): JSX.Element {
+  const rest = omit(props, "class", "numeric", "pinned");
   return (
     <th
       {...rest}
       class={[
         "sticky top-0 z-10 h-10 border-b border-kumo-hairline bg-kumo-elevated px-4 align-middle text-xs font-medium whitespace-nowrap text-kumo-subtle",
         props.numeric === true ? "text-right" : "text-left",
+        props.pinned === true ? PINNED_HEAD : "",
         props.class,
       ]}
     />
@@ -74,7 +93,7 @@ export function Row(props: ComponentProps<"tr">): JSX.Element {
   return (
     <tr
       {...rest}
-      class={["border-b border-kumo-hairline last:border-0 hover:bg-kumo-tint", props.class]}
+      class={["group border-b border-kumo-hairline last:border-0 hover:bg-kumo-tint", props.class]}
     />
   );
 }
@@ -94,14 +113,17 @@ export function EmptyRow(props: { children: JSX.Element }): JSX.Element {
   );
 }
 
-export function Cell(props: ComponentProps<"td"> & { numeric?: boolean }): JSX.Element {
-  const rest = omit(props, "class", "numeric");
+export function Cell(
+  props: ComponentProps<"td"> & { numeric?: boolean; pinned?: boolean }
+): JSX.Element {
+  const rest = omit(props, "class", "numeric", "pinned");
   return (
     <td
       {...rest}
       class={[
         "px-4 py-2.5 align-middle text-kumo-default",
         props.numeric === true ? "text-right tabular-nums whitespace-nowrap" : "",
+        props.pinned === true ? PINNED_CELL : "",
         props.class,
       ]}
     />

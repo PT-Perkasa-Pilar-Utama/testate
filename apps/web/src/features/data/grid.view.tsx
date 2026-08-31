@@ -169,7 +169,7 @@ function WriteControls(props: { presenter: GridPresenter }): JSX.Element {
 function RowActions(props: { presenter: GridPresenter; row: JsonObject }): JSX.Element {
   const row = (): JsonObject => props.row;
   return (
-    <Cell>
+    <Cell pinned>
       <div class="flex gap-1">
         <Show when={props.presenter.table()?.primary_key?.length}>
           <Button
@@ -254,7 +254,7 @@ export default function GridView(props: { slug: string; id: string; table: strin
                     </Head>
                   )}
                 </For>
-                <Head>Actions</Head>
+                <Head pinned>Actions</Head>
               </tr>
             </thead>
             <tbody>

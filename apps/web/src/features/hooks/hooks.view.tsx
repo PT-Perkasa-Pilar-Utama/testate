@@ -117,7 +117,7 @@ export default function HooksView(props: { slug: string }): JSX.Element {
               <Head>Request</Head>
               <Head>On failure</Head>
               <Head>Enabled</Head>
-              <Head>Actions</Head>
+              <Head pinned>Actions</Head>
             </tr>
           </thead>
           <tbody>
@@ -143,7 +143,7 @@ export default function HooksView(props: { slug: string }): JSX.Element {
                         {hook.enabled ? "on" : "off"}
                       </Badge>
                     </Cell>
-                    <Cell>
+                    <Cell pinned>
                       <Show when={hasRole("qa")}>
                         <div class="flex flex-wrap justify-end gap-1">
                           <Button

@@ -139,7 +139,7 @@ export default function TokensView(): JSX.Element {
               <Head>Last used</Head>
               <Head>Expires</Head>
               <Head>Status</Head>
-              <Head />
+              <Head pinned />
             </tr>
           </thead>
           <tbody>
@@ -171,7 +171,7 @@ export default function TokensView(): JSX.Element {
                         {token.revoked_at === null ? "active" : "revoked"}
                       </Badge>
                     </Cell>
-                    <Cell>
+                    <Cell pinned>
                       <Show when={token.revoked_at === null}>
                         <Button
                           size="xs"

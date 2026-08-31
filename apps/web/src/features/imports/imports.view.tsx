@@ -39,7 +39,7 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
               <Head>Counts</Head>
               <Head>By</Head>
               <Head>Started</Head>
-              <Head>Actions</Head>
+              <Head pinned>Actions</Head>
             </tr>
           </thead>
           <tbody>
@@ -66,7 +66,7 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
                     <Cell>{countsLabel(run)}</Cell>
                     <Cell class="whitespace-nowrap">{run.actor.label}</Cell>
                     <Cell class="whitespace-nowrap">{formatWhen(run.created_at)}</Cell>
-                    <Cell>
+                    <Cell pinned>
                       <div class="flex flex-wrap justify-end gap-1">
                         <Button
                           size="sm"

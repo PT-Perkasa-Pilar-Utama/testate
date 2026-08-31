@@ -148,7 +148,7 @@ function EntryRow(props: { presenter: StoragePresenter; entry: Entry }): JSX.Ele
       <Cell class="whitespace-nowrap">
         {props.entry.modified_at === null ? "" : formatWhen(props.entry.modified_at)}
       </Cell>
-      <Cell>
+      <Cell pinned>
         <Show when={props.entry.kind === "file"}>
           <a
             class={buttonClass("ghost", "sm")}
@@ -246,7 +246,7 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
                 <Head>Name</Head>
                 <Head numeric>Size</Head>
                 <Head>Modified</Head>
-                <Head />
+                <Head pinned />
               </tr>
             </thead>
             <tbody>

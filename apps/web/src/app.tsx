@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { Errored, For, Match, Show, Switch } from "solid-js";
+import { Errored, For, Match, Show, Switch, createEffect, createSignal } from "solid-js";
 import type { Role } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
@@ -132,15 +132,60 @@ function Page(props: { match: RouteMatch | null }): JSX.Element {
   );
 }
 
+const SIDEBAR_KEY = "testate.sidebar.collapsed";
+
+/** Remembered per browser: a grid wide enough to need the room is wide enough on the next visit. */
+function storedCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(SIDEBAR_KEY) === "1";
+  } catch {
+    // Private windows and blocked site data throw on access rather than return null.
+    return false;
+  }
+}
+
 function Sidebar(props: { current: string | undefined }): JSX.Element {
+  const [collapsed, setCollapsed] = createSignal(storedCollapsed());
+  createEffect(
+    () => collapsed(),
+    (on) => {
+      try {
+        window.localStorage.setItem(SIDEBAR_KEY, on ? "1" : "0");
+      } catch {
+        // Nothing to do: the sidebar still works, it just forgets between visits.
+      }
+    }
+  );
   const onNav = (event: MouseEvent, path: string): void => {
     event.preventDefault();
     navigate(path);
   };
   return (
-    <aside class="sticky top-0 flex h-screen w-60 flex-col overflow-y-auto border-r border-kumo-line px-3 py-4">
-      <div class="mb-6 px-2 text-base font-semibold text-kumo-strong">Testate</div>
-      <nav class="grid gap-1">
+    <aside
+      class={[
+        "sticky top-0 flex h-screen flex-col overflow-y-auto border-r border-kumo-line py-4",
+        collapsed() ? "w-12 items-center px-2" : "w-60 px-3",
+      ]}
+    >
+      <div class={["mb-6 flex items-center", collapsed() ? "justify-center" : "gap-2 px-2"]}>
+        <button
+          type="button"
+          class="grid h-8 w-8 shrink-0 place-items-center rounded-md text-kumo-subtle hover:bg-kumo-tint hover:text-kumo-default"
+          aria-expanded={collapsed() ? "false" : "true"}
+          aria-label={collapsed() ? "Expand the sidebar" : "Collapse the sidebar"}
+          title={collapsed() ? "Expand the sidebar" : "Collapse the sidebar"}
+          onClick={() => setCollapsed((on) => !on)}
+        >
+          {/* Two bars: the rail, and the panel that folds away behind it. */}
+          <svg viewBox="0 0 16 16" class="h-4 w-4" aria-hidden="true" fill="currentColor">
+            <path d="M1.5 2h13a.5.5 0 0 1 .5.5v11a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5Zm.5 1v10h3V3H2Zm4 0v10h8V3H6Z" />
+          </svg>
+        </button>
+        <Show when={!collapsed()}>
+          <span class="text-base font-semibold text-kumo-strong">Testate</span>
+        </Show>
+      </div>
+      <nav class={["grid gap-1", collapsed() ? "hidden" : ""]}>
         <For each={NAV.filter((item) => hasRole(item.role))}>
           {(item) => (
             <a
@@ -156,7 +201,7 @@ function Sidebar(props: { current: string | undefined }): JSX.Element {
           )}
         </For>
       </nav>
-      <div class="mt-auto grid gap-2 text-sm">
+      <div class={["mt-auto grid gap-2 text-sm", collapsed() ? "hidden" : ""]}>
         <Show when={actor()}>
           {(current) => (
             <>

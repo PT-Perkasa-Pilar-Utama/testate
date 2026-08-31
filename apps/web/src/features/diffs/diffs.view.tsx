@@ -33,7 +33,7 @@ export default function DiffsView(props: { slug: string }): JSX.Element {
               <Head>Status</Head>
               <Head numeric>Changed rows</Head>
               <Head>Expires</Head>
-              <Head>Actions</Head>
+              <Head pinned>Actions</Head>
             </tr>
           </thead>
           <tbody>
@@ -56,7 +56,7 @@ export default function DiffsView(props: { slug: string }): JSX.Element {
                     </Cell>
                     <Cell numeric>{changedRows(diff)}</Cell>
                     <Cell class="whitespace-nowrap">{formatWhen(diff.expires_at)}</Cell>
-                    <Cell>
+                    <Cell pinned>
                       <div class="flex flex-wrap justify-end gap-1">
                         <Button
                           size="sm"

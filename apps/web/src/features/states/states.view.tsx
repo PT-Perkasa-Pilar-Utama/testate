@@ -154,7 +154,7 @@ export default function StatesView(props: { slug: string; onChanged?: () => void
                 <Head numeric>Size</Head>
                 <Head>By</Head>
                 <Head>Taken</Head>
-                <Head>Actions</Head>
+                <Head pinned>Actions</Head>
               </tr>
             </thead>
             <tbody>
@@ -194,7 +194,7 @@ export default function StatesView(props: { slug: string; onChanged?: () => void
                       <Cell numeric>{formatBytes(state.size_bytes)}</Cell>
                       <Cell class="whitespace-nowrap">{state.actor.label}</Cell>
                       <Cell class="whitespace-nowrap">{formatWhen(state.created_at)}</Cell>
-                      <Cell>
+                      <Cell pinned>
                         <RowActions
                           presenter={presenter}
                           state={state}

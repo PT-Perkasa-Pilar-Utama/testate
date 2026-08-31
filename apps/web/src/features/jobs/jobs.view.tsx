@@ -55,7 +55,7 @@ function JobRow(props: { presenter: JobsPresenter; job: Job }): JSX.Element {
       </Cell>
       <Cell class="whitespace-nowrap">{props.job.actor.label}</Cell>
       <Cell class="whitespace-nowrap">{formatWhen(props.job.created_at)}</Cell>
-      <Cell>
+      <Cell pinned>
         <Show when={hasRole("qa") && canCancel(props.job)}>
           <Button
             size="sm"
@@ -93,7 +93,7 @@ export default function JobsView(): JSX.Element {
               <Head>Error</Head>
               <Head>By</Head>
               <Head>Created</Head>
-              <Head />
+              <Head pinned />
             </tr>
           </thead>
           <tbody>

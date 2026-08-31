@@ -56,7 +56,7 @@ export default function CheckoutsView(props: {
             <Head>Adapters</Head>
             <Head>By</Head>
             <Head>Started</Head>
-            <Head>Actions</Head>
+            <Head pinned>Actions</Head>
           </tr>
         </thead>
         <tbody>
@@ -91,7 +91,7 @@ export default function CheckoutsView(props: {
                   </Cell>
                   <Cell class="whitespace-nowrap">{checkout.actor.label}</Cell>
                   <Cell class="whitespace-nowrap">{formatWhen(checkout.created_at)}</Cell>
-                  <Cell>
+                  <Cell pinned>
                     <div class="flex flex-wrap justify-end gap-1">
                       <Button
                         size="sm"

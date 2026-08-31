@@ -168,7 +168,7 @@ function AdapterSection(props: {
               <Head numeric>Removed</Head>
               <Head numeric>Changed</Head>
               <Head>Schema</Head>
-              <Head />
+              <Head pinned />
             </tr>
           </thead>
           <tbody>
@@ -198,7 +198,7 @@ function TableRow(props: { table: DiffTable; onRows: () => void }): JSX.Element 
           {(columns) => <Badge variant="warning">{columns().join(", ")}</Badge>}
         </Show>
       </Cell>
-      <Cell>
+      <Cell pinned>
         <Show when={touched(props.table)}>
           <Button size="sm" variant="ghost" onClick={props.onRows}>
             Rows

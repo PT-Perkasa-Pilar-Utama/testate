@@ -184,7 +184,7 @@ export default function UsersView(): JSX.Element {
               <Head>Role</Head>
               <Head>Status</Head>
               <Head>Last login</Head>
-              <Head />
+              <Head pinned />
             </tr>
           </thead>
           <tbody>
@@ -210,7 +210,7 @@ export default function UsersView(): JSX.Element {
                     </span>
                   </Cell>
                   <Cell>{user.last_login_at ?? "never"}</Cell>
-                  <Cell>
+                  <Cell pinned>
                     <Actions presenter={presenter} user={user} />
                   </Cell>
                 </Row>

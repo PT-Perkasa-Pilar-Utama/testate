@@ -86,7 +86,7 @@ export default function AccountView(): JSX.Element {
                 <Head>Last seen</Head>
                 <Head>Address</Head>
                 <Head>Browser</Head>
-                <Head />
+                <Head pinned />
               </tr>
             </thead>
             <tbody>
@@ -97,7 +97,7 @@ export default function AccountView(): JSX.Element {
                     <Cell>{formatWhen(session.last_seen_at)}</Cell>
                     <Cell>{session.ip ?? ""}</Cell>
                     <Cell class="max-w-xs truncate">{session.user_agent ?? ""}</Cell>
-                    <Cell>
+                    <Cell pinned>
                       <Show
                         when={!session.current}
                         fallback={<Badge variant="success">this session</Badge>}

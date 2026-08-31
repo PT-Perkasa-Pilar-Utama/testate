@@ -179,7 +179,7 @@ export default function RestView(props: { slug: string; id: string }): JSX.Eleme
                 <Head>Method</Head>
                 <Head>Path</Head>
                 <Head>Expected</Head>
-                <Head />
+                <Head pinned />
               </tr>
             </thead>
             <tbody>
@@ -210,7 +210,7 @@ export default function RestView(props: { slug: string; id: string }): JSX.Eleme
                         <code>{request.path}</code>
                       </Cell>
                       <Cell>{request.expected_status ?? "any"}</Cell>
-                      <Cell>
+                      <Cell pinned>
                         <Show when={hasRole("qa")}>
                           <div class="flex gap-1">
                             <Button
