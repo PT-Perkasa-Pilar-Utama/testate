@@ -2,6 +2,18 @@
 
 Let an AI agent inspect a test database through Testate: read rows, follow relations, extract a fixture, never write. Design: [technical-specs/23-agent-access.md](technical-specs/23-agent-access.md). Protocol: [api-specs/18-agent-mcp.md](api-specs/18-agent-mcp.md).
 
+## Start with the guide
+
+An agent does not have to be told how to use Testate. Three doors lead to the same document:
+
+- the `help` tool, first in `tools/list`
+- the `testate://guide` resource, first in `resources/list`
+- `GET /api/v1/agent/guide`, for whoever is wiring the integration up, with a `viewer` role token rather than an agent token
+
+It covers the layout, the order to call the tools in, what an agent cannot do, and the limits that
+refuse a call. Every tool also carries its own description in `tools/list`, so an agent that reads
+the list knows what each one answers and what it costs.
+
 ## Why it is safe
 
 | Guarantee | How |

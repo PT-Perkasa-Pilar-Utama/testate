@@ -7,6 +7,7 @@ const adapterRef = v.pipe(v.string(), v.minLength(1));
 
 /** Input schemas for the MCP tools, in the order 18-agent-mcp.md lists them. */
 export const AGENT_TOOL_INPUTS = {
+  help: v.object({}),
   list_projects: v.object({}),
   list_adapters: v.object({ project: slugSchema }),
   list_tables: v.object({ project: slugSchema, adapter: adapterRef }),

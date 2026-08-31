@@ -5,10 +5,18 @@ import { sha256 } from "../../lib/password/index.ts";
 import type { AdapterRecord } from "../adapters/adapters.repository.ts";
 import type { AgentToolDeps, Scope } from "./agent.catalog.ts";
 import { json, tools } from "./agent.catalog.ts";
+import { AGENT_GUIDE } from "./agent.guide.ts";
 import type { AgentContext, AgentRuntime, Resource } from "./agent.service.ts";
 
 export type { AgentToolDeps } from "./agent.catalog.ts";
 export { AGENT_CAPS } from "./agent.catalog.ts";
+
+const GUIDE_URI = "testate://guide";
+const GUIDE_RESOURCE: Resource = {
+  uri: GUIDE_URI,
+  name: "Read me first: how to use Testate",
+  mimeType: "text/markdown",
+};
 
 /** What one call resolved, so its audit row names the project and adapter. */
 type Seen = { project?: Project; adapter?: AdapterRecord };
@@ -72,7 +80,7 @@ export function createAgentTools(deps: AgentToolDeps): AgentRuntime {
       }
     },
     async listResources(ctx) {
-      const resources: Resource[] = [];
+      const resources: Resource[] = [GUIDE_RESOURCE];
       for (const project of await deps.projects.list(ctx.scope, {
         limit: 200,
         sort: "name",
@@ -95,6 +103,7 @@ export function createAgentTools(deps: AgentToolDeps): AgentRuntime {
       return resources;
     },
     async readResource(uri, ctx) {
+      if (uri === GUIDE_URI) return AGENT_GUIDE;
       const match = /^testate:\/\/projects\/([^/]+)\/(states|adapters\/([^/]+)\/schema)$/.exec(uri);
       if (match === null) throw notFound("resource");
       const seen: Seen = {};

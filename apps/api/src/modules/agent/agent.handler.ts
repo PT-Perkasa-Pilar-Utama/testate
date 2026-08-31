@@ -5,10 +5,11 @@ import * as v from "valibot";
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
 import { createRateLimiter } from "../../lib/http/ratelimit.ts";
 import type { Handler } from "../../lib/http/index.ts";
+import { AGENT_GUIDE } from "./agent.guide.ts";
 import type { AgentContext, AgentRuntime, AgentService } from "./agent.service.ts";
 import { ERR_PARSE, ERR_RATE_LIMITED } from "./agent.service.ts";
 
-export type AgentHandlers = { post: Handler; get: Handler };
+export type AgentHandlers = { post: Handler; get: Handler; guide: Handler };
 
 export type AgentHandlerDeps = {
   settings: { get(): Promise<Settings> };
@@ -76,5 +77,7 @@ export function createAgentHandlers(
       return c.json(response, { status: 200 });
     },
     get: async (c) => c.body(null, 405),
+    guide: async (c) =>
+      c.text(AGENT_GUIDE, 200, { "content-type": "text/markdown; charset=utf-8" }),
   };
 }

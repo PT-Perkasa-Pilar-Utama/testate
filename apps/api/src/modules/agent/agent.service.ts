@@ -9,6 +9,7 @@ import {
 import * as v from "valibot";
 
 import { AppError } from "../../lib/http/index.ts";
+import { TOOL_DESCRIPTIONS } from "./agent.guide.ts";
 import type { RequestMeta } from "../../lib/http/auth.ts";
 
 export const MCP_PROTOCOL_VERSION = "2025-03-26";
@@ -59,7 +60,7 @@ function error(
 function toolList(): JsonValue {
   return [...TOOLS.entries()].map(([name, schema]) => ({
     name,
-    description: `Testate read-only tool ${name}; see docs/api-specs/18-agent-mcp.md`,
+    description: TOOL_DESCRIPTIONS.get(name) ?? `Testate read-only tool ${name}`,
     inputSchema: v.parse(jsonValueSchema, toJsonSchema(schema)),
   }));
 }

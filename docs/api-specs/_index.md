@@ -33,7 +33,7 @@ Legend: `OK` implemented and tested · `WIP` in progress · `TODO` not started �
 | Audit logs | `GET /audit-logs`, `GET /audit-logs/export` | OK |
 | Settings | `GET /settings`, `PATCH /settings`, `POST /settings/store-migration`, `POST /settings/backup`, `GET /settings/backups/{job_id}` | OK: sealed `store.s3` keys, `storage_migration` job (S3 store via `Bun.S3Client`); `backup` job to a 24-hour download tar or the store, with download |
 | Tools | `POST /tools/hash`, `POST /tools/random`, `POST /tools/uuid` | OK |
-| Agent (MCP) | `POST /mcp`, `GET /mcp`: `initialize`, `tools/list`, `tools/call` (13 tools), `resources/list`, `resources/read`, `ping` | Real (per-token rate limit, scope, masks, storage tools) |
+| Agent (MCP) | `POST /mcp`, `GET /mcp`: `initialize`, `tools/list`, `tools/call` (14 tools), `resources/list`, `resources/read`, `ping`. `GET /agent/guide` serves the same agent guide as Markdown to a role token | Real (per-token rate limit, scope, masks, storage tools) |
 | System | `GET /health`, `GET /health/live`, `GET /health/ready`, `POST /admin/reset-state` (non-production), `GET /openapi.json`, `GET /docs` | OK |
 
 ## Files in This Directory

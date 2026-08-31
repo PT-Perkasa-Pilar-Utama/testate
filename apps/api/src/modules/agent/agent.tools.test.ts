@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { Actor, JsonObject, JsonValue } from "@testate/shared";
+import { AGENT_TOOL_INPUTS } from "@testate/shared";
 import * as v from "valibot";
 
 import { TEST_META } from "../../../test/accounts.ts";
@@ -17,7 +18,10 @@ import { createStatesService } from "../states/states.service.ts";
 import { createStorageService } from "../storage/storage.service.ts";
 import { createRateLimiter } from "../../lib/http/ratelimit.ts";
 import type { AgentContext, AgentRuntime } from "./agent.service.ts";
+import { AGENT_GUIDE, TOOL_DESCRIPTIONS } from "./agent.guide.ts";
 import { createAgentTools } from "./agent.tools.ts";
+
+const AGENT_TOOL_NAMES = Object.keys(AGENT_TOOL_INPUTS);
 
 type Harness = {
   harness: AdaptersHarness;
@@ -214,12 +218,13 @@ describe("agent tools", () => {
     expect(states.map((state) => state.name)).toEqual(["init"]);
     const resources = await h.runtime.listResources(h.ctx);
     expect(resources.map((resource) => resource.uri)).toEqual([
+      "testate://guide",
       `testate://projects/shop/states`,
       `testate://projects/shop/adapters/${h.adapterId}/schema`,
     ]);
     const schema = v.parse(
       v.object({ tables: v.array(v.unknown()) }),
-      await h.runtime.readResource(uriAt(resources, 1), h.ctx)
+      await h.runtime.readResource(uriAt(resources, 2), h.ctx)
     );
     expect(schema.tables.length).toBe(2);
   });
@@ -263,5 +268,31 @@ describe("agent tools", () => {
     expect(limit("t1", 2)).toBe(60);
     clock += 61_000;
     expect(limit("t1", 2)).toBeNull();
+  });
+  it("leads the agent with a guide it can reach as a tool and as a resource", async () => {
+    const h = await createHarness();
+
+    // The guide answers as a tool, and it is the first entry so an agent reading top to bottom
+    // meets it before it guesses at anything else.
+    const guide = await call(h, "help", {});
+    expect(String(guide)).toContain("Testate for agents");
+    expect(AGENT_TOOL_NAMES[0]).toBe("help");
+
+    // And as a resource, first in the list, before any project.
+    const resources = await h.runtime.listResources(h.ctx);
+    expect(resources[0]?.uri).toBe("testate://guide");
+    expect(resources[0]?.mimeType).toBe("text/markdown");
+    expect(await h.runtime.readResource("testate://guide", h.ctx)).toBe(AGENT_GUIDE);
+  });
+
+  it("describes every tool it advertises, in its own words", () => {
+    // A description that just repeats the name teaches an agent nothing, and every call it wastes
+    // guessing is audited and counted against its budget.
+    for (const name of AGENT_TOOL_NAMES) {
+      const description = TOOL_DESCRIPTIONS.get(name);
+      expect(description).toBeDefined();
+      expect(String(description).length).toBeGreaterThan(40);
+      expect(String(description).toLowerCase()).not.toBe(`testate read-only tool ${name}`);
+    }
   });
 });

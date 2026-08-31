@@ -14,6 +14,7 @@ import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import type { ProjectsService } from "../projects/projects.service.ts";
 import type { StatesService } from "../states/states.service.ts";
 import type { StorageService } from "../storage/storage.service.ts";
+import { AGENT_GUIDE } from "./agent.guide.ts";
 import type { AgentContext } from "./agent.service.ts";
 
 export type AgentToolDeps = {
@@ -140,6 +141,9 @@ function pageQuery(args: JsonObject): Parameters<DataService["rows"]>[3] {
 export function tools(deps: AgentToolDeps): ReadonlyMap<string, Tool> {
   return new Map<string, Tool>(
     Object.entries({
+      // First in the map so it leads `tools/list`: an agent that reads top to bottom is told how
+      // to use the rest before it calls one and guesses.
+      help: async () => json(AGENT_GUIDE),
       list_projects: async (_args, ctx) =>
         json(
           (await deps.projects.list(ctx.scope, { limit: 200, sort: "name", order: "asc" })).map(
