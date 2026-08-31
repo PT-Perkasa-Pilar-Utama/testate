@@ -11,11 +11,11 @@ export default function PageHeader(props: {
   actions?: JSX.Element;
 }): JSX.Element {
   return (
-    <div class="flex flex-wrap items-start justify-between gap-4 border-b border-kumo-line pb-4">
+    <div class="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-4">
       <div class="grid gap-1.5">
-        <h2 class="text-xl font-semibold text-kumo-strong">{props.title}</h2>
+        <h2 class="text-xl font-semibold text-heading">{props.title}</h2>
         <Show when={props.description}>
-          <p class="text-kumo-subtle">{props.description}</p>
+          <p class="text-muted">{props.description}</p>
         </Show>
       </div>
       <Show when={props.actions}>

@@ -12,7 +12,7 @@ import { Show, omit } from "solid-js";
 export function Table(props: ComponentProps<"table">): JSX.Element {
   const rest = omit(props, "class");
   return (
-    <div class="w-full overflow-x-auto overflow-y-auto rounded-lg ring ring-kumo-line">
+    <div class="w-full overflow-x-auto overflow-y-auto rounded-lg ring ring-line">
       <table {...rest} class={["w-full border-collapse text-base", props.class]} />
     </div>
   );
@@ -42,7 +42,7 @@ export function TableFooter(props: {
   children?: JSX.Element;
 }): JSX.Element {
   return (
-    <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-kumo-subtle">
+    <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
       <span>
         {props.shown} {props.noun}
         {props.hasMore === true ? " so far" : ""}
@@ -62,13 +62,12 @@ export function TableFooter(props: {
  * A frozen cell needs its own background, or the columns it covers show through. It therefore also
  * needs to follow the row's hover, which is why `Row` is a `group`.
  */
-const PINNED_HEAD =
-  "sticky right-0 z-20 bg-kumo-elevated shadow-[inset_1px_0_0_0_var(--color-kumo-hairline)]";
+const PINNED_HEAD = "sticky right-0 z-20 bg-surface shadow-[inset_1px_0_0_0_var(--color-hairline)]";
 // No standing z-index: every frozen cell is positioned, so they paint in row order, and a row menu
 // opening downwards would be covered by the next row's frozen cell, which swallows the click on
 // its items. The cell lifts itself only while its own menu is open, which `<details open>` says.
 const PINNED_CELL =
-  "sticky right-0 bg-kumo-base group-hover:bg-kumo-tint has-[details[open]]:z-30 shadow-[inset_1px_0_0_0_var(--color-kumo-hairline)]";
+  "sticky right-0 bg-canvas group-hover:bg-hover has-[details[open]]:z-30 shadow-[inset_1px_0_0_0_var(--color-hairline)]";
 
 export function Head(
   props: ComponentProps<"th"> & { numeric?: boolean; pinned?: boolean }
@@ -78,7 +77,7 @@ export function Head(
     <th
       {...rest}
       class={[
-        "sticky top-0 z-10 h-10 border-b border-kumo-hairline bg-kumo-elevated px-4 align-middle text-xs font-medium whitespace-nowrap text-kumo-subtle",
+        "sticky top-0 z-10 h-10 border-b border-hairline bg-surface px-4 align-middle text-xs font-medium whitespace-nowrap text-muted",
         props.numeric === true ? "text-right" : "text-left",
         props.pinned === true ? PINNED_HEAD : "",
         props.class,
@@ -93,7 +92,7 @@ export function Row(props: ComponentProps<"tr">): JSX.Element {
   return (
     <tr
       {...rest}
-      class={["group border-b border-kumo-hairline last:border-0 hover:bg-kumo-tint", props.class]}
+      class={["group border-b border-hairline last:border-0 hover:bg-hover", props.class]}
     />
   );
 }
@@ -106,7 +105,7 @@ export function Row(props: ComponentProps<"tr">): JSX.Element {
 export function EmptyRow(props: { children: JSX.Element }): JSX.Element {
   return (
     <tr>
-      <td colspan={99} class="h-24 px-4 py-8 text-center align-middle text-kumo-subtle">
+      <td colspan={99} class="h-24 px-4 py-8 text-center align-middle text-muted">
         {props.children}
       </td>
     </tr>
@@ -121,7 +120,7 @@ export function Cell(
     <td
       {...rest}
       class={[
-        "px-4 py-2.5 align-middle text-kumo-default",
+        "px-4 py-2.5 align-middle text-body",
         props.numeric === true ? "text-right tabular-nums whitespace-nowrap" : "",
         props.pinned === true ? PINNED_CELL : "",
         props.class,

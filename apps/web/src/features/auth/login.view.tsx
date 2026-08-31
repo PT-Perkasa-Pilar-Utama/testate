@@ -16,11 +16,11 @@ export default function LoginView(props: { next: string }): JSX.Element {
     // GitHub's sign-in: the mark above a narrow card, nothing else on the page.
     <section class="mx-auto grid w-full max-w-[340px] gap-6 pt-16">
       <div class="grid justify-items-center gap-2 text-center">
-        <span class="text-2xl font-semibold text-kumo-strong">Testate</span>
-        <p class="text-kumo-subtle">Git for your test database</p>
+        <span class="text-2xl font-semibold text-heading">Testate</span>
+        <p class="text-muted">Git for your test database</p>
       </div>
       <LayerCard class="grid gap-4 px-6 py-5">
-        <h1 class="text-base font-semibold text-kumo-strong">Sign in</h1>
+        <h1 class="text-base font-semibold text-heading">Sign in</h1>
         <form
           class="grid gap-4"
           ref={guard.ref}
@@ -60,9 +60,7 @@ export default function LoginView(props: { next: string }): JSX.Element {
           </Button>
         </form>
       </LayerCard>
-      <p class="text-center text-xs text-kumo-subtle">
-        Your databases, your network. Nothing leaves it.
-      </p>
+      <p class="text-center text-xs text-muted">Your databases, your network. Nothing leaves it.</p>
     </section>
   );
 }

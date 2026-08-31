@@ -18,7 +18,7 @@ export default function AdapterCrumb(props: { slug: string; id: string }): JSX.E
     navigate(back());
   };
   return (
-    <a class="text-kumo-subtle hover:underline" href={href(back())} onClick={onBack}>
+    <a class="text-muted hover:underline" href={href(back())} onClick={onBack}>
       <Loading fallback="adapter">{adapter.value().name}</Loading>
     </a>
   );

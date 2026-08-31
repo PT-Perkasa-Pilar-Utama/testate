@@ -26,7 +26,7 @@ const STATUS_VARIANT = { creating: "info", ready: "success", failed: "error" } a
 
 function Branch(props: { nodes: StateTreeNode[] }): JSX.Element {
   return (
-    <ul class="grid gap-1 border-l border-kumo-line pl-4">
+    <ul class="grid gap-1 border-l border-line pl-4">
       <For each={props.nodes}>
         {(node) => (
           <li class="grid gap-1">
@@ -36,7 +36,7 @@ function Branch(props: { nodes: StateTreeNode[] }): JSX.Element {
               <Show when={node.is_head}>
                 <Badge variant="success">HEAD</Badge>
               </Show>
-              <span class="text-kumo-subtle text-sm">
+              <span class="text-muted text-sm">
                 {formatBytes(node.size_bytes)} · {formatWhen(node.created_at)}
               </span>
             </span>
@@ -139,7 +139,7 @@ export default function StatesView(props: { slug: string; onChanged?: () => void
           </Show>
         </div>
       </div>
-      <Loading fallback={<p class="text-kumo-subtle">Loading states...</p>}>
+      <Loading fallback={<p class="text-muted">Loading states...</p>}>
         <Show when={presenter.view() === "tree"}>
           <Branch nodes={presenter.tree.value()} />
         </Show>

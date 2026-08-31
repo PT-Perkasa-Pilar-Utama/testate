@@ -32,7 +32,7 @@ function MappingStep(props: { presenter: WizardPresenter }): JSX.Element {
       <div class="grid gap-3 sm:grid-cols-2">
         <label class="grid gap-1.5 text-base">
           <span>Database adapter</span>
-          <Loading fallback={<p class="text-kumo-subtle">Listing adapters...</p>}>
+          <Loading fallback={<p class="text-muted">Listing adapters...</p>}>
             <Select
               options={[
                 { value: "", label: "choose an adapter" },

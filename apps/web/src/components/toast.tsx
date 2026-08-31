@@ -5,9 +5,9 @@ import { toasts } from "@/lib/toast.ts";
 import type { ToastTone } from "@/lib/toast.ts";
 
 const TONES = {
-  info: "bg-kumo-info-tint text-kumo-info ring-kumo-info/40",
-  success: "bg-kumo-success-tint text-kumo-success ring-kumo-success/40",
-  error: "bg-kumo-danger-tint text-kumo-danger ring-kumo-danger/40",
+  info: "bg-info-tint text-info-fg ring-info/40",
+  success: "bg-success-tint text-success-fg ring-success/40",
+  error: "bg-danger-tint text-danger-fg ring-danger/40",
 } satisfies Record<ToastTone, string>;
 
 /** Mount once, near the end of the app tree. */

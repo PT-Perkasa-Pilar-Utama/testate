@@ -29,7 +29,7 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
           </Button>
         </div>
       </Show>
-      <Loading fallback={<p class="text-kumo-subtle">Loading import runs...</p>}>
+      <Loading fallback={<p class="text-muted">Loading import runs...</p>}>
         <Table>
           <thead>
             <tr>

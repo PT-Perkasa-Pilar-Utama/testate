@@ -99,7 +99,7 @@ function ResultTable(props: { result: QueryResult }): JSX.Element {
         <Badge variant={ENFORCEMENT_VARIANT[props.result.read_only_enforcement]}>
           {ENFORCEMENT_TEXT[props.result.read_only_enforcement]}
         </Badge>
-        <span class="text-kumo-subtle">
+        <span class="text-muted">
           {props.result.rows.length} row(s) · {props.result.duration_ms} ms
         </span>
         <Show when={props.result.truncated.rows}>
@@ -112,7 +112,7 @@ function ResultTable(props: { result: QueryResult }): JSX.Element {
           <Badge variant="warning">time budget hit</Badge>
         </Show>
         <Show when={props.result.masked_columns.length > 0}>
-          <span class="text-kumo-subtle">masked: {props.result.masked_columns.join(", ")}</span>
+          <span class="text-muted">masked: {props.result.masked_columns.join(", ")}</span>
         </Show>
       </div>
       <div class="overflow-x-auto">
@@ -153,7 +153,7 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
       <h2 class="text-lg font-semibold">
         <AdapterCrumb slug={props.slug} id={props.id} /> / query console
       </h2>
-      <Loading fallback={<p class="text-kumo-subtle">Loading adapter...</p>}>
+      <Loading fallback={<p class="text-muted">Loading adapter...</p>}>
         <div class="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
           <form class="grid gap-3" onSubmit={onSubmit}>
             <Show
@@ -176,7 +176,7 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
                 <Button type="submit" variant="primary" disabled={presenter.busy()}>
                   {presenter.busy() ? "Running..." : "Run (read-only)"}
                 </Button>
-                <label class="flex items-center gap-2 text-xs text-kumo-subtle">
+                <label class="flex items-center gap-2 text-xs text-muted">
                   <span>Row cap</span>
                   <Input
                     size="sm"

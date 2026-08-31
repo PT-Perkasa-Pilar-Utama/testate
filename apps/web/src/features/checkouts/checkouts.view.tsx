@@ -46,7 +46,7 @@ export default function CheckoutsView(props: {
     () => props.onChanged?.()
   );
   return (
-    <Loading fallback={<p class="text-kumo-subtle">Loading checkouts...</p>}>
+    <Loading fallback={<p class="text-muted">Loading checkouts...</p>}>
       <Table>
         <thead>
           <tr>

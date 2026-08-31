@@ -21,12 +21,12 @@ export default function HealthView(): JSX.Element {
         }
       />
       <LayerCard class="px-5 py-4">
-        <Loading fallback={<p class="text-kumo-subtle">Checking...</p>}>
+        <Loading fallback={<p class="text-muted">Checking...</p>}>
           <div class="flex items-center gap-3">
             <Badge variant={presenter.health().status === "ok" ? "success" : "warning"}>
               {presenter.health().status}
             </Badge>
-            <span class="text-kumo-subtle">
+            <span class="text-muted">
               {presenter.health().status === "ok"
                 ? "Everything this instance depends on answered."
                 : "Something it depends on did not answer. An admin sees the breakdown."}

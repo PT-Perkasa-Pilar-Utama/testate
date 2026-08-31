@@ -27,7 +27,7 @@ export default function SidePanel(props: { presenter: QueryPresenter }): JSX.Ele
         variant="segmented"
       />
       <Show when={tab() === "saved"}>
-        <Loading fallback={<p class="text-kumo-subtle">Loading...</p>}>
+        <Loading fallback={<p class="text-muted">Loading...</p>}>
           <ul class="grid gap-1 text-base">
             <For each={props.presenter.saved.value()}>
               {(query) => (
@@ -75,13 +75,13 @@ export default function SidePanel(props: { presenter: QueryPresenter }): JSX.Ele
         </Show>
       </Show>
       <Show when={tab() === "history"}>
-        <Loading fallback={<p class="text-kumo-subtle">Loading...</p>}>
+        <Loading fallback={<p class="text-muted">Loading...</p>}>
           <ul class="grid gap-1 text-sm">
             <For each={props.presenter.history.value()}>
               {(row) => (
-                <li class="grid gap-0.5 border-b border-kumo-line py-1">
+                <li class="grid gap-0.5 border-b border-line py-1">
                   <code class="truncate">{row.query_text}</code>
-                  <span class="text-xs text-kumo-subtle">
+                  <span class="text-xs text-muted">
                     {formatWhen(row.created_at)} · {row.duration_ms ?? "?"} ms ·{" "}
                     {row.row_count ?? "?"} rows
                     {row.error === null ? "" : ` · ${row.error}`}
@@ -96,7 +96,7 @@ export default function SidePanel(props: { presenter: QueryPresenter }): JSX.Ele
         <Button size="sm" variant="ghost" onClick={() => props.presenter.running.refresh()}>
           Refresh
         </Button>
-        <Loading fallback={<p class="text-kumo-subtle">Loading...</p>}>
+        <Loading fallback={<p class="text-muted">Loading...</p>}>
           <ul class="grid gap-1 text-sm">
             <For each={props.presenter.running.value()}>
               {(query) => (

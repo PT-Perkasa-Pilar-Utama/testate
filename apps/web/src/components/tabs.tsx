@@ -24,8 +24,8 @@ export default function Tabs<T extends string>(props: TabsProps<T>): JSX.Element
       class={[
         "flex overflow-x-auto",
         props.variant === "segmented"
-          ? "w-fit gap-0.5 rounded-md bg-kumo-fill p-0.5 ring ring-kumo-line"
-          : "w-full gap-1 border-b border-kumo-line",
+          ? "w-fit gap-0.5 rounded-md bg-fill p-0.5 ring ring-line"
+          : "w-full gap-1 border-b border-line",
       ]}
     >
       <For each={props.items}>
@@ -35,27 +35,24 @@ export default function Tabs<T extends string>(props: TabsProps<T>): JSX.Element
             role="tab"
             aria-selected={props.value === item.id ? "true" : "false"}
             class={[
-              "inline-flex cursor-pointer items-center gap-1.5 px-3 text-base outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-kumo-focus",
+              "inline-flex cursor-pointer items-center gap-1.5 px-3 text-base outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
               props.variant === "segmented"
                 ? "h-7 rounded-sm"
                 : "-mb-px h-9 rounded-t-md border-b-2",
               {
-                "border-kumo-contrast font-semibold text-kumo-strong":
+                "border-accent font-semibold text-heading":
                   props.value === item.id && props.variant !== "segmented",
-                "bg-kumo-elevated font-semibold text-kumo-strong":
+                "bg-surface font-semibold text-heading":
                   props.value === item.id && props.variant === "segmented",
-                "border-transparent text-kumo-subtle hover:text-kumo-default":
-                  props.value !== item.id,
-                "hover:border-kumo-line": props.value !== item.id && props.variant !== "segmented",
+                "border-transparent text-muted hover:text-body": props.value !== item.id,
+                "hover:border-line": props.value !== item.id && props.variant !== "segmented",
               },
             ]}
             onClick={() => props.onChange(item.id)}
           >
             {item.label}
             <Show when={item.count !== undefined && item.count > 0}>
-              <span class="rounded-full bg-kumo-fill px-1.5 text-xs text-kumo-subtle">
-                {item.count}
-              </span>
+              <span class="rounded-full bg-fill px-1.5 text-xs text-muted">{item.count}</span>
             </Show>
           </button>
         )}

@@ -21,7 +21,7 @@ function StoragePicker(props: { presenter: WizardPresenter }): JSX.Element {
     <div class="grid gap-3 sm:grid-cols-[1fr_2fr_auto] sm:items-end">
       <label class="grid gap-1.5 text-sm">
         <span>Storage adapter</span>
-        <Loading fallback={<p class="text-kumo-subtle">Listing adapters...</p>}>
+        <Loading fallback={<p class="text-muted">Listing adapters...</p>}>
           <Select
             options={[
               { value: "", label: "choose an adapter" },
@@ -91,7 +91,7 @@ export default function SourceStep(props: { presenter: WizardPresenter }): JSX.E
                 </label>
               )}
             </Show>
-            <p class="text-kumo-subtle text-sm">
+            <p class="text-muted text-sm">
               Detected {preview().detected.encoding}, header row {preview().detected.header_row}
               {preview().typed_cells ? ", typed cells" : ""}
             </p>

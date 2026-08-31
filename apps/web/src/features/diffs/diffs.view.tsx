@@ -24,7 +24,7 @@ export default function DiffsView(props: { slug: string }): JSX.Element {
           </Button>
         </div>
       </Show>
-      <Loading fallback={<p class="text-kumo-subtle">Loading diffs...</p>}>
+      <Loading fallback={<p class="text-muted">Loading diffs...</p>}>
         <Table>
           <thead>
             <tr>

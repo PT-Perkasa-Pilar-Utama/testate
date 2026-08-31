@@ -2,10 +2,10 @@ import type { JSX } from "@solidjs/web";
 
 // Strings come from the Kumo registry entry "Banner".
 const VARIANTS = {
-  default: "bg-kumo-info-tint text-kumo-info ring ring-kumo-info/40",
-  alert: "bg-kumo-warning-tint text-kumo-warning ring ring-kumo-warning/40",
-  error: "bg-kumo-danger-tint text-kumo-danger ring ring-kumo-danger/40",
-  secondary: "bg-kumo-fill text-kumo-subtle ring ring-kumo-line",
+  default: "bg-info-tint text-info-fg ring ring-info/40",
+  alert: "bg-warning-tint text-warning-fg ring ring-warning/40",
+  error: "bg-danger-tint text-danger-fg ring ring-danger/40",
+  secondary: "bg-fill text-muted ring ring-line",
 } as const;
 
 export type BannerProps = {

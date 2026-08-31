@@ -78,7 +78,7 @@ export default function AccountView(): JSX.Element {
       <PasswordCard presenter={presenter} />
       <LayerCard class="grid gap-3 px-5 py-4">
         <h3 class="font-medium">Sessions</h3>
-        <Loading fallback={<p class="text-kumo-subtle">Loading sessions...</p>}>
+        <Loading fallback={<p class="text-muted">Loading sessions...</p>}>
           <Table>
             <thead>
               <tr>

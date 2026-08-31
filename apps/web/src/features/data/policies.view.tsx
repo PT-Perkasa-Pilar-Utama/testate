@@ -88,7 +88,7 @@ function PolicyCell(props: {
   return (
     <Cell>
       <div class="flex flex-wrap items-center gap-1">
-        <Show when={props.policy} fallback={<span class="text-kumo-subtle">none</span>}>
+        <Show when={props.policy} fallback={<span class="text-muted">none</span>}>
           {(policy) => (
             <>
               <Show when={policy().required_function}>
@@ -157,7 +157,7 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
       <h2 class="text-lg font-semibold">
         <AdapterCrumb slug={props.slug} id={props.id} /> / column policies
       </h2>
-      <Loading fallback={<p class="text-kumo-subtle">Loading schema...</p>}>
+      <Loading fallback={<p class="text-muted">Loading schema...</p>}>
         <For each={presenter.schema.value().tables}>
           {(table) => (
             <div class="grid gap-2">

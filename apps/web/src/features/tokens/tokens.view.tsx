@@ -97,7 +97,7 @@ function CreatedBanner(props: { presenter: TokensPresenter }): JSX.Element {
       {(token) => (
         <LayerCard class="grid gap-3 px-5 py-4">
           <Banner variant="alert">Copy the token now. Testate shows it once.</Banner>
-          <output class="block break-all rounded-md bg-kumo-tint px-3 py-2 font-mono text-sm">
+          <output class="block break-all rounded-md bg-hover px-3 py-2 font-mono text-sm">
             {token()}
           </output>
           <div class="flex gap-2">
@@ -128,7 +128,7 @@ export default function TokensView(): JSX.Element {
         }
       />
       <CreatedBanner presenter={presenter} />
-      <Loading fallback={<p class="text-kumo-subtle">Loading tokens...</p>}>
+      <Loading fallback={<p class="text-muted">Loading tokens...</p>}>
         <Table>
           <thead>
             <tr>

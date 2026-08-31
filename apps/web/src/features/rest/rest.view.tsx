@@ -116,28 +116,28 @@ function RunPanel(props: { presenter: RestPresenter }): JSX.Element {
               <div class="grid gap-2">
                 <div class="flex flex-wrap items-center gap-2 text-sm">
                   <Badge variant={statusVariant(run())}>{run().status_code ?? "no response"}</Badge>
-                  <span class="text-kumo-subtle">{run().duration_ms} ms</span>
+                  <span class="text-muted">{run().duration_ms} ms</span>
                   <Show when={run().truncated}>
                     <Badge variant="warning">body truncated</Badge>
                   </Show>
                   <Show when={run().error}>
-                    {(error) => <span class="text-kumo-danger">{error()}</span>}
+                    {(error) => <span class="text-danger-fg">{error()}</span>}
                   </Show>
                 </div>
-                <pre class="max-h-64 overflow-auto rounded-lg bg-kumo-fill p-3 text-xs">
+                <pre class="max-h-64 overflow-auto rounded-lg bg-fill p-3 text-xs">
                   {run().response_body ?? ""}
                 </pre>
               </div>
             )}
           </Show>
           <h4 class="text-sm font-medium">Recent runs</h4>
-          <Loading fallback={<p class="text-kumo-subtle">Loading...</p>}>
+          <Loading fallback={<p class="text-muted">Loading...</p>}>
             <ul class="grid gap-1 text-sm">
               <For each={props.presenter.runs.value()}>
                 {(run) => (
                   <li class="flex items-center gap-2">
                     <Badge variant={statusVariant(run)}>{run.status_code ?? "-"}</Badge>
-                    <span class="text-kumo-subtle">
+                    <span class="text-muted">
                       {formatWhen(run.created_at)} · {run.duration_ms} ms
                       {run.error === null ? "" : ` · ${run.error}`}
                     </span>
@@ -171,7 +171,7 @@ export default function RestView(props: { slug: string; id: string }): JSX.Eleme
         </Show>
       </div>
       <div class="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <Loading fallback={<p class="text-kumo-subtle">Loading requests...</p>}>
+        <Loading fallback={<p class="text-muted">Loading requests...</p>}>
           <Table>
             <thead>
               <tr>

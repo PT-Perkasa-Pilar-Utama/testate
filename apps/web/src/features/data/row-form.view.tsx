@@ -31,9 +31,9 @@ function Field(props: {
     <div class="grid gap-1.5 text-sm sm:grid-cols-[10rem_8rem_minmax(0,1fr)] sm:items-center">
       <span>
         <code>{props.column.name}</code>
-        <span class="ml-1 text-xs text-kumo-subtle">{props.column.type}</span>
+        <span class="ml-1 text-xs text-muted">{props.column.type}</span>
         <Show when={policed()}>
-          <span class="ml-1 text-xs text-kumo-subtle">
+          <span class="ml-1 text-xs text-muted">
             · requires {props.column.policy.required_function?.name}
           </span>
         </Show>

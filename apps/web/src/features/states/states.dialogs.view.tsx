@@ -81,7 +81,7 @@ export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
         <DraftFields presenter={props.presenter} />
         <fieldset class="grid gap-1.5 text-sm">
           <legend>Adapters</legend>
-          <Loading fallback={<p class="text-kumo-subtle">Listing adapters...</p>}>
+          <Loading fallback={<p class="text-muted">Listing adapters...</p>}>
             <For each={props.presenter.databases.value()}>
               {(adapter) => (
                 <label class="flex items-center gap-2">
@@ -94,7 +94,7 @@ export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
                     onChange={() => props.presenter.toggleAdapter(adapter.id)}
                   />
                   <span>
-                    {adapter.name} <span class="text-kumo-subtle">({adapter.engine})</span>
+                    {adapter.name} <span class="text-muted">({adapter.engine})</span>
                   </span>
                 </label>
               )}
@@ -191,7 +191,7 @@ export function DetailDialog(props: { presenter: StatesPresenter }): JSX.Element
                 <section class="grid gap-2">
                   <h3 class="font-medium">
                     {adapter.adapter_name}{" "}
-                    <span class="text-kumo-subtle">
+                    <span class="text-muted">
                       {adapter.engine} {adapter.engine_version} · {adapter.consistency} ·{" "}
                       {adapter.row_count} rows · {formatBytes(adapter.byte_count)}
                     </span>

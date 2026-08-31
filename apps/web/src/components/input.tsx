@@ -3,7 +3,7 @@ import { merge, omit } from "solid-js";
 
 // Size and focus strings come from the Kumo registry entry "Input".
 export const FIELD_BASE =
-  "w-full bg-kumo-control text-kumo-default ring ring-kumo-line outline-none placeholder:text-kumo-placeholder disabled:opacity-50";
+  "w-full bg-control text-body ring ring-line outline-none placeholder:text-placeholder disabled:opacity-50";
 
 export const FIELD_SIZES = {
   sm: "h-7 rounded-md px-2 text-xs",
@@ -12,8 +12,8 @@ export const FIELD_SIZES = {
 } as const;
 
 export const FIELD_VARIANTS = {
-  default: "focus:ring-kumo-focus focus:ring-2",
-  error: "!ring-kumo-danger focus:ring-kumo-danger focus:ring-2",
+  default: "focus:ring-accent focus:ring-2",
+  error: "!ring-danger focus:ring-danger focus:ring-2",
 } as const;
 
 export type InputProps = ComponentProps<"input"> & {

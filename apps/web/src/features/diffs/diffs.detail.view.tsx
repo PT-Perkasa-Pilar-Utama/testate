@@ -106,15 +106,15 @@ export function DetailDialog(props: { presenter: DiffsPresenter }): JSX.Element 
 function Summary(props: { totals: Totals; tables: number; adapters: number }): JSX.Element {
   const quiet = (): boolean => props.totals.tables === 0;
   return (
-    <div class="grid gap-1.5 rounded-lg bg-kumo-elevated px-4 py-3 ring ring-kumo-line">
-      <Show when={!quiet()} fallback={<p class="font-medium text-kumo-default">No differences.</p>}>
+    <div class="grid gap-1.5 rounded-lg bg-surface px-4 py-3 ring ring-line">
+      <Show when={!quiet()} fallback={<p class="font-medium text-body">No differences.</p>}>
         <p class="flex flex-wrap items-baseline gap-x-4 gap-y-1 font-medium tabular-nums">
-          <Count value={props.totals.added} label="added" tone="text-kumo-success" sign="+" />
-          <Count value={props.totals.removed} label="removed" tone="text-kumo-error" sign="-" />
-          <Count value={props.totals.changed} label="changed" tone="text-kumo-warning" sign="~" />
+          <Count value={props.totals.added} label="added" tone="text-success-fg" sign="+" />
+          <Count value={props.totals.removed} label="removed" tone="text-danger-fg" sign="-" />
+          <Count value={props.totals.changed} label="changed" tone="text-warning-fg" sign="~" />
         </p>
       </Show>
-      <p class="text-xs text-kumo-subtle">
+      <p class="text-xs text-muted">
         {props.totals.tables} of {props.tables} {props.tables === 1 ? "table" : "tables"} touched,
         across {props.adapters} {props.adapters === 1 ? "adapter" : "adapters"}
       </p>
@@ -124,7 +124,7 @@ function Summary(props: { totals: Totals; tables: number; adapters: number }): J
 
 function Count(props: { value: number; label: string; tone: string; sign: string }): JSX.Element {
   return (
-    <span class={props.value === 0 ? "text-kumo-subtle" : props.tone}>
+    <span class={props.value === 0 ? "text-muted" : props.tone}>
       {props.value === 0 ? "0" : `${props.sign}${props.value}`} {props.label}
     </span>
   );
@@ -145,7 +145,7 @@ function AdapterSection(props: {
           <Badge variant="secondary">not compared</Badge>
         </Show>
         <Show when={props.totals.tables > 0}>
-          <span class="text-xs font-normal text-kumo-subtle tabular-nums">
+          <span class="text-xs font-normal text-muted tabular-nums">
             {props.totals.tables} of {props.adapter.tables.length} tables
           </span>
         </Show>
@@ -153,7 +153,7 @@ function AdapterSection(props: {
       <Show
         when={props.shown.length > 0}
         fallback={
-          <p class="text-xs text-kumo-subtle">
+          <p class="text-xs text-muted">
             No differences in {props.adapter.tables.length}{" "}
             {props.adapter.tables.length === 1 ? "table" : "tables"}.
           </p>
@@ -186,15 +186,12 @@ function TableRow(props: { table: DiffTable; onRows: () => void }): JSX.Element 
   return (
     <Row>
       <Cell>{tableLabel(props.table)}</Cell>
-      <Cell class="text-kumo-subtle">{props.table.compare}</Cell>
-      <Number value={props.table.added} tone="text-kumo-success" />
-      <Number value={props.table.removed} tone="text-kumo-error" />
-      <Number value={props.table.changed} tone="text-kumo-warning" />
+      <Cell class="text-muted">{props.table.compare}</Cell>
+      <Number value={props.table.added} tone="text-success-fg" />
+      <Number value={props.table.removed} tone="text-danger-fg" />
+      <Number value={props.table.changed} tone="text-warning-fg" />
       <Cell>
-        <Show
-          when={props.table.schema_changed}
-          fallback={<span class="text-kumo-subtle">same</span>}
-        >
+        <Show when={props.table.schema_changed} fallback={<span class="text-muted">same</span>}>
           {(columns) => <Badge variant="warning">{columns().join(", ")}</Badge>}
         </Show>
       </Cell>
@@ -212,7 +209,7 @@ function TableRow(props: { table: DiffTable; onRows: () => void }): JSX.Element 
 /** A zero is noise; it stays grey so the eye lands on the counts that are not zero. */
 function Number(props: { value: number; tone: string }): JSX.Element {
   return (
-    <Cell numeric class={props.value === 0 ? "text-kumo-subtle" : props.tone}>
+    <Cell numeric class={props.value === 0 ? "text-muted" : props.tone}>
       {props.value}
     </Cell>
   );

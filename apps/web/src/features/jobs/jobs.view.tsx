@@ -41,16 +41,14 @@ function JobRow(props: { presenter: JobsPresenter; job: Job }): JSX.Element {
       <Cell>
         <Show
           when={props.job.queue_position !== null}
-          fallback={
-            <span class="text-kumo-subtle text-xs">{describeProgress(live.progress())}</span>
-          }
+          fallback={<span class="text-muted text-xs">{describeProgress(live.progress())}</span>}
         >
           queue #{props.job.queue_position}
         </Show>
       </Cell>
       <Cell>
         <Show when={props.job.error}>
-          {(error) => <code class="text-kumo-danger text-xs">{error().code}</code>}
+          {(error) => <code class="text-danger-fg text-xs">{error().code}</code>}
         </Show>
       </Cell>
       <Cell class="whitespace-nowrap">{props.job.actor.label}</Cell>
@@ -83,7 +81,7 @@ export default function JobsView(): JSX.Element {
           </Button>
         }
       />
-      <Loading fallback={<p class="text-kumo-subtle">Loading jobs...</p>}>
+      <Loading fallback={<p class="text-muted">Loading jobs...</p>}>
         <Table>
           <thead>
             <tr>

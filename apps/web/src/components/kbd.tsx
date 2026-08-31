@@ -4,7 +4,7 @@ export type KbdProps = { children: JSX.Element };
 
 export default function Kbd(props: KbdProps): JSX.Element {
   return (
-    <kbd class="rounded-md bg-kumo-fill px-1.5 py-0.5 font-mono text-xs text-kumo-subtle ring ring-kumo-hairline">
+    <kbd class="rounded-md bg-fill px-1.5 py-0.5 font-mono text-xs text-muted ring ring-hairline">
       {props.children}
     </kbd>
   );

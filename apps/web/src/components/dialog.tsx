@@ -37,7 +37,7 @@ export default function Dialog(props: DialogProps): JSX.Element {
     <dialog
       ref={setElement}
       class={[
-        "m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] overflow-y-auto rounded-lg bg-kumo-elevated p-0 text-kumo-default shadow-xl ring ring-kumo-line backdrop:bg-kumo-recessed/80",
+        "m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] overflow-y-auto rounded-lg bg-surface p-0 text-body shadow-xl ring ring-line backdrop:bg-sunken/80",
         SIZES[props.size ?? "base"],
       ]}
       onClose={() => props.onClose()}
@@ -45,9 +45,9 @@ export default function Dialog(props: DialogProps): JSX.Element {
       <div class="flex flex-col gap-4 p-6">
         <div class="flex items-start justify-between gap-4">
           <div class="flex flex-col gap-1">
-            <h2 class="text-lg font-semibold text-kumo-strong">{props.title}</h2>
+            <h2 class="text-lg font-semibold text-heading">{props.title}</h2>
             <Show when={props.description}>
-              <p class="text-base text-kumo-subtle">{props.description}</p>
+              <p class="text-base text-muted">{props.description}</p>
             </Show>
           </div>
           <Button variant="ghost" size="sm" aria-label="Close" onClick={() => props.onClose()}>

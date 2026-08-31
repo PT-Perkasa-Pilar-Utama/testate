@@ -32,7 +32,7 @@ export function CreateDialog(props: { presenter: DiffsPresenter }): JSX.Element 
       description="Compare a state with another state or with the live database. Tables without a primary key compare by row content."
     >
       <form class="grid gap-4" onSubmit={onSubmit}>
-        <Loading fallback={<p class="text-kumo-subtle">Listing states...</p>}>
+        <Loading fallback={<p class="text-muted">Listing states...</p>}>
           <label class="grid gap-1.5 text-base">
             <span>Base state</span>
             <Select
@@ -97,18 +97,18 @@ export function RowsDialog(props: { presenter: DiffsPresenter }): JSX.Element {
               </Banner>
             </Show>
             <Show when={rows().page.data.length === 0}>
-              <p class="text-kumo-subtle">No rows for this filter.</p>
+              <p class="text-muted">No rows for this filter.</p>
             </Show>
             <div class="grid gap-2">
               <For each={rows().page.data}>
                 {(row) => (
-                  <div class="grid gap-1 rounded-lg ring ring-kumo-line p-3 text-sm">
+                  <div class="grid gap-1 rounded-lg ring ring-line p-3 text-sm">
                     <div class="flex items-center gap-2">
                       <Badge variant={OP_VARIANT[row.op]}>{row.op}</Badge>
                       <code>{keyLabel(row)}</code>
                       <Show when={row.changed_columns}>
                         {(columns) => (
-                          <span class="text-kumo-subtle">changed: {columns().join(", ")}</span>
+                          <span class="text-muted">changed: {columns().join(", ")}</span>
                         )}
                       </Show>
                     </div>

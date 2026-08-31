@@ -20,7 +20,7 @@ function AdapterRow(props: { adapter: PreflightAdapter; force: boolean }): JSX.E
   return (
     <Row>
       <Cell>
-        {props.adapter.name} <span class="text-kumo-subtle">({props.adapter.engine})</span>
+        {props.adapter.name} <span class="text-muted">({props.adapter.engine})</span>
       </Cell>
       <Cell>
         <Show when={!props.adapter.included}>
@@ -35,12 +35,12 @@ function AdapterRow(props: { adapter: PreflightAdapter; force: boolean }): JSX.E
           </Show>
         </Show>
         <Show when={props.force && preview() !== ""}>
-          <p class="text-kumo-subtle text-sm">{preview()}</p>
+          <p class="text-muted text-sm">{preview()}</p>
         </Show>
       </Cell>
       <Cell>
         {strategyLine(props.adapter)}
-        <p class="text-kumo-subtle text-sm">{props.adapter.locking_notice}</p>
+        <p class="text-muted text-sm">{props.adapter.locking_notice}</p>
       </Cell>
     </Row>
   );

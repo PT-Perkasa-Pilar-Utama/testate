@@ -54,9 +54,7 @@ function HomeView(): JSX.Element {
   return (
     <section class="grid gap-1.5">
       <h2 class="text-lg font-semibold">Testate</h2>
-      <p class="text-kumo-subtle">
-        Git for your test database. Reset the database, not the developer.
-      </p>
+      <p class="text-muted">Git for your test database. Reset the database, not the developer.</p>
     </section>
   );
 }
@@ -163,14 +161,14 @@ function Sidebar(props: { current: string | undefined }): JSX.Element {
   return (
     <aside
       class={[
-        "sticky top-0 flex h-screen flex-col overflow-y-auto border-r border-kumo-line py-4",
+        "sticky top-0 flex h-screen flex-col overflow-y-auto border-r border-line py-4",
         collapsed() ? "w-12 items-center px-2" : "w-60 px-3",
       ]}
     >
       <div class={["mb-6 flex items-center", collapsed() ? "justify-center" : "gap-2 px-2"]}>
         <button
           type="button"
-          class="grid h-8 w-8 shrink-0 place-items-center rounded-md text-kumo-subtle hover:bg-kumo-tint hover:text-kumo-default"
+          class="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted hover:bg-hover hover:text-body"
           aria-expanded={collapsed() ? "false" : "true"}
           aria-label={collapsed() ? "Expand the sidebar" : "Collapse the sidebar"}
           title={collapsed() ? "Expand the sidebar" : "Collapse the sidebar"}
@@ -182,7 +180,7 @@ function Sidebar(props: { current: string | undefined }): JSX.Element {
           </svg>
         </button>
         <Show when={!collapsed()}>
-          <span class="text-base font-semibold text-kumo-strong">Testate</span>
+          <span class="text-base font-semibold text-heading">Testate</span>
         </Show>
       </div>
       <nav class={["grid gap-1", collapsed() ? "hidden" : ""]}>
@@ -190,8 +188,8 @@ function Sidebar(props: { current: string | undefined }): JSX.Element {
           {(item) => (
             <a
               class={[
-                "rounded-md px-2 py-1.5 text-base text-kumo-default hover:bg-kumo-tint",
-                { "bg-kumo-fill font-semibold": props.current === item.path },
+                "rounded-md px-2 py-1.5 text-base text-body hover:bg-hover",
+                { "bg-fill font-semibold": props.current === item.path },
               ]}
               href={href(item.path)}
               onClick={(event) => onNav(event, item.path)}
@@ -207,8 +205,8 @@ function Sidebar(props: { current: string | undefined }): JSX.Element {
             <>
               <a
                 class={[
-                  "rounded-md px-2 py-1.5 text-base text-kumo-subtle hover:bg-kumo-tint",
-                  { "bg-kumo-fill font-semibold": props.current === "/account" },
+                  "rounded-md px-2 py-1.5 text-base text-muted hover:bg-hover",
+                  { "bg-fill font-semibold": props.current === "/account" },
                 ]}
                 href={href("/account")}
                 onClick={(event) => onNav(event, "/account")}
@@ -243,7 +241,7 @@ export default function App(): JSX.Element {
             </div>
           )}
         >
-          <Show when={sessionReady()} fallback={<p class="text-kumo-subtle">Loading...</p>}>
+          <Show when={sessionReady()} fallback={<p class="text-muted">Loading...</p>}>
             <Switch fallback={<Page match={match()} />}>
               <Match when={session()?.must_change_password === true}>
                 <ChangePasswordView />

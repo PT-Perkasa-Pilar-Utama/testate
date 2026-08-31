@@ -122,7 +122,7 @@ function NetguardCard(props: { presenter: SettingsPresenter }): JSX.Element {
     <LayerCard class="grid gap-3 px-5 py-4">
       <div class="grid gap-1">
         <h3 class="font-medium">Blocked hosts</h3>
-        <p class="text-sm text-kumo-subtle">
+        <p class="text-sm text-muted">
           One host, CIDR or host:port per line. An adapter pointing at a blocked address is disabled
           when you save.
         </p>
@@ -138,7 +138,7 @@ function NetguardCard(props: { presenter: SettingsPresenter }): JSX.Element {
           <Button size="sm" variant="secondary" type="submit">
             Save blocked hosts
           </Button>
-          <span class="text-sm text-kumo-subtle">
+          <span class="text-sm text-muted">
             Always blocked: {props.presenter.value().netguard.fixed.join(", ")}
           </span>
         </div>
@@ -155,7 +155,7 @@ export default function SettingsView(): JSX.Element {
         title="Settings"
         description="Instance defaults. Values set by the environment cannot be edited here."
       />
-      <Loading fallback={<p class="text-kumo-subtle">Loading settings...</p>}>
+      <Loading fallback={<p class="text-muted">Loading settings...</p>}>
         <LayerCard class="flex flex-wrap items-center gap-3 px-5 py-4">
           <span class="text-sm">Snapshot store</span>
           <Badge variant="outline">{presenter.value().store.driver}</Badge>

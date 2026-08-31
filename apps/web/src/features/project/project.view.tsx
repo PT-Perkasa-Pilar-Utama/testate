@@ -19,18 +19,14 @@ export default function ProjectView(props: { slug: string }): JSX.Element {
   const presenter = createProjectPresenter(() => props.slug);
   return (
     <section class="grid gap-5">
-      <Loading fallback={<p class="text-kumo-subtle">Loading project...</p>}>
+      <Loading fallback={<p class="text-muted">Loading project...</p>}>
         <div class="flex items-start justify-between gap-4">
           <div class="grid gap-1.5">
             <div class="flex flex-wrap items-center gap-2">
-              <h2 class="text-xl font-semibold text-kumo-strong">
-                {presenter.project.value().name}
-              </h2>
-              <code class="text-kumo-subtle">{props.slug}</code>
+              <h2 class="text-xl font-semibold text-heading">{presenter.project.value().name}</h2>
+              <code class="text-muted">{props.slug}</code>
             </div>
-            <p class="text-kumo-subtle">
-              {presenter.project.value().description ?? "No description."}
-            </p>
+            <p class="text-muted">{presenter.project.value().description ?? "No description."}</p>
           </div>
           <div class="flex items-center gap-2">
             <Badge

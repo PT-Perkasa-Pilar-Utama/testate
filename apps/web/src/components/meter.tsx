@@ -12,9 +12,9 @@ export type MeterProps = {
 };
 
 const FILL = {
-  default: "bg-kumo-contrast",
-  warning: "bg-kumo-warning",
-  danger: "bg-kumo-danger",
+  default: "bg-accent",
+  warning: "bg-warning",
+  danger: "bg-danger",
 } as const;
 
 export default function Meter(props: MeterProps): JSX.Element {
@@ -23,7 +23,7 @@ export default function Meter(props: MeterProps): JSX.Element {
   return (
     <div class="flex w-full flex-col gap-1">
       <Show when={props.label !== undefined || props.detail !== undefined}>
-        <div class="flex items-center justify-between text-xs text-kumo-subtle">
+        <div class="flex items-center justify-between text-xs text-muted">
           <span>{props.label}</span>
           <span class="tabular-nums">{props.detail}</span>
         </div>
@@ -34,7 +34,7 @@ export default function Meter(props: MeterProps): JSX.Element {
         aria-valuemin={0}
         aria-valuemax={max()}
         aria-valuenow={props.value}
-        class="h-2 w-full overflow-hidden rounded-full bg-kumo-fill"
+        class="h-2 w-full overflow-hidden rounded-full bg-fill"
       >
         <div
           class={["h-full rounded-full transition-[width]", FILL[props.tone ?? "default"]]}

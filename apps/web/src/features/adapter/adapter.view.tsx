@@ -237,7 +237,7 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
   const base = (): string => `/projects/${props.slug}/adapters/${props.id}`;
   return (
     <section class="grid gap-6">
-      <Loading fallback={<p class="text-kumo-subtle">Loading adapter...</p>}>
+      <Loading fallback={<p class="text-muted">Loading adapter...</p>}>
         <PageHeader
           title={presenter.adapter.value().name}
           description={`${presenter.adapter.value().engine}${

@@ -15,7 +15,6 @@
     "valibot": "1.4.2"
   },
   "devDependencies": {
-    "@cloudflare/kumo": "2.12.0",
     "@solidjs/vite-plugin": "3.0.0-next.34",
     "@tailwindcss/vite": "4.3.3",
     "tailwindcss": "4.3.3",

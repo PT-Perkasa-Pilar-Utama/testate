@@ -54,7 +54,7 @@ export default function AuditView(): JSX.Element {
     <section class="grid gap-6">
       <PageHeader title="Audit log" description="Every write, by whom, and how it ended." />
       <Filters presenter={presenter} />
-      <Loading fallback={<p class="text-kumo-subtle">Loading audit rows...</p>}>
+      <Loading fallback={<p class="text-muted">Loading audit rows...</p>}>
         <Table>
           <thead>
             <tr>

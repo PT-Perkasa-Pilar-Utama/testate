@@ -19,7 +19,7 @@ export default function ReportPanel(props: {
         {props.report.duration_ms} ms
       </Banner>
       <Show when={props.report.stash_state_id}>
-        <p class="text-kumo-subtle text-sm">A stash was taken first; check it out to undo.</p>
+        <p class="text-muted text-sm">A stash was taken first; check it out to undo.</p>
       </Show>
       <Show when={props.report.errors_preview.length > 0}>
         <ul class="grid gap-1 text-sm">
@@ -35,7 +35,7 @@ export default function ReportPanel(props: {
       <div class="flex justify-end gap-2">
         <Show when={props.report.rejected_available}>
           <a
-            class="inline-flex h-9 items-center rounded-lg px-3 hover:bg-kumo-tint"
+            class="inline-flex h-9 items-center rounded-lg px-3 hover:bg-hover"
             href={props.rejectedUrl}
           >
             Rejected rows

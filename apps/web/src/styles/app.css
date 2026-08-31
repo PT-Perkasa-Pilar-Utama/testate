@@ -1,76 +1,60 @@
 @import "tailwindcss";
-@import "@cloudflare/kumo/styles/tailwind";
 
 /*
- * GitHub's design language on Kumo's tokens (ADR 0002). The values come from
+ * GitHub's design language, in plain Tailwind (ADR 0002). The values come from
  * docs/design/github.md; the four places that specification contradicts itself are resolved in the
- * ADR, not here. This block sits after the Kumo import on purpose: the cascade lands on our values
- * and no component or view has to learn a new class name.
+ * ADR, not here.
+ *
+ * `@theme`, not `:root`: Tailwind 4 generates a utility for every token in this block, which is
+ * what `@cloudflare/kumo` used to do for us. It no longer does. One name, one value, one utility
+ * family: `--color-surface` is `bg-surface`, `border-surface`, `text-surface`.
+ *
+ * That is why status colours come in three: a solid `--color-danger` for a filled control, a
+ * `--color-danger-tint` wash behind it, and `--color-danger-fg` for text and rings that have to
+ * read on the wash. One token cannot be both, because one name generates both utilities.
  */
-:root {
-  color-scheme: dark;
-
+@theme {
   /* Two surfaces, as the specification asks, plus one for hover and row striping. */
-  --color-kumo-canvas: #000000;
-  --color-kumo-base: #000000;
-  --color-kumo-elevated: #0d1117;
-  --color-kumo-recessed: #010409;
-  --color-kumo-tint: #161b22;
-  --color-kumo-fill: #161b22;
-  --color-kumo-fill-hover: #21262d;
-  --color-kumo-control: #0d1117;
-  --color-kumo-overlay: #010409;
-  --color-kumo-interact: #30363d;
+  --color-canvas: #000000;
+  --color-surface: #0d1117;
+  --color-sunken: #010409;
+  --color-hover: #161b22;
+  --color-fill: #161b22;
+  --color-fill-hover: #21262d;
+  --color-control: #0d1117;
 
   /* The 1px ring inside the specification's card shadow, which is what its border really is. */
-  --color-kumo-line: rgba(209, 217, 224, 0.25);
-  --color-kumo-hairline: rgba(209, 217, 224, 0.15);
+  --color-line: rgba(209, 217, 224, 0.25);
+  --color-hairline: rgba(209, 217, 224, 0.15);
 
-  /* Cyan is what you can act on. Everything on it is near-black: white on cyan fails AA. */
-  --color-kumo-contrast: #8dd6ff;
-  --color-kumo-brand: #8dd6ff;
-  --color-kumo-brand-hover: #b6e3ff;
-  --color-kumo-focus: #8dd6ff;
+  /* Cyan is what you can act on, and it is the focus ring too. Everything on it is near-black:
+     white on cyan fails AA. */
+  --color-accent: #8dd6ff;
+  --color-accent-hover: #b6e3ff;
+  --color-on-accent: #111111;
 
   /* Status. The specification carries none, and a job outcome has to read as one. */
-  /* Solid fills carry white text, so they are the darker pair; the text tokens below are the
-     lighter pair that has to read on black. */
-  --color-kumo-success: #238636;
-  --color-kumo-success-tint: #0f2f18;
-  --color-kumo-warning: #9e6a03;
-  --color-kumo-warning-tint: #2e2306;
-  --color-kumo-danger: #da3633;
-  --color-kumo-danger-tint: #3d1315;
-  --color-kumo-info: #58a6ff;
-  --color-kumo-info-tint: #0d2237;
-
-  --color-kumo-badge-neutral: #21262d;
-  --color-kumo-badge-inverted: #8dd6ff;
-  --color-kumo-badge-blue: #0d2237;
-  --color-kumo-badge-green: #0f2f18;
-  --color-kumo-badge-orange: #2e2306;
-  --color-kumo-badge-red: #3d1315;
-  --color-kumo-badge-purple: #221b3d;
-  --color-kumo-badge-teal: #0c2b2b;
-
-  --color-kumo-shadow-edge: rgba(209, 217, 224, 0.25);
-  --color-kumo-shadow-drop: rgba(1, 4, 9, 0.85);
+  --color-success: #238636;
+  --color-success-tint: #0f2f18;
+  --color-success-fg: #3fb950;
+  --color-warning: #9e6a03;
+  --color-warning-tint: #2e2306;
+  --color-warning-fg: #d29922;
+  --color-danger: #da3633;
+  --color-danger-tint: #3d1315;
+  --color-danger-fg: #f85149;
+  --color-info: #58a6ff;
+  --color-info-tint: #0d2237;
+  --color-info-fg: #58a6ff;
 
   /* White is what you read; #8b949e is what you skim. Black on black is unreadable (ADR 0002). */
-  --text-color-kumo-default: #ffffff;
-  --text-color-kumo-strong: #ffffff;
-  --text-color-kumo-subtle: #8b949e;
-  --text-color-kumo-placeholder: #6e7681;
-  --text-color-kumo-inactive: #6e7681;
-  --text-color-kumo-inverse: #111111;
-  --text-color-kumo-link: #8dd6ff;
-  --text-color-kumo-brand: #8dd6ff;
-  --text-color-kumo-success: #3fb950;
-  --text-color-kumo-warning: #d29922;
-  --text-color-kumo-danger: #f85149;
-  --text-color-kumo-info: #58a6ff;
-  --text-color-kumo-badge-inverted: #111111;
-  --text-color-kumo-badge-neutral-subtle: #8b949e;
+  --color-body: #ffffff;
+  --color-heading: #ffffff;
+  --color-muted: #8b949e;
+  --color-placeholder: #6e7681;
+  --color-inactive: #6e7681;
+  --color-inverse: #111111;
+  --color-link: #8dd6ff;
 
   /*
    * Mona Sans is served from this instance, never from a font CDN: the README promises nothing
@@ -86,6 +70,11 @@
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-xl: 12px;
+}
+
+/* Not a token, so it cannot live in `@theme`. The SPA is dark only. */
+:root {
+  color-scheme: dark;
 }
 
 /* One file each, every weight inside it, and the fallback stack keeps the page readable meanwhile. */

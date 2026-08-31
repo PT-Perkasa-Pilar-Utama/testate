@@ -147,7 +147,7 @@ export default function AdaptersView(props: { slug: string }): JSX.Element {
           </Button>
         </div>
       </Show>
-      <Loading fallback={<p class="text-kumo-subtle">Loading adapters...</p>}>
+      <Loading fallback={<p class="text-muted">Loading adapters...</p>}>
         <Table>
           <thead>
             <tr>
@@ -174,7 +174,7 @@ export default function AdaptersView(props: { slug: string }): JSX.Element {
                   <Row>
                     <Cell>
                       <a
-                        class="text-kumo-info hover:underline"
+                        class="text-info-fg hover:underline"
                         href={href(path(adapter.id))}
                         onClick={(event) => {
                           event.preventDefault();
@@ -199,7 +199,7 @@ export default function AdaptersView(props: { slug: string }): JSX.Element {
                     <Cell>
                       <Show
                         when={adapter.credential.set}
-                        fallback={<span class="text-kumo-subtle">none</span>}
+                        fallback={<span class="text-muted">none</span>}
                       >
                         <code>
                           {adapter.credential.set ? adapter.credential.key_fingerprint : ""}

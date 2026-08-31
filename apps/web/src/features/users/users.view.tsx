@@ -175,7 +175,7 @@ export default function UsersView(): JSX.Element {
           </Button>
         }
       />
-      <Loading fallback={<p class="text-kumo-subtle">Loading users...</p>}>
+      <Loading fallback={<p class="text-muted">Loading users...</p>}>
         <Table>
           <thead>
             <tr>

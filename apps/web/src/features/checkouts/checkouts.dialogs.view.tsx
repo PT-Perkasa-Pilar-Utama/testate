@@ -48,15 +48,15 @@ export function DetailDialog(props: { presenter: CheckoutsPresenter }): JSX.Elem
                   {(adapter) => (
                     <Row>
                       <Cell>
-                        {adapter.name} <span class="text-kumo-subtle">({adapter.engine})</span>
+                        {adapter.name} <span class="text-muted">({adapter.engine})</span>
                       </Cell>
                       <Cell>
                         <Badge variant={RESULT_VARIANT[adapter.result]}>{adapter.result}</Badge>
                         <Show when={skippedSummary(adapter) !== ""}>
-                          <p class="text-kumo-subtle text-sm">{skippedSummary(adapter)}</p>
+                          <p class="text-muted text-sm">{skippedSummary(adapter)}</p>
                         </Show>
                         <Show when={adapter.error}>
-                          {(error) => <p class="text-kumo-danger text-sm">{error().message}</p>}
+                          {(error) => <p class="text-danger-fg text-sm">{error().message}</p>}
                         </Show>
                         <Show when={hasRole("qa") && blockingSessions(adapter).length > 0}>
                           <Button
@@ -131,7 +131,7 @@ export function CountersDialog(props: { presenter: CheckoutsPresenter }): JSX.El
                           </Badge>
                           <code>{counter.name}</code>
                           <Show when={counter.error}>
-                            {(message) => <span class="text-kumo-subtle">{message()}</span>}
+                            {(message) => <span class="text-muted">{message()}</span>}
                           </Show>
                         </li>
                       )}

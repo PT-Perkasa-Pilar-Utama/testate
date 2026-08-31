@@ -16,7 +16,7 @@ function Result(props: { value: string | null }): JSX.Element {
   return (
     <Show when={props.value}>
       {(value) => (
-        <output class="block break-all rounded-md bg-kumo-tint px-3 py-2 font-mono text-sm">
+        <output class="block break-all rounded-md bg-hover px-3 py-2 font-mono text-sm">
           {value()}
         </output>
       )}
@@ -29,7 +29,7 @@ function HashCard(props: { presenter: ToolsPresenter }): JSX.Element {
     <LayerCard class="grid gap-4 px-5 py-4">
       <div class="grid gap-1">
         <h3 class="font-medium">Hash</h3>
-        <p class="text-kumo-subtle text-sm">
+        <p class="text-muted text-sm">
           The same functions column policies apply, so a hashed column never receives raw input.
         </p>
       </div>

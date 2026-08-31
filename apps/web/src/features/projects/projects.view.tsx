@@ -84,7 +84,7 @@ export default function ProjectsView(): JSX.Element {
           </Show>
         }
       />
-      <Loading fallback={<p class="text-kumo-subtle">Loading projects...</p>}>
+      <Loading fallback={<p class="text-muted">Loading projects...</p>}>
         <Table>
           <thead>
             <tr>
@@ -108,7 +108,7 @@ export default function ProjectsView(): JSX.Element {
                   <Row>
                     <Cell>
                       <a
-                        class="font-semibold text-kumo-link hover:underline"
+                        class="font-semibold text-link hover:underline"
                         href={href(`/projects/${project.slug}`)}
                         onClick={(event) => {
                           event.preventDefault();
@@ -119,7 +119,7 @@ export default function ProjectsView(): JSX.Element {
                       </a>
                     </Cell>
                     <Cell>
-                      <code class="text-kumo-subtle">{project.slug}</code>
+                      <code class="text-muted">{project.slug}</code>
                     </Cell>
                     <Cell>
                       <Badge variant={project.head.status === "at_state" ? "success" : "warning"}>

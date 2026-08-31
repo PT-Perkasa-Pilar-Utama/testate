@@ -11,7 +11,7 @@ export function ForeignKeys(props: { presenter: GridPresenter }): JSX.Element {
   return (
     <Show when={props.presenter.table()}>
       {(table) => (
-        <p class="text-xs text-kumo-subtle">
+        <p class="text-xs text-muted">
           <For each={table().foreign_keys_out}>
             {(fk) => (
               <span class="mr-3">
@@ -47,9 +47,7 @@ export function FkCell(props: {
   return (
     <Show
       when={link()}
-      fallback={
-        <span class={{ "text-kumo-subtle": props.value === null }}>{cellText(props.value)}</span>
-      }
+      fallback={<span class={{ "text-muted": props.value === null }}>{cellText(props.value)}</span>}
     >
       {(path) => (
         <a class="underline" href={href(path())} onClick={(event) => onClick(event, path())}>

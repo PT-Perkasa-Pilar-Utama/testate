@@ -3,22 +3,22 @@ import { merge, omit } from "solid-js";
 
 // Variant and size strings come from the Kumo registry entry "Button".
 const BASE =
-  "inline-flex cursor-pointer items-center justify-center font-medium whitespace-nowrap select-none outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-kumo-focus disabled:cursor-not-allowed";
+  "inline-flex cursor-pointer items-center justify-center font-medium whitespace-nowrap select-none outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed";
 
 // Kumo's React Button sets --kumo-button-emphasis-bg inline; here the emphasis
 // colours are the contrast and danger tokens directly.
 // Cyan is what you can act on, and it carries near-black: white on it fails AA (ADR 0002).
 const VARIANTS = {
   primary:
-    "bg-kumo-contrast !text-kumo-inverse ring ring-kumo-contrast not-disabled:hover:bg-kumo-brand-hover disabled:opacity-50",
+    "bg-accent !text-inverse ring ring-accent not-disabled:hover:bg-accent-hover disabled:opacity-50",
   secondary:
-    "bg-kumo-fill !text-kumo-default ring ring-kumo-line not-disabled:hover:bg-kumo-fill-hover disabled:opacity-50",
-  ghost: "text-kumo-default hover:bg-kumo-tint shadow-none bg-inherit",
+    "bg-fill !text-body ring ring-line not-disabled:hover:bg-fill-hover disabled:opacity-50",
+  ghost: "text-body hover:bg-hover shadow-none bg-inherit",
   success:
-    "bg-kumo-success !text-white ring ring-kumo-success not-disabled:hover:opacity-90 disabled:opacity-50",
+    "bg-success !text-white ring ring-success not-disabled:hover:opacity-90 disabled:opacity-50",
   destructive:
-    "bg-kumo-danger !text-white ring ring-kumo-danger not-disabled:hover:opacity-90 disabled:opacity-50",
-  outline: "bg-transparent text-kumo-default ring ring-kumo-line not-disabled:hover:bg-kumo-tint",
+    "bg-danger !text-white ring ring-danger not-disabled:hover:opacity-90 disabled:opacity-50",
+  outline: "bg-transparent text-body ring ring-line not-disabled:hover:bg-hover",
 } as const;
 
 // 20, 28, 32 and 40 pixels tall: the control heights GitHub uses, all on the 6px radius.

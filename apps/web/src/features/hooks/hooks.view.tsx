@@ -39,7 +39,7 @@ function CreateDialog(props: { presenter: HooksPresenter }): JSX.Element {
             onChange={(trigger) => props.presenter.setDraft({ trigger })}
           />
         </label>
-        <Loading fallback={<p class="text-kumo-subtle">Listing REST adapters...</p>}>
+        <Loading fallback={<p class="text-muted">Listing REST adapters...</p>}>
           <label class="grid gap-1.5 text-base">
             <span>REST adapter</span>
             <Select
@@ -108,7 +108,7 @@ export default function HooksView(props: { slug: string }): JSX.Element {
           </Button>
         </div>
       </Show>
-      <Loading fallback={<p class="text-kumo-subtle">Loading hooks...</p>}>
+      <Loading fallback={<p class="text-muted">Loading hooks...</p>}>
         <Table>
           <thead>
             <tr>

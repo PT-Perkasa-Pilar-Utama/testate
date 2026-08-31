@@ -84,7 +84,7 @@ function Pager(props: { presenter: GridPresenter }): JSX.Element {
   const page = (): ReturnType<GridPresenter["page"]["value"]>["page"] =>
     props.presenter.page.value().page;
   return (
-    <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-kumo-subtle">
+    <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
       <div class="flex flex-wrap items-center gap-2">
         <span>{props.presenter.page.value().data.length} rows on this page</span>
         <Badge variant="secondary">{page().kind} paging</Badge>
@@ -221,7 +221,7 @@ export default function GridView(props: { slug: string; id: string; table: strin
         </h2>
         <ForeignKeys presenter={presenter} />
       </div>
-      <Loading fallback={<p class="text-kumo-subtle">Loading rows...</p>}>
+      <Loading fallback={<p class="text-muted">Loading rows...</p>}>
         <TableToolbar actions={<WriteControls presenter={presenter} />}>
           <FilterBar
             presenter={presenter}
@@ -229,7 +229,7 @@ export default function GridView(props: { slug: string; id: string; table: strin
           />
         </TableToolbar>
         <Show when={presenter.page.value().masked_columns.length > 0}>
-          <p class="text-xs text-kumo-subtle">
+          <p class="text-xs text-muted">
             Masked for your role: {presenter.page.value().masked_columns.join(", ")}
           </p>
         </Show>
@@ -250,7 +250,7 @@ export default function GridView(props: { slug: string; id: string; table: strin
                           {presenter.order() === "asc" ? " ↑" : " ↓"}
                         </Show>
                       </button>
-                      <span class="ml-1 text-xs text-kumo-subtle">{column.type}</span>
+                      <span class="ml-1 text-xs text-muted">{column.type}</span>
                     </Head>
                   )}
                 </For>

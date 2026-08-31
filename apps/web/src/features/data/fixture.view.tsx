@@ -27,7 +27,7 @@ export default function FixtureDialog(props: { presenter: EditingPresenter }): J
                 <Badge variant="secondary">masked: {fixture().masked_columns.join(", ")}</Badge>
               </Show>
             </div>
-            <pre class="max-h-96 overflow-auto rounded-lg bg-kumo-fill p-3 text-xs">
+            <pre class="max-h-96 overflow-auto rounded-lg bg-fill p-3 text-xs">
               {fixture().content}
             </pre>
             <div class="flex justify-end gap-2">

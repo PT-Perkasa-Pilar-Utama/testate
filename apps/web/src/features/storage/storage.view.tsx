@@ -50,16 +50,14 @@ function Payload(props: { payload: PreviewPayload }): JSX.Element {
       </Match>
       <Match when={props.payload.kind === "json" ? props.payload : null}>
         {(json) => (
-          <pre class="max-h-96 overflow-auto rounded-lg bg-kumo-fill p-3 text-xs">
+          <pre class="max-h-96 overflow-auto rounded-lg bg-fill p-3 text-xs">
             {JSON.stringify(json().content, null, 2)}
           </pre>
         )}
       </Match>
       <Match when={props.payload.kind === "text" ? props.payload : null}>
         {(text) => (
-          <pre class="max-h-96 overflow-auto rounded-lg bg-kumo-fill p-3 text-xs">
-            {text().content}
-          </pre>
+          <pre class="max-h-96 overflow-auto rounded-lg bg-fill p-3 text-xs">{text().content}</pre>
         )}
       </Match>
     </Switch>
@@ -83,7 +81,7 @@ function PreviewDialog(props: { presenter: StoragePresenter }): JSX.Element {
                 <iframe
                   title={preview().entry.name}
                   sandbox=""
-                  class="h-96 w-full rounded-lg bg-kumo-fill"
+                  class="h-96 w-full rounded-lg bg-fill"
                   src={url()}
                 />
               )}
@@ -239,7 +237,7 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
         )}
       </Show>
       <Errored fallback={(error) => <Banner variant="error">{String(error())}</Banner>}>
-        <Loading fallback={<p class="text-kumo-subtle">Listing...</p>}>
+        <Loading fallback={<p class="text-muted">Listing...</p>}>
           <Table>
             <thead>
               <tr>

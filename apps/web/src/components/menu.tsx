@@ -16,7 +16,7 @@ export function Menu(props: { label?: string; children: JSX.Element }): JSX.Elem
       >
         ...
       </summary>
-      <div class="absolute right-0 z-10 mt-1 grid w-44 gap-0.5 rounded-lg bg-kumo-elevated p-1 text-left shadow-lg ring ring-kumo-line">
+      <div class="absolute right-0 z-10 mt-1 grid w-44 gap-0.5 rounded-lg bg-surface p-1 text-left shadow-lg ring ring-line">
         {props.children}
       </div>
     </details>
@@ -34,8 +34,8 @@ export function MenuItem(props: {
       type="button"
       disabled={props.disabled}
       class={[
-        "cursor-pointer rounded-md px-2 py-1.5 text-left text-sm hover:bg-kumo-tint disabled:cursor-not-allowed disabled:opacity-50",
-        { "text-kumo-danger": props.danger === true },
+        "cursor-pointer rounded-md px-2 py-1.5 text-left text-sm hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50",
+        { "text-danger-fg": props.danger === true },
       ]}
       onClick={(event) => {
         event.currentTarget.closest("details")?.removeAttribute("open");
@@ -51,7 +51,7 @@ export function MenuItem(props: {
 export function MenuLink(props: { href: string; children: JSX.Element }): JSX.Element {
   return (
     <a
-      class="rounded-md px-2 py-1.5 text-left text-sm hover:bg-kumo-tint"
+      class="rounded-md px-2 py-1.5 text-left text-sm hover:bg-hover"
       href={props.href}
       onClick={(event) => event.currentTarget.closest("details")?.removeAttribute("open")}
     >
