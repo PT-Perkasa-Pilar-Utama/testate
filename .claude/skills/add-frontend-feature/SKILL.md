@@ -1,6 +1,6 @@
 ---
 name: add-frontend-feature
-description: Add a screen to the Testate SPA in the model/presenter/view pattern with Solid 2, the in-house router, and the Kumo component ports.
+description: Add a screen to the Testate SPA in the model/presenter/view pattern with Solid 2, the in-house router, and the hand-rolled components under components/.
 ---
 
 # Add a frontend feature
@@ -34,12 +34,13 @@ export function createThingsPresenter(slug: () => string): ThingsPresenter {
 
 - `createRefreshable(load)` (in `lib/async.ts`) is an async memo with `refresh()`. Reads inside `load` are tracked, so pass props as accessors (`() => props.slug`), never as values.
 - Form state is signals in the presenter; validation messages are a `string | null` signal.
-- `attempt(task)` from `components/toast.tsx` reports an error as a toast.
+- `attempt(task)` from `lib/toast.ts` reports an error as a toast. `components/toast.tsx` is the
+  `Toaster` host that renders them, and exports nothing else.
 
 ## 3. View: `<name>.view.tsx`
 
 - JSX only. Read async values under `<Loading fallback=...>`; the shell's `<Errored>` shows failures.
-- Tables: `Table`, `Head`, `Row`, `Cell` from `components/table.tsx`. Status colours through a `const STATUS_VARIANT = { ... } as const` lookup, not a chain of ternaries.
+- Tables: `Table`, `Head`, `Row`, `Cell` from `components/table.tsx`, plus `EmptyRow` for the no-rows case, `TableToolbar` for filters, `TableFooter` for the count and the next page, and `pinned` on `Head`/`Cell` to freeze the action column. Status colours through a `const STATUS_VARIANT = { ... } as const` lookup, not a chain of ternaries.
 - Forms: `Input`, `Select`, `Button`, `Dialog`, `Banner`. Banner variants: `default`, `alert`, `error`, `secondary`. Badge variants: `primary`, `secondary`, `error`, `warning`, `success`, `info`, `outline`.
 - Role-gated controls: `<Show when={hasRole("qa")}>`.
 - Links: `href={href(path)}` plus `onClick` that calls `navigate(path)` after `preventDefault`.
@@ -56,6 +57,6 @@ export function createThingsPresenter(slug: () => string): ThingsPresenter {
 - `bun run dev`, open `http://localhost:7379`, sign in as `admin` (any password with 12+ characters in the scaffold), and click through the screen.
 - The build bakes `/__TESTATE_BASE__/`; never hard-code `/api` or `/assets` paths outside `lib/`.
 
-## Port a Kumo component
+## Add or change a component
 
-See `.claude/skills/kumo-design/SKILL.md`. Components live in `components/`, take `ComponentProps<"...">` plus variant props, use `class` arrays, and never import `features/`.
+See `.claude/skills/design-system/SKILL.md` for the tokens and the rules. Components live in `components/`, take `ComponentProps<"...">` plus variant props, use `class` arrays, and never import `features/`. There is no component library: reuse one of the nineteen that exist before writing a twentieth.

@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 
-// Strings come from the Kumo registry entry "Banner".
+// One tinted surface per tone; the tone maps to a status token trio (see the design-system skill).
 const VARIANTS = {
   default: "bg-info-tint text-info-fg ring ring-info/40",
   alert: "bg-warning-tint text-warning-fg ring ring-warning/40",

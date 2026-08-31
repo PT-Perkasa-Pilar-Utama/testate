@@ -3,7 +3,7 @@ import { Show, createEffect, createSignal } from "solid-js";
 
 import Button from "./button.tsx";
 
-// Size strings come from the Kumo registry entry "Dialog".
+// Size strings for the native <dialog>; it is never conditionally rendered.
 const SIZES = {
   sm: "sm:w-72",
   base: "sm:w-96",

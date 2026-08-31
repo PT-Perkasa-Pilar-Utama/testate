@@ -5,7 +5,7 @@ description: Implement or extend a Testate database engine behind the DbEngine p
 
 # Add a database engine
 
-An engine is one folder under `apps/api/src/engines/<engine>/` that implements the `DbEngine` port from `docs/adr/0001-dbengine-interface.md`. Read the ADR and `docs/technical-specs/12-engine-port.md` first; `13-checkout-and-restore.md`, `14-schema-fingerprint.md`, and `24-table-editing.md` cover the callers. Nothing in this skill overrides those documents.
+An engine is one folder under `apps/api/src/lib/engines/<engine>/` that implements the `DbEngine` port from `docs/adr/0001-dbengine-interface.md`. Read the ADR and `docs/technical-specs/12-engine-port.md` first; `13-checkout-and-restore.md`, `14-schema-fingerprint.md`, and `24-table-editing.md` cover the callers. Nothing in this skill overrides those documents.
 
 ## The port, in order of implementation
 
@@ -32,7 +32,7 @@ Inner ports each engine keeps private: `CapabilityProbe` (the seam the planner t
 
 ## Wiring
 
-1. `engines/<engine>/index.ts` exports `createXEngine(): DbEngine`.
+1. `lib/engines/<engine>/index.ts` exports `createXEngine(): DbEngine`.
 2. Register it in the engine registry keyed by the `ENGINES` value from `@testate/shared`; `adapters` resolves an engine by `adapter.engine`.
 3. `capabilities.tier` decides what the modules allow; a module refuses operations outside the tier with `ENGINE_UNSUPPORTED`.
 4. Add the engine to `deploy/compose.engines.yml` with a health check and an offset port.
@@ -40,7 +40,7 @@ Inner ports each engine keeps private: `CapabilityProbe` (the seam the planner t
 ## Tests
 
 - Pure functions (`computeFingerprint`, `computeDependencyOrder`, `diffSchema`, `selectRestoreStrategy`, `validateImportRow`) get unit tests with hand-written introspections. Break one input and watch the test fail.
-- Engine methods get contract tests under `apps/api/test/contract/<engine>.test.ts`, tagged `contract`, against `deploy/compose.engines.yml`. The suite is shared across engines: probe floor, introspection round-trip, snapshot-then-checkout equality by row hash, drift refusal, cancel mid-query, read-only refusal of a write.
+- Engine methods get contract tests beside the engine, `lib/engines/<engine>/<engine>.contract.test.ts`, tagged `contract`, run by `bun run contract` against `deploy/compose.engines.yml`. The suite is shared across engines: probe floor, introspection round-trip, snapshot-then-checkout equality by row hash, drift refusal, cancel mid-query, read-only refusal of a write.
 - Sprint 0 measurements in spec 12 §12.7 are the performance baseline; a regression is a failing contract test, not a note.
 
 ## Checklist before the row moves to OK

@@ -15,7 +15,7 @@ export type TabsProps<T extends string> = {
   variant?: "underline" | "segmented";
 };
 
-/** Kumo "segmented" tabs on native buttons with the tablist roles. */
+/** Segmented tabs on native buttons with the tablist roles. */
 export default function Tabs<T extends string>(props: TabsProps<T>): JSX.Element {
   return (
     <div

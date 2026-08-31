@@ -1,5 +1,13 @@
 # ADR 0002: GitHub's design language, on Kumo's tokens
 
+> **Partly superseded, 2026-08-31.** The design language below still holds and is still the
+> decision. The vehicle does not: `@cloudflare/kumo` was removed and the tokens now live in a
+> Tailwind 4 `@theme` block in `apps/web/src/styles/app.css` under names of our own
+> (`bg-kumo-elevated` is `bg-surface`, `text-kumo-subtle` is `text-muted`). Everything below about
+> Kumo's import order, its cascade, and its unused light palette is history. The consequence noted
+> at the end, that Kumo's light palette sits unused in the bundle, is resolved: it is gone, and the
+> stylesheet fell from 58 kB to 24 kB. Current tokens and rules: `.claude/skills/design-system/`.
+
 - **Date:** 2026-08-30
 - **Status:** Accepted
 - **Deciders:** Product owner (design direction), Tech Lead (implementation)

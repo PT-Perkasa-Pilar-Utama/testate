@@ -1,12 +1,10 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { merge, omit } from "solid-js";
 
-// Variant and size strings come from the Kumo registry entry "Button".
+// Variant and size strings; the emphasis variant is the one accent on a screen.
 const BASE =
   "inline-flex cursor-pointer items-center justify-center font-medium whitespace-nowrap select-none outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed";
 
-// Kumo's React Button sets --kumo-button-emphasis-bg inline; here the emphasis
-// colours are the contrast and danger tokens directly.
 // Cyan is what you can act on, and it carries near-black: white on it fails AA (ADR 0002).
 const VARIANTS = {
   primary:

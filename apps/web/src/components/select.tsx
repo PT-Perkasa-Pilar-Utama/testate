@@ -12,7 +12,7 @@ export type SelectProps<T extends string> = Omit<ComponentProps<"select">, "onCh
   size?: keyof typeof FIELD_SIZES;
 };
 
-/** Native select with Kumo field styling; the browser supplies the popup and keyboard behaviour. */
+/** Native select with the shared field styling; the browser supplies the popup and keyboard behaviour. */
 export default function Select<T extends string>(props: SelectProps<T>): JSX.Element {
   const local = merge({ size: "base" } as const, props);
   const rest = omit(local, "options", "value", "onChange", "size", "class");

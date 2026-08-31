@@ -54,9 +54,9 @@ testate/                                  # github.com/pt-perkasa-pilar-utama/te
 │       ├── src/
 │       │   ├── main.tsx  app.tsx  routes.ts
 │       │   ├── features/<feature>/       # <feature>.model.ts, <feature>.presenter.ts, <feature>.view.tsx
-│       │   ├── components/               # hand-rolled Kumo components, one per file
+│       │   ├── components/               # hand-rolled components, one per file
 │       │   ├── lib/                      # api-client.ts, router.ts, sse.ts, session.ts
-│       │   └── styles/app.css            # @import "tailwindcss" then Kumo tokens
+│       │   └── styles/app.css            # @import "tailwindcss" then our @theme tokens
 │       ├── test/                         # presenter and lib unit tests (bun test, no DOM)
 │       ├── vite.config.ts                # base: "/__TESTATE_BASE__/"
 │       ├── package.json
@@ -78,7 +78,7 @@ testate/                                  # github.com/pt-perkasa-pilar-utama/te
 │   ├── generate-key.ts                   # prints a base64 32-byte key for TESTATE_SECRETS_ACTIVE_KEY
 │   └── contract.ts                       # runs the engine contract suite against compose.engines.yml
 ├── tools/oxlint/anti-slop/               # vendored lint rules, never edited
-├── .claude/skills/                       # solidjs-2, kumo-design, wide-event-logging, and the codebase-pattern skills
+├── .claude/skills/                       # solidjs-2, design-system, wide-event-logging, and the codebase-pattern skills
 ├── .github/workflows/                    # ci.yml (quality + contract matrix), deploy-image.yml (manual, version-gated, docker-slim)
 ├── Dockerfile                            # multi-stage: build web + bundle api, slim runtime, non-root, /data volume
 ├── lefthook.yml  .oxlintrc.json  .oxfmtrc.json  bunfig.toml
@@ -97,7 +97,7 @@ testate/                                  # github.com/pt-perkasa-pilar-utama/te
 | `apps/api/src/db/migrations/` | Numbered SQL applied at boot | Resolved relative to `import.meta.dir`; never an absolute path |
 | `apps/api/test/` | API tests and the contract suite | API tests use the fake engine; the contract suite uses real engines only |
 | `apps/web/src/features/<f>/` | One feature in MVP form | View is JSX only; presenter owns state; model calls the API |
-| `apps/web/src/components/` | Kumo components | Never imports `features/` |
+| `apps/web/src/components/` | Hand-rolled components | Never imports `features/` |
 | `packages/shared/` | The API contract as valibot schemas | Both apps derive types from it; no runtime logic beyond validation |
 | `deploy/` | Everything an operator copies | Compose, nginx, env example |
 | `docs/adr/` | Decisions with alternatives | One file per decision, numbered |

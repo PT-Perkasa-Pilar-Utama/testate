@@ -54,15 +54,14 @@ Read the rule text in `docs/CODING_STANDARD.md` when a rule fires; do not reform
 
 ## Workflows
 
-| Want to                       | Use                                                                                                                    |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Add or change an endpoint     | `.claude/skills/add-api-endpoint/SKILL.md`                                                                             |
-| Add a screen                  | `.claude/skills/add-frontend-feature/SKILL.md`                                                                         |
-| Add an engine                 | `.claude/skills/add-db-adapter/SKILL.md`                                                                               |
-| Write Solid 2 code            | `.claude/skills/solidjs-2/SKILL.md`                                                                                    |
-| Style a screen or a component | ADR 0002 and `docs/design/github.md`; reuse `PageHeader`, the `table.tsx` parts, `Menu`, `ConfirmDialog`, `formatWhen` |
-| Use or port a Kumo component  | `.claude/skills/kumo-design/SKILL.md`                                                                                  |
-| Review a change               | `docs/CODE_REVIEW_CHECKLIST.md`                                                                                        |
+| Want to                       | Use                                                                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Add or change an endpoint     | `.claude/skills/add-api-endpoint/SKILL.md`                                                                                |
+| Add a screen                  | `.claude/skills/add-frontend-feature/SKILL.md`                                                                            |
+| Add an engine                 | `.claude/skills/add-db-adapter/SKILL.md`                                                                                  |
+| Write Solid 2 code            | `.claude/skills/solidjs-2/SKILL.md`                                                                                       |
+| Style a screen or a component | `.claude/skills/design-system/SKILL.md`; reuse `PageHeader`, the `table.tsx` parts, `Menu`, `ConfirmDialog`, `formatWhen` |
+| Review a change               | `docs/CODE_REVIEW_CHECKLIST.md`                                                                                           |
 
 ## Do not
 

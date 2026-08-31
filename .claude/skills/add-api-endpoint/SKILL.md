@@ -42,7 +42,7 @@ export function createThingHandlers(service: ThingService, apiPrefix: string): T
 }
 ```
 
-Helpers in `lib/http`: `ok`, `okPage`, `accepted`, `param`, `parseBody`, `parseQuery`, `parseParams`, `currentActor`.
+Helpers from `lib/http/index.ts`: `ok`, `okPage`, `accepted`, `param`, `parseBody`, `parseQuery`, `parseParams`, `firstQuery`. The actor comes from `lib/http/auth.ts`: `currentActor(c)`, which every handler that needs one uses, never `c.get("actor")`.
 
 ## 5. Router: `<name>.router.ts`
 

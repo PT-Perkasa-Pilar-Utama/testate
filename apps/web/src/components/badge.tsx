@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 
-// Strings come from the Kumo registry entry "Badge".
+// One pill per tone; each is the fill, tint and foreground of one status token trio.
 const BASE =
   "inline-flex w-fit flex-none shrink-0 items-center justify-self-start gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap";
 

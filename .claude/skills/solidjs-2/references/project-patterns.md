@@ -13,7 +13,7 @@ apps/web/src/
     <feature>.model.ts       API calls through lib/api-client; parses responses with schemas from @testate/shared
     <feature>.presenter.ts   create<Feature>Presenter(): signals, async memos, actions; no JSX
     <feature>.view.tsx       JSX only; calls the presenter factory once
-  components/                one hand-rolled Kumo component per file
+  components/                one hand-rolled component per file
   lib/
     api-client.ts            fetch wrapper: base path, cookies, x-request-id, envelope, ApiError
     router.ts                history-API router: navigate(), useRoute(), <Link>
@@ -88,7 +88,7 @@ export default function StatesView(): JSX.Element {
   const route = useRoute();
   const presenter = createStatesPresenter(() => route.params().slug);
   return (
-    <Loading fallback={<p class="text-kumo-subtle">Loading states...</p>}>
+    <Loading fallback={<p class="text-muted">Loading states...</p>}>
       <Show when={presenter.selected()} fallback={<Banner>Select a state.</Banner>}>
         {(state) => <StateDetail state={state()} />}
       </Show>
@@ -128,7 +128,7 @@ createEffect(
 
 ## Components
 
-One component per file in `components/`, default export, props type `<Name>Props`. Defaults via `merge`, forwarding via `omit` captured in a variable, Kumo class strings in `as const` maps, structured `class` arrays.
+One component per file in `components/`, default export, props type `<Name>Props`. Defaults via `merge`, forwarding via `omit` captured in a variable, class strings in `as const` maps, structured `class` arrays. Tokens and rules: the `design-system` skill.
 
 ```tsx
 export default function Button(props: ButtonProps): JSX.Element {

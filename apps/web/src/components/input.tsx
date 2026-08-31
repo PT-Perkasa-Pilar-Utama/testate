@@ -1,7 +1,7 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { merge, omit } from "solid-js";
 
-// Size and focus strings come from the Kumo registry entry "Input".
+// Size and focus strings; the focus ring is the accent, as everywhere else.
 export const FIELD_BASE =
   "w-full bg-control text-body ring ring-line outline-none placeholder:text-placeholder disabled:opacity-50";
 

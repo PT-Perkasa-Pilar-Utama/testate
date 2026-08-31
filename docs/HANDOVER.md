@@ -222,7 +222,7 @@ end it. All three are worth keeping on their own merits and none of them was the
 
 **The redesign (2026-08-30).** ADR 0002 records the decision; `docs/design/github.md` is the
 specification as it was given. The palette lives in `apps/web/src/styles/app.css` as an override of
-Kumo's own variables, after the import, so retargeting them re-skins forty views without touching
+the project's own variables, in a Tailwind `@theme` block, so retargeting them re-skins forty views without touching
 one. Dark only: `data-mode="dark"` and `color-scheme: dark`.
 
 Conventions the screens now share, and that a new screen should follow:

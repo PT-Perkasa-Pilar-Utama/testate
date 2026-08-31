@@ -7,7 +7,7 @@ export type SwitchProps = {
   disabled?: boolean;
 };
 
-/** Kumo switch size "base" (h-6.5 w-10.5) on a native button with the switch role. */
+/** A switch (h-6.5 w-10.5) on a native button with the switch role. */
 export default function Switch(props: SwitchProps): JSX.Element {
   return (
     <label class="inline-flex cursor-pointer items-center gap-2 text-base whitespace-nowrap text-body">

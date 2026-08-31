@@ -5,9 +5,9 @@ description: SolidJS 2.0 (release candidate) API, migration rules from 1.x, and 
 
 # SolidJS 2.0 in Testate
 
-Solid 2.0 is a release candidate (`solid-js@2.0.0-rc.3`, `@solidjs/web@2.0.0-rc.3`, `@solidjs/vite-plugin@3.0.0-next.34`, checked on npm 2026-08-28; the `latest` tag is still 1.9.x). It is not a small bump from 1.x: DOM rendering moved to `@solidjs/web`, stores moved into `solid-js`, writes apply on a microtask flush, effects take two functions, and async data is a plain memo that returns a promise. Training data mostly knows 1.x, so check every Solid call against this skill before trusting memory. `eslint-plugin-solid` (v2 rules) runs under oxlint and rejects the 1.x names; the type checker rejects most of the rest.
+Solid 2.0 is a release candidate (`solid-js@2.0.0-rc.4`, `@solidjs/web@2.0.0-rc.4`, `@solidjs/vite-plugin@3.0.0-next.34`, pinned in `apps/web/package.json`, checked 2026-08-31; the `latest` tag is still 1.9.x). The `2.0.0-rc.3` copies of `solid-js` and `@solidjs/web` in `node_modules` are peer installs for `@solidjs/babel-plugin` and `@solidjs/compiler`, which are build-time only. The runtime resolves rc.4, which is what `patches/` patches. It is not a small bump from 1.x: DOM rendering moved to `@solidjs/web`, stores moved into `solid-js`, writes apply on a microtask flush, effects take two functions, and async data is a plain memo that returns a promise. Training data mostly knows 1.x, so check every Solid call against this skill before trusting memory. `eslint-plugin-solid` (v2 rules) runs under oxlint and rejects the 1.x names; the type checker rejects most of the rest.
 
-Kobalte, Corvu, zaidan, and every other Solid component library target Solid 1.x. Testate uses none of them. Components are hand-rolled under `apps/web/src/components/` in the Kumo look (see the `kumo-design` skill).
+Kobalte, Corvu, zaidan, Ark UI and every other Solid component library target Solid 1.x, so none of them can be used here. Ark UI is the concrete case: `@zag-js/solid`, the engine under every Ark component, imports `onMount` and `mergeProps` from `solid-js` and calls `createEffect` with one function. Solid 2 exports neither name and throws `MISSING_EFFECT_FN` on the one-argument form, so it fails at import, not at runtime. Its `2.0.0-next.1` prerelease has the same imports. Components are therefore hand-rolled under `apps/web/src/components/` in plain Tailwind (see the `design-system` skill).
 
 ## When to read which file
 
@@ -25,7 +25,7 @@ Kobalte, Corvu, zaidan, and every other Solid component library target Solid 1.x
 4. **Async is a memo.** `createMemo(async () => ...)` is the only async primitive; read it like a value inside `<Loading fallback>`, catch rejections with `<Errored fallback={(error, reset) => ...}>`. `createResource` and `createAsync` do not exist. Re-run by changing a signal the memo reads; Testate presenters bump a `version` signal after every write.
 5. **Props stay reactive.** Never destructure props. Defaults through `merge(defaults, props)`, forwarding through `omit(props, "a", "b")`, and capture the result in a variable before spreading. Pass values to DOM attributes (`value={name()}`), never accessors.
 6. **Stores mutate drafts.** `setState((draft) => { draft.a.b = value; })`. `unwrap` is now `snapshot` and returns a deep copy.
-7. **`class` is structured.** `class={[BASE, VARIANTS[v], { "text-kumo-danger": bad() }]}`; no hand-built strings.
+7. **`class` is structured.** `class={[BASE, VARIANTS[v], { "text-danger-fg": bad() }]}`; no hand-built strings.
 8. **Owners matter.** `createMemo`, `createEffect`, and `onCleanup` need an owner. Module-level code may create signals only. Anything with memos, effects, or cleanup lives in a `create<Feature>Presenter()` factory called from the view component.
 9. **Views are JSX only.** No `fetch`, no valibot parsing, no `EventSource`, no `localStorage` in a `*.view.tsx`. The model talks to the API, the presenter owns state and actions, the view renders.
 

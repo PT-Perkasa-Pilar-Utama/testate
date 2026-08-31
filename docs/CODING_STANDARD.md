@@ -77,7 +77,7 @@ Why 10: a function with more than ten paths cannot be covered by a handful of te
 
 - Solid 2 rules from `.claude/skills/solidjs-2`: two-argument `createEffect`, async `createMemo` under `<Loading>` and `<Errored>`, props read inside JSX or tracked scopes, `class` as string or structured array **(enforced by eslint-plugin-solid)**.
 - Model calls the API and returns parsed types. Presenter owns signals and actions. View is JSX only.
-- Components come from `components/` (Kumo ports). A component never imports `features/`.
+- Components come from `components/`, all hand-rolled. A component never imports `features/`.
 - Route access is declared in `routes.ts` (`role: Role | null`); the shell enforces it; views assume it.
 
 ## 9. Tests
