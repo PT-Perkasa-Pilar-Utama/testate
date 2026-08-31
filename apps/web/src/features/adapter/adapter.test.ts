@@ -13,7 +13,7 @@ const ADAPTER: Adapter = {
   mode: "sandbox",
   status: "ok",
   status_message: null,
-  config: { host: "127.0.0.1", port: 54320, database: "shop", user: "testate" },
+  config: { host: "127.0.0.1", port: 15432, database: "shop", user: "testate" },
   credential: { set: true, key_fingerprint: "ab", set_at: "2026-08-29T00:00:00.000Z" },
   readonly_credential: { set: false },
   excluded_tables: ["contract.schema_migrations"],
@@ -58,7 +58,7 @@ describe("adapter editing", () => {
     ).toStrictEqual({
       config: {
         host: "127.0.0.1",
-        port: 54320,
+        port: 15432,
         database: "shop",
         user: "testate",
         schemas: ["contract"],
@@ -69,6 +69,6 @@ describe("adapter editing", () => {
       toPatchBody({ ...draft, values: { ...draft.values, "config.host": "db2" } }, ADAPTER)[
         "config"
       ]
-    ).toStrictEqual({ host: "db2", port: 54320, database: "shop", user: "testate" });
+    ).toStrictEqual({ host: "db2", port: 15432, database: "shop", user: "testate" });
   });
 });

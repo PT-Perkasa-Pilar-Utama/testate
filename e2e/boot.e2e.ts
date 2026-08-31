@@ -132,7 +132,7 @@ test("@story-32 @story-33 fixed targets stay blocked and a deny-list change disa
 
   // 33: the change re-checks every adapter and disables the ones the list now blocks.
   const patched = await call<Settings>(session, "PATCH", "settings", {
-    netguard: { deny: ["127.0.0.1:54320"] },
+    netguard: { deny: ["127.0.0.1:15432"] },
   });
   expect(patched.json.data.disabled_adapters).toStrictEqual([adapterId]);
   const adapter = await call<AdapterRow>(session, "GET", `projects/guard/adapters/${adapterId}`);

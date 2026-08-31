@@ -21,7 +21,7 @@ import type {
 export const CONFIG: PostgresConfig = {
   engine: "postgres",
   host: "127.0.0.1",
-  port: 54320,
+  port: 15432,
   database: "shop",
   user: "testate",
   password: "testate",

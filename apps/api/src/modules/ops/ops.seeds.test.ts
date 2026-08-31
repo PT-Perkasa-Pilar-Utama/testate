@@ -108,9 +108,9 @@ describe("reset seeds", () => {
     expect(calls.adapters).toEqual([]);
     const drafts = devAdapters();
     expect(drafts.map(targetOf)).toEqual([
-      "postgres:54320",
-      "mysql:33060",
-      "mariadb:33070",
+      "postgres:15432",
+      "mysql:13306",
+      "mariadb:13307",
       "mongodb:url",
       "s3:http://127.0.0.1:9010",
       "http:http://127.0.0.1:9010/minio/health/live",

@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { E2E_DIR } from "../../playwright.config.ts";
 
 const ROOT = join(E2E_DIR, "..");
-const SERVER = "postgres://testate:testate@127.0.0.1:54320";
+const SERVER = "postgres://testate:testate@127.0.0.1:15432";
 
 export function pgUrl(database: string): string {
   return `${SERVER}/${database}`;

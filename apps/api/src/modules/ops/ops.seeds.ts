@@ -68,9 +68,9 @@ export function devAdapters(): AdapterDraft[] {
     secrets: { password: "testate" },
   });
   return [
-    database("postgres", "shop-postgres", 54320),
-    database("mysql", "shop-mysql", 33060),
-    database("mariadb", "shop-mariadb", 33070),
+    database("postgres", "shop-postgres", 15432),
+    database("mysql", "shop-mysql", 13306),
+    database("mariadb", "shop-mariadb", 13307),
     {
       kind: "database",
       engine: "mongodb",

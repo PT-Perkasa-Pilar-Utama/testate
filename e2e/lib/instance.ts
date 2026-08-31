@@ -118,7 +118,7 @@ export function draftFor(host: string, name = "probe", database = "shop"): Postg
     kind: "database",
     engine: "postgres",
     name,
-    config: { host, port: 54320, database, user: "testate" },
+    config: { host, port: 15432, database, user: "testate" },
     secrets: { password: "testate" },
   };
 }

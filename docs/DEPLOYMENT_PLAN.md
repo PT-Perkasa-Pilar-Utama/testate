@@ -128,7 +128,7 @@ One JSON line per request or job in `/data/logs/testate-YYYY-MM-DD.jsonl`, mirro
 
 ## Development engines
 
-`docker compose -f deploy/compose.engines.yml up -d` starts PostgreSQL (54320), MySQL (33060), MariaDB (33070), MongoDB (27017), and MinIO (9000) with user `testate` / password `testate`. Not for production.
+`docker compose -f deploy/compose.engines.yml up -d` starts PostgreSQL (15432), MySQL (13306), MariaDB (13307), MongoDB (27017), and MinIO (9000) with user `testate` / password `testate`. Not for production.
 
 ## Checklist before go-live
 

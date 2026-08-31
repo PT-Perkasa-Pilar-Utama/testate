@@ -22,7 +22,7 @@ test.describe("adapter settings stories", () => {
     const create = page.locator("dialog[open]");
     await create.getByLabel("Name").fill(`cfg-${STAMP}`);
     await create.getByLabel("Host").fill("127.0.0.1");
-    await create.getByLabel("Port").fill("54320");
+    await create.getByLabel("Port").fill("15432");
     await create.getByRole("textbox", { name: "Database" }).fill("shop");
     await create.getByLabel("User").fill("testate");
     await create.getByLabel("Password").fill("testate");

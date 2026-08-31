@@ -18,6 +18,11 @@ bun run e2e
 Each suite drops and recreates its own schema, so repeating it is harmless. A long-lived stack
 already holds the schema, which is why this only bites a fresh checkout or CI.
 
+**The engines publish below port 32768 on purpose.** Linux hands out ephemeral ports from 32768
+upwards, so a host port above that can be held by an unrelated outgoing connection at the moment
+Docker tries to bind it, and the container fails to start with "address already in use". macOS
+starts its ephemeral range at 49152, which is why this only ever failed in CI.
+
 ## Layout
 
 | Project     | Spec                                                            | What it proves                                                       |

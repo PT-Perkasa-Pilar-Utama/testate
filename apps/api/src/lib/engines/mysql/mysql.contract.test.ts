@@ -16,7 +16,7 @@ import type { Netguard } from "../postgres/pool.ts";
 import { createMysqlEngine, decodeRow } from "./engine.ts";
 import { dialectOf, grantsAllow } from "./probe.ts";
 
-/** Contract test against `deploy/compose.engines.yml` (mysql on 33060, mariadb on 33070); skipped when absent. */
+/** Contract test against `deploy/compose.engines.yml` (mysql on 13306, mariadb on 13307); skipped when absent. */
 function configFor(engine: "mysql" | "mariadb", port: number): MysqlConfig {
   return {
     engine,
@@ -29,7 +29,7 @@ function configFor(engine: "mysql" | "mariadb", port: number): MysqlConfig {
   };
 }
 
-const TARGETS = [configFor("mysql", 33060), configFor("mariadb", 33070)];
+const TARGETS = [configFor("mysql", 13306), configFor("mariadb", 13307)];
 
 async function reachable(config: MysqlConfig): Promise<boolean> {
   const options = {

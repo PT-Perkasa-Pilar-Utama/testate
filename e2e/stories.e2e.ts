@@ -55,7 +55,7 @@ test.describe("qa stories", () => {
     const dialog = page.locator("dialog[open]");
     await dialog.getByLabel("Name").fill(`pg-${STAMP}`);
     await dialog.getByLabel("Host").fill("127.0.0.1");
-    await dialog.getByLabel("Port").fill("54320");
+    await dialog.getByLabel("Port").fill("15432");
     await dialog.getByRole("textbox", { name: "Database" }).fill("shop");
     await dialog.getByLabel("User").fill("testate");
     await dialog.getByLabel("Password").fill("testate");

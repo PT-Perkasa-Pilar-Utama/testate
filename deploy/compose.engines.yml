@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: testate
       POSTGRES_DB: shop
     ports:
-      - "54320:5432"
+      - "15432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U testate -d shop"]
       interval: 5s
@@ -24,7 +24,7 @@ services:
       POSTGRES_PASSWORD: testate
       POSTGRES_DB: shop
     ports:
-      - "54325:5432"
+      - "15433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U testate -d shop"]
       interval: 5s
@@ -39,7 +39,7 @@ services:
       MYSQL_USER: testate
       MYSQL_PASSWORD: testate
     ports:
-      - "33060:3306"
+      - "13306:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ptestate"]
       interval: 5s
@@ -54,7 +54,7 @@ services:
       MARIADB_USER: testate
       MARIADB_PASSWORD: testate
     ports:
-      - "33070:3306"
+      - "13307:3306"
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s
@@ -122,6 +122,10 @@ services:
     ports:
       - "21210:21"
       - "21100-21110:21100-21110"
+    # The image's supervisor quits if vsftpd is not up in time, which it often is not on a cold
+    # stack starting eight containers at once. It always survives the next attempt, so let Docker
+    # make that attempt instead of leaving the suite to find a dead container.
+    restart: on-failure
     # Without this `up --wait` only waits for "running", and a container that dies a moment later
     # still counts as started. That is how a dead ftp reached the test run.
     healthcheck:
