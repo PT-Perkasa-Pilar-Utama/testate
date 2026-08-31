@@ -1,0 +1,713 @@
+<title>Testate</title>
+<meta name="description" content="Git for your test database. Snapshot the databases behind a system under test, restore them on demand, and see what changed." />
+<style>
+  /* Anthropic design system. Two colours, one accentless palette: every element is either the
+     near-black or the warm off-white. Depth is opacity and a whisper of shadow, never a new hue. */
+  :root {
+    --primary: #141413;
+    --on-primary: #ffffff;
+    --background: #faf9f5;
+    --surface: #141413;
+    --on-surface: #faf9f5;
+    --border: #141413;
+    --text: #141413;
+    --rule: rgba(20, 20, 19, 0.14);
+    --rule-strong: rgba(20, 20, 19, 0.28);
+    --quiet: rgba(20, 20, 19, 0.62);
+    --shadow-card: rgba(0, 0, 0, 0.01) 0 2px 2px 0, rgba(0, 0, 0, 0.02) 0 4px 4px 0,
+      rgba(0, 0, 0, 0.04) 0 16px 24px 0;
+
+    --sans: "Anthropic Sans", Arial, Helvetica, sans-serif;
+    --mono: "Anthropic Mono", "SF Mono", Menlo, Consolas, monospace;
+
+    --step-display: 58px;
+    --step-lead: 22px;
+    --step-mono: 16px;
+    --step-body: 12px;
+
+    --s-1: 2px;
+    --s-2: 4px;
+    --s-3: 8px;
+    --s-4: 12px;
+    --s-5: 16px;
+    --s-6: 22px;
+    --s-7: 58px;
+    --s-8: 68px;
+
+    --r-sm: 8px;
+    --r-md: 16px;
+    --r-lg: 24px;
+
+    --fast: 100ms;
+    --base: 200ms;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* The same two colours, swapped. Nothing new enters the palette in the dark. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --background: #141413;
+      --surface: #faf9f5;
+      --on-surface: #141413;
+      --primary: #faf9f5;
+      --on-primary: #141413;
+      --border: #faf9f5;
+      --text: #faf9f5;
+      --rule: rgba(250, 249, 245, 0.16);
+      --rule-strong: rgba(250, 249, 245, 0.32);
+      --quiet: rgba(250, 249, 245, 0.66);
+      --shadow-card: none;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --background: #141413;
+    --surface: #faf9f5;
+    --on-surface: #141413;
+    --primary: #faf9f5;
+    --on-primary: #141413;
+    --border: #faf9f5;
+    --text: #faf9f5;
+    --rule: rgba(250, 249, 245, 0.16);
+    --rule-strong: rgba(250, 249, 245, 0.32);
+    --quiet: rgba(250, 249, 245, 0.66);
+    --shadow-card: none;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: var(--step-body);
+    line-height: 1.4;
+    letter-spacing: -0.24px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 var(--s-6);
+  }
+
+  /* One rule between every band, so the page reads as a stack of statements. */
+  .band {
+    border-top: 1px solid var(--rule);
+    padding: var(--s-7) 0;
+  }
+
+  .band:first-of-type {
+    border-top: 0;
+  }
+
+  h1,
+  h2,
+  h3 {
+    margin: 0;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  h1 {
+    font-size: clamp(34px, 7vw, var(--step-display));
+  }
+
+  h2 {
+    font-size: clamp(26px, 4.4vw, 38px);
+  }
+
+  h3 {
+    font-size: var(--step-mono);
+    letter-spacing: -0.01em;
+  }
+
+  p {
+    margin: 0;
+    max-width: 62ch;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.4;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--quiet);
+  }
+
+  .lead {
+    font-size: var(--step-lead);
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    max-width: 46ch;
+  }
+
+  /* Masthead */
+  .masthead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-5);
+    padding: var(--s-6) 0;
+  }
+
+  .wordmark {
+    font-size: var(--step-mono);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .masthead nav {
+    display: flex;
+    gap: var(--s-5);
+    align-items: center;
+  }
+
+  .masthead nav a {
+    text-decoration: none;
+    color: var(--quiet);
+    padding: var(--s-4) var(--s-1);
+    transition: color var(--fast) var(--ease);
+  }
+
+  .masthead nav a:hover {
+    color: var(--text);
+  }
+
+  /* Hero */
+  .hero {
+    padding: var(--s-8) 0 var(--s-7);
+    display: grid;
+    gap: var(--s-6);
+  }
+
+  .hero h1 {
+    max-width: 16ch;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-4);
+    align-items: center;
+    margin-top: var(--s-2);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 var(--s-6);
+    border-radius: var(--r-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--on-surface);
+    font: inherit;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: var(--shadow-card);
+    transition:
+      opacity var(--fast) var(--ease),
+      transform var(--fast) var(--ease);
+  }
+
+  .btn:hover {
+    opacity: 0.86;
+  }
+
+  .btn:active {
+    transform: translateY(1px);
+  }
+
+  .btn.ghost {
+    background: transparent;
+    color: var(--text);
+    box-shadow: none;
+  }
+
+  :where(a, button, summary):focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: var(--s-2);
+  }
+
+  /* Terminal, the one place the product speaks in its own voice */
+  .terminal {
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    color: var(--on-surface);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.55;
+    letter-spacing: 0;
+    padding: var(--s-6);
+    overflow-x: auto;
+    box-shadow: var(--shadow-card);
+  }
+
+  .terminal .prompt::before {
+    content: "$ ";
+    opacity: 0.5;
+  }
+
+  .terminal .out {
+    opacity: 0.62;
+  }
+
+  .terminal .cont {
+    padding-left: var(--s-6);
+  }
+
+  /* Capability grid */
+  .grid {
+    display: grid;
+    gap: var(--s-6);
+    margin-top: var(--s-6);
+  }
+
+  .card {
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    padding: var(--s-6);
+    display: grid;
+    gap: var(--s-3);
+    align-content: start;
+    background: transparent;
+    transition: border-color var(--base) var(--ease);
+  }
+
+  .card:hover {
+    border-color: var(--rule-strong);
+  }
+
+  .card p {
+    color: var(--quiet);
+  }
+
+  /* Tables: tiers and limits are genuinely tabular, so they are tables */
+  .scroll {
+    overflow-x: auto;
+    margin-top: var(--s-6);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+
+  caption {
+    text-align: left;
+    padding-bottom: var(--s-4);
+    color: var(--quiet);
+  }
+
+  th,
+  td {
+    text-align: left;
+    padding: var(--s-4) var(--s-5) var(--s-4) 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+
+  thead th {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--quiet);
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  tbody th {
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  td.num {
+    font-family: var(--mono);
+    white-space: nowrap;
+  }
+
+  /* Numbered only because the setup genuinely is a sequence */
+  ol.steps {
+    list-style: none;
+    counter-reset: step;
+    margin: var(--s-6) 0 0;
+    padding: 0;
+    display: grid;
+    gap: var(--s-6);
+  }
+
+  ol.steps li {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: var(--s-5);
+    align-items: start;
+  }
+
+  ol.steps li::before {
+    content: counter(step);
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 22px;
+    text-align: center;
+    color: var(--quiet);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    height: 22px;
+  }
+
+  .limits li {
+    margin-bottom: var(--s-4);
+    color: var(--quiet);
+    max-width: 62ch;
+  }
+
+  .limits strong {
+    color: var(--text);
+  }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.95em;
+    letter-spacing: 0;
+  }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding: var(--s-7) 0 var(--s-8);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-5);
+    justify-content: space-between;
+    color: var(--quiet);
+  }
+
+  footer a {
+    color: var(--quiet);
+    text-decoration: none;
+    transition: color var(--fast) var(--ease);
+  }
+
+  footer a:hover {
+    color: var(--text);
+  }
+
+  .stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-7);
+    margin-top: var(--s-6);
+  }
+
+  .stat {
+    display: grid;
+    gap: var(--s-2);
+  }
+
+  .stat .n {
+    font-family: var(--mono);
+    font-size: 28px;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+
+  .stat .l {
+    color: var(--quiet);
+  }
+
+  @media (min-width: 768px) {
+    .wrap {
+      padding: 0 var(--s-7);
+    }
+    .hero {
+      grid-template-columns: 1.05fr 1fr;
+      align-items: center;
+      gap: var(--s-7);
+    }
+    .hero .copy {
+      display: grid;
+      gap: var(--s-6);
+    }
+    .grid.three {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .grid.two {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--s-7);
+      align-items: start;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      transition-duration: 1ms !important;
+      animation-duration: 1ms !important;
+    }
+  }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <span class="wordmark">Testate</span>
+    <nav>
+      <a href="#what">What it does</a>
+      <a href="#start">Start</a>
+      <a href="#agents">Agents</a>
+      <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate">GitHub</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="copy">
+      <p class="eyebrow">Self-hosted, version 1.0.1-alpha</p>
+      <h1>Git for your test database.</h1>
+      <p class="lead">
+        Snapshot the databases behind a system under test. Break them. Put them back in seconds, and
+        see exactly what changed.
+      </p>
+      <div class="actions">
+        <a class="btn" href="#start">Get started</a>
+        <a class="btn ghost" href="https://github.com/PT-Perkasa-Pilar-Utama/testate">Read the source</a>
+      </div>
+    </div>
+    <div class="terminal" aria-label="Example session">
+      <div class="prompt">testate checkout seeded-baseline</div>
+      <div class="out">shop-postgres&nbsp;&nbsp;restored&nbsp;&nbsp;11 tables&nbsp;&nbsp;1.2s</div>
+      <div class="out">shop-mysql&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;restored&nbsp;&nbsp;&nbsp;3 tables&nbsp;&nbsp;0.4s</div>
+      <div class="out">shop-mongo&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;restored&nbsp;&nbsp;&nbsp;2 tables&nbsp;&nbsp;0.3s</div>
+      <div class="out">&nbsp;</div>
+      <div class="out">the database is where the test left it</div>
+    </div>
+  </section>
+
+  <section class="band" id="what">
+    <p class="eyebrow">What it does</p>
+    <h2>A reset you can trust, and a record of what moved.</h2>
+    <div class="grid three">
+      <div class="card">
+        <h3>Snapshots</h3>
+        <p>
+          A state holds data, not schema. One snapshot covers every database in a project, taken at
+          one moment. A checkout restores the one you pick and reports what happened per database.
+        </p>
+      </div>
+      <div class="card">
+        <h3>Diffs</h3>
+        <p>
+          Compare two states, or a state against the live database. The summary says how many rows
+          moved. Drill into a table to see which ones, before and after.
+        </p>
+      </div>
+      <div class="card">
+        <h3>The grid</h3>
+        <p>
+          Filter, sort, page by keyset, follow a foreign key into the next table. Turn on write mode
+          and Testate stashes the table before your first edit.
+        </p>
+      </div>
+      <div class="card">
+        <h3>Fixtures</h3>
+        <p>
+          Upload a CSV or XLSX, map the columns, dry-run it, then import. Rejected rows come back as
+          a file you fix and re-import.
+        </p>
+      </div>
+      <div class="card">
+        <h3>SQL console</h3>
+        <p>
+          Read-only, with saved queries, so the check you run after every reset stays where you left
+          it instead of in someone's notes.
+        </p>
+      </div>
+      <div class="card">
+        <h3>Pipelines</h3>
+        <p>
+          Every screen sits on the REST API. One call resets a database before a test run, and the
+          contract is served as OpenAPI by the running instance.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <p class="eyebrow">Engines</p>
+    <h2>Every one of these is real, not a stand-in.</h2>
+    <div class="scroll">
+      <table>
+        <caption>Each engine has a contract suite that runs against the actual server.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Tier</th>
+            <th scope="col">Engines</th>
+            <th scope="col">What you get</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Tabular</th>
+            <td>PostgreSQL, MySQL, MariaDB</td>
+            <td>view, snapshot, checkout, diff, extract, edit, import</td>
+          </tr>
+          <tr>
+            <th scope="row">Document</th>
+            <td>MongoDB</td>
+            <td>view, snapshot, checkout, diff, extract</td>
+          </tr>
+          <tr>
+            <th scope="row">Files</th>
+            <td>S3, SFTP, FTP</td>
+            <td>view, download</td>
+          </tr>
+          <tr>
+            <th scope="row">REST</th>
+            <td>Any HTTP API</td>
+            <td>saved requests, hooks around checkouts</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="n">338</span><span class="l">unit tests</span></div>
+      <div class="stat"><span class="n">150</span><span class="l">user stories covered in a browser</span></div>
+      <div class="stat"><span class="n">1</span><span class="l">container, one volume</span></div>
+    </div>
+  </section>
+
+  <section class="band" id="start">
+    <div class="split">
+      <div>
+        <p class="eyebrow">Start</p>
+        <h2>Running in about a minute.</h2>
+        <ol class="steps">
+          <li>
+            <div>
+              <h3>Run the container</h3>
+              <p>One volume holds the snapshots, the metadata and the logs.</p>
+            </div>
+          </li>
+          <li>
+            <div>
+              <h3>Sign in</h3>
+              <p>
+                Open <code>localhost:3000</code> as <code>admin</code>. Testate makes you change the
+                password on the first login.
+              </p>
+            </div>
+          </li>
+          <li>
+            <div>
+              <h3>Point it at a database</h3>
+              <p>
+                Add an adapter, take a snapshot, break something, and put it back. Where to aim the
+                host is the one thing that catches people out.
+              </p>
+            </div>
+          </li>
+        </ol>
+      </div>
+      <div class="terminal" aria-label="Install command">
+        <div class="prompt">docker run -d --name testate \</div>
+        <div class="cont">-p 3000:3000 -v testate-data:/data \</div>
+        <div class="cont">-e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \</div>
+        <div class="cont">-e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \</div>
+        <div class="cont">ghcr.io/pt-perkasa-pilar-utama/testate:1.0.1-alpha</div>
+        <div class="out">&nbsp;</div>
+        <div class="prompt">curl -s -o /dev/null -w '%{http_code}\n' \</div>
+        <div class="cont">localhost:3000/api/v1/health/live</div>
+        <div class="out">204</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="agents">
+    <div class="split">
+      <div>
+        <p class="eyebrow">Agents</p>
+        <h2>An agent can look, and only look.</h2>
+        <p>
+          Testate speaks MCP. Point Claude or any MCP client at the endpoint with an agent token and
+          it reads schemas, pages rows, runs read-only queries and extracts fixtures. There is no
+          write tool to call, queries run inside a read-only transaction, and column policies mask
+          values before the agent sees them.
+        </p>
+        <p style="margin-top: var(--s-5)">
+          It does not have to be taught how. The first tool it sees is <code>help</code>, and the
+          first resource is the same guide: how the pieces relate, the order to call things in, and
+          the limits that refuse a call.
+        </p>
+      </div>
+      <div class="scroll">
+        <table>
+          <caption>Caps are lower than the dashboard's, because an agent loops.</caption>
+          <thead>
+            <tr>
+              <th scope="col">Limit</th>
+              <th scope="col">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Rows per page, default</th><td class="num">200</td></tr>
+            <tr><th scope="row">Rows per page, maximum</th><td class="num">1000</td></tr>
+            <tr><th scope="row">Bytes per reply</th><td class="num">1 MiB</td></tr>
+            <tr><th scope="row">Seconds per query</th><td class="num">15</td></tr>
+            <tr><th scope="row">Foreign-key hops</th><td class="num">3</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <p class="eyebrow">Before you install it</p>
+    <h2>What it does not do.</h2>
+    <ul class="limits">
+      <li>
+        <strong>Databases go one at a time.</strong> Even inside one project, Testate snapshots and
+        restores them in sequence. Each is correct alone; the set is not guaranteed to line up. Keep
+        the app idle while it runs.
+      </li>
+      <li>
+        <strong>It only resets what you add.</strong> An untracked database survives a reset, and
+        Testate cannot warn you, because it has never heard of it.
+      </li>
+      <li>
+        <strong>Microservices are untested.</strong> Every limit above compounds. Stay inside one
+        service and add the rest as read-only adapters.
+      </li>
+      <li>
+        <strong>It needs a real connection.</strong> Firebase, Firestore and DynamoDB hand you an
+        SDK rather than a connection, so they cannot be added. Supabase, Neon, RDS and Cloud SQL
+        work.
+      </li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>Self-hosted. Nothing leaves your network. MIT licensed.</span>
+    <span>
+      <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate">Source</a> ·
+      <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate/blob/main/CHANGELOG.md">Changelog</a> ·
+      <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate#3-connecting-to-a-database">Docs</a>
+    </span>
+  </footer>
+</div>
