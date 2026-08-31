@@ -13,6 +13,25 @@ Testate is a self-hosted tool for QA teams. It takes data-only snapshots ("state
 
 REST adapters hold no data of their own. They store the requests you save and the hooks that run around a checkout. Version 1.0.0-alpha. Every engine in the table is real, not a stand-in.
 
+## Contents
+
+- [What you get](#what-you-get)
+- [1. How to install](#1-how-to-install)
+- [2. First-time setup](#2-first-time-setup)
+- [3. Connecting to a database](#3-connecting-to-a-database)
+  - [3a. A database running in Docker, on the same machine as Testate](#3a-a-database-running-in-docker-on-the-same-machine-as-testate)
+  - [3b. A database running as a native binary on the host](#3b-a-database-running-as-a-native-binary-on-the-host)
+  - [3c. A database in the cloud (managed or remote)](#3c-a-database-in-the-cloud-managed-or-remote)
+- [4. How to test the connection](#4-how-to-test-the-connection)
+- [5. How to connect an AI agent to a project](#5-how-to-connect-an-ai-agent-to-a-project)
+- [6. How to integrate into a CI/CD pipeline](#6-how-to-integrate-into-a-cicd-pipeline)
+- [What it does not do](#what-it-does-not-do)
+  - [Microservices](#microservices)
+- [Upgrading, backups, and operating it](#upgrading-backups-and-operating-it)
+- [Developing Testate](#developing-testate)
+- [Docs](#docs)
+- [License](#license)
+
 ## What you get
 
 **Start with a project per system under test.** It owns the databases behind that system, the

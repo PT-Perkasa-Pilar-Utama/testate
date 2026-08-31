@@ -6,7 +6,8 @@ import Badge from "@/components/badge.tsx";
 import Button, { buttonClass } from "@/components/button.tsx";
 import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
-import { CreateDialog, DetailDialog, RowsDialog } from "./diffs.dialogs.view.tsx";
+import { DetailDialog } from "./diffs.detail.view.tsx";
+import { CreateDialog, RowsDialog } from "./diffs.dialogs.view.tsx";
 import { changedRows, createDiffsPresenter, targetLabel } from "./diffs.presenter.ts";
 
 const STATUS_VARIANT = { running: "info", ready: "success", failed: "error" } as const;

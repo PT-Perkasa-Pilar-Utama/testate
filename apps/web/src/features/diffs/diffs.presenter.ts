@@ -36,10 +36,59 @@ export function targetLabel(target: Diff["target"]): string {
 }
 
 /** Sum of added + removed + changed rows over every compared table. */
-export function changedRows(diff: Diff): number {
+export function changedRows(diff: Pick<Diff, "adapters">): number {
   return diff.adapters
     .flatMap((adapter) => adapter.tables)
     .reduce((total, table) => total + table.added + table.removed + table.changed, 0);
+}
+
+export type DiffTable = Diff["adapters"][number]["tables"][number];
+export type DiffAdapter = Diff["adapters"][number];
+export type Totals = { added: number; removed: number; changed: number; tables: number };
+
+/** A table counts as touched when rows moved or its schema did. */
+export function touched(table: DiffTable): boolean {
+  return !table.unchanged || table.schema_changed !== null;
+}
+
+export function totalsOf(tables: readonly DiffTable[]): Totals {
+  return tables.reduce<Totals>(
+    (sum, table) => ({
+      added: sum.added + table.added,
+      removed: sum.removed + table.removed,
+      changed: sum.changed + table.changed,
+      tables: sum.tables + (touched(table) ? 1 : 0),
+    }),
+    { added: 0, removed: 0, changed: 0, tables: 0 }
+  );
+}
+
+export function diffTotals(diff: Pick<Diff, "adapters">): Totals {
+  return totalsOf(diff.adapters.flatMap((adapter) => adapter.tables));
+}
+
+/** The tables one adapter should show: touched ones always, the rest only when asked. */
+export function tablesToShow(
+  adapter: DiffAdapter,
+  showUnchanged: boolean,
+  filter: string
+): DiffTable[] {
+  const needle = filter.trim().toLowerCase();
+  return adapter.tables.filter((table) => {
+    if (!showUnchanged && !touched(table)) return false;
+    if (needle === "") return true;
+    return tableLabel(table).toLowerCase().includes(needle);
+  });
+}
+
+export function tableLabel(table: DiffTable): string {
+  return table.schema === null ? table.name : `${table.schema}.${table.name}`;
+}
+
+/** How many tables the diff holds, and how many of them it is currently hiding. */
+export function hiddenCount(diff: Pick<Diff, "adapters">): number {
+  return diff.adapters.flatMap((adapter) => adapter.tables).filter((table) => !touched(table))
+    .length;
 }
 
 /** The create body: a state id, or the literal "live" for the live database (stories 88, 89). */

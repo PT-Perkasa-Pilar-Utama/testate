@@ -1,5 +1,4 @@
 import type { JSX } from "@solidjs/web";
-import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
@@ -7,8 +6,7 @@ import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Select from "@/components/select.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
-import { LIVE, keyLabel, targetLabel } from "./diffs.presenter.ts";
+import { LIVE, keyLabel } from "./diffs.presenter.ts";
 import type { DiffsPresenter } from "./diffs.presenter.ts";
 
 const OP_OPTIONS = [
@@ -69,96 +67,6 @@ export function CreateDialog(props: { presenter: DiffsPresenter }): JSX.Element 
         </div>
       </form>
     </Dialog>
-  );
-}
-
-/** Per-table counts of one diff with a drill-down per table (stories 88, 90, 92). */
-export function DetailDialog(props: { presenter: DiffsPresenter }): JSX.Element {
-  return (
-    <Show when={props.presenter.detail()}>
-      {(diff) => (
-        <Dialog
-          open
-          onClose={() => props.presenter.close()}
-          title={`${diff().base.name} → ${targetLabel(diff().target)}`}
-          description={`Expires ${formatWhen(diff().expires_at)}`}
-          size="xl"
-        >
-          <div class="grid gap-4">
-            <For each={diff().adapters}>
-              {(adapter) => (
-                <section class="grid gap-2">
-                  <h3 class="font-medium">
-                    {adapter.name}{" "}
-                    <Show when={!adapter.compared}>
-                      <Badge variant="secondary">not compared</Badge>
-                    </Show>
-                  </h3>
-                  <Table>
-                    <thead>
-                      <tr>
-                        <Head>Table</Head>
-                        <Head>Compare</Head>
-                        <Head>Added</Head>
-                        <Head>Removed</Head>
-                        <Head>Changed</Head>
-                        <Head>Schema</Head>
-                        <Head />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <For each={adapter.tables}>
-                        {(table) => (
-                          <Row>
-                            <Cell>
-                              {table.schema === null ? table.name : `${table.schema}.${table.name}`}
-                            </Cell>
-                            <Cell>{table.compare}</Cell>
-                            <Cell>{table.added}</Cell>
-                            <Cell>{table.removed}</Cell>
-                            <Cell>{table.changed}</Cell>
-                            <Cell>
-                              {table.schema_changed === null
-                                ? "same"
-                                : table.schema_changed.join(", ")}
-                            </Cell>
-                            <Cell>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                disabled={table.unchanged}
-                                onClick={() =>
-                                  void props.presenter.openRows({
-                                    diff: diff(),
-                                    adapter_id: adapter.adapter_id,
-                                    adapter_name: adapter.name,
-                                    table:
-                                      table.schema === null
-                                        ? table.name
-                                        : `${table.schema}.${table.name}`,
-                                  })
-                                }
-                              >
-                                Rows
-                              </Button>
-                            </Cell>
-                          </Row>
-                        )}
-                      </For>
-                    </tbody>
-                  </Table>
-                </section>
-              )}
-            </For>
-            <div class="flex justify-end">
-              <Button type="button" variant="ghost" onClick={() => props.presenter.close()}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </Dialog>
-      )}
-    </Show>
   );
 }
 
