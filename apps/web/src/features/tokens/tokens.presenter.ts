@@ -15,8 +15,8 @@ export const EMPTY_DRAFT: TokenDraft = {
   name: "",
   kind: "standard",
   role: "qa",
+  expiry: "default",
   expires_on: "",
-  never_expires: false,
 };
 
 export type TokenSort = "name" | "kind" | "role" | "last_used_at" | "expires_at";
@@ -50,14 +50,14 @@ export type TokensPresenter = Paged<ApiToken> & {
 /**
  * The dialog's draft as the API's create body (02 §2.7).
  *
- * `expires_at: null` is the caller asking for a token that never expires, which is not the same
+ * Three answers, three bodies. `null` asks for a token that never expires, which is not the same
  * message as leaving the field out: an agent token with no expiry named takes the ninety-day
- * default, so the switch has to send something.
+ * default, and a standard one never expires anyway. "default" is the field left out.
  */
 export function toCreateBody(draft: TokenDraft): JsonObject {
   const body: JsonObject = { name: draft.name.trim(), kind: draft.kind, role: draft.role };
-  if (draft.never_expires) body["expires_at"] = null;
-  else if (draft.expires_on !== "")
+  if (draft.expiry === "none") body["expires_at"] = null;
+  if (draft.expiry === "date" && draft.expires_on !== "")
     body["expires_at"] = new Date(`${draft.expires_on}T23:59:59Z`).toISOString();
   return body;
 }

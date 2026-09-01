@@ -114,11 +114,15 @@ export const createTokenResponseSchema = v.object({
   record: apiTokenSchema,
 });
 
-// The "New API token" dialog's own shape, not the wire body: it picks a plain calendar date
-// ("expires_on") and a "never" switch. `toCreateBody` in the tokens presenter turns this into the
-// `createTokenSchema` body the API expects (an ISO timestamp, or null for never) - reusing
-// `createTokenSchema` directly here would mean binding a date input to a field that must already
-// be a full ISO timestamp.
+/** When a token stops working, as one answer rather than a date that may or may not be filled in. */
+export const TOKEN_EXPIRIES = ["default", "date", "none"] as const;
+export const tokenExpirySchema = v.picklist(TOKEN_EXPIRIES);
+export type TokenExpiry = v.InferOutput<typeof tokenExpirySchema>;
+
+// The "New API token" dialog's own shape, not the wire body: it picks when the token expires and,
+// for the one answer that needs it, a plain calendar date. `toCreateBody` in the tokens presenter
+// turns that into the `createTokenSchema` body the API expects - reusing `createTokenSchema`
+// directly here would mean binding a date input to a field that must already be an ISO timestamp.
 export const tokenDraftSchema = v.object({
   name: v.pipe(
     v.string(),
@@ -127,7 +131,7 @@ export const tokenDraftSchema = v.object({
   ),
   kind: tokenKindSchema,
   role: roleSchema,
+  expiry: tokenExpirySchema,
   expires_on: v.string(),
-  never_expires: v.boolean(),
 });
 export type TokenDraft = v.InferOutput<typeof tokenDraftSchema>;

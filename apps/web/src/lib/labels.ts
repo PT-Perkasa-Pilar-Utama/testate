@@ -25,6 +25,7 @@ import type {
   StateStatus,
   StoreMigrationFormInput,
   Tier,
+  TokenExpiry,
   TokenKind,
 } from "@testate/shared";
 import type { ADAPTER_STATUSES, CHECKOUT_RESULTS } from "@testate/shared";
@@ -71,6 +72,19 @@ export const ROLE_LABEL = {
 export const ROLE_OPTIONS = ROLES.map((value) => ({ value, label: ROLE_LABEL[value] }));
 /** An agent reads, and with the tester role it writes, but it never administers (23 §23.6). */
 export const AGENT_ROLE_OPTIONS = ROLE_OPTIONS.filter((option) => option.value !== "admin");
+
+/** A standard token with no expiry named never expires, so it has two answers, not three. */
+export const EXPIRY_OPTIONS = [
+  { value: "default", label: "Never" },
+  { value: "date", label: "On a date" },
+] as const satisfies readonly { value: TokenExpiry; label: string }[];
+
+/** An agent token with no expiry named takes the ninety-day default (23 §23.6). */
+export const AGENT_EXPIRY_OPTIONS = [
+  { value: "default", label: "In 90 days" },
+  { value: "date", label: "On a date" },
+  { value: "none", label: "Never" },
+] as const satisfies readonly { value: TokenExpiry; label: string }[];
 
 export const TOKEN_KIND_LABEL = {
   standard: "Standard",

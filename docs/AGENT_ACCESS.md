@@ -27,7 +27,7 @@ the list knows what each one answers and what it costs.
 
 ## Set up
 
-1. As an admin, open **Tokens** and create a token of kind **agent**. Choose a name, a role, a project scope, and an expiry (default 90 days, maximum 365, or switch on **Never expires**). Copy the token; Testate shows it once.
+1. As an admin, open **Tokens** and create a token of kind **agent**. Choose a name, a role, a project scope, and when it expires: **In 90 days**, **On a date** (365 at most), or **Never**. Copy the token; Testate shows it once.
 
    Pick **Guest** for an agent that investigates and **Tester** for one that runs the tests. A tester agent can overwrite a test database, so give it a project scope.
 2. Give the agent the endpoint and the token.
