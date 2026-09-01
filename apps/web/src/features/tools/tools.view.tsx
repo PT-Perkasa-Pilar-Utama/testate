@@ -24,12 +24,18 @@ function CardTitle(props: { icon: IconName; children: JSX.Element }): JSX.Elemen
   );
 }
 
-/** A generated value: monospace, and one press from the clipboard, which is what it is for. */
+/**
+ * A generated value: monospace, and one press from the clipboard, which is what it is for.
+ *
+ * `min-w-0` on the row, not only on the text inside it. A grid item will not shrink below its own
+ * content, so a 60-character hash made this row wider than the card holding it and the row spilled
+ * out over the card beside it; truncating the text cannot help while its parent is oversized.
+ */
 function Result(props: { value: string | null; onCopy: (value: string) => void }): JSX.Element {
   return (
     <Show when={props.value}>
       {(value) => (
-        <div class="flex items-center gap-2 rounded-md bg-hover px-3 py-2">
+        <div class="flex min-w-0 items-center gap-2 rounded-md bg-hover px-3 py-2">
           <output class="min-w-0 flex-1 truncate font-mono text-sm">{value()}</output>
           <Button size="xs" variant="ghost" aria-label="Copy" onClick={() => props.onCopy(value())}>
             <Icon name="copy" class="h-3.5 w-3.5" />
@@ -50,7 +56,7 @@ function HashCard(props: { presenter: ToolsPresenter }): JSX.Element {
         </p>
       </div>
       <div class="grid gap-3">
-        <label class="grid gap-1.5 text-base">
+        <label class="grid content-start gap-1.5 text-base">
           <span>Algorithm</span>
           <Select
             options={ALGORITHM_OPTIONS}
@@ -58,14 +64,15 @@ function HashCard(props: { presenter: ToolsPresenter }): JSX.Element {
             onChange={(value) => props.presenter.setAlgorithm(value)}
           />
         </label>
-        <label class="grid gap-1.5 text-base">
+        <label class="grid content-start gap-1.5 text-base">
           <span>Value</span>
           <Input
+            required
             value={props.presenter.value()}
             onInput={(event) => props.presenter.setValue(event.currentTarget.value)}
           />
         </label>
-        <label class="grid gap-1.5 text-base">
+        <label class="grid content-start gap-1.5 text-base">
           <span>Secret or seed (optional)</span>
           <Input
             type="password"
@@ -75,7 +82,14 @@ function HashCard(props: { presenter: ToolsPresenter }): JSX.Element {
           />
         </label>
       </div>
-      <Button variant="primary" onClick={() => void props.presenter.runHash()}>
+      {/* There is nothing to hash without a value, and asking the server produces a message
+          written for whoever is driving the API rather than for the person looking at this. */}
+      <Button
+        variant="primary"
+        disabled={props.presenter.value() === ""}
+        title={props.presenter.value() === "" ? "Enter a value to hash" : undefined}
+        onClick={() => void props.presenter.runHash()}
+      >
         Hash
       </Button>
       <Result value={props.presenter.hash()} onCopy={(value) => void props.presenter.copy(value)} />
@@ -88,7 +102,7 @@ function RandomCard(props: { presenter: ToolsPresenter }): JSX.Element {
     <LayerCard class="grid gap-4 px-5 py-4">
       <CardTitle icon="zap">Random bytes</CardTitle>
       <div class="grid gap-3">
-        <label class="grid gap-1.5 text-base">
+        <label class="grid content-start gap-1.5 text-base">
           <span>Bytes (8 to 1024)</span>
           <Input
             type="number"
@@ -98,7 +112,7 @@ function RandomCard(props: { presenter: ToolsPresenter }): JSX.Element {
             onInput={(event) => props.presenter.setBytes(Number(event.currentTarget.value))}
           />
         </label>
-        <label class="grid gap-1.5 text-base">
+        <label class="grid content-start gap-1.5 text-base">
           <span>Encoding</span>
           <Select
             options={ENCODING_OPTIONS}
@@ -141,7 +155,7 @@ function UuidCard(props: { presenter: ToolsPresenter }): JSX.Element {
           </Button>
         </Show>
       </div>
-      <ul class="grid gap-1 font-mono text-sm">
+      <ul class="grid min-w-0 gap-1 font-mono text-sm">
         <For each={props.presenter.uuids()}>{(id) => <li class="truncate">{id}</li>}</For>
       </ul>
     </LayerCard>

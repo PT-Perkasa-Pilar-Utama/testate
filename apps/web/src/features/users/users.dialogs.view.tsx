@@ -33,7 +33,7 @@ export function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element 
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.create(input)}>
         <Field of={form} path={["username"]}>
           {(field) => (
-            <label class="grid gap-1.5 text-base">
+            <label class="grid content-start gap-1.5 text-base">
               <span>Username</span>
               <Input
                 {...field.props}
@@ -49,7 +49,7 @@ export function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element 
         </Field>
         <Field of={form} path={["display_name"]}>
           {(field) => (
-            <label class="grid gap-1.5 text-base">
+            <label class="grid content-start gap-1.5 text-base">
               <span>Display name</span>
               <Input
                 {...field.props}
@@ -64,7 +64,7 @@ export function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element 
         </Field>
         <Field of={form} path={["role"]}>
           {(field) => (
-            <label class="grid gap-1.5 text-base">
+            <label class="grid content-start gap-1.5 text-base">
               <span>Role</span>
               <Select
                 options={ROLE_OPTIONS}
@@ -77,7 +77,7 @@ export function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element 
         </Field>
         <Field of={form} path={["temporary_password"]}>
           {(field) => (
-            <label class="grid gap-1.5 text-base">
+            <label class="grid content-start gap-1.5 text-base">
               <span>Temporary password</span>
               <Input
                 {...field.props}
@@ -140,7 +140,7 @@ export function EditDialog(props: { presenter: UsersPresenter }): JSX.Element {
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.update(input)}>
         <Field of={form} path={["display_name"]}>
           {(field) => (
-            <label class="grid gap-1.5 text-base">
+            <label class="grid content-start gap-1.5 text-base">
               <span>Display name</span>
               <Input
                 {...field.props}
@@ -155,7 +155,7 @@ export function EditDialog(props: { presenter: UsersPresenter }): JSX.Element {
         </Field>
         <Field of={form} path={["role"]}>
           {(field) => (
-            <label class="grid gap-1.5 text-base">
+            <label class="grid content-start gap-1.5 text-base">
               <span>Role</span>
               <Select
                 options={ROLE_OPTIONS}
@@ -202,7 +202,7 @@ export function ResetDialog(props: { presenter: UsersPresenter }): JSX.Element {
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.resetPassword(input)}>
         <Field of={form} path={["temporary_password"]}>
           {(field) => (
-            <label class="grid gap-1.5 text-base">
+            <label class="grid content-start gap-1.5 text-base">
               <span>Temporary password (12+ characters)</span>
               <Input
                 {...field.props}

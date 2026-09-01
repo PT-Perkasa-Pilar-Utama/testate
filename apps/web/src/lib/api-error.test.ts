@@ -47,6 +47,20 @@ describe("what a person reads when a request fails", () => {
     );
   });
 
+  test("a schema's own complaint never reaches a screen, a written one does", () => {
+    // What the tools screen showed: "Body.value Invalid length: Expected >=1 but received 0".
+    const fromSchema = new ApiError(
+      "VALIDATION_ERROR",
+      400,
+      "body.value Invalid length: Expected >=1 but received 0",
+      { issues: [{ path: "body.value", message: "Invalid length" }] }
+    );
+    expect(humanMessage(fromSchema, "could not hash that")).toBe("Could not hash that.");
+    // Written by hand for a person, with no issues attached: that one is the better sentence.
+    const written = new ApiError("VALIDATION_ERROR", 400, "an HMAC needs a secret");
+    expect(humanMessage(written, "could not hash that")).toBe("An HMAC needs a secret.");
+  });
+
   test("anything that is not an API answer never reaches the screen as itself", () => {
     // A failed fetch carries a browser's own wording, which is worse than useless to a person.
     expect(humanMessage(new TypeError("Load failed"), "Could not save.")).toBe(

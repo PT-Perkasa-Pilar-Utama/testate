@@ -53,7 +53,7 @@ function PolicyDialog(props: { presenter: PoliciesPresenter }): JSX.Element {
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.save(input)}>
         <Field of={form} path={["fn"]}>
           {(field) => (
-            <label class="grid gap-1.5 text-base">
+            <label class="grid content-start gap-1.5 text-base">
               <span>Required function</span>
               <Select
                 options={FUNCTION_CHOICES}
@@ -65,7 +65,7 @@ function PolicyDialog(props: { presenter: PoliciesPresenter }): JSX.Element {
         </Field>
         <Field of={form} path={["mask"]}>
           {(field) => (
-            <label class="grid gap-1.5 text-base">
+            <label class="grid content-start gap-1.5 text-base">
               <span>Mask</span>
               <Select
                 options={MASK_CHOICES}

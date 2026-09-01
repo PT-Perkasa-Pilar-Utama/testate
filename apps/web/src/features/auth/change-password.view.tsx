@@ -27,7 +27,7 @@ export default function ChangePasswordView(): JSX.Element {
         <Form of={form} class="grid gap-4" onSubmit={(input) => presenter.submit(input)}>
           <Field of={form} path={["current"]}>
             {(field) => (
-              <label class="grid gap-1.5 text-base">
+              <label class="grid content-start gap-1.5 text-base">
                 <span>Current password</span>
                 <Input
                   {...field.props}
@@ -45,7 +45,7 @@ export default function ChangePasswordView(): JSX.Element {
           </Field>
           <Field of={form} path={["next"]}>
             {(field) => (
-              <label class="grid gap-1.5 text-base">
+              <label class="grid content-start gap-1.5 text-base">
                 <span>New password</span>
                 <Input
                   {...field.props}

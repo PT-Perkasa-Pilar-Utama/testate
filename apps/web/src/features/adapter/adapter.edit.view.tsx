@@ -31,7 +31,7 @@ function Fields(props: {
   return (
     <For each={props.fields}>
       {(field) => (
-        <label class="grid gap-1.5 text-base">
+        <label class="grid content-start gap-1.5 text-base">
           <span>
             {field.label}
             {props.hint === undefined ? "" : ` ${props.hint}`}
@@ -82,7 +82,7 @@ export default function EditDialog(props: {
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.save(input)}>
         <Field of={form} path={["name"]}>
           {(field) => (
-            <label class="grid gap-1.5 text-base">
+            <label class="grid content-start gap-1.5 text-base">
               <span>Name</span>
               <Input
                 {...field.props}
@@ -99,7 +99,7 @@ export default function EditDialog(props: {
         <Show when={props.adapter.kind === "database"}>
           <Field of={form} path={["excluded_tables"]}>
             {(field) => (
-              <label class="grid gap-1.5 text-base">
+              <label class="grid content-start gap-1.5 text-base">
                 <span>
                   Excluded tables (comma separated; migration tables are excluded by default)
                 </span>
@@ -117,7 +117,7 @@ export default function EditDialog(props: {
           <Show when={props.adapter.engine === "postgres"}>
             <Field of={form} path={["schemas"]}>
               {(field) => (
-                <label class="grid gap-1.5 text-base">
+                <label class="grid content-start gap-1.5 text-base">
                   <span>Schemas (comma separated; empty = every non-system schema)</span>
                   <Input
                     {...field.props}
@@ -133,7 +133,7 @@ export default function EditDialog(props: {
           <div class="grid gap-3 sm:grid-cols-2">
             <Field of={form} path={["restore_mode"]}>
               {(field) => (
-                <label class="grid gap-1.5 text-base">
+                <label class="grid content-start gap-1.5 text-base">
                   <span>Restore mode</span>
                   <Select
                     options={RESTORE_OPTIONS}
@@ -146,7 +146,7 @@ export default function EditDialog(props: {
             </Field>
             <Field of={form} path={["lock_timeout_ms"]}>
               {(field) => (
-                <label class="grid gap-1.5 text-base">
+                <label class="grid content-start gap-1.5 text-base">
                   <span>Lock timeout (ms)</span>
                   <Input
                     {...field.props}

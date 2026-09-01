@@ -231,3 +231,32 @@ export async function openTab(page: Page, tab: string | undefined): Promise<void
   if (tab !== undefined) await page.getByRole("tab", { name: tab }).click();
   await settle(page);
 }
+
+/**
+ * Cards whose content is wider than the card.
+ *
+ * A grid or flex item will not shrink below its own content unless told it may, so one long
+ * unbroken string (a hash, a base64 blob, a uuid) makes a row wider than the card holding it and
+ * that row is then drawn over whatever sits beside it. Nothing else in the suite notices: every
+ * control is still present and still clickable, just underneath something else.
+ */
+export async function overflowingCards(page: Page): Promise<string[]> {
+  return await page.locator("main section.rounded-lg").evaluateAll((nodes) =>
+    nodes
+      .map((node, index) => ({ index, over: node.scrollWidth - node.clientWidth }))
+      // One pixel of rounding is not a spill; a hash overhanging its card is tens of them.
+      .filter((card) => card.over > 1)
+      .map((card) => `card ${card.index} overflows by ${card.over}px`)
+  );
+}
+
+/** A control's distance from the top of the page, so a spec can compare two without a branch. */
+export async function topOf(target: Locator): Promise<number> {
+  const box = await target.boundingBox();
+  return box === null ? Number.NaN : box.y;
+}
+
+/** How many cards a screen is showing. An overflow check over zero cards proves nothing. */
+export async function cardCount(page: Page): Promise<number> {
+  return await page.locator("main section.rounded-lg").count();
+}

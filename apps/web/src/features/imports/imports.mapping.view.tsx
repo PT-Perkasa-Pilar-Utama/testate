@@ -105,7 +105,7 @@ function ColumnsTable(props: { presenter: WizardPresenter }): JSX.Element {
 function ReuseFields(props: { presenter: WizardPresenter }): JSX.Element {
   return (
     <div class="grid gap-3 rounded-lg p-3 ring ring-hairline sm:grid-cols-2">
-      <label class="grid gap-1.5 text-base">
+      <label class="grid content-start gap-1.5 text-base">
         <span>Reuse a saved mapping</span>
         <Select
           options={[
@@ -119,7 +119,7 @@ function ReuseFields(props: { presenter: WizardPresenter }): JSX.Element {
           Replaces everything above with what that mapping saved.
         </span>
       </label>
-      <label class="grid gap-1.5 text-base">
+      <label class="grid content-start gap-1.5 text-base">
         <span>Save this mapping as</span>
         <Input
           maxlength="80"
@@ -136,7 +136,7 @@ export default function MappingStep(props: { presenter: WizardPresenter }): JSX.
   return (
     <div class="grid gap-4">
       <div class="grid gap-3 sm:grid-cols-2">
-        <label class="grid gap-1.5 text-base">
+        <label class="grid content-start gap-1.5 text-base">
           <span>Database</span>
           <Select
             options={[
@@ -147,7 +147,7 @@ export default function MappingStep(props: { presenter: WizardPresenter }): JSX.
             onChange={(id) => void props.presenter.setAdapter(id)}
           />
         </label>
-        <label class="grid gap-1.5 text-base">
+        <label class="grid content-start gap-1.5 text-base">
           <span>Table</span>
           <Select
             options={[
@@ -161,7 +161,7 @@ export default function MappingStep(props: { presenter: WizardPresenter }): JSX.
       </div>
       <ModePicker presenter={props.presenter} />
       <Show when={props.presenter.draft().mode === "upsert"}>
-        <label class="grid gap-1.5 text-base">
+        <label class="grid content-start gap-1.5 text-base">
           <span>Key columns</span>
           <Input
             placeholder="e.g. email, account_id"

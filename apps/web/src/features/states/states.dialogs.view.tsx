@@ -24,7 +24,7 @@ function DraftFields(props: { form: FormStore<typeof stateDraftSchema> }): JSX.E
     <>
       <Field of={props.form} path={["name"]}>
         {(field) => (
-          <label class="grid gap-1.5 text-base">
+          <label class="grid content-start gap-1.5 text-base">
             <span>Name</span>
             <Input
               {...field.props}
@@ -42,7 +42,7 @@ function DraftFields(props: { form: FormStore<typeof stateDraftSchema> }): JSX.E
       </Field>
       <Field of={props.form} path={["notes"]}>
         {(field) => (
-          <label class="grid gap-1.5 text-base">
+          <label class="grid content-start gap-1.5 text-base">
             <span>Notes</span>
             <InputArea
               {...field.props}
@@ -58,7 +58,7 @@ function DraftFields(props: { form: FormStore<typeof stateDraftSchema> }): JSX.E
       </Field>
       <Field of={props.form} path={["tags"]}>
         {(field) => (
-          <label class="grid gap-1.5 text-base">
+          <label class="grid content-start gap-1.5 text-base">
             <span>Tags (comma separated)</span>
             <Input
               {...field.props}

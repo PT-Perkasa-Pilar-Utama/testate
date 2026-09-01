@@ -38,7 +38,7 @@ function PasswordCard(props: { presenter: AccountPresenter }): JSX.Element {
       <Form of={form} class="grid gap-3 sm:grid-cols-2" onSubmit={(input) => submit(input)}>
         <Field of={form} path={["current"]}>
           {(field) => (
-            <label class="grid gap-1.5 text-base">
+            <label class="grid content-start gap-1.5 text-base">
               <span>Current password</span>
               <Input
                 {...field.props}
@@ -55,7 +55,7 @@ function PasswordCard(props: { presenter: AccountPresenter }): JSX.Element {
         </Field>
         <Field of={form} path={["next"]}>
           {(field) => (
-            <label class="grid gap-1.5 text-base">
+            <label class="grid content-start gap-1.5 text-base">
               <span>New password ({PASSWORD_MIN_LENGTH}+ characters)</span>
               <Input
                 {...field.props}

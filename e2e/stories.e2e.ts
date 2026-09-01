@@ -1,7 +1,15 @@
 import { expect, test } from "@playwright/test";
 
 import { demoAdapter, firstTable } from "./lib/api.ts";
-import { dataRows, openTab, rowMenu, settle, watch } from "./lib/crawl.ts";
+import {
+  cardCount,
+  dataRows,
+  openTab,
+  overflowingCards,
+  rowMenu,
+  settle,
+  watch,
+} from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
@@ -165,6 +173,10 @@ test.describe("viewer stories", () => {
         .getByText(/[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}/)
         .first()
     ).toBeVisible();
+    // A bcrypt hash and ten uuids are long unbroken strings. A row that will not shrink below its
+    // content spills out of the card and is drawn over the card beside it.
+    expect(await cardCount(page)).toBe(3);
+    expect(await overflowingCards(page)).toStrictEqual([]);
     expect(issues).toStrictEqual([]);
   });
 

@@ -56,7 +56,7 @@ function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.create(input)}>
         <Field of={form} path={["name"]}>
           {(field) => (
-            <label class="grid gap-1.5 text-base">
+            <label class="grid content-start gap-1.5 text-base">
               <span>Name</span>
               <Input
                 {...field.props}
@@ -72,7 +72,7 @@ function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
         </Field>
         <Field of={form} path={["kind"]}>
           {(field) => (
-            <label class="grid gap-1.5 text-base">
+            <label class="grid content-start gap-1.5 text-base">
               <span>Kind</span>
               <Select
                 options={KIND_OPTIONS}
@@ -87,7 +87,7 @@ function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
         <Show when={getInput(form, { path: ["kind"] }) === "standard"}>
           <Field of={form} path={["role"]}>
             {(field) => (
-              <label class="grid gap-1.5 text-base">
+              <label class="grid content-start gap-1.5 text-base">
                 <span>Role</span>
                 <Select
                   options={ROLE_OPTIONS}
@@ -100,7 +100,7 @@ function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
         </Show>
         <Field of={form} path={["expires_on"]}>
           {(field) => (
-            <label class="grid gap-1.5 text-base">
+            <label class="grid content-start gap-1.5 text-base">
               <span>
                 {getInput(form, { path: ["kind"] }) === "agent"
                   ? "Expires on (default 90 days, at most 365)"

@@ -27,6 +27,10 @@ const REPLACED = {
   RATE_LIMITED: "Too many attempts. Wait a moment and try again.",
 } as const satisfies Partial<Record<ErrorCode, string>>;
 
+/** True when the API's validation message was generated from a schema rather than written. */
+const fromSchema = (details: JsonObject | undefined): boolean =>
+  v.safeParse(v.object({ issues: v.array(v.unknown()) }), details).success;
+
 /** `retry_after` when the server sent one, so the wait is a number rather than "a moment". */
 const retryAfter = (details: JsonObject | undefined): number | null => {
   const parsed = v.safeParse(v.object({ retry_after: v.number() }), details);
@@ -71,6 +75,11 @@ export function humanMessage(cause: unknown, fallback: string): string {
       ? REPLACED.RATE_LIMITED
       : `Too many attempts. Try again in ${waitPhrase(wait)}.`;
   }
+  // A validation failure carrying `issues` came from a schema, not from a person: the API builds
+  // it as "body.value Invalid length: Expected >=1 but received 0" (`validationError`), which is
+  // for whoever is driving the API. One raised by hand carries no issues and is a real sentence
+  // ("an HMAC needs a secret"), so that one still passes through.
+  if (cause.code === "VALIDATION_ERROR" && fromSchema(cause.details)) return asSentence(fallback);
   if (cause.code in REPLACED) {
     // SAFETY: the `in` check above proved `cause.code` names one of REPLACED's own properties.
     return REPLACED[cause.code as keyof typeof REPLACED];

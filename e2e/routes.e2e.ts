@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { adapterScreens, demoAdapter, demoAdapters, firstTable } from "./lib/api.ts";
-import { settle, watch } from "./lib/crawl.ts";
+import { settle, topOf, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import {
   PASSWORDS,
@@ -95,6 +95,16 @@ for (const role of ROLES) {
       await page.getByRole("link", { name: new RegExp(`${role}$`) }).click();
       await expect(page.getByRole("heading", { name: "Change password" })).toBeVisible();
       await expect(page.getByRole("heading", { name: "Sessions" })).toBeVisible();
+      // The two password boxes share a row, and a message under one of them used to push the
+      // other one's box down: a field's rows were sharing out the height its taller neighbour
+      // set. Submitting the same password twice puts a message under exactly one of them.
+      await page.getByLabel("Current password").fill(PASSWORDS[role]);
+      await page.getByLabel(/New password/).fill(PASSWORDS[role]);
+      await page.getByRole("button", { name: "Save password" }).click();
+      await expect(page.getByRole("alert")).toBeVisible();
+      const current = await topOf(page.getByLabel("Current password"));
+      const next = await topOf(page.getByLabel(/New password/));
+      expect(Math.abs(current - next)).toBeLessThan(2);
       expect(issues).toStrictEqual([]);
     });
 

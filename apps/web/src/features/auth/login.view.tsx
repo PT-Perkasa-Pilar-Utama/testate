@@ -35,7 +35,7 @@ export default function LoginView(props: { next: string }): JSX.Element {
         <Form of={form} class="grid gap-4" onSubmit={(input) => presenter.submit(input)}>
           <Field of={form} path={["username"]}>
             {(field) => (
-              <label class="grid gap-1.5 text-base">
+              <label class="grid content-start gap-1.5 text-base">
                 <span>Username</span>
                 <Input
                   {...field.props}
@@ -52,7 +52,7 @@ export default function LoginView(props: { next: string }): JSX.Element {
           </Field>
           <Field of={form} path={["password"]}>
             {(field) => (
-              <label class="grid gap-1.5 text-base">
+              <label class="grid content-start gap-1.5 text-base">
                 <span>Password</span>
                 <Input
                   {...field.props}

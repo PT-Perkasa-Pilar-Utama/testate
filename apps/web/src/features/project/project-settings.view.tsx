@@ -72,7 +72,7 @@ export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element 
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.save(input)}>
         <Field of={form} path={["name"]}>
           {(field) => (
-            <label class="grid gap-1.5 text-base">
+            <label class="grid content-start gap-1.5 text-base">
               <span>Name</span>
               <Input
                 {...field.props}
@@ -88,7 +88,7 @@ export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element 
         </Field>
         <Field of={form} path={["description"]}>
           {(field) => (
-            <label class="grid gap-1.5 text-base">
+            <label class="grid content-start gap-1.5 text-base">
               <span>Description</span>
               <Input
                 {...field.props}
@@ -104,7 +104,7 @@ export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element 
         <Show when={hasRole("admin")}>
           <Field of={form} path={["quota_gib"]}>
             {(field) => (
-              <label class="grid gap-1.5 text-base">
+              <label class="grid content-start gap-1.5 text-base">
                 <span>Snapshot quota in GiB (empty = instance default)</span>
                 <Input
                   {...field.props}
@@ -212,7 +212,7 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
             </Table>
             <Field of={form} path={["confirm_slug"]}>
               {(field) => (
-                <label class="grid gap-1.5 text-base">
+                <label class="grid content-start gap-1.5 text-base">
                   <span>Type the slug to confirm</span>
                   <Input
                     {...field.props}
