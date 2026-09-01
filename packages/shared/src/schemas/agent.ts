@@ -53,6 +53,28 @@ export const AGENT_TOOL_INPUTS = {
     cursor: v.optional(v.string()),
   }),
   preview_file: v.object({ project: slugSchema, adapter: adapterRef, path: v.string() }),
+  // The tester half (23 §23.2). Listed for every agent; a viewer token is refused when it calls
+  // one, which is a clearer answer than a tool that is not there.
+  run_write_query: v.object({
+    project: slugSchema,
+    adapter: adapterRef,
+    sql: v.string(),
+    limit: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(1000))),
+  }),
+  end_write_session: v.object({ project: slugSchema, adapter: adapterRef }),
+  take_snapshot: v.object({
+    project: slugSchema,
+    name: v.string(),
+    notes: v.optional(v.string()),
+    adapters: v.optional(v.array(adapterRef)),
+  }),
+  checkout_state: v.object({
+    project: slugSchema,
+    state: v.string(),
+    force: v.optional(v.boolean()),
+    adapters: v.optional(v.array(adapterRef)),
+  }),
+  get_job: v.object({ job: v.string() }),
 } as const;
 
 export type AgentToolName = keyof typeof AGENT_TOOL_INPUTS;

@@ -11,7 +11,13 @@ import type { CreatedToken } from "./tokens.model.ts";
 import { tokensModel } from "./tokens.model.ts";
 
 /** The dialog's own starting point; also what it resets to on close (`tokenDraftSchema`). */
-export const EMPTY_DRAFT: TokenDraft = { name: "", kind: "standard", role: "qa", expires_on: "" };
+export const EMPTY_DRAFT: TokenDraft = {
+  name: "",
+  kind: "standard",
+  role: "qa",
+  expires_on: "",
+  never_expires: false,
+};
 
 export type TokenSort = "name" | "kind" | "role" | "last_used_at" | "expires_at";
 
@@ -41,11 +47,17 @@ export type TokensPresenter = Paged<ApiToken> & {
   revoke: () => Promise<void>;
 };
 
-/** Agent tokens are always viewer, so the role is sent for standard tokens only (02 §2.7). */
+/**
+ * The dialog's draft as the API's create body (02 §2.7).
+ *
+ * `expires_at: null` is the caller asking for a token that never expires, which is not the same
+ * message as leaving the field out: an agent token with no expiry named takes the ninety-day
+ * default, so the switch has to send something.
+ */
 export function toCreateBody(draft: TokenDraft): JsonObject {
-  const body: JsonObject = { name: draft.name.trim(), kind: draft.kind };
-  if (draft.kind === "standard") body["role"] = draft.role;
-  if (draft.expires_on !== "")
+  const body: JsonObject = { name: draft.name.trim(), kind: draft.kind, role: draft.role };
+  if (draft.never_expires) body["expires_at"] = null;
+  else if (draft.expires_on !== "")
     body["expires_at"] = new Date(`${draft.expires_on}T23:59:59Z`).toISOString();
   return body;
 }

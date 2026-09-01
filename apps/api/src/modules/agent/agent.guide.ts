@@ -1,3 +1,5 @@
+import type { Role } from "@testate/shared";
+
 /**
  * What an agent reads before it calls anything (23 §23.1).
  *
@@ -38,17 +40,42 @@ export const TOOL_DESCRIPTIONS = new Map<string, string>(
     list_files: "Entries in a file adapter (S3, SFTP, FTP). Directories first, then files.",
     preview_file:
       "The head of one file from a file adapter, as text. Binary content is refused rather than mangled.",
+    run_write_query:
+      "An INSERT, UPDATE or DELETE against a sandbox adapter. The first write of a session stashes the adapter first, so there is something to go back to. Tester tokens only.",
+    end_write_session:
+      "Closes your write session on an adapter. The next write opens a new one and takes a new stash. Tester tokens only.",
+    take_snapshot:
+      "Keeps the data of every database in the project as a named state, so you can put it back later. Tester tokens only.",
+    checkout_state:
+      "Restores a state over the live databases. This overwrites data. Pass `force` only after reading what the refusal said. Tester tokens only.",
+    get_job:
+      "The status of a snapshot or checkout that was still running when it answered. Poll this rather than holding a call open.",
   })
 );
+
+/** Two paragraphs, and which one you get is the role on your token. */
+const READER = `You are connected read-only. You can look at anything in scope and change nothing.`;
+const TESTER = `Your token has the tester role. You can read anything in scope, write to sandbox
+adapters, take a state and put one back. Everything you change is somebody's test environment, so
+say what you are about to do before you do it.`;
+
+const READER_LIMITS = `- **No writes.** There is no tool that inserts, updates, deletes, restores or snapshots. \`run_readonly_query\` runs inside a read-only transaction, so the database refuses a write even if you construct one.`;
+const TESTER_LIMITS = `- **Writes go to sandbox adapters only.** An adapter in protected mode refuses \`run_write_query\` and \`checkout_state\`, and no argument overrides that.
+- **You cannot administer.** No tool creates a token, changes a setting, or touches a user. That is a person's job.`;
+
+const TESTER_ORDER = `5. \`run_write_query\` changes rows. The first one stashes the adapter, so a mistake is recoverable.
+6. \`take_snapshot\` keeps the result. \`checkout_state\` puts an earlier one back. Both answer with a job; poll \`get_job\` when it is still running.`;
 
 /**
  * The guide itself. Markdown, because every agent reads it, and short, because an agent pays for
  * it in context on every session.
  */
-export const AGENT_GUIDE = `# Testate for agents
+export function agentGuide(role: Role): string {
+  const tester = role !== "viewer";
+  return `# Testate for agents
 
-Testate holds snapshots of the databases behind a system under test, and can restore them. You are
-connected read-only. You can look at anything in scope and change nothing.
+Testate holds snapshots of the databases behind a system under test, and can restore them.
+${tester ? TESTER : READER}
 
 ## What is where
 
@@ -63,13 +90,14 @@ database.
 2. \`list_adapters\` gives you the adapters in a project. Only \`kind: "database"\` ones hold tables.
 3. \`list_tables\` gives you names. \`describe_table\` gives you columns, keys and types.
 4. \`page_rows\` reads rows. Pass the \`cursor\` from the previous reply to continue.
+${tester ? TESTER_ORDER : ""}
 
 Read \`describe_table\` before filtering or sorting. A filter on a column that does not exist is a
 refused call, and refused calls cost you the same budget as useful ones.
 
 ## What you cannot do
 
-- **No writes.** There is no tool that inserts, updates, deletes, restores or snapshots. \`run_readonly_query\` runs inside a read-only transaction, so the database refuses a write even if you construct one.
+${tester ? TESTER_LIMITS : READER_LIMITS}
 - **No unmasking.** Columns under a mask policy arrive masked. There is no option to see through them, and asking is a refused call.
 - **No reaching outside your scope.** An agent token may be scoped to certain projects. Anything outside answers "not found" rather than "forbidden", on purpose.
 
@@ -93,6 +121,12 @@ it touched, and whether it succeeded. Assume a person reads it.
 
 ## Getting a person to act
 
-You cannot reset a database. If the data you need is not there, say which project and state a person
-should check out, and let them run it.
+${
+  tester
+    ? `You can reset a database, which means you can also destroy a day of somebody's work. Name the
+project and the state before you check one out.`
+    : `You cannot reset a database. If the data you need is not there, say which project and state a
+person should check out, and let them run it.`
+}
 `;
+}

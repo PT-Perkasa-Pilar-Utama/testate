@@ -5,6 +5,7 @@ import { AppError, forbidden } from "../../lib/http/index.ts";
 import type { RequestMeta } from "../../lib/http/auth.ts";
 import { sha256 } from "../../lib/password/index.ts";
 import type { AdapterRecord } from "../adapters/adapters.repository.ts";
+import { sessionOwner } from "./data.repository.ts";
 import type { DataRepository } from "./data.repository.ts";
 import type { Masked } from "./data.masks.ts";
 import type { WriteSessions } from "./data.sessions.ts";
@@ -82,10 +83,13 @@ export function createQueryRunner(deps: QueryDeps): QueryRunner {
   ): Promise<void> => {
     assertDialect(adapter, request);
     if (request.mode !== "write") return;
-    if (actor.role === "viewer" || actor.agent) throw forbidden("role");
+    // The role decides, and nothing else. An agent token used to be refused here on top of its
+    // role, which is what "read-only by construction" meant before a tester agent existed
+    // (23 §23.6); a viewer, agent or not, still cannot write.
+    if (actor.role === "viewer") throw forbidden("role");
     if (request.write_session_id === undefined) throw forbidden("write session required");
     const session = deps.sessions.require(request.write_session_id);
-    if (session.adapter_id !== adapter.id || session.user_id !== actor.id)
+    if (session.adapter_id !== adapter.id || sessionOwner(session) !== actor.id)
       throw forbidden("not the session's owner");
     if (adapter.mode !== "sandbox") {
       throw new AppError("ADAPTER_READ_ONLY", `${adapter.name} is read-only`, {

@@ -7,15 +7,18 @@ import { AppError, notFound } from "../../lib/http/index.ts";
 import type { AdapterRecord, AdaptersRepository } from "../adapters/adapters.repository.ts";
 import type { AdaptersService } from "../adapters/adapters.service.ts";
 import type { AuditService } from "../audit/audit.service.ts";
+import type { CheckoutsService } from "../checkouts/checkouts.service.ts";
 import { parseFilter } from "../data/data.handler.ts";
 import type { DataService } from "../data/data.service.ts";
 import type { DiffsService } from "../diffs/diffs.service.ts";
+import type { JobsService } from "../jobs/jobs.service.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import type { ProjectsService } from "../projects/projects.service.ts";
 import type { StatesService } from "../states/states.service.ts";
 import type { StorageService } from "../storage/storage.service.ts";
-import { AGENT_GUIDE } from "./agent.guide.ts";
+import { agentGuide } from "./agent.guide.ts";
 import type { AgentContext } from "./agent.service.ts";
+import { writeTools } from "./agent.write.ts";
 
 export type AgentToolDeps = {
   projects: ProjectsService;
@@ -24,8 +27,10 @@ export type AgentToolDeps = {
   adaptersRepo: Pick<AdaptersRepository, "list">;
   data: DataService;
   states: StatesService;
+  checkouts: CheckoutsService;
   diffs: DiffsService;
   storage: StorageService;
+  jobs: Pick<JobsService, "get" | "wait">;
   audit: AuditService;
 };
 
@@ -46,11 +51,11 @@ export type Scope = {
   adapter: (project: Project, ref: string) => AdapterRecord;
 };
 
-function text(args: JsonObject, key: string): string {
+export function text(args: JsonObject, key: string): string {
   return v.parse(v.string(`${key} is required`), args[key]);
 }
 
-function optional<TSchema extends v.GenericSchema>(
+export function optional<TSchema extends v.GenericSchema>(
   args: JsonObject,
   key: string,
   schema: TSchema
@@ -62,7 +67,7 @@ export function json<T>(value: T): JsonValue {
   return v.parse(jsonValueSchema, value);
 }
 
-function cap(limit: number | undefined): number {
+export function cap(limit: number | undefined): number {
   return Math.min(limit ?? AGENT_CAPS.rowsDefault, AGENT_CAPS.rowsMax);
 }
 
@@ -141,9 +146,10 @@ function pageQuery(args: JsonObject): Parameters<DataService["rows"]>[3] {
 export function tools(deps: AgentToolDeps): ReadonlyMap<string, Tool> {
   return new Map<string, Tool>(
     Object.entries({
+      ...writeTools(deps),
       // First in the map so it leads `tools/list`: an agent that reads top to bottom is told how
       // to use the rest before it calls one and guesses.
-      help: async () => json(AGENT_GUIDE),
+      help: async (_args, ctx) => json(agentGuide(ctx.actor.role)),
       list_projects: async (_args, ctx) =>
         json(
           (await deps.projects.list(ctx.scope, { limit: 200, sort: "name", order: "asc" })).map(

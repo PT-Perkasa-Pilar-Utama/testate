@@ -53,6 +53,8 @@ export type DataService = {
     foreignKeyChecks: boolean,
     meta: RequestMeta
   ): Promise<WriteSession>;
+  /** This actor's live session on the adapter, started if there is none (23 §23.6). */
+  openWriteSession(actor: Actor, adapterId: string, meta: RequestMeta): Promise<WriteSession>;
   setWriteSessionOptions(
     actor: Actor,
     sessionId: string,

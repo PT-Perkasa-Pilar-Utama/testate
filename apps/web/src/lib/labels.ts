@@ -69,6 +69,8 @@ export const ROLE_LABEL = {
   viewer: "Guest",
 } as const satisfies Record<Role, string>;
 export const ROLE_OPTIONS = ROLES.map((value) => ({ value, label: ROLE_LABEL[value] }));
+/** An agent reads, and with the tester role it writes, but it never administers (23 §23.6). */
+export const AGENT_ROLE_OPTIONS = ROLE_OPTIONS.filter((option) => option.value !== "admin");
 
 export const TOKEN_KIND_LABEL = {
   standard: "Standard",

@@ -5,7 +5,7 @@ import { sha256 } from "../../lib/password/index.ts";
 import type { AdapterRecord } from "../adapters/adapters.repository.ts";
 import type { AgentToolDeps, Scope } from "./agent.catalog.ts";
 import { json, tools } from "./agent.catalog.ts";
-import { AGENT_GUIDE } from "./agent.guide.ts";
+import { agentGuide } from "./agent.guide.ts";
 import type { AgentContext, AgentRuntime, Resource } from "./agent.service.ts";
 
 export type { AgentToolDeps } from "./agent.catalog.ts";
@@ -103,7 +103,7 @@ export function createAgentTools(deps: AgentToolDeps): AgentRuntime {
       return resources;
     },
     async readResource(uri, ctx) {
-      if (uri === GUIDE_URI) return AGENT_GUIDE;
+      if (uri === GUIDE_URI) return agentGuide(ctx.actor.role);
       const match = /^testate:\/\/projects\/([^/]+)\/(states|adapters\/([^/]+)\/schema)$/.exec(uri);
       if (match === null) throw notFound("resource");
       const seen: Seen = {};

@@ -7,7 +7,9 @@ import type { MetadataDb } from "../../lib/db/index.ts";
 export type WriteSessionRecord = {
   id: string;
   adapter_id: string;
-  user_id: string;
+  /** Exactly one of these is set: a session belongs to a person or to an agent token (0004). */
+  user_id: string | null;
+  token_id: string | null;
   started_at: string;
   last_write_at: string | null;
   ended_at: string | null;
@@ -48,7 +50,7 @@ export type HistoryFilter = {
 };
 
 export type DataRepository = {
-  openSession(adapterId: string, userId: string): WriteSessionRecord | null;
+  openSession(adapterId: string, ownerId: string): WriteSessionRecord | null;
   sessionById(id: string): WriteSessionRecord | null;
   insertSession(
     session: Omit<
@@ -73,7 +75,8 @@ export type DataRepository = {
 const sessionRow = v.object({
   id: v.string(),
   adapter_id: v.string(),
-  user_id: v.string(),
+  user_id: v.nullable(v.string()),
+  token_id: v.nullable(v.string()),
   started_at: v.string(),
   last_write_at: v.nullable(v.string()),
   ended_at: v.nullable(v.string()),
@@ -110,6 +113,17 @@ function toSession(row: v.InferOutput<typeof sessionRow>): WriteSessionRecord {
   return { ...row, foreign_key_checks: row.foreign_key_checks === 1 };
 }
 
+/**
+ * The id of whoever holds this session, whichever column it landed in.
+ *
+ * The empty string is unreachable: the table's own CHECK says one of the two is set. It is the
+ * value that fails an ownership comparison rather than passing one, which is the right way for an
+ * impossible row to behave.
+ */
+export function sessionOwner(session: WriteSessionRecord): string {
+  return session.user_id ?? session.token_id ?? "";
+}
+
 function toSaved(row: v.InferOutput<typeof savedRow>): SavedQueryRecord {
   return { ...row, body: v.parse(jsonObjectSchema, JSON.parse(row.body)) };
 }
@@ -124,17 +138,23 @@ export function createDataRepository(db: MetadataDb): DataRepository {
     return row === null ? null : toSaved(v.parse(savedRow, row));
   };
   return {
-    openSession: (adapterId, userId) =>
-      session("adapter_id = ? AND user_id = ? AND ended_at IS NULL", adapterId, userId),
+    openSession: (adapterId, ownerId) =>
+      session(
+        "adapter_id = ? AND (user_id = ? OR token_id = ?) AND ended_at IS NULL",
+        adapterId,
+        ownerId,
+        ownerId
+      ),
     sessionById: (id) => session("id = ?", id),
     insertSession(input) {
       db.query(
-        `INSERT INTO write_sessions (id, adapter_id, user_id, started_at, foreign_key_checks)
-         VALUES (?, ?, ?, ?, ?)`
+        `INSERT INTO write_sessions (id, adapter_id, user_id, token_id, started_at, foreign_key_checks)
+         VALUES (?, ?, ?, ?, ?, ?)`
       ).run(
         input.id,
         input.adapter_id,
         input.user_id,
+        input.token_id,
         input.started_at,
         input.foreign_key_checks ? 1 : 0
       );

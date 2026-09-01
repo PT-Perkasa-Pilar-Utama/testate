@@ -5,7 +5,7 @@ import * as v from "valibot";
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
 import { createRateLimiter } from "../../lib/http/ratelimit.ts";
 import type { Handler } from "../../lib/http/index.ts";
-import { AGENT_GUIDE } from "./agent.guide.ts";
+import { agentGuide } from "./agent.guide.ts";
 import type { AgentContext, AgentRuntime, AgentService } from "./agent.service.ts";
 import { ERR_PARSE, ERR_RATE_LIMITED } from "./agent.service.ts";
 
@@ -78,6 +78,8 @@ export function createAgentHandlers(
     },
     get: async (c) => c.body(null, 405),
     guide: async (c) =>
-      c.text(AGENT_GUIDE, 200, { "content-type": "text/markdown; charset=utf-8" }),
+      // No token on this route, so it shows the reader's guide; a tester sees its own
+      // through `help` once it connects.
+      c.text(agentGuide("viewer"), 200, { "content-type": "text/markdown; charset=utf-8" }),
   };
 }

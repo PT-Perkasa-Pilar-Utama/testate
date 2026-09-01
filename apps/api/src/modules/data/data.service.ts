@@ -177,6 +177,7 @@ export function createDataService(deps: DataDeps): DataService {
       sessions.start(actor, adapterId, foreignKeyChecks, meta),
     setWriteSessionOptions: (actor, sessionId, foreignKeyChecks, meta) =>
       sessions.setForeignKeyChecks(actor, sessionId, foreignKeyChecks, meta),
+    openWriteSession: (actor, adapterId, meta) => sessions.open(actor, adapterId, meta),
     endWriteSession: (actor, sessionId, meta) => sessions.end(actor, sessionId, meta),
     rowEdits: (actor, adapterId, table, sessionId, edits, meta) =>
       editing.rowEdits(actor, adapterId, table, sessionId, edits, meta),

@@ -1,6 +1,6 @@
 # 23. Agent Access
 
-Developers debugging on a dev box, SIT, or UAT want an AI agent to inspect the database safely: read a row, follow its relations, copy a reproducible fixture to a local machine, never write. Testate exposes a Model Context Protocol server for that, read-only by construction, on top of the same engine port and the same masks the dashboard uses. This document is the single source for the protocol, the tools, the caps, the auth, and the audit of agent access. Cite it; the user-facing setup lives in `../AGENT_ACCESS.md`.
+Developers debugging on a dev box, SIT, or UAT want an AI agent to inspect the database safely: read a row, follow its relations, copy a reproducible fixture to a local machine. Teams running an agent as part of the test loop want more than that: change a row, keep the result, put an earlier state back. Testate exposes a Model Context Protocol server for both, on top of the same engine port and the same masks the dashboard uses, with the token's role deciding which half answers. This document is the single source for the protocol, the tools, the caps, the auth, and the audit of agent access. Cite it; the user-facing setup lives in `../AGENT_ACCESS.md`.
 
 ## 23.1 Decision matrix
 
@@ -8,8 +8,9 @@ Developers debugging on a dev box, SIT, or UAT want an AI agent to inspect the d
 | --- | --- | --- |
 | Protocol | MCP over Streamable HTTP at `POST ${base}/api/v1/mcp` (JSON-RPC), with the optional `GET` event stream of the same endpoint | The standard agents already speak; one endpoint behind the existing proxy |
 | Implementation | `@modelcontextprotocol/sdk` server with the Hono transport (`@hono/mcp`); fallback: an in-house JSON-RPC handler for `initialize`, `tools/list`, `tools/call`, `resources/list`, `resources/read` | Sprint 0 spike; the subset is small |
-| Auth | Bearer API token with `kind = agent`; role `viewer`; project scope as any token | Owner decision: viewer role plus an agent flag |
-| Read-only | The server registers read tools only; the engine runs every query in read-only mode; write tools do not exist | Read-only by construction, not by policy |
+| Auth | Bearer API token with `kind = agent`; role `viewer` or `qa`, never `admin`; project scope as any token | An agent reads, a tester agent also writes, and neither administers |
+| Write tools | Registered for every agent, refused with `403 { reason: "role" }` unless the token's role is `qa` | A tool that is missing looks like a broken server; a tool that says why does not |
+| Read-only reads | `run_readonly_query` still runs in a read-only transaction whatever the role; writing takes the write tool and a write session | The read path cannot become a write path by accident |
 | Masks | Column masks (24 §24.4) apply to every agent response, always | Agents copy values into prompts and files |
 | Caps | Row cap 200 default, 1 000 max; byte budget 1 MiB; time budget 15 s; file preview 256 KiB; fixture 500 rows and depth 3; per-token request budget | Lower than the dashboard: an agent loops |
 | Audit | Every tool call writes `agent.tool_call` with tool name, argument hash, project, adapter, and outcome; the wide event carries `op.name = "mcp:<tool>"` and `actor.agent = true` | Story 105 |
@@ -34,6 +35,11 @@ Developers debugging on a dev box, SIT, or UAT want an AI agent to inspect the d
 | `diff_summary` | `project`, `diff` | per table counts | existing diffs only; no creation |
 | `list_files` | `project`, `adapter`, `path?`, `cursor?` | entries | Files tier |
 | `preview_file` | `project`, `adapter`, `path` | text or JSON up to 256 KiB; images and binaries refused | |
+| `run_write_query` | `project`, `adapter`, `sql`, `limit?` | rows, columns, the write session it used | `qa` only; sandbox adapters; opens or reuses a write session |
+| `end_write_session` | `project`, `adapter` | the session id and its stash | `qa` only; the next write takes a new stash |
+| `take_snapshot` | `project`, `name`, `notes?`, `adapters?` | the state and its job | `qa` only; waits 15 s on the job, then reports it running |
+| `checkout_state` | `project`, `state`, `force?`, `adapters?` | the checkout and its job | `qa` only; this overwrites data |
+| `get_job` | `job` | status, progress, error | any role; how you poll a job that outlived the wait |
 
 Tool input schemas are valibot schemas in `@testate/shared`, exported to JSON Schema for `tools/list`. Every tool result carries `masked_columns` when a mask applied, so the agent knows a value is not the real one.
 
@@ -76,8 +82,11 @@ The developer pastes the fixture into a local database and reproduces the failur
 
 ## 23.6 Security constraints
 
-- Token kind `agent` is created by an admin with a name, project scope, and expiry (default 90 days, maximum 365).
-- The engine runs every agent read with the read-only transaction (SQL) or read credential or filter (MongoDB); the tool layer never has a write path to call.
+- Token kind `agent` is created by an admin with a name, role, project scope, and expiry (default 90 days, maximum 365, or none when the creator asks for a token that never expires).
+- The role on an agent token is `viewer` or `qa`. `admin` is refused by the contract and again by the token service, so no agent token can create a token, change a setting, or touch a user.
+- Write tools check the role themselves. `/mcp` is the one route that does not pass through `requireRole`, because that middleware refuses agent tokens by design.
+- A write from an agent goes through the same write session a person's does: sandbox adapters only, tabular tier only, and a stash before the first write. The session belongs to the token (migration 0004) and is reused across calls, so one run leaves one stash.
+- The engine runs every agent read with the read-only transaction (SQL) or read credential or filter (MongoDB).
 - Masks are mandatory; there is no "unmask" argument.
 - Query text from an agent is stored in `query_history` under the token's label, like any query; wide events carry the hash.
 - `/mcp` honors the same CSRF-free bearer path as the API; cookies are ignored on it.
@@ -85,11 +94,13 @@ The developer pastes the fixture into a local database and reproduces the failur
 
 ## 23.7 Component and contract
 
-`modules/agent/{agent.server.ts, agent.tools.ts, agent.resources.ts, agent.router.ts, agent.test.ts}`; token kind in `api_tokens.kind` (06 §6.3 gains `kind TEXT NOT NULL DEFAULT 'standard'`); `docs/AGENT_ACCESS.md` with Claude Code and generic MCP client configuration. Locked: the tool names and input shapes, the `agent` token kind, the read-only rule.
+`modules/agent/{agent.server.ts, agent.tools.ts, agent.write.ts, agent.resources.ts, agent.router.ts, agent.test.ts}`; token kind in `api_tokens.kind` (06 §6.3 gains `kind TEXT NOT NULL DEFAULT 'standard'`); `docs/AGENT_ACCESS.md` with Claude Code and generic MCP client configuration. Locked: the tool names and input shapes, the `agent` token kind, and the rule that the role on the token, not the kind, decides what answers.
 
 ## 23.8 What this does not do
 
-- No writes, no checkout, no snapshot, no import through MCP. A CI pipeline uses the REST API with a `qa` token for that.
+- No import through MCP. A CI pipeline uses the REST API with a `qa` token for that.
+- No writes at all for a `viewer` agent token, which is what every agent token was before this.
+- No administration from any agent token: no tokens, no settings, no users, no policies.
 - No file download through MCP.
 - No prompts or sampling; tools and resources only.
 - No per-agent memory or state.

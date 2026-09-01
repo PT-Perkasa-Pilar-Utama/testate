@@ -12,7 +12,8 @@ export type CreateTokenInput = {
   kind: ApiToken["kind"];
   role?: Role;
   project_ids: string[] | null;
-  expires_at?: string;
+  /** Absent takes the default; `null` is a token that never expires. */
+  expires_at?: string | null;
 };
 
 export type TokenService = {
@@ -43,14 +44,20 @@ export const AGENT_DEFAULT_EXPIRY_MS = 90 * DAY;
 export const AGENT_MAX_EXPIRY_MS = 365 * DAY;
 const RANK = { viewer: 0, qa: 1, admin: 2 } as const satisfies Record<Role, number>;
 
+/**
+ * An agent token carries the role it was created with, like every other token.
+ *
+ * It used to be pinned to `viewer` here, so a tester agent could read a database and nothing else
+ * (23 §23.6). Existing tokens are unaffected: `createToken` has always stored `viewer` for them,
+ * so they keep reading exactly what they read yesterday.
+ */
 function tokenActor(token: ApiToken): Actor {
-  const agent = token.kind === "agent";
   return {
     kind: "token",
     id: token.id,
     label: `token:${token.name}`,
-    role: agent ? "viewer" : token.role,
-    agent,
+    role: token.role,
+    agent: token.kind === "agent",
   };
 }
 
@@ -61,7 +68,10 @@ export function createTokenService(deps: TokenDeps): TokenService {
   const nowMs = (): number => deps.now().getTime();
   const nowIso = (): string => deps.now().toISOString();
 
-  const agentExpiry = (requested: string | undefined): string => {
+  // `null` is the caller asking for a token that never expires, which is a different answer from
+  // asking for nothing and taking the ninety-day default.
+  const agentExpiry = (requested: string | null | undefined): string | null => {
+    if (requested === null) return null;
     const limit = nowMs() + AGENT_MAX_EXPIRY_MS;
     if (requested === undefined) return new Date(nowMs() + AGENT_DEFAULT_EXPIRY_MS).toISOString();
     if (new Date(requested).getTime() > limit) {
@@ -100,8 +110,11 @@ export function createTokenService(deps: TokenDeps): TokenService {
     },
     async createToken(actor, input, meta) {
       const agent = input.kind === "agent";
-      const role: Role = agent ? "viewer" : (input.role ?? "viewer");
+      const role: Role = input.role ?? "viewer";
       if (RANK[role] > RANK[actor.role]) throw forbidden("role");
+      // The contract says the same, and says it first; this is the service refusing to be the one
+      // place an admin agent token could come from.
+      if (agent && role === "admin") throw forbidden("role");
       const unknown = (input.project_ids ?? []).find((id) => !deps.projectExists(id));
       if (unknown !== undefined) throw notFound("project");
       const secret = `tst_${randomSecret()}`;

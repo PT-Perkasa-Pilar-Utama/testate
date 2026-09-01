@@ -7,6 +7,7 @@ import type { AuditService } from "../audit/audit.service.ts";
 import type { JobsService } from "../jobs/jobs.service.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import type { StatesRepository } from "../states/states.repository.ts";
+import { sessionOwner } from "./data.repository.ts";
 import type { DataRepository, WriteSessionRecord } from "./data.repository.ts";
 
 export type SessionDeps = {
@@ -34,6 +35,14 @@ export type WriteSessions = {
     meta: RequestMeta
   ): Promise<WriteSession>;
   end(actor: Actor, id: string, meta: RequestMeta): Promise<void>;
+  /**
+   * This actor's live session on the adapter, started if there is none.
+   *
+   * A person opens one from the table editor and sees it in the toolbar. An agent has no toolbar,
+   * so its first write opens the session and every later write joins it, which is what keeps one
+   * stash per session rather than one per statement (23 §23.6).
+   */
+  open(actor: Actor, adapterId: string, meta: RequestMeta): Promise<WriteSession>;
   /** An open, unexpired session or `CONFLICT` (06 §6.6 step 1). */
   require(id: string): WriteSessionRecord;
   /** The first write takes a stash through a synchronous snapshot job (05 §5.8); later writes count. */
@@ -90,38 +99,42 @@ export function createWriteSessions(deps: SessionDeps): WriteSessions {
   const owned = (actor: Actor, id: string): Owned => {
     const session = deps.repo.sessionById(id);
     if (session === null || session.ended_at !== null) throw notFound("write session");
-    if (session.user_id !== actor.id) throw forbidden("not the session's owner");
+    if (sessionOwner(session) !== actor.id) throw forbidden("not the session's owner");
     return { session, adapter: deps.adapterOf(session.adapter_id) };
   };
 
-  return {
-    async start(actor, adapterId, foreignKeyChecks, meta) {
-      const adapter = deps.adapterOf(adapterId);
-      if (adapter.tier !== "tabular") {
-        throw new AppError("ENGINE_UNSUPPORTED", "write sessions need a tabular adapter", {
-          reason: "tier",
-        });
-      }
-      if (adapter.mode !== "sandbox") {
-        throw new AppError("ADAPTER_READ_ONLY", `${adapter.name} is read-only`, {
-          adapter_id: adapter.id,
-        });
-      }
-      const open = deps.repo.openSession(adapter.id, actor.id);
-      if (open !== null && Date.parse(expiresAt(open)) > deps.now().getTime()) {
-        throw conflict("a write session is already open", { write_session_id: open.id });
-      }
-      if (open !== null) deps.repo.endSession(open.id, nowIso());
-      const session = deps.repo.insertSession({
-        id: Bun.randomUUIDv7(),
-        adapter_id: adapter.id,
-        user_id: actor.id,
-        started_at: nowIso(),
-        foreign_key_checks: foreignKeyChecks,
+  const start: WriteSessions["start"] = async (actor, adapterId, foreignKeyChecks, meta) => {
+    const adapter = deps.adapterOf(adapterId);
+    if (adapter.tier !== "tabular") {
+      throw new AppError("ENGINE_UNSUPPORTED", "write sessions need a tabular adapter", {
+        reason: "tier",
       });
-      record(actor, "write_session.started", adapter, session, meta);
-      return toPublic(session, adapter.engine);
-    },
+    }
+    if (adapter.mode !== "sandbox") {
+      throw new AppError("ADAPTER_READ_ONLY", `${adapter.name} is read-only`, {
+        adapter_id: adapter.id,
+      });
+    }
+    const open = deps.repo.openSession(adapter.id, actor.id);
+    if (open !== null && Date.parse(expiresAt(open)) > deps.now().getTime()) {
+      throw conflict("a write session is already open", { write_session_id: open.id });
+    }
+    if (open !== null) deps.repo.endSession(open.id, nowIso());
+    const session = deps.repo.insertSession({
+      id: Bun.randomUUIDv7(),
+      adapter_id: adapter.id,
+      // One column or the other, never both: a token has no row in `users` to point at (0004).
+      user_id: actor.kind === "user" ? actor.id : null,
+      token_id: actor.kind === "token" ? actor.id : null,
+      started_at: nowIso(),
+      foreign_key_checks: foreignKeyChecks,
+    });
+    record(actor, "write_session.started", adapter, session, meta);
+    return toPublic(session, adapter.engine);
+  };
+
+  return {
+    start,
     async setForeignKeyChecks(actor, id, enabled, meta) {
       const { session, adapter } = owned(actor, id);
       if (!enabled && FK_MAPPING[adapter.engine] === null) {
@@ -133,6 +146,14 @@ export function createWriteSessions(deps: SessionDeps): WriteSessions {
       const updated = { ...session, foreign_key_checks: enabled };
       if (!enabled) record(actor, "write_session.fk_checks_off", adapter, updated, meta);
       return toPublic(updated, adapter.engine);
+    },
+    async open(actor, adapterId, meta) {
+      const adapter = deps.adapterOf(adapterId);
+      const live = deps.repo.openSession(adapterId, actor.id);
+      if (live !== null && Date.parse(expiresAt(live)) > deps.now().getTime()) {
+        return toPublic(live, adapter.engine);
+      }
+      return start(actor, adapterId, true, meta);
     },
     async end(actor, id, meta) {
       const { session, adapter } = owned(actor, id);

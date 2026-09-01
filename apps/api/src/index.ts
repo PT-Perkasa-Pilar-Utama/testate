@@ -231,6 +231,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
         adapters,
         adaptersRepo: wiring.adapters,
         storage,
+        jobs,
         audit,
         ...core,
       }),

@@ -90,17 +90,21 @@ export const apiTokenSchema = v.object({
 });
 export type ApiToken = v.InferOutput<typeof apiTokenSchema>;
 
+// `expires_at: null` is a token that never expires, and it is a different thing from the field
+// being absent, which still takes the ninety-day default an agent token has always had.
 export const createTokenSchema = v.pipe(
   v.object({
     name: v.pipe(v.string(), v.minLength(1), v.maxLength(80)),
     kind: v.optional(tokenKindSchema, "standard"),
     role: v.optional(roleSchema),
     project_ids: v.optional(v.nullable(v.array(idSchema)), null),
-    expires_at: v.optional(timestampSchema),
+    expires_at: v.optional(v.nullable(timestampSchema)),
   }),
+  // An agent reads and now also writes, but it never administers: no agent token can create
+  // another token, change a setting, or delete a user (23 §23.6).
   v.check(
-    (input) => input.kind !== "agent" || input.role === undefined,
-    "agent tokens are always viewer"
+    (input) => input.kind !== "agent" || input.role !== "admin",
+    "an agent token is a viewer or a tester"
   ),
   v.check((input) => input.kind === "agent" || input.role !== undefined, "role is required")
 );
@@ -111,10 +115,10 @@ export const createTokenResponseSchema = v.object({
 });
 
 // The "New API token" dialog's own shape, not the wire body: it picks a plain calendar date
-// ("expires_on"), and always carries a role even for an agent token, where it is simply unused.
-// `toCreateBody` in the tokens presenter turns this into the `createTokenSchema` body the API
-// expects (an ISO timestamp, role omitted for agents) - reusing `createTokenSchema` directly here
-// would mean binding a date input to a field that must already be a full ISO timestamp.
+// ("expires_on") and a "never" switch. `toCreateBody` in the tokens presenter turns this into the
+// `createTokenSchema` body the API expects (an ISO timestamp, or null for never) - reusing
+// `createTokenSchema` directly here would mean binding a date input to a field that must already
+// be a full ISO timestamp.
 export const tokenDraftSchema = v.object({
   name: v.pipe(
     v.string(),
@@ -124,5 +128,6 @@ export const tokenDraftSchema = v.object({
   kind: tokenKindSchema,
   role: roleSchema,
   expires_on: v.string(),
+  never_expires: v.boolean(),
 });
 export type TokenDraft = v.InferOutput<typeof tokenDraftSchema>;

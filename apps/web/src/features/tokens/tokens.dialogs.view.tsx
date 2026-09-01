@@ -10,8 +10,9 @@ import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
+import Switch from "@/components/switch.tsx";
 import { onceSettled } from "@/lib/form.ts";
-import { ROLE_OPTIONS, TOKEN_KIND_OPTIONS } from "@/lib/labels.ts";
+import { AGENT_ROLE_OPTIONS, ROLE_OPTIONS, TOKEN_KIND_OPTIONS } from "@/lib/labels.ts";
 import { EMPTY_DRAFT } from "./tokens.presenter.ts";
 import type { TokensPresenter } from "./tokens.presenter.ts";
 
@@ -30,7 +31,7 @@ export function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element
       open={props.presenter.creating()}
       onClose={() => props.presenter.closeCreate()}
       title="New API token"
-      description="Standard tokens act as their role on the REST API. Agent tokens are viewer-only and reach the MCP endpoint alone."
+      description="Standard tokens act as their role on the REST API. Agent tokens reach the MCP endpoint alone, where a Guest reads and a Tester also writes."
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.create(input)}>
         <Field of={form} path={["name"]}>
@@ -62,21 +63,21 @@ export function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element
           )}
         </Field>
         {/* Reads the kind field through `getInput`, not a sibling Field's own render-prop object,
-            so this Show never chains off another Field's narrowed value. */}
-        <Show when={getInput(form, { path: ["kind"] }) === "standard"}>
-          <Field of={form} path={["role"]}>
-            {(field) => (
-              <label class="grid content-start gap-1.5 text-base">
-                <span>Role</span>
-                <Select
-                  options={ROLE_OPTIONS}
-                  value={field.input ?? EMPTY_DRAFT.role}
-                  onChange={(role) => field.onInput(role)}
-                />
-              </label>
-            )}
-          </Field>
-        </Show>
+            so this never chains off another Field's narrowed value. */}
+        <Field of={form} path={["role"]}>
+          {(field) => (
+            <label class="grid content-start gap-1.5 text-base">
+              <span>Role</span>
+              <Select
+                options={
+                  getInput(form, { path: ["kind"] }) === "agent" ? AGENT_ROLE_OPTIONS : ROLE_OPTIONS
+                }
+                value={field.input ?? EMPTY_DRAFT.role}
+                onChange={(role) => field.onInput(role)}
+              />
+            </label>
+          )}
+        </Field>
         <Field of={form} path={["expires_on"]}>
           {(field) => (
             <label class="grid content-start gap-1.5 text-base">
@@ -88,12 +89,24 @@ export function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element
               <Input
                 {...field.props}
                 type="date"
+                disabled={getInput(form, { path: ["never_expires"] }) === true}
                 value={field.input}
                 variant={field.errors ? "error" : "default"}
                 aria-invalid={field.errors ? "true" : undefined}
               />
               <FieldError message={field.errors?.[0]} />
             </label>
+          )}
+        </Field>
+        {/* Off unless somebody reaches for it. A token with no expiry is a credential nobody is
+            forced to look at again, so it is a decision and not a default. */}
+        <Field of={form} path={["never_expires"]}>
+          {(field) => (
+            <Switch
+              checked={field.input === true}
+              onChange={(checked) => field.onInput(checked)}
+              label="Never expires"
+            />
           )}
         </Field>
         <Show when={props.presenter.error()}>

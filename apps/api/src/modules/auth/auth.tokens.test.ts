@@ -36,7 +36,7 @@ describe("api tokens", () => {
     expect(resolved?.projectScope).toStrictEqual([PROJECT]);
   });
 
-  it("makes agent tokens viewer-only with a 90-day default expiry and a 365-day cap", async () => {
+  it("defaults an agent token to viewer, with a 90-day expiry and a 365-day cap", async () => {
     const { auth, admin, advance } = await createAccounts();
     const { token, record } = await auth.createToken(
       admin,
@@ -55,6 +55,37 @@ describe("api tokens", () => {
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
     advance(91 * 24 * HOUR);
     expect(await auth.fromBearer(token)).toBeNull();
+  });
+
+  it("gives an agent token the tester role, and refuses to give it the admin one", async () => {
+    const { auth, admin } = await createAccounts();
+    const { token, record } = await auth.createToken(
+      admin,
+      { name: "claude-tester", kind: "agent", role: "qa", project_ids: null },
+      TEST_META
+    );
+    expect(record.role).toBe("qa");
+    // The role reaches the actor, which is the whole point: the tools read it, not the kind.
+    expect((await auth.fromBearer(token))?.actor).toMatchObject({ role: "qa", agent: true });
+    await expect(
+      auth.createToken(
+        admin,
+        { name: "too-much", kind: "agent", role: "admin", project_ids: null },
+        TEST_META
+      )
+    ).rejects.toMatchObject({ code: "FORBIDDEN", details: { reason: "role" } });
+  });
+
+  it("an agent token asked to never expire has no expiry, and outlives the cap", async () => {
+    const { auth, admin, advance } = await createAccounts();
+    const { token, record } = await auth.createToken(
+      admin,
+      { name: "forever", kind: "agent", role: "qa", project_ids: null, expires_at: null },
+      TEST_META
+    );
+    expect(record.expires_at).toBeNull();
+    advance(400 * 24 * HOUR);
+    expect((await auth.fromBearer(token))?.actor.role).toBe("qa");
   });
 
   it("refuses revoked and unknown tokens", async () => {
