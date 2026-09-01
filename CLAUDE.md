@@ -51,6 +51,7 @@ Read the rule text in `docs/CODING_STANDARD.md` when a rule fires; do not reform
 - `requireRole` on every non-public route; agent tokens reach `/mcp` only.
 - A deliberate shortcut carries `// ponytail: <what>. <ceiling>; <upgrade path>`. `grep ponytail:` lists them. `// SCAFFOLD:` marks mock-backed code the next card replaces.
 - One wide event per request or job (`.claude/skills/wide-event-logging`). Add fields to the event; do not add log lines.
+- The SPA never shows an API message raw. Every caught failure goes through `humanMessage` in `lib/api-error.ts`, which replaces the codes that say nothing a person can act on and passes the rest through as a sentence. Four screens keep the technical text on purpose (query console, checkout outcome, adapter probe, a malformed query) and each says so in a comment.
 
 ## Workflows
 
