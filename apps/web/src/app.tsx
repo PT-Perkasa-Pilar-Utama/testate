@@ -141,7 +141,7 @@ function storedCollapsed(): boolean {
 }
 
 const THEME_FACE = {
-  system: { icon: "monitor", label: "Theme: follows your system" },
+  system: { icon: "monitor", label: "Theme: system" },
   light: { icon: "sun", label: "Theme: light" },
   dark: { icon: "moon", label: "Theme: dark" },
 } as const;
