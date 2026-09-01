@@ -1,6 +1,7 @@
 import { createSignal } from "solid-js";
 import type { Fixture, JsonObject, JsonValue, TableSchema, WriteSession } from "@testate/shared";
-import { functionNameSchema, jsonValueSchema } from "@testate/shared";
+import { fieldModeSchema, functionNameSchema, jsonValueSchema } from "@testate/shared";
+import type { RowCell } from "@testate/shared";
 import type { formValueSchema } from "@testate/shared";
 import * as v from "valibot";
 
@@ -16,16 +17,20 @@ export const FUNCTION_OPTIONS = functionNameSchema.options.map((name) => ({
   label: name,
 }));
 
-export const FIELD_MODES = ["value", "null", "default", "function"] as const;
-export type FieldMode = (typeof FIELD_MODES)[number];
-export type FieldDraft = { mode: FieldMode; text: string; fn: FunctionName; input: string };
-export type RowDraft = Map<string, FieldDraft>;
+export const FIELD_MODES = fieldModeSchema.options;
+export type FieldMode = v.InferOutput<typeof fieldModeSchema>;
+/** One column's cell in the row form; `RowCell` is the same shape, stated in the contract. */
+export type FieldDraft = RowCell;
 
 export type FormValue = v.InferOutput<typeof formValueSchema>;
 
+/**
+ * Which row is open, and nothing about its values: those live in the Formisch form, seeded through
+ * `initialCells` when the dialog opens.
+ */
 export type FormState =
-  | { kind: "insert"; draft: RowDraft }
-  | { kind: "update"; pk: JsonObject; original: JsonObject; draft: RowDraft };
+  | { kind: "insert" }
+  | { kind: "update"; pk: JsonObject; original: JsonObject };
 
 export type EditingPresenter = {
   session: () => WriteSession | null;
@@ -37,9 +42,10 @@ export type EditingPresenter = {
   openInsert: () => void;
   openUpdate: (row: JsonObject) => void;
   closeForm: () => void;
-  setField: (column: string, patch: Partial<FieldDraft>) => void;
-  /** `copies` inserts the same draft up to 50 times (story 143); `more` keeps the form open. */
-  submitForm: (options?: { copies?: number; more?: boolean }) => Promise<void>;
+  /** The cells a freshly opened dialog starts with, for the form to reset itself to. */
+  initialCells: () => RowCell[];
+  /** `copies` inserts the same cells up to 50 times (story 143); `more` keeps the form open. */
+  submitForm: (cells: RowCell[], options?: { copies?: number; more?: boolean }) => Promise<void>;
   remove: (row: JsonObject) => Promise<void>;
   fixture: () => Fixture | null;
   fixtureFor: (row: JsonObject, options: FixtureOptions) => Promise<void>;
@@ -50,7 +56,7 @@ export type EditingPresenter = {
   lookup: (column: string, q: string) => Promise<void>;
 };
 
-const EMPTY_FIELD: FieldDraft = { mode: "value", text: "", fn: "now", input: "" };
+const EMPTY_FIELD: Omit<FieldDraft, "column"> = { mode: "value", text: "", fn: "now", input: "" };
 /** One row-edits call takes at most 50 edits (06 §6.6). */
 export const MAX_COPIES = 50;
 
@@ -95,22 +101,20 @@ export function pkOf(row: JsonObject, table: TableSchema): JsonObject {
 }
 
 function fieldFor(column: TableSchema["columns"][number], row: JsonObject | null): FieldDraft {
+  const base = { ...EMPTY_FIELD, column: column.name };
   const required = column.policy.required_function;
   if (required !== null)
-    return { ...EMPTY_FIELD, mode: row === null ? "function" : "default", fn: required.name };
+    return { ...base, mode: row === null ? "function" : "default", fn: required.name };
   if (row === null)
-    return { ...EMPTY_FIELD, mode: column.has_default || column.identity ? "default" : "value" };
+    return { ...base, mode: column.has_default || column.identity ? "default" : "value" };
   const current = row[column.name];
-  if (current === null || current === undefined) return { ...EMPTY_FIELD, mode: "null" };
-  return { ...EMPTY_FIELD, text: v.is(v.string(), current) ? current : JSON.stringify(current) };
+  if (current === null || current === undefined) return { ...base, mode: "null" };
+  return { ...base, text: v.is(v.string(), current) ? current : JSON.stringify(current) };
 }
 
-function draftOf(table: TableSchema, row: JsonObject | null): RowDraft {
-  const draft: RowDraft = new Map();
-  for (const column of table.columns) {
-    if (!column.generated) draft.set(column.name, fieldFor(column, row));
-  }
-  return draft;
+/** In table order, generated columns left out: the database decides those. */
+export function cellsOf(table: TableSchema, row: JsonObject | null): RowCell[] {
+  return table.columns.filter((column) => !column.generated).map((column) => fieldFor(column, row));
 }
 
 /**
@@ -132,13 +136,14 @@ export function editsFor(
 
 /** Update edits carry only the fields that changed from the row; inserts carry every non-default field. */
 export function valuesOf(
-  draft: RowDraft,
+  cells: readonly RowCell[],
   table: TableSchema,
   original: JsonObject | null
 ): JsonObject {
+  const byColumn = new Map(cells.map((cell) => [cell.column, cell]));
   const values: JsonObject = {};
   for (const column of table.columns) {
-    const field = draft.get(column.name);
+    const field = byColumn.get(column.name);
     if (field === undefined) continue;
     if (original !== null && field.mode === "default") continue;
     if (original !== null && field.mode === "value") {
@@ -217,32 +222,24 @@ export function createEditingPresenter(
     },
     form,
     openInsert: () => {
-      const schema = table();
-      if (schema === null) return;
+      if (table() === null) return;
       setError(null);
-      setForm({ kind: "insert", draft: draftOf(schema, null) });
+      setForm({ kind: "insert" });
     },
     openUpdate: (row) => {
       const schema = table();
       if (schema === null) return;
       setError(null);
-      setForm({
-        kind: "update",
-        pk: pkOf(row, schema),
-        original: row,
-        draft: draftOf(schema, row),
-      });
+      setForm({ kind: "update", pk: pkOf(row, schema), original: row });
     },
     closeForm: () => setForm(null),
-    setField: (column, patch) =>
-      setForm((current) => {
-        if (current === null) return null;
-        const field = current.draft.get(column) ?? EMPTY_FIELD;
-        const draft = new Map(current.draft);
-        draft.set(column, { ...field, ...patch });
-        return { ...current, draft };
-      }),
-    submitForm: (options = {}) => {
+    initialCells: () => {
+      const schema = table();
+      const state = form();
+      if (schema === null) return [];
+      return cellsOf(schema, state !== null && state.kind === "update" ? state.original : null);
+    },
+    submitForm: (cells, options = {}) => {
       const staticSlug = slug();
       const staticId = id();
       const staticTable = tableName();
@@ -250,7 +247,7 @@ export function createEditingPresenter(
       const staticOpen = session();
       const state = form();
       if (schema === null || staticOpen === null || state === null) return Promise.resolve();
-      const values = valuesOf(state.draft, schema, state.kind === "update" ? state.original : null);
+      const values = valuesOf(cells, schema, state.kind === "update" ? state.original : null);
       const copies = Math.min(Math.max(options.copies ?? 1, 1), MAX_COPIES);
       const edits = editsFor(state, values, copies);
       // Nothing to send: Save on a row nobody changed means close the form, not fail on it.
@@ -263,7 +260,7 @@ export function createEditingPresenter(
       return attempt(async () => {
         try {
           await edit(staticSlug, staticId, staticTable, staticOpen.id, edits);
-          if (keepOpen) setForm({ kind: "insert", draft: draftOf(schema, null) });
+          if (keepOpen) setForm({ kind: "insert" });
           else setForm(null);
         } catch (cause: unknown) {
           setError(cause instanceof Error ? cause.message : String(cause));

@@ -147,15 +147,20 @@ describe("data feature", () => {
     };
     const original = { id: 1, email: "a@x.io", name: "A" };
     expect(pkOf(original, table)).toEqual({ id: 1 });
-    const draft = new Map([
-      ["id", { mode: "value" as const, text: "1", fn: "now" as const, input: "" }],
-      ["email", { mode: "value" as const, text: "b@x.io", fn: "now" as const, input: "" }],
-      ["name", { mode: "null" as const, text: "A", fn: "now" as const, input: "" }],
-    ]);
-    expect(valuesOf(draft, table, original)).toEqual({
+    // The columns are the live table's, so the form carries a cell per column rather than a
+    // property per name; `column` is what ties a cell back to the schema.
+    const cells = [
+      { column: "id", mode: "value" as const, text: "1", fn: "now" as const, input: "" },
+      { column: "email", mode: "value" as const, text: "b@x.io", fn: "now" as const, input: "" },
+      { column: "name", mode: "null" as const, text: "A", fn: "now" as const, input: "" },
+    ];
+    // Only what changed: id still reads 1, so it is not in the update at all.
+    expect(valuesOf(cells, table, original)).toEqual({
       email: { kind: "value", value: "b@x.io" },
       name: { kind: "null" },
     });
+    // An insert has no original to compare against, so every cell travels.
+    expect(Object.keys(valuesOf(cells, table, null))).toEqual(["id", "email", "name"]);
   });
 
   test("policyBody turns the none choices into nulls", () => {

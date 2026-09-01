@@ -112,6 +112,28 @@ export const writeSessionSchema = v.object({
 });
 export type WriteSession = v.InferOutput<typeof writeSessionSchema>;
 
+/**
+ * The row form's own shape (24 §24.2).
+ *
+ * A table's columns are only known once the database has been introspected, so the form cannot be
+ * an object with a property per column: it is a list of cells, each naming the column it fills.
+ * That is also the only shape a schema-driven form library can drive here, since a record with
+ * runtime keys is not something it can build field stores for.
+ */
+export const fieldModeSchema = v.picklist(["value", "null", "default", "function"]);
+
+export const rowCellSchema = v.object({
+  column: v.string(),
+  mode: fieldModeSchema,
+  text: v.string(),
+  fn: functionNameSchema,
+  input: v.string(),
+});
+
+export const rowFormSchema = v.object({ cells: v.array(rowCellSchema) });
+export type RowCell = v.InferOutput<typeof rowCellSchema>;
+export type RowFormInput = v.InferOutput<typeof rowFormSchema>;
+
 export const formValueSchema = v.variant("kind", [
   v.object({ kind: v.literal("value"), value: jsonValueSchema }),
   v.object({ kind: v.literal("null") }),
