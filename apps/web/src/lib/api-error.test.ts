@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { ApiError } from "./api-client.ts";
-import { humanMessage, statusReason } from "./api-error.ts";
+import { humanMessage, statusReason, waitPhrase } from "./api-error.ts";
 
 describe("what a person reads when a request fails", () => {
   test("the codes whose own wording says nothing are replaced outright", () => {
@@ -33,6 +33,18 @@ describe("what a person reads when a request fails", () => {
       humanMessage(new ApiError("RATE_LIMITED", 429, "too many", { retry_after: 1 }), "x")
     ).toBe("Too many attempts. Try again in 1 second.");
     expect(humanMessage(new ApiError("RATE_LIMITED", 429, "too many"), "x")).toContain("a moment");
+  });
+
+  test("a wait is said the way a person says it, not in seconds", () => {
+    // The bug this was written for: an account lockout sends 887, the screen said "wait a moment",
+    // and the person kept retrying for the other fourteen minutes.
+    expect(waitPhrase(887)).toBe("15 minutes");
+    expect(waitPhrase(60)).toBe("60 seconds");
+    expect(waitPhrase(120)).toBe("2 minutes");
+    expect(waitPhrase(1)).toBe("1 second");
+    expect(humanMessage(new ApiError("RATE_LIMITED", 429, "x", { retry_after: 887 }), "y")).toBe(
+      "Too many attempts. Try again in 15 minutes."
+    );
   });
 
   test("anything that is not an API answer never reaches the screen as itself", () => {

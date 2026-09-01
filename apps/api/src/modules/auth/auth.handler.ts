@@ -11,7 +11,15 @@ import { nextCursor } from "../../lib/db/keyset.ts";
 
 import { SESSION_COOKIE, currentActor, requestMeta } from "../../lib/http/auth.ts";
 import { createRateLimiter } from "../../lib/http/ratelimit.ts";
-import { ok, okPage, param, parseBody, parseQuery, rateLimited } from "../../lib/http/index.ts";
+import {
+  AppError,
+  ok,
+  okPage,
+  param,
+  parseBody,
+  parseQuery,
+  rateLimited,
+} from "../../lib/http/index.ts";
 import type { Handler } from "../../lib/http/index.ts";
 import type { TokensListQuery } from "./auth.repository.ts";
 import type { AuthService, CreateTokenInput } from "./auth.service.ts";
@@ -106,12 +114,15 @@ export function createAuthHandlers(
       const { sessionToken, response } = await service
         .login(input, from)
         .catch((cause: unknown) => {
-          // Every refusal counts: a wrong password, an unknown name, a disabled or locked account.
-          // They are indistinguishable to the caller by design, and all four are what guessing looks
-          // like. The event carries the fact; an audit row per attempt would let an attacker fill
-          // the disk, and the per-account path already audits itself.
-          guesses.record(key);
-          c.get("event").add("op", { login_failed: true });
+          // A guess counts once. A wrong password, an unknown name and a disabled account look
+          // identical to the caller by design and all three are guessing, so all three spend
+          // budget. A refusal that is itself a rate limit does not: that account is already
+          // locked, and charging the address for hearing so again locks a locked-out person out
+          // twice over. The event carries the fact; an audit row per attempt would let an attacker
+          // fill the disk, and the per-account path already audits itself.
+          const alreadyLimited = cause instanceof AppError && cause.code === "RATE_LIMITED";
+          if (!alreadyLimited) guesses.record(key);
+          c.get("event").add("op", { login_failed: true, login_already_limited: alreadyLimited });
           throw cause;
         });
       setCookie(c, SESSION_COOKIE, sessionToken, {

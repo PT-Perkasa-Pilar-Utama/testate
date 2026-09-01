@@ -1,8 +1,9 @@
 import { createSignal } from "solid-js";
+import * as v from "valibot";
 import type { ChangePasswordInput, LoginInput } from "@testate/shared";
 
 import { ApiError } from "@/lib/api-client.ts";
-import { humanMessage } from "@/lib/api-error.ts";
+import { humanMessage, waitPhrase } from "@/lib/api-error.ts";
 import { navigate } from "@/lib/router.ts";
 import { loadSession, setSession } from "@/lib/session.ts";
 import { authModel } from "./auth.model.ts";
@@ -31,7 +32,12 @@ function messageOf(cause: unknown): string {
     return "That username and password do not match an account.";
   }
   if (cause instanceof ApiError && cause.code === "RATE_LIMITED") {
-    return "Too many sign-in attempts. Wait a minute and try again.";
+    // The wait is the server's, not a guess. Five wrong passwords lock an account for fifteen
+    // minutes, and telling someone to "wait a minute" makes them retry for fourteen more.
+    const wait = v.safeParse(v.object({ retry_after: v.number() }), cause.details);
+    return wait.success
+      ? `Too many sign-in attempts. Try again in ${waitPhrase(wait.output.retry_after)}.`
+      : "Too many sign-in attempts. Try again later.";
   }
   return humanMessage(cause, "Could not sign you in.");
 }

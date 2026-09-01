@@ -33,6 +33,17 @@ const retryAfter = (details: JsonObject | undefined): number | null => {
   return parsed.success ? parsed.output.retry_after : null;
 };
 
+/**
+ * How long to wait, said the way a person would say it. 887 seconds is "15 minutes", not "887
+ * seconds": an account lockout is a quarter of an hour and telling someone to wait "a moment"
+ * makes them retry for fifteen minutes instead.
+ */
+export function waitPhrase(seconds: number): string {
+  if (seconds < 90) return `${Math.max(1, Math.round(seconds))} second${seconds < 1.5 ? "" : "s"}`;
+  const minutes = Math.round(seconds / 60);
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+}
+
 /** "adapter name is taken" -> "Adapter name is taken." A sentence, not a log line. */
 function asSentence(message: string): string {
   const trimmed = message.trim();
@@ -58,7 +69,7 @@ export function humanMessage(cause: unknown, fallback: string): string {
     const wait = retryAfter(cause.details);
     return wait === null
       ? REPLACED.RATE_LIMITED
-      : `Too many attempts. Try again in ${wait} second${wait === 1 ? "" : "s"}.`;
+      : `Too many attempts. Try again in ${waitPhrase(wait)}.`;
   }
   if (cause.code in REPLACED) {
     // SAFETY: the `in` check above proved `cause.code` names one of REPLACED's own properties.

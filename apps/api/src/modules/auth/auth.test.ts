@@ -24,6 +24,17 @@ import { LOCKOUT_ATTEMPTS, LOCKOUT_MS, SESSION_IDLE_MS } from "./auth.service.ts
 import type { AuthService } from "./auth.service.ts";
 
 const HOUR = 60 * 60 * 1000;
+
+/**
+ * The service, wrapped so its first answer is the refusal a locked account gives and every answer
+ * after it is the real one. Lives out here because a test may carry no branch of its own.
+ */
+function refusesOnce(auth: AuthService): AuthService {
+  const answers: AuthService["login"][] = [
+    () => Promise.reject(new AppError("RATE_LIMITED", "locked", { retry_after: 900 })),
+  ];
+  return { ...auth, login: (input, meta) => (answers.pop() ?? auth.login)(input, meta) };
+}
 const WRONG = "wrong-password-123";
 
 const login = (
@@ -126,6 +137,33 @@ describe("failed logins are limited per address", () => {
    * `projects.test.ts` drives `requireProjectInScope`. `trustProxy` is on so each request can
    * claim its own address through `X-Forwarded-For`.
    */
+  const appWith = (service: AuthService, now: () => Date, perMinute: number): Hono => {
+    const handlers = createAuthHandlers(service, {
+      env: "test",
+      basePath: "/",
+      secureCookies: false,
+      trustProxy: true,
+      now,
+      settings: {
+        get: () =>
+          Promise.resolve({
+            ...SETTINGS_MOCK,
+            limits: { ...SETTINGS_MOCK.limits, failed_logins_per_minute: perMinute },
+          }),
+      },
+    });
+    const app = new Hono();
+    app.use("*", async (c, next) => {
+      c.set("event", new WideEvent("request", () => undefined));
+      await next();
+    });
+    app.post("/auth/login", handlers.login);
+    app.onError((cause, c) =>
+      c.json({ code: cause instanceof AppError ? cause.code : "OTHER" }, 500)
+    );
+    return app;
+  };
+
   const appFor = async (
     perMinute: number
   ): Promise<{ app: Hono; advance: (ms: number) => void }> => {
@@ -162,6 +200,22 @@ describe("failed logins are limited per address", () => {
       headers: { "content-type": "application/json", "x-forwarded-for": ip },
       body: JSON.stringify({ username: "admin", password }),
     });
+
+  it("a refusal that is already a rate limit does not spend the address budget", async () => {
+    // Being locked out must not lock you out twice. Every attempt against a locked account comes
+    // back RATE_LIMITED, and charging the address for each of those would trip the per-address cap
+    // on top of the per-account one, for one person doing one thing.
+    //
+    // The budget is one, and the first attempt is refused the way a locked account refuses. If
+    // that refusal were counted, the budget would be gone and the correct password below would
+    // never reach the service.
+    const { auth, now } = await createAccounts();
+    const app = appWith(refusesOnce(auth), now, 1);
+    expect(await (await attempt(app, "10.0.0.9", WRONG)).json()).toMatchObject({
+      code: "RATE_LIMITED",
+    });
+    expect((await attempt(app, "10.0.0.9", ADMIN_PASSWORD)).status).toBe(200);
+  });
 
   it("refuses a sixth guess from one address and tells it how long to wait", async () => {
     const { app } = await appFor(5);
