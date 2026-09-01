@@ -1,60 +1,14 @@
 import type { ImportReport, ImportRun, JsonObject, Mapping, TableSchema } from "@testate/shared";
 
-import { IMPORT_MODE_LABEL, IMPORT_VALUE_TRANSFORM_LABEL } from "@/lib/labels.ts";
+import { IMPORT_MODE_LABEL } from "@/lib/labels.ts";
 
-export const TRANSFORMS = ["", "trim", "emptyToNull", "number", "uuid", "now", "json"] as const;
-export type Transform = (typeof TRANSFORMS)[number];
-export type ColumnDraft = { target: string; source: string; transform: Transform };
 export type Source =
   | { kind: "upload"; upload_id: string }
   | { kind: "storage"; adapter_id: string; path: string }
   | { kind: "rejected"; run_id: string };
 
-export type MappingDraft = {
-  name: string;
-  table: string;
-  columns: ColumnDraft[];
-  mode: Mapping["mode"];
-  key_columns: string;
-  sheet: string;
-};
-
 export function tableKey(table: Pick<TableSchema, "schema" | "name">): string {
   return table.schema === null ? table.name : `${table.schema}.${table.name}`;
-}
-
-/** Matches file columns to table columns by name, case-insensitive; generated columns are left out (story 52). */
-export function guessColumns(fileColumns: string[], table: TableSchema): ColumnDraft[] {
-  const byName = new Map(fileColumns.map((name) => [name.toLowerCase(), name]));
-  return table.columns
-    .filter((column) => !column.generated && !column.identity)
-    .map((column) => ({
-      target: column.name,
-      source: byName.get(column.name.toLowerCase()) ?? "",
-      transform: "",
-    }));
-}
-
-/** A saved mapping back into the form so it can be reused as is (story 54). */
-export function draftFromMapping(mapping: Mapping): MappingDraft {
-  return {
-    name: mapping.name,
-    table: mapping.target,
-    columns: mapping.columns.map((column) => ({
-      target: column.target,
-      source: column.source ?? "",
-      transform:
-        column.transforms[0]?.kind === undefined ? "" : toTransform(column.transforms[0].kind),
-    })),
-    mode: mapping.mode,
-    key_columns: mapping.key_columns.join(", "),
-    sheet: mapping.options.sheet ?? "",
-  };
-}
-
-function toTransform(kind: string): Transform {
-  const found = TRANSFORMS.find((transform) => transform === kind);
-  return found ?? "";
 }
 
 export function sourceBody(source: Source): JsonObject {
@@ -63,33 +17,14 @@ export function sourceBody(source: Source): JsonObject {
   return { rejected_of_run_id: source.run_id };
 }
 
-export function mappingBody(draft: MappingDraft): JsonObject {
-  // A cleared name never blocks a run: it falls back to the same default she saw in the field.
-  const name = draft.name.trim() === "" ? defaultMappingName(draft.table) : draft.name.trim();
-  const body: JsonObject = {
-    name,
-    target: draft.table,
-    columns: draft.columns.map((column) => ({
-      source: column.source === "" ? null : column.source,
-      target: column.target,
-      transforms: column.transform === "" ? [] : [{ kind: column.transform }],
-    })),
-    key_columns: draft.key_columns
-      .split(",")
-      .map((name) => name.trim())
-      .filter((name) => name !== ""),
-    mode: draft.mode,
-  };
-  if (draft.sheet !== "") body["options"] = { sheet: draft.sheet };
-  return body;
-}
-
 /** The run body; a real run stashes first so a bad file stays reversible (story 57). */
+export type RunOptions = { mode: Mapping["mode"]; sheet: string };
+
 export function runBody(
   adapterId: string,
   mappingId: string,
   source: Source,
-  draft: MappingDraft,
+  draft: RunOptions,
   dryRun: boolean
 ): JsonObject {
   const body: JsonObject = {
@@ -106,16 +41,6 @@ export function runBody(
 
 // --- Plain-English copy. The wire values above are the API contract and never change; these are
 // only what a person reads for them, so the codes above never have to reach a screen unexplained. ---
-
-export const TRANSFORM_OPTIONS: ReadonlyArray<{ value: Transform; label: string }> = [
-  { value: "", label: "Leave as is" },
-  { value: "trim", label: IMPORT_VALUE_TRANSFORM_LABEL.trim },
-  { value: "emptyToNull", label: IMPORT_VALUE_TRANSFORM_LABEL.emptyToNull },
-  { value: "number", label: IMPORT_VALUE_TRANSFORM_LABEL.number },
-  { value: "uuid", label: IMPORT_VALUE_TRANSFORM_LABEL.uuid },
-  { value: "now", label: IMPORT_VALUE_TRANSFORM_LABEL.now },
-  { value: "json", label: IMPORT_VALUE_TRANSFORM_LABEL.json },
-];
 
 export const MODE_OPTIONS: ReadonlyArray<{
   value: Mapping["mode"];
@@ -159,8 +84,11 @@ export function defaultMappingName(table: string): string {
   return dot === -1 ? table : table.slice(dot + 1);
 }
 
-/** Why the primary action is disabled, next to itself; null once she can press it. */
-export function blockedReason(draft: MappingDraft, hasPreview: boolean): string | null {
+/** Why the primary action is disabled, next to itself; null once it can be pressed. */
+export function blockedReason(
+  draft: { table: string; mode: Mapping["mode"]; key_columns: string },
+  hasPreview: boolean
+): string | null {
   if (!hasPreview) return "Load a file first.";
   if (draft.table === "") return "Choose a table to import into.";
   if (draft.mode === "upsert" && draft.key_columns.trim() === "") {
@@ -199,19 +127,4 @@ export function reportSummary(counts: ReportCounts, dryRun: boolean): string {
   }
   if (counts.rejected === 0) return `Imported ${plural(counts.ready, "row")}.`;
   return `Imported ${plural(counts.ready, "row")}. ${plural(counts.rejected, "row")} ${verb(counts.rejected, "was", "were")} rejected.`;
-}
-
-/** The write button says what it will write. "Import 1 rows" is not something a person wrote. */
-export function commitButtonLabel(ready: number): string {
-  return `Import ${plural(ready, "row")}`;
-}
-
-/** The commit question beside the button that actually writes data: a fact, not a second blind press. */
-export function commitPrompt(counts: ReportCounts): string {
-  if (counts.ready === 0) return "Every row will be rejected. Fix the file and try again.";
-  if (counts.rejected === 0) {
-    const subject = counts.ready === 1 ? "it" : "them";
-    return `All ${plural(counts.ready, "row")} ${verb(counts.ready, "is", "are")} ready. Import ${subject}?`;
-  }
-  return `${plural(counts.rejected, "row")} will be rejected. Import the other ${counts.ready.toLocaleString("en-GB")}?`;
 }

@@ -167,7 +167,7 @@ export function createImportPresenter(
     }
     const job = await importsModel.run(
       slug(),
-      runBody(adapterId(), id, staticSource, { ...staticDraft, name: "", columns: [] }, dryRun)
+      runBody(adapterId(), id, staticSource, staticDraft, dryRun)
     );
     await new Promise<void>((resolve) => {
       followJob(job, () => resolve());

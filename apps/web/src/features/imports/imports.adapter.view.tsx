@@ -139,7 +139,7 @@ export default function AdapterImportsView(props: { slug: string; id: string }):
       .map((table) => ({ value: tableKey(table), label: tableKey(table) })),
   ];
   const blocked = (): string | null =>
-    blockedReason({ ...presenter.draft(), name: "", columns: [] }, presenter.preview() !== null);
+    blockedReason(presenter.draft(), presenter.preview() !== null);
   return (
     <section class="grid gap-4">
       <AdapterCrumb slug={props.slug} id={props.id} />
