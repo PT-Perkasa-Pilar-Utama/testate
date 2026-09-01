@@ -190,7 +190,7 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
       open={props.presenter.plan() !== null}
       onClose={() => props.presenter.closeDelete()}
       title={`Delete ${props.slug}`}
-      description="This cannot be undone. Read what goes with the project, then type its slug."
+      description="This cannot be undone. Read what goes, then type the project's slug."
       size="lg"
     >
       <Show when={props.presenter.plan()}>
@@ -200,11 +200,24 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
             class="grid gap-4"
             onSubmit={(input) => props.presenter.confirmDelete(input.confirm_slug)}
           >
+            {/* Three questions this used to leave open: where the archive is, what "the plan
+                expires" means, and whether anything survives. All three now answered here. */}
             <Banner variant="alert">
-              Every writable database below returns to its init state. That restore is not stashed:
-              anything the databases hold now, and every state that could bring it back, is gone.
-              Download the archive of a state you still want before you delete. The plan expires at{" "}
-              {formatWhen(plan().expires_at)}.
+              <div class="grid gap-2">
+                <p>
+                  Each database below is put back to its starting point. Whatever it holds right now
+                  is overwritten, and nothing is saved first.
+                </p>
+                <p>
+                  The project is then deleted for good, along with its databases, states, restores,
+                  comparisons and imports. Tokens that could only reach this project stop working.
+                  The audit log keeps its record of what happened.
+                </p>
+                <p>
+                  To keep a state, download it before you start: open the States tab, then the
+                  state's actions menu, then Download.
+                </p>
+              </div>
             </Banner>
             <AffectedList affected={plan().affected} />
             <Table>
@@ -258,6 +271,13 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
             <Show when={props.presenter.deleteError()}>
               {(message) => <Banner variant="error">{message()}</Banner>}
             </Show>
+            {/* The plan is a 15-minute reservation, and submitting after it lapses answers "the
+                deletion plan is stale". Said as what to do about it rather than as a timestamp,
+                which was the part nobody could read anything into. */}
+            <p class="text-xs text-muted">
+              This list is good until {formatWhen(plan().expires_at)}. After that, close and reopen
+              this dialog so it can check the project again.
+            </p>
             <div class="flex justify-end gap-2">
               <Button type="button" variant="ghost" onClick={() => props.presenter.closeDelete()}>
                 Cancel
@@ -267,7 +287,7 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
                 variant="destructive"
                 disabled={getInput(form, { path: ["confirm_slug"] }) !== props.slug}
               >
-                Return to init and delete
+                Restore and delete
               </Button>
             </div>
           </Form>
