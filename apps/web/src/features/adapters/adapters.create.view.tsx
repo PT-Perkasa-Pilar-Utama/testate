@@ -1,6 +1,6 @@
-import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
+import { Field, Form, createForm, getInput, reset, setInput } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import { For, Loading, Show, createEffect } from "solid-js";
+import { For, Loading, Show, createEffect, createSignal } from "solid-js";
 import type { AdapterCreateFormInput, Engine } from "@testate/shared";
 import { adapterCreateFormSchema } from "@testate/shared";
 
@@ -11,9 +11,10 @@ import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
-import { ADAPTER_MODE_OPTIONS } from "@/lib/labels.ts";
+import { ADAPTER_MODE_OPTIONS, ENGINE_OPTIONS } from "@/lib/labels.ts";
 import { onceSettled } from "@/lib/form.ts";
-import { ENGINE_FORMS, ENGINE_OPTIONS } from "./adapters.fields.ts";
+import { ENGINE_FORMS } from "./adapters.fields.ts";
+import { parseConnectionUrl, urlPatch } from "./adapters.url.ts";
 import type { Field as EngineField } from "./adapters.fields.ts";
 import { describeOutcome, outcomeWarnings } from "./adapters.presenter.ts";
 import type { AdaptersPresenter } from "./adapters.presenter.ts";
@@ -68,13 +69,28 @@ export function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Eleme
   });
   const engine = (): Engine => getInput(form, { path: ["engine"] }) ?? "postgres";
   const engineForm = () => ENGINE_FORMS[engine()];
+  const [url, setUrl] = createSignal("");
+
+  // Paste the string from the .env file and the form fills itself, engine included. Half a URL
+  // parses to nothing, so typing one out by hand disturbs nothing until it is whole.
+  const applyUrl = (text: string): void => {
+    setUrl(text);
+    const parsed = parseConnectionUrl(text);
+    if (parsed === null) return;
+    setInput(form, { path: ["engine"], input: parsed.engine });
+    for (const [key, value] of Object.entries(urlPatch(parsed))) {
+      props.presenter.setValue(key, value);
+    }
+  };
 
   // The dialog stays mounted (design-system rule); start every open on a blank form rather than
   // whatever the last attempt left behind.
   createEffect(
     () => props.presenter.creating(),
     (opening) => {
-      if (opening) onceSettled(() => reset(form));
+      if (!opening) return;
+      setUrl("");
+      onceSettled(() => reset(form));
     }
   );
   // A test outcome describes one engine's connectivity; switching engines makes it stale.
@@ -105,6 +121,17 @@ export function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Eleme
       size="lg"
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.create(input)}>
+        <label class="grid content-start gap-1.5 text-base">
+          <FieldLabel required={false}>Connection URL</FieldLabel>
+          <Input
+            type="text"
+            autocomplete="off"
+            spellcheck={false}
+            placeholder="postgresql://user:password@host:5432/database"
+            value={url()}
+            onInput={(event) => applyUrl(event.currentTarget.value)}
+          />
+        </label>
         <div class="grid gap-3 sm:grid-cols-2">
           <Field of={form} path={["engine"]}>
             {(field) => (

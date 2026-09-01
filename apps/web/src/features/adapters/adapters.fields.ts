@@ -94,15 +94,6 @@ export const ENGINE_FORMS = {
   },
 } as const satisfies Record<Engine, EngineForm>;
 
-/**
- * The engine, and what kind of thing it is. The name alone does not say whether you are connecting
- * a database or a place files live, and that is the first thing the rest of the form depends on.
- */
-export const ENGINE_OPTIONS = ENGINES.map((value) => ({
-  value,
-  label: `${ENGINE_LABEL[value]} · ${ENGINE_FORMS[value].label}`,
-}));
-
 // Neither type is exported from the shared package (labels.ts derives AdapterStatus the same way);
 // the picklist values are the only shape the filter panel needs.
 export type AdapterStatus = (typeof ADAPTER_STATUSES)[number];
