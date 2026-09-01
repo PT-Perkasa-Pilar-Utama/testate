@@ -1,708 +1,419 @@
-<title>Testate</title>
-<meta name="description" content="Git for your test database. Snapshot the databases behind a system under test, restore them on demand, and see what changed." />
-<style>
-  /* Anthropic design system. Two colours, one accentless palette: every element is either the
-     near-black or the warm off-white. Depth is opacity and a whisper of shadow, never a new hue. */
-  :root {
-    --primary: #141413;
-    --on-primary: #ffffff;
-    --background: #faf9f5;
-    --surface: #141413;
-    --on-surface: #faf9f5;
-    --border: #141413;
-    --text: #141413;
-    --rule: rgba(20, 20, 19, 0.14);
-    --rule-strong: rgba(20, 20, 19, 0.28);
-    --quiet: rgba(20, 20, 19, 0.62);
-    --shadow-card: rgba(0, 0, 0, 0.01) 0 2px 2px 0, rgba(0, 0, 0, 0.02) 0 4px 4px 0,
-      rgba(0, 0, 0, 0.04) 0 16px 24px 0;
-
-    --sans: "Anthropic Sans", Arial, Helvetica, sans-serif;
-    --mono: "Anthropic Mono", "SF Mono", Menlo, Consolas, monospace;
-
-    --step-display: 58px;
-    --step-lead: 22px;
-    --step-mono: 16px;
-    --step-body: 12px;
-
-    --s-1: 2px;
-    --s-2: 4px;
-    --s-3: 8px;
-    --s-4: 12px;
-    --s-5: 16px;
-    --s-6: 22px;
-    --s-7: 58px;
-    --s-8: 68px;
-
-    --r-sm: 8px;
-    --r-md: 16px;
-    --r-lg: 24px;
-
-    --fast: 100ms;
-    --base: 200ms;
-    --ease: cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  /* The same two colours, swapped. Nothing new enters the palette in the dark. */
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --background: #141413;
-      --surface: #faf9f5;
-      --on-surface: #141413;
-      --primary: #faf9f5;
-      --on-primary: #141413;
-      --border: #faf9f5;
-      --text: #faf9f5;
-      --rule: rgba(250, 249, 245, 0.16);
-      --rule-strong: rgba(250, 249, 245, 0.32);
-      --quiet: rgba(250, 249, 245, 0.66);
-      --shadow-card: none;
-    }
-  }
-
-  :root[data-theme="dark"] {
-    --background: #141413;
-    --surface: #faf9f5;
-    --on-surface: #141413;
-    --primary: #faf9f5;
-    --on-primary: #141413;
-    --border: #faf9f5;
-    --text: #faf9f5;
-    --rule: rgba(250, 249, 245, 0.16);
-    --rule-strong: rgba(250, 249, 245, 0.32);
-    --quiet: rgba(250, 249, 245, 0.66);
-    --shadow-card: none;
-  }
-
-  * {
-    box-sizing: border-box;
-  }
-
-  body {
-    margin: 0;
-    background: var(--background);
-    color: var(--text);
-    font-family: var(--sans);
-    font-size: var(--step-body);
-    line-height: 1.4;
-    letter-spacing: -0.24px;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  .wrap {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 0 var(--s-6);
-  }
-
-  /* One rule between every band, so the page reads as a stack of statements. */
-  .band {
-    border-top: 1px solid var(--rule);
-    padding: var(--s-7) 0;
-  }
-
-  .band:first-of-type {
-    border-top: 0;
-  }
-
-  h1,
-  h2,
-  h3 {
-    margin: 0;
-    font-weight: 700;
-    line-height: 1.1;
-    letter-spacing: -0.02em;
-    text-wrap: balance;
-  }
-
-  h1 {
-    font-size: clamp(34px, 7vw, var(--step-display));
-  }
-
-  h2 {
-    font-size: clamp(26px, 4.4vw, 38px);
-  }
-
-  h3 {
-    font-size: var(--step-mono);
-    letter-spacing: -0.01em;
-  }
-
-  p {
-    margin: 0;
-    max-width: 62ch;
-  }
-
-  a {
-    color: inherit;
-  }
-
-  .eyebrow {
-    font-family: var(--mono);
-    font-size: 11px;
-    line-height: 1.4;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
-    color: var(--quiet);
-  }
-
-  .lead {
-    font-size: var(--step-lead);
-    line-height: 1.35;
-    letter-spacing: -0.01em;
-    max-width: 46ch;
-  }
-
-  /* Masthead */
-  .masthead {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--s-5);
-    padding: var(--s-6) 0;
-  }
-
-  .wordmark {
-    font-size: var(--step-mono);
-    font-weight: 700;
-    letter-spacing: -0.02em;
-  }
-
-  .masthead nav {
-    display: flex;
-    gap: var(--s-5);
-    align-items: center;
-  }
-
-  .masthead nav a {
-    text-decoration: none;
-    color: var(--quiet);
-    padding: var(--s-4) var(--s-1);
-    transition: color var(--fast) var(--ease);
-  }
-
-  .masthead nav a:hover {
-    color: var(--text);
-  }
-
-  /* Hero */
-  .hero {
-    padding: var(--s-8) 0 var(--s-7);
-    display: grid;
-    gap: var(--s-6);
-  }
-
-  .hero h1 {
-    max-width: 16ch;
-  }
-
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--s-4);
-    align-items: center;
-    margin-top: var(--s-2);
-  }
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding: 0 var(--s-6);
-    border-radius: var(--r-sm);
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--on-surface);
-    font: inherit;
-    font-weight: 700;
-    text-decoration: none;
-    box-shadow: var(--shadow-card);
-    transition:
-      opacity var(--fast) var(--ease),
-      transform var(--fast) var(--ease);
-  }
-
-  .btn:hover {
-    opacity: 0.86;
-  }
-
-  .btn:active {
-    transform: translateY(1px);
-  }
-
-  .btn.ghost {
-    background: transparent;
-    color: var(--text);
-    box-shadow: none;
-  }
-
-  :where(a, button, summary):focus-visible {
-    outline: 2px solid var(--primary);
-    outline-offset: 2px;
-    border-radius: var(--s-2);
-  }
-
-  /* Terminal, the one place the product speaks in its own voice */
-  .terminal {
-    border: 1px solid var(--border);
-    border-radius: var(--r-md);
-    background: var(--surface);
-    color: var(--on-surface);
-    font-family: var(--mono);
-    font-size: 13px;
-    line-height: 1.55;
-    letter-spacing: 0;
-    padding: var(--s-6);
-    overflow-x: auto;
-    box-shadow: var(--shadow-card);
-  }
-
-  .terminal .prompt::before {
-    content: "$ ";
-    opacity: 0.5;
-  }
-
-  .terminal .out {
-    opacity: 0.62;
-  }
-
-  .terminal .cont {
-    padding-left: var(--s-6);
-  }
-
-  /* Capability grid */
-  .grid {
-    display: grid;
-    gap: var(--s-6);
-    margin-top: var(--s-6);
-  }
-
-  .card {
-    border: 1px solid var(--rule);
-    border-radius: var(--r-md);
-    padding: var(--s-6);
-    display: grid;
-    gap: var(--s-3);
-    align-content: start;
-    background: transparent;
-    transition: border-color var(--base) var(--ease);
-  }
-
-  .card:hover {
-    border-color: var(--rule-strong);
-  }
-
-  .card p {
-    color: var(--quiet);
-  }
-
-  /* Tables: tiers and limits are genuinely tabular, so they are tables */
-  .scroll {
-    overflow-x: auto;
-    margin-top: var(--s-6);
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-variant-numeric: tabular-nums;
-  }
-
-  caption {
-    text-align: left;
-    padding-bottom: var(--s-4);
-    color: var(--quiet);
-  }
-
-  th,
-  td {
-    text-align: left;
-    padding: var(--s-4) var(--s-5) var(--s-4) 0;
-    border-bottom: 1px solid var(--rule);
-    vertical-align: top;
-  }
-
-  thead th {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
-    color: var(--quiet);
-    font-weight: 400;
-    white-space: nowrap;
-  }
-
-  tbody th {
-    font-weight: 700;
-    white-space: nowrap;
-  }
-
-  td.num {
-    font-family: var(--mono);
-    white-space: nowrap;
-  }
-
-  /* Numbered only because the setup genuinely is a sequence */
-  ol.steps {
-    list-style: none;
-    counter-reset: step;
-    margin: var(--s-6) 0 0;
-    padding: 0;
-    display: grid;
-    gap: var(--s-6);
-  }
-
-  ol.steps li {
-    counter-increment: step;
-    display: grid;
-    grid-template-columns: 22px 1fr;
-    gap: var(--s-5);
-    align-items: start;
-  }
-
-  ol.steps li::before {
-    content: counter(step);
-    font-family: var(--mono);
-    font-size: 11px;
-    line-height: 22px;
-    text-align: center;
-    color: var(--quiet);
-    border: 1px solid var(--rule);
-    border-radius: 999px;
-    height: 22px;
-  }
-
-  .limits li {
-    margin-bottom: var(--s-4);
-    color: var(--quiet);
-    max-width: 62ch;
-  }
-
-  .limits strong {
-    color: var(--text);
-  }
-
-  code {
-    font-family: var(--mono);
-    font-size: 0.95em;
-    letter-spacing: 0;
-  }
-
-  footer {
-    border-top: 1px solid var(--rule);
-    padding: var(--s-7) 0 var(--s-8);
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--s-5);
-    justify-content: space-between;
-    color: var(--quiet);
-  }
-
-  footer a {
-    color: var(--quiet);
-    text-decoration: none;
-    transition: color var(--fast) var(--ease);
-  }
-
-  footer a:hover {
-    color: var(--text);
-  }
-
-  .stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--s-7);
-    margin-top: var(--s-6);
-  }
-
-  .stat {
-    display: grid;
-    gap: var(--s-2);
-  }
-
-  .stat .n {
-    font-family: var(--mono);
-    font-size: 28px;
-    line-height: 1.1;
-    letter-spacing: -0.01em;
-  }
-
-  .stat .l {
-    color: var(--quiet);
-  }
-
-  @media (min-width: 768px) {
-    .wrap {
-      padding: 0 var(--s-7);
-    }
-    .hero {
-      grid-template-columns: 1.05fr 1fr;
-      align-items: center;
-      gap: var(--s-7);
-    }
-    .hero .copy {
-      display: grid;
-      gap: var(--s-6);
-    }
-    .grid.three {
-      grid-template-columns: repeat(3, 1fr);
-    }
-    .grid.two {
-      grid-template-columns: repeat(2, 1fr);
-    }
-    .split {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--s-7);
-      align-items: start;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    * {
-      transition-duration: 1ms !important;
-      animation-duration: 1ms !important;
-    }
-  }
-</style>
-
-<div class="wrap">
-  <header class="masthead">
-    <span class="wordmark">Testate</span>
-    <nav>
-      <a href="#what">What it does</a>
-      <a href="#start">Start</a>
-      <a href="#agents">Agents</a>
-      <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate">GitHub</a>
-    </nav>
-  </header>
-
-  <section class="hero">
-    <div class="copy">
-      <p class="eyebrow">Self-hosted, version 1.1.0-alpha</p>
-      <h1>Git for your test database.</h1>
-      <p class="lead">
-        Snapshot the databases behind a system under test. Break them. Put them back in seconds, and
-        see exactly what changed.
-      </p>
-      <div class="actions">
-        <a class="btn" href="#start">Get started</a>
-        <a class="btn ghost" href="https://github.com/PT-Perkasa-Pilar-Utama/testate">Read the source</a>
-      </div>
-    </div>
-    <div class="terminal" aria-label="Example session">
-      <div class="prompt">testate checkout seeded-baseline</div>
-      <div class="out">shop-postgres&nbsp;&nbsp;restored&nbsp;&nbsp;11 tables&nbsp;&nbsp;1.2s</div>
-      <div class="out">shop-mysql&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;restored&nbsp;&nbsp;&nbsp;3 tables&nbsp;&nbsp;0.4s</div>
-      <div class="out">shop-mongo&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;restored&nbsp;&nbsp;&nbsp;2 tables&nbsp;&nbsp;0.3s</div>
-      <div class="out">&nbsp;</div>
-      <div class="out">the database is where the test left it</div>
-    </div>
-  </section>
-
-  <section class="band" id="what">
-    <p class="eyebrow">What it does</p>
-    <h2>A reset you can trust, and a record of what moved.</h2>
-    <div class="grid three">
-      <div class="card">
-        <h3>Snapshots</h3>
-        <p>
-          A state holds data, not schema. One snapshot covers every database in a project, taken at
-          one moment. A checkout restores the one you pick and reports what happened per database.
-        </p>
-      </div>
-      <div class="card">
-        <h3>Diffs</h3>
-        <p>
-          Compare two states, or a state against the live database. The summary says how many rows
-          moved. Drill into a table to see which ones, before and after.
-        </p>
-      </div>
-      <div class="card">
-        <h3>The grid</h3>
-        <p>
-          Filter, sort, page by keyset, follow a foreign key into the next table. Turn on write mode
-          and Testate stashes the table before your first edit.
-        </p>
-      </div>
-      <div class="card">
-        <h3>Fixtures</h3>
-        <p>
-          Upload a CSV or XLSX, map the columns, dry-run it, then import. Rejected rows come back as
-          a file you fix and re-import.
-        </p>
-      </div>
-      <div class="card">
-        <h3>SQL console</h3>
-        <p>
-          Read-only, with saved queries, so the check you run after every reset stays where you left
-          it instead of in someone's notes.
-        </p>
-      </div>
-      <div class="card">
-        <h3>Pipelines</h3>
-        <p>
-          Every screen sits on the REST API. One call resets a database before a test run, and the
-          contract is served as OpenAPI by the running instance.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <section class="band">
-    <p class="eyebrow">Engines</p>
-    <h2>Every one of these is real, not a stand-in.</h2>
-    <div class="scroll">
-      <table>
-        <caption>Each engine has a contract suite that runs against the actual server.</caption>
-        <thead>
-          <tr>
-            <th scope="col">Tier</th>
-            <th scope="col">Engines</th>
-            <th scope="col">What you get</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <th scope="row">Tabular</th>
-            <td>PostgreSQL, MySQL, MariaDB</td>
-            <td>view, snapshot, checkout, diff, extract, edit, import</td>
-          </tr>
-          <tr>
-            <th scope="row">Document</th>
-            <td>MongoDB</td>
-            <td>view, snapshot, checkout, diff, extract</td>
-          </tr>
-          <tr>
-            <th scope="row">Files</th>
-            <td>S3, SFTP, FTP</td>
-            <td>view, download</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="stats">
-      <div class="stat"><span class="n">340</span><span class="l">unit tests</span></div>
-      <div class="stat"><span class="n">142</span><span class="l">user stories covered end to end</span></div>
-      <div class="stat"><span class="n">1</span><span class="l">container, one volume</span></div>
-    </div>
-  </section>
-
-  <section class="band" id="start">
-    <div class="split">
-      <div>
-        <p class="eyebrow">Start</p>
-        <h2>Running in about a minute.</h2>
-        <ol class="steps">
-          <li>
-            <div>
-              <h3>Run the container</h3>
-              <p>One volume holds the snapshots, the metadata and the logs.</p>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Testate · Git for your test database</title>
+    <meta
+      name="description"
+      content="Snapshot the databases behind a system under test, break them, put them back in seconds, and see exactly what changed. Self-hosted, one container, MIT."
+    />
+    <meta name="theme-color" content="#05070a" />
+    <meta property="og:title" content="Testate · Git for your test database" />
+    <meta
+      property="og:description"
+      content="Snapshot the databases behind a system under test, break them, put them back in seconds."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://pt-perkasa-pilar-utama.github.io/testate/" />
+    <meta property="og:image" content="https://pt-perkasa-pilar-utama.github.io/testate/assets/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/svg+xml" href="assets/logo-mark.svg" />
+    <link rel="preload" href="assets/fonts/mona-sans.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="assets/fonts/mona-sans-mono.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="assets/site.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <a class="brand" href="#top" aria-label="Testate, home">
+        <svg viewBox="0 0 128 128" aria-hidden="true">
+          <g fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round">
+            <line x1="44" y1="104" x2="44" y2="30" />
+            <path d="M44 66 C44 48 84 60 84 42" />
+          </g>
+          <circle cx="44" cy="104" r="11" fill="currentColor" />
+          <circle cx="84" cy="42" r="11" fill="currentColor" />
+          <circle cx="44" cy="30" r="15" fill="#10b981" />
+          <circle cx="44" cy="30" r="6" fill="#05070a" />
+        </svg>
+        <span>Test<span class="ate">ate</span></span>
+      </a>
+      <nav aria-label="Sections">
+        <a href="#loop">Loop</a>
+        <a href="#does">What it does</a>
+        <a href="#engines">Engines</a>
+        <a href="#agents">Agents</a>
+        <a href="#start">Start</a>
+        <a class="gh" href="https://github.com/PT-Perkasa-Pilar-Utama/testate">GitHub</a>
+      </nav>
+    </header>
+
+    <ol class="rail" aria-label="Page sections">
+      <li><a href="#loop">Loop</a></li>
+      <li><a href="#does">Does</a></li>
+      <li><a href="#engines">Engines</a></li>
+      <li><a href="#agents">Agents</a></li>
+      <li><a href="#start">Start</a></li>
+      <li><a href="#not">Limits</a></li>
+    </ol>
+
+    <main id="top">
+      <section class="hero">
+        <div class="glow"></div>
+        <canvas id="scene" aria-hidden="true"></canvas>
+        <svg class="fallback" viewBox="0 0 128 128" aria-hidden="true">
+          <g fill="none" stroke="#7dd3c0" stroke-width="6" stroke-linecap="round">
+            <line x1="44" y1="104" x2="44" y2="30" />
+            <path d="M44 66 C44 48 84 60 84 42" />
+          </g>
+          <circle cx="44" cy="104" r="9" fill="#7dd3c0" />
+          <circle cx="84" cy="42" r="9" fill="#7dd3c0" />
+          <circle cx="44" cy="30" r="13" fill="#10b981" />
+        </svg>
+
+        <div class="wrap">
+          <div class="copy">
+            <p class="eyebrow fade">Self-hosted · v1.1.0-alpha · MIT</p>
+            <h1 aria-label="Git for your test database.">
+              <span class="w"><span style="animation-delay: 0ms">Git</span></span>
+              <span class="w"><span style="animation-delay: 60ms">for</span></span>
+              <span class="w"><span style="animation-delay: 120ms">your</span></span>
+              <span class="w"><span style="animation-delay: 180ms">test</span></span>
+              <span class="w"><span style="animation-delay: 240ms">database.</span></span>
+            </h1>
+            <p class="lead fade" style="animation-delay: 300ms">
+              Snapshot the databases behind a system under test.
+              <strong>Break them. Put them back in seconds,</strong> and see exactly what changed.
+            </p>
+            <div class="actions fade" style="animation-delay: 420ms">
+              <a class="btn" href="#start">Run it in a minute</a>
+              <a class="btn ghost" href="https://github.com/PT-Perkasa-Pilar-Utama/testate">Read the source</a>
             </div>
-          </li>
-          <li>
-            <div>
-              <h3>Sign in</h3>
+            <div class="hud fade" style="animation-delay: 600ms" aria-live="off">
+              <div class="ticks" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+              <div class="line"><b id="phase">loading</b><span id="detail">the scene</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="scroll-cue" aria-hidden="true"><i></i>scroll</div>
+      </section>
+
+      <section class="band" id="loop">
+        <div class="parallax num" data-speed="40" aria-hidden="true">01</div>
+        <div class="wrap">
+          <div class="head reveal">
+            <p class="eyebrow">The loop</p>
+            <h2>Take a state. Break it. Check it out.</h2>
+            <p>
+              A state is a data-only snapshot of every database in a project, taken at one moment.
+              A checkout puts the one you pick back and reports what happened per database.
+            </p>
+          </div>
+          <div class="loop">
+            <svg viewBox="0 0 1000 120" aria-hidden="true">
+              <path
+                class="stroke"
+                d="M40 60 H960"
+                pathLength="1"
+                fill="none"
+                stroke="rgba(238,242,245,0.18)"
+                stroke-width="2"
+              />
+              <path
+                class="stroke"
+                d="M500 60 C500 30 560 30 560 10"
+                pathLength="1"
+                fill="none"
+                stroke="#7dd3c0"
+                stroke-width="2"
+              />
+              <g class="dirt" fill="#f0b35a">
+                <rect x="420" y="80" width="6" height="10" rx="1" />
+                <rect x="452" y="84" width="6" height="14" rx="1" />
+                <rect x="480" y="78" width="6" height="8" rx="1" />
+                <rect x="520" y="82" width="6" height="16" rx="1" />
+                <rect x="548" y="80" width="6" height="12" rx="1" />
+                <rect x="582" y="84" width="6" height="9" rx="1" />
+              </g>
+              <circle class="node a" cx="120" cy="60" r="9" fill="#7dd3c0" />
+              <circle class="node b" cx="500" cy="60" r="9" fill="#7dd3c0" />
+              <circle class="node b" cx="560" cy="10" r="6" fill="#7dd3c0" />
+              <circle class="node c" cx="880" cy="60" r="13" fill="#10b981" />
+              <circle class="node c" cx="880" cy="60" r="5" fill="#05070a" />
+            </svg>
+            <div class="steps">
+              <div class="step reveal" style="--d: 100ms">
+                <span class="k">01 · take</span>
+                <h3>One snapshot, every database</h3>
+                <p>
+                  PostgreSQL, MySQL, MariaDB and MongoDB, captured together. It says who took it and what
+                  it cost in bytes. HEAD marks where you are.
+                </p>
+              </div>
+              <div class="step reveal" style="--d: 220ms">
+                <span class="k">02 · break</span>
+                <h3>Run the test. Dirty the data.</h3>
+                <p>
+                  Edit rows in the grid, load a fixture, or let the suite do its worst. Testate stashes
+                  before your first write, so even a hand edit is reversible.
+                </p>
+              </div>
+              <div class="step reveal" style="--d: 340ms">
+                <span class="k">03 · check out</span>
+                <h3>Back in seconds, with a diff</h3>
+                <p>
+                  One click or one API call restores the state and reports per database. Compare any two
+                  states and drill into the rows that moved.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="does">
+        <svg class="parallax mark" data-speed="90" viewBox="0 0 128 128" aria-hidden="true">
+          <g fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round">
+            <line x1="44" y1="100" x2="44" y2="30" />
+            <path d="M44 66 C44 48 84 60 84 42" />
+          </g>
+          <circle cx="44" cy="100" r="10" fill="currentColor" />
+          <circle cx="84" cy="42" r="10" fill="currentColor" />
+          <circle cx="44" cy="30" r="14" fill="currentColor" />
+        </svg>
+        <div class="wrap">
+          <div class="head reveal">
+            <p class="eyebrow">What it does</p>
+            <h2>A reset you can trust, and a record of what moved.</h2>
+          </div>
+          <div class="cards">
+            <div class="card reveal" style="--d: 0ms">
+              <span class="k">states</span>
+              <h3>Snapshots</h3>
               <p>
-                Open <code>localhost:7378</code> as <code>admin</code>. Testate makes you change the
-                password on the first login.
+                Data, not schema. A timeline per project with HEAD marked, protected init states, and a
+                quota so the volume never fills without warning.
               </p>
             </div>
-          </li>
-          <li>
-            <div>
-              <h3>Point it at a database</h3>
+            <div class="card reveal" style="--d: 80ms">
+              <span class="k">diffs</span>
+              <h3>Row-level diffs</h3>
               <p>
-                Add an adapter, take a snapshot, break something, and put it back. Where to aim the
-                host is the one thing that catches people out.
+                Two states, or a state against the live database. The summary counts what moved; a
+                table opens to the rows, before and after, and a changed cell opens its value.
               </p>
             </div>
-          </li>
-        </ol>
-      </div>
-      <div class="terminal" aria-label="Install command">
-        <div class="prompt">docker run -d --name testate \</div>
-        <div class="cont">-p 7378:7378 -v testate-data:/data \</div>
-        <div class="cont">-e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \</div>
-        <div class="cont">-e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \</div>
-        <div class="cont">ghcr.io/pt-perkasa-pilar-utama/testate:1.1.0-alpha</div>
-        <div class="out">&nbsp;</div>
-        <div class="prompt">curl -s -o /dev/null -w '%{http_code}\n' \</div>
-        <div class="cont">localhost:7378/api/v1/health/live</div>
-        <div class="out">204</div>
-      </div>
-    </div>
-  </section>
+            <div class="card reveal" style="--d: 160ms">
+              <span class="k">grid</span>
+              <h3>The grid</h3>
+              <p>
+                Filter, sort, page by keyset, follow a foreign key into the next table. Turn on write mode
+                and edit with the types the column really has.
+              </p>
+            </div>
+            <div class="card reveal" style="--d: 240ms">
+              <span class="k">imports</span>
+              <h3>Fixtures</h3>
+              <p>
+                Upload a CSV or XLSX, map the columns, dry-run it, then import. Rejected rows come back as
+                a file you fix and send again.
+              </p>
+            </div>
+            <div class="card reveal" style="--d: 320ms">
+              <span class="k">query</span>
+              <h3>Read-only console</h3>
+              <p>
+                Saved queries, so the check you run after every reset stays where you left it instead of in
+                someone's notes.
+              </p>
+            </div>
+            <div class="card reveal" style="--d: 400ms">
+              <span class="k">api</span>
+              <h3>Pipelines</h3>
+              <p>
+                Every screen sits on the REST API. One call resets a database before a test run, and the
+                running instance serves its own OpenAPI contract.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
-  <section class="band" id="agents">
-    <div class="split">
-      <div>
-        <p class="eyebrow">Agents</p>
-        <h2>An agent can look, and only look.</h2>
-        <p>
-          Testate speaks MCP. Point Claude or any MCP client at the endpoint with an agent token and
-          it reads schemas, pages rows, runs read-only queries and extracts fixtures. There is no
-          write tool to call, queries run inside a read-only transaction, and column policies mask
-          values before the agent sees them.
-        </p>
-        <p style="margin-top: var(--s-5)">
-          It does not have to be taught how. The first tool it sees is <code>help</code>, and the
-          first resource is the same guide: how the pieces relate, the order to call things in, and
-          the limits that refuse a call.
-        </p>
-      </div>
-      <div class="scroll">
-        <table>
-          <caption>Caps are lower than the dashboard's, because an agent loops.</caption>
-          <thead>
-            <tr>
-              <th scope="col">Limit</th>
-              <th scope="col">Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><th scope="row">Rows per page, default</th><td class="num">200</td></tr>
-            <tr><th scope="row">Rows per page, maximum</th><td class="num">1000</td></tr>
-            <tr><th scope="row">Bytes per reply</th><td class="num">1 MiB</td></tr>
-            <tr><th scope="row">Seconds per query</th><td class="num">15</td></tr>
-            <tr><th scope="row">Foreign-key hops</th><td class="num">3</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
+      <section class="band" id="engines">
+        <div class="parallax num" data-speed="40" aria-hidden="true">03</div>
+        <div class="wrap">
+          <div class="head reveal">
+            <p class="eyebrow">Engines</p>
+            <h2>Every one of these is real, not a stand-in.</h2>
+            <p>Each engine has a contract suite that runs against the actual server.</p>
+          </div>
+          <div class="tiers">
+            <div class="tier reveal" style="--d: 0ms">
+              <div class="name"><h3>Tabular</h3><span class="k">tier 3</span></div>
+              <div class="engines"><span>PostgreSQL</span><span>MySQL</span><span>MariaDB</span></div>
+              <div class="ops">view · snapshot · checkout · diff<br />extract · edit · import</div>
+            </div>
+            <div class="tier reveal" style="--d: 100ms">
+              <div class="name"><h3>Document</h3><span class="k">tier 2</span></div>
+              <div class="engines"><span>MongoDB</span></div>
+              <div class="ops">view · snapshot · checkout · diff<br />extract</div>
+            </div>
+            <div class="tier reveal" style="--d: 200ms">
+              <div class="name"><h3>Files</h3><span class="k">tier 1</span></div>
+              <div class="engines"><span>S3</span><span>SFTP</span><span>FTP</span></div>
+              <div class="ops">view · download</div>
+            </div>
+          </div>
+          <div class="stats">
+            <div class="stat reveal" style="--d: 0ms">
+              <span class="n">145<b>/145</b></span>
+              <span class="l">user stories exercised end to end in a browser</span>
+            </div>
+            <div class="stat reveal" style="--d: 100ms">
+              <span class="n">1</span>
+              <span class="l">image, one volume, amd64 and arm64</span>
+            </div>
+            <div class="stat reveal" style="--d: 200ms">
+              <span class="n">0</span>
+              <span class="l">bytes leave your network</span>
+            </div>
+          </div>
+        </div>
+      </section>
 
-  <section class="band">
-    <p class="eyebrow">Before you install it</p>
-    <h2>What it does not do.</h2>
-    <ul class="limits">
-      <li>
-        <strong>Databases go one at a time.</strong> Even inside one project, Testate snapshots and
-        restores them in sequence. Each is correct alone; the set is not guaranteed to line up. Keep
-        the app idle while it runs.
-      </li>
-      <li>
-        <strong>It only resets what you add.</strong> An untracked database survives a reset, and
-        Testate cannot warn you, because it has never heard of it.
-      </li>
-      <li>
-        <strong>Microservices are untested.</strong> Every limit above compounds. Stay inside one
-        service and add the rest as read-only adapters.
-      </li>
-      <li>
-        <strong>It needs a real connection.</strong> Firebase, Firestore and DynamoDB hand you an
-        SDK rather than a connection, so they cannot be added. Supabase, Neon, RDS and Cloud SQL
-        work.
-      </li>
-    </ul>
-  </section>
+      <section class="band" id="agents">
+        <div class="parallax num" data-speed="40" aria-hidden="true">04</div>
+        <div class="wrap">
+          <div class="split">
+            <div class="text reveal">
+              <p class="eyebrow">Agents</p>
+              <h2>An agent can look. Only a tester token can touch.</h2>
+              <p>
+                Testate speaks MCP. Point Claude or any MCP client at the endpoint with an agent token and
+                it reads schemas, pages rows, runs read-only queries and extracts fixtures.
+                <strong>A Guest token has no write path at all.</strong> Queries run inside a read-only
+                transaction, and column policies mask values before the agent sees them.
+              </p>
+              <p>
+                It does not have to be taught how. The first tool it sees is <code>help</code>: how the
+                pieces relate, the order to call things in, and the limits that refuse a call.
+              </p>
+            </div>
+            <div class="reveal" style="--d: 120ms">
+              <div class="limits" aria-label="Agent limits">
+                <div><span>Rows per page, default</span><span>200</span></div>
+                <div><span>Rows per page, maximum</span><span>1 000</span></div>
+                <div><span>Bytes per reply</span><span>1 MiB</span></div>
+                <div><span>Seconds per query</span><span>15</span></div>
+                <div><span>Fixture depth, foreign-key hops</span><span>3</span></div>
+                <div><span>Rows per fixture</span><span>500</span></div>
+              </div>
+              <p class="muted" style="margin-top: 14px; font-size: 14px">
+                Lower than the dashboard's caps, because an agent loops.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
-  <footer>
-    <span>Self-hosted. Nothing leaves your network. MIT licensed.</span>
-    <span>
-      <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate">Source</a> ·
-      <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate/blob/main/CHANGELOG.md">Changelog</a> ·
-      <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate#3-connecting-to-a-database">Docs</a>
-    </span>
-  </footer>
-</div>
+      <section class="band" id="start">
+        <div class="parallax num" data-speed="40" aria-hidden="true">05</div>
+        <div class="wrap">
+          <div class="split">
+            <div class="text reveal">
+              <p class="eyebrow">Start</p>
+              <h2>Running in about a minute.</h2>
+              <p>
+                <strong>Run the container.</strong> One volume holds the snapshots, the metadata and the
+                logs. The container filesystem is otherwise read-only.
+              </p>
+              <p>
+                <strong>Sign in.</strong> Open <code>localhost:7378</code> as <code>admin</code>. Testate
+                makes you change the password on the first login.
+              </p>
+              <p>
+                <strong>Point it at a database.</strong> Add an adapter, take a snapshot, break something,
+                put it back. Where to aim the host is the one thing that catches people out, so the README
+                spends a section on it.
+              </p>
+            </div>
+            <div
+              class="terminal reveal"
+              style="--d: 120ms"
+              data-cmd='docker run -d --name testate -p 7378:7378 -v testate-data:/data \
+  -e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
+  -e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
+  ghcr.io/pt-perkasa-pilar-utama/testate:1.1.0-alpha'
+            >
+              <div class="bar" aria-hidden="true"><i></i><i></i><i></i></div>
+              <button class="copy" type="button">copy</button>
+              <div class="p">docker run -d --name testate \</div>
+              <div class="c">-p 7378:7378 -v testate-data:/data \</div>
+              <div class="c">-e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \</div>
+              <div class="c">-e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \</div>
+              <div class="c">ghcr.io/pt-perkasa-pilar-utama/testate:1.1.0-alpha</div>
+              <div class="o">&nbsp;</div>
+              <div class="p">curl -s -o /dev/null -w '%{http_code}\n' \</div>
+              <div class="c">localhost:7378/api/v1/health/live</div>
+              <div class="ok">204</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="not">
+        <div class="parallax num" data-speed="40" aria-hidden="true">06</div>
+        <div class="wrap">
+          <div class="head reveal">
+            <p class="eyebrow">Before you install it</p>
+            <h2>What it does not do.</h2>
+          </div>
+          <div class="nots">
+            <div class="not reveal" style="--d: 0ms">
+              <h3>Databases go one at a time</h3>
+              <p>
+                Even inside one project, Testate snapshots and restores them in sequence. Each is correct
+                alone; the set is not guaranteed to line up. Keep the app idle while it runs.
+              </p>
+            </div>
+            <div class="not reveal" style="--d: 80ms">
+              <h3>It only resets what you add</h3>
+              <p>
+                An untracked database survives a reset, and Testate cannot warn you, because it has never
+                heard of it.
+              </p>
+            </div>
+            <div class="not reveal" style="--d: 160ms">
+              <h3>Microservices are untested</h3>
+              <p>
+                Every limit above compounds. Stay inside one service and add the rest as read-only
+                adapters.
+              </p>
+            </div>
+            <div class="not reveal" style="--d: 240ms">
+              <h3>It needs a real connection</h3>
+              <p>
+                Firebase, Firestore and DynamoDB hand you an SDK rather than a connection, so they cannot
+                be added. Supabase, Neon, RDS and Cloud SQL work.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <span>Self-hosted. Nothing leaves your network. MIT licensed. PT. Perkasa Pilar Utama.</span>
+        <nav aria-label="Links">
+          <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate">Source</a>
+          <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate/blob/main/CHANGELOG.md">Changelog</a>
+          <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate#3-connecting-to-a-database">Docs</a>
+          <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate/blob/main/docs/AGENT_ACCESS.md">Agents</a>
+        </nav>
+      </div>
+    </footer>
+
+    <script type="module" src="assets/site.js"></script>
+  </body>
+</html>
