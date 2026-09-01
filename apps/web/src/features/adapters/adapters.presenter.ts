@@ -1,5 +1,5 @@
 import { createMemo, createSignal } from "solid-js";
-import type { Adapter, AdapterCreateFormInput } from "@testate/shared";
+import type { Adapter, HostSuggestion, AdapterCreateFormInput } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
 import { showToast } from "@/lib/toast.ts";
@@ -31,6 +31,8 @@ import type { ProbeOutcome } from "./adapters.model.ts";
 export type AdapterSort = "name" | "engine" | "tier" | "mode" | "status";
 
 export type AdaptersPresenter = Refreshable<Adapter[]> & {
+  /** Addresses the API can reach, offered under the Host field. */
+  hosts: Refreshable<HostSuggestion[]>;
   table: TableView<Adapter, AdapterSort>;
   filters: () => AdapterFilters;
   setFilters: (patch: Partial<AdapterFilters>) => void;
@@ -68,6 +70,10 @@ function messageOf(cause: unknown, fallback: string): string {
 
 export function createAdaptersPresenter(slug: () => string): AdaptersPresenter {
   const adapters = createRefreshable(() => adaptersModel.list(slug()));
+  // Asked for once with the adapter list, not when the dialog opens: `createRefreshable` is a memo
+  // and a memo computes when it is created. One small request, and the buttons are ready by the
+  // time anyone reaches the Host field.
+  const hosts = createRefreshable(() => adaptersModel.hosts());
   const table = createTableView<Adapter, AdapterSort>({
     rows: () => adapters.value(),
     sorters: {
@@ -114,6 +120,7 @@ export function createAdaptersPresenter(slug: () => string): AdaptersPresenter {
   };
   return {
     ...adapters,
+    hosts,
     table: { ...table, rows: filteredRows },
     filters,
     setFilters: (patch) => setFiltersSignal((current) => ({ ...current, ...patch })),

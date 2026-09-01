@@ -71,6 +71,10 @@ export type FileProbeResult = v.InferOutput<typeof fileProbeResultSchema>;
 export const probeOutcomeSchema = v.union([probeResultSchema, fileProbeResultSchema]);
 export type ProbeOutcome = v.InferOutput<typeof probeOutcomeSchema>;
 
+/** A host the API can reach from where it runs, offered under the Host field. */
+export const hostSuggestionSchema = v.object({ host: v.string(), label: v.string() });
+export type HostSuggestion = v.InferOutput<typeof hostSuggestionSchema>;
+
 export const adapterSchema = v.object({
   id: idSchema,
   project_id: idSchema,

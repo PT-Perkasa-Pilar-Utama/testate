@@ -1,6 +1,6 @@
 import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import { For, Show, createEffect } from "solid-js";
+import { For, Loading, Show, createEffect } from "solid-js";
 import type { AdapterCreateFormInput, Engine } from "@testate/shared";
 import { adapterCreateFormSchema } from "@testate/shared";
 
@@ -35,6 +35,28 @@ function FieldInput(props: {
         value={props.presenter.values()[key()] ?? ""}
         onInput={(event) => props.presenter.setValue(key(), event.currentTarget.value)}
       />
+      {/* Only under Host, and only what the API can actually reach from where it runs. The browser
+          cannot work its own address out, and the address that matters is the server's anyway:
+          the engine dials from there, not from this tab. */}
+      <Show when={props.field.key === "host"}>
+        <Loading fallback={null}>
+          <span class="flex flex-wrap items-center gap-1.5">
+            <For each={props.presenter.hosts.value()}>
+              {(host) => (
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  title={host.label}
+                  onClick={() => props.presenter.setValue(key(), host.host)}
+                >
+                  {host.host}
+                </Button>
+              )}
+            </For>
+          </span>
+        </Loading>
+      </Show>
     </label>
   );
 }

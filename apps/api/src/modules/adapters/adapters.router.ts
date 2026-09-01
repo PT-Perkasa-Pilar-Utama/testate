@@ -4,6 +4,7 @@ import {
   adapterSchema,
   jobSchema,
   createAdapterResponseSchema,
+  hostSuggestionSchema,
   probeOutcomeSchema,
 } from "@testate/shared";
 import * as v from "valibot";
@@ -16,6 +17,12 @@ const P = "/projects/:slug/adapters";
 
 export function createAdaptersRouter(h: AdaptersHandlers): Hono {
   const router = new Hono();
+  router.get(
+    "/adapter-hosts",
+    requireRole("qa"),
+    describe("adapters", "Hosts the server can reach", v.array(hostSuggestionSchema)),
+    h.hosts
+  );
   router.get(
     P,
     requireRole("viewer"),

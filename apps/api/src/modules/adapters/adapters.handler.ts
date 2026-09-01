@@ -1,3 +1,4 @@
+import { suggestHosts } from "./adapters.hosts.ts";
 import {
   adapterDeletionSchema,
   adapterDraftSchema,
@@ -19,6 +20,7 @@ import type { AdaptersFilter } from "./adapters.repository.ts";
 import type { AdapterPatch, AdaptersService } from "./adapters.service.ts";
 
 export type AdaptersHandlers = {
+  hosts: Handler;
   list: Handler;
   testDraft: Handler;
   create: Handler;
@@ -73,6 +75,8 @@ export function createAdaptersHandlers(
       const rows = await service.list(param(c, "slug"), toFilter(parseQuery(c, listQuery)));
       return okPage(c, rows, null, 50);
     },
+    /** Not project-scoped: it describes the server, not anything inside a project. */
+    hosts: async (c) => ok(c, await suggestHosts()),
     testDraft: async (c) =>
       ok(c, await service.testDraft(param(c, "slug"), await parseBody(c, adapterDraftSchema))),
     create: async (c) => {

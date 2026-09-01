@@ -8,6 +8,8 @@ import {
   probeOutcomeSchema,
 } from "@testate/shared";
 
+import { hostSuggestionSchema } from "@testate/shared";
+import type { HostSuggestion } from "@testate/shared";
 import { apiClient } from "@/lib/api-client.ts";
 
 export type ProbeOutcome = v.InferOutput<typeof probeOutcomeSchema>;
@@ -19,6 +21,9 @@ const base = (slug: string): string => `/projects/${encodeURIComponent(slug)}/ad
 const one = (slug: string, id: string): string => `${base(slug)}/${encodeURIComponent(id)}`;
 
 export const adaptersModel = {
+  /** Hosts the API can reach from where it runs; the browser cannot work these out itself. */
+  hosts: (): Promise<HostSuggestion[]> =>
+    apiClient.get("/adapter-hosts", { schema: v.array(hostSuggestionSchema) }),
   list: (slug: string): Promise<Adapter[]> =>
     apiClient.get(base(slug), { schema: v.array(adapterSchema) }),
   get: (slug: string, id: string): Promise<Adapter> =>
