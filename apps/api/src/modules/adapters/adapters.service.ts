@@ -2,7 +2,9 @@ import type {
   Actor,
   Adapter,
   AdapterDraft,
+  AdapterKind,
   AdapterMode,
+  AdapterWithProject,
   Engine,
   Job,
   JsonObject,
@@ -19,20 +21,20 @@ import type { JobsService } from "../jobs/jobs.service.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import { validateConfig } from "./adapters.config.ts";
 import type { ValidatedConfig } from "./adapters.config.ts";
+import { listByKind } from "./adapters.stores.ts";
 import { createDeletionPlans, enqueueDeletion } from "./adapters.deletion.ts";
 import type { RemoveDeps } from "./adapters.deletion.ts";
 import type { AdapterDeletionPlan, DeletionAction } from "./adapters.deletion.ts";
 import {
   probeColumns,
-  purposeOf,
   readonlySecretsOf,
-  refusal,
   sharedTargetWarning,
   toPublic,
 } from "./adapters.helpers.ts";
 import { applyPatch } from "./adapters.patch.ts";
 import { recheckDenyList } from "./adapters.policy.ts";
 import type { AdapterPatch } from "./adapters.patch.ts";
+import { probeTarget } from "./adapters.probe.ts";
 import type { FileProbeFn, ProbeFn } from "./adapters.probe.ts";
 import type { AdapterRecord, AdaptersFilter, AdaptersRepository } from "./adapters.repository.ts";
 import { CONFIG_COLUMN, READONLY_COLUMN, openSecrets, sealSecrets } from "./adapters.secrets.ts";
@@ -47,6 +49,8 @@ export type AdapterWithJob = { adapter: Adapter; init_job: Job | null };
 
 export type AdaptersService = {
   list(slug: string, filter: AdaptersFilter): Promise<Adapter[]>;
+  /** Every adapter of one kind across the projects this caller may see (adapters.stores.ts). */
+  listByKind(scope: string[] | null, kind: AdapterKind): Promise<AdapterWithProject[]>;
   testDraft(slug: string, draft: AdapterDraft): Promise<ProbeOutcome>;
   create(
     actor: Actor,
@@ -85,7 +89,7 @@ export type AdaptersService = {
 
 export type AdaptersDeps = {
   repo: AdaptersRepository;
-  projects: Pick<ProjectsRepository, "bySlug">;
+  projects: Pick<ProjectsRepository, "bySlug" | "byId">;
   audit: AuditService;
   ring: KeyRing;
   netguard: { check(input: Check): Promise<Verdict> };
@@ -110,26 +114,11 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
     if (adapter === null || adapter.project_id !== projectId) throw notFound("adapter");
     return adapter;
   };
-  const probe = async (
+  const probe = (
     engine: Engine,
     validated: ValidatedConfig,
     secrets: Secrets
-  ): Promise<ProbeOutcome> => {
-    const verdict = await deps.netguard.check({
-      ...validated.target,
-      purpose: purposeOf(validated.kind),
-    });
-    if (!verdict.allowed) throw refusal(verdict, validated.target);
-    if (validated.kind !== "database") return deps.fileProbe(engine, validated.config, secrets);
-    const result = await deps.probe(engine, validated.config, secrets);
-    if (!result.meets_floor) {
-      throw new AppError("ENGINE_UNSUPPORTED", `${engine} ${result.version} is below the floor`, {
-        floor: result.floor,
-        version: result.version,
-      });
-    }
-    return result;
-  };
+  ): Promise<ProbeOutcome> => probeTarget(deps, engine, validated, secrets);
   const record = (
     actor: Actor,
     action: string,
@@ -175,6 +164,9 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
   return {
     async list(slug, filter) {
       return repo.list(projectOf(slug).id, filter).map(toPublic);
+    },
+    async listByKind(scope, kind) {
+      return listByKind(repo.all(), deps.projects, scope, kind);
     },
     async testDraft(slug, draft) {
       projectOf(slug);

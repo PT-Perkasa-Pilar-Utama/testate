@@ -23,7 +23,7 @@ export const PROJECT_TABS = [
   { id: "imports", label: "Imports" },
   { id: "diffs", label: "Diffs" },
   { id: "checkouts", label: "History" },
-  { id: "adapters", label: "Adapters" },
+  { id: "adapters", label: "Databases" },
 ] as const;
 export type ProjectTab = (typeof PROJECT_TABS)[number]["id"];
 

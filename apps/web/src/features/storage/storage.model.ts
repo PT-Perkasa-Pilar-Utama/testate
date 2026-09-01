@@ -1,6 +1,6 @@
 import * as v from "valibot";
-import type { Entry, PreviewPayload } from "@testate/shared";
-import { entrySchema, previewPayloadSchema } from "@testate/shared";
+import type { AdapterWithProject, Entry, PreviewPayload } from "@testate/shared";
+import { adapterWithProjectSchema, entrySchema, previewPayloadSchema } from "@testate/shared";
 
 import { apiClient } from "@/lib/api-client.ts";
 
@@ -31,6 +31,9 @@ export function extensionOf(name: string): string {
 }
 
 export const storageModel = {
+  /** Every file store this session may see, across projects. */
+  stores: (): Promise<AdapterWithProject[]> =>
+    apiClient.get("/storage-adapters", { schema: v.array(adapterWithProjectSchema) }),
   entries: (slug: string, id: string, query: EntriesQuery): Promise<EntriesPage> =>
     apiClient.envelope(`${adapterPath(slug, id)}/entries${entriesQuery(query)}`, {
       schema: pageSchema,

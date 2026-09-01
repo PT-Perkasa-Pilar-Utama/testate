@@ -58,7 +58,7 @@ sidebar                    project page                adapter page
 
 | # | Phase | Status | Commit |
 | --- | --- | --- | --- |
-| 1 | Storage gets its own menu; project tab becomes Databases | pending | |
+| 1 | Storage gets its own menu; project tab becomes Databases | done | see log |
 | 2 | Project tabs five to three, with `?tab=` redirects | pending | |
 | 3 | Activity: chips over the three existing lists | pending | |
 | 4 | Imports move under the adapter and shrink to one screen | pending | |

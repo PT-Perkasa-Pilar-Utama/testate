@@ -21,6 +21,7 @@ import type { AdapterPatch, AdaptersService } from "./adapters.service.ts";
 
 export type AdaptersHandlers = {
   hosts: Handler;
+  stores: Handler;
   list: Handler;
   testDraft: Handler;
   create: Handler;
@@ -77,6 +78,8 @@ export function createAdaptersHandlers(
     },
     /** Not project-scoped: it describes the server, not anything inside a project. */
     hosts: async (c) => ok(c, await suggestHosts()),
+    /** Across projects, because a file store is not a project primitive; the scope still applies. */
+    stores: async (c) => ok(c, await service.listByKind(c.get("projectScope"), "storage")),
     testDraft: async (c) =>
       ok(c, await service.testDraft(param(c, "slug"), await parseBody(c, adapterDraftSchema))),
     create: async (c) => {

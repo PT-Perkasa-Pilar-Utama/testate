@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import {
   adapterDeletionPlanSchema,
+  adapterWithProjectSchema,
   adapterSchema,
   jobSchema,
   createAdapterResponseSchema,
@@ -22,6 +23,12 @@ export function createAdaptersRouter(h: AdaptersHandlers): Hono {
     requireRole("qa"),
     describe("adapters", "Hosts the server can reach", v.array(hostSuggestionSchema)),
     h.hosts
+  );
+  router.get(
+    "/storage-adapters",
+    requireRole("viewer"),
+    describe("adapters", "Every file store this caller may see", v.array(adapterWithProjectSchema)),
+    h.stores
   );
   router.get(
     P,

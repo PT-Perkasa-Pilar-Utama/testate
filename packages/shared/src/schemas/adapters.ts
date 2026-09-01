@@ -7,7 +7,13 @@ import {
   engineSchema,
   tierSchema,
 } from "../enums.ts";
-import { engineWarningSchema, idSchema, sealedSchema, timestampSchema } from "./common.ts";
+import {
+  engineWarningSchema,
+  idSchema,
+  sealedSchema,
+  slugSchema,
+  timestampSchema,
+} from "./common.ts";
 import { jobSchema } from "./jobs.ts";
 import { jsonObjectSchema } from "./json.ts";
 
@@ -101,6 +107,19 @@ export const adapterSchema = v.object({
   updated_at: timestampSchema,
 });
 export type Adapter = v.InferOutput<typeof adapterSchema>;
+
+/**
+ * An adapter with the project it belongs to.
+ *
+ * The Storage screen lists every file store on the instance, so a row has to say which project
+ * owns it; everywhere else the project is already in the URL.
+ */
+export const adapterWithProjectSchema = v.object({
+  ...adapterSchema.entries,
+  project_slug: slugSchema,
+  project_name: v.string(),
+});
+export type AdapterWithProject = v.InferOutput<typeof adapterWithProjectSchema>;
 
 const secretValue = v.pipe(v.string(), v.minLength(1), v.maxLength(16384));
 

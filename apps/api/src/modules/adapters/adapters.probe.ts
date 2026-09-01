@@ -1,9 +1,19 @@
-import type { Engine, FileProbeResult, JsonObject, ProbeResult } from "@testate/shared";
+import type {
+  Engine,
+  FileProbeResult,
+  JsonObject,
+  ProbeOutcome,
+  ProbeResult,
+} from "@testate/shared";
 
 import { toConnectionConfig } from "../../lib/engines/connection.ts";
+import { AppError } from "../../lib/http/index.ts";
+import type { Check, Verdict } from "../../lib/netguard/index.ts";
 import type { EngineRegistry } from "../../lib/engines/index.ts";
 import { toAppError } from "../checkouts/checkouts.return-to-init.ts";
 import { TIER_OF_ENGINE } from "./adapters.config.ts";
+import type { ValidatedConfig } from "./adapters.config.ts";
+import { purposeOf, refusal } from "./adapters.helpers.ts";
 import { PROBE_MOCK } from "./adapters.mock.ts";
 import type { Secrets } from "./adapters.secrets.ts";
 
@@ -71,4 +81,38 @@ export function createScaffoldFileProbe(): FileProbeFn {
     reachable: true,
     warnings: [],
   });
+}
+
+export type ProbeDeps = {
+  netguard: { check(input: Check): Promise<Verdict> };
+  probe: ProbeFn;
+  fileProbe: FileProbeFn;
+};
+
+/**
+ * The address policy first, then the engine's own probe.
+ *
+ * A database carries a version floor and a file store does not, which is the whole of the branch.
+ * It sits out here rather than in the service so that file stays under its line count.
+ */
+export async function probeTarget(
+  deps: ProbeDeps,
+  engine: Engine,
+  validated: ValidatedConfig,
+  secrets: Secrets
+): Promise<ProbeOutcome> {
+  const verdict = await deps.netguard.check({
+    ...validated.target,
+    purpose: purposeOf(validated.kind),
+  });
+  if (!verdict.allowed) throw refusal(verdict, validated.target);
+  if (validated.kind !== "database") return deps.fileProbe(engine, validated.config, secrets);
+  const result = await deps.probe(engine, validated.config, secrets);
+  if (!result.meets_floor) {
+    throw new AppError("ENGINE_UNSUPPORTED", `${engine} ${result.version} is below the floor`, {
+      floor: result.floor,
+      version: result.version,
+    });
+  }
+  return result;
 }

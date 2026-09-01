@@ -2,6 +2,7 @@ import type { RouteDef } from "./lib/router.ts";
 
 export const ROUTE_NAMES = [
   "home",
+  "storage",
   "login",
   "projects",
   "project",
@@ -33,6 +34,9 @@ export const ROUTES: readonly RouteDef<RouteName>[] = [
   // imports, diffs and the agent surface; only the screen moves out of a tester's way.
   { name: "policies", pattern: "/projects/:slug/adapters/:id/policies", role: "admin" },
   { name: "files", pattern: "/projects/:slug/adapters/:id/files", role: "viewer" },
+  // A file store never enters a state and never gets checked out, so it is not a project
+  // primitive; it gets its own screen (docs/PROJECT_REWORK.md).
+  { name: "storage", pattern: "/storage", role: "viewer" },
   { name: "jobs", pattern: "/jobs", role: "viewer" },
   { name: "account", pattern: "/account", role: "viewer" },
   { name: "audit", pattern: "/audit", role: "admin" },
