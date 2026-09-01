@@ -1,5 +1,6 @@
 import type { Actor, State, StateDetail, StateKind, StateStatus } from "@testate/shared";
 import * as v from "valibot";
+import { createdRangeConditions } from "../../lib/db/date-range.ts";
 import { keysetCondition } from "../../lib/db/keyset.ts";
 
 import type { MetadataDb } from "../../lib/db/index.ts";
@@ -22,6 +23,8 @@ export type StatesFilter = {
   tag?: string;
   name?: string;
   protected?: boolean;
+  created_from?: string;
+  created_to?: string;
   includeStash: boolean;
   cursor?: string;
 };
@@ -101,6 +104,7 @@ function conditions(projectId: string, filter: StatesFilter): Condition[] {
       params: [filter.tag],
     });
   }
+  found.push(...createdRangeConditions("s.created_at", filter.created_from, filter.created_to));
   return found;
 }
 

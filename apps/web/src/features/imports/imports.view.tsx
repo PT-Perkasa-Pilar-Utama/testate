@@ -5,6 +5,8 @@ import { For, Loading, Show } from "solid-js";
 import Badge from "@/components/badge.tsx";
 import Button, { buttonClass } from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
+import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
+import Select from "@/components/select.tsx";
 import {
   Cell,
   EmptyRow,
@@ -13,17 +15,22 @@ import {
   SortColumn,
   Table,
   TableSearch,
-  TableToolbar,
   Truncated,
 } from "@/components/table.tsx";
+import { IMPORT_MODE_OPTIONS } from "@/lib/labels.ts";
 import { hasRole } from "@/lib/session.ts";
 import { modeLabel } from "./imports.helpers.ts";
 import { countsLabel, createImportsPresenter } from "./imports.presenter.ts";
+import type { ImportModeFilter } from "./imports.presenter.ts";
 import ReportPanel from "./imports.report.view.tsx";
 import { createWizardPresenter } from "./imports.wizard.presenter.ts";
 import WizardDialog from "./imports.wizard.view.tsx";
 
 const LINK = buttonClass("ghost", "sm");
+const MODE_FILTER_OPTIONS: { value: ImportModeFilter; label: string }[] = [
+  { value: "", label: "All" },
+  ...IMPORT_MODE_OPTIONS,
+];
 
 export default function ImportsView(props: { slug: string }): JSX.Element {
   const presenter = createImportsPresenter(() => props.slug);
@@ -33,21 +40,33 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
   );
   return (
     <div class="grid gap-3">
-      <Show when={hasRole("qa")}>
-        <div class="flex justify-end">
+      <div class="flex flex-wrap items-center justify-end gap-2">
+        <TableSearch
+          placeholder="Search imports..."
+          value={presenter.table.query()}
+          onInput={(value) => presenter.table.setQuery(value)}
+        />
+        <FilterToggle
+          open={presenter.filtersOpen()}
+          active={presenter.activeFilters()}
+          onToggle={() => presenter.toggleFilters()}
+        />
+        <Show when={hasRole("qa")}>
           <Button variant="primary" onClick={() => wizard.start()}>
             New import
           </Button>
-        </div>
-      </Show>
-      <Loading fallback={<p class="text-muted">Loading import runs...</p>}>
-        <TableToolbar>
-          <TableSearch
-            placeholder="Search imports..."
-            value={presenter.table.query()}
-            onInput={(value) => presenter.table.setQuery(value)}
+        </Show>
+      </div>
+      <FilterPanel open={presenter.filtersOpen()}>
+        <FilterField label="What happens">
+          <Select
+            options={MODE_FILTER_OPTIONS}
+            value={presenter.modeFilter()}
+            onChange={(value) => presenter.setModeFilter(value)}
           />
-        </TableToolbar>
+        </FilterField>
+      </FilterPanel>
+      <Loading fallback={<p class="text-muted">Loading import runs...</p>}>
         <Table>
           <thead>
             <tr>
@@ -75,7 +94,7 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
                     when={presenter.value().length > 0}
                     fallback="No imports yet. Bring in a CSV or XLSX file and preview it before anything changes."
                   >
-                    No import matches that search.
+                    No import matches your search or filters.
                   </Show>
                 </EmptyRow>
               }

@@ -5,15 +5,56 @@ import type { Checkout, Counters } from "@testate/shared";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createPaged } from "@/lib/async.ts";
 import { createTableControls } from "@/lib/table.ts";
-import type { TableView } from "@/lib/table.ts";
+import type { TableControls } from "@/lib/table.ts";
 import type { Paged } from "@/lib/async.ts";
+import { CHECKOUT_PURPOSE_LABEL, JOB_STATUS_LABEL } from "@/lib/labels.ts";
 import { followJob } from "@/lib/sse.ts";
 import { checkoutsModel } from "./checkouts.model.ts";
 
 export type CheckoutSort = "state" | "status" | "actor" | "created_at";
 
+/** Status and purpose: the two extra filters `/checkouts` takes beyond sort, search and dates. */
+export type CheckoutFilters = {
+  status: Checkout["status"] | "";
+  purpose: Checkout["purpose"] | "";
+};
+const EMPTY_FILTERS: CheckoutFilters = { status: "", purpose: "" };
+
+// checkoutSchema's status picklist is narrower than a job's: no "queued", a checkout is only ever
+// created once its job has started. Neither list rides a standalone export, so it is hand-typed
+// here; `satisfies` fails the build if it drifts from `Checkout["status"]`.
+const CHECKOUT_STATUSES = [
+  "running",
+  "succeeded",
+  "partial",
+  "failed",
+  "cancelled",
+  "interrupted",
+] as const satisfies readonly Checkout["status"][];
+const CHECKOUT_PURPOSES = [
+  "checkout",
+  "return_to_init",
+] as const satisfies readonly Checkout["purpose"][];
+
+export const CHECKOUT_STATUS_FILTER_OPTIONS: { value: Checkout["status"] | ""; label: string }[] = [
+  { value: "", label: "All statuses" },
+  ...CHECKOUT_STATUSES.map((value) => ({ value, label: JOB_STATUS_LABEL[value] })),
+];
+export const CHECKOUT_PURPOSE_FILTER_OPTIONS: { value: Checkout["purpose"] | ""; label: string }[] =
+  [
+    { value: "", label: "All purposes" },
+    ...CHECKOUT_PURPOSES.map((value) => {
+      const phrase = CHECKOUT_PURPOSE_LABEL[value];
+      // CHECKOUT_PURPOSE_LABEL reads mid-sentence ("checked out"); a standalone filter option
+      // wants sentence case like every other label in this panel.
+      return { value, label: `${phrase.charAt(0).toUpperCase()}${phrase.slice(1)}` };
+    }),
+  ];
+
 export type CheckoutsPresenter = Paged<Checkout> & {
-  table: TableView<Checkout, CheckoutSort>;
+  table: TableControls<CheckoutSort> & { rows: () => Checkout[] };
+  filters: () => CheckoutFilters;
+  setFilters: (patch: Partial<CheckoutFilters>) => void;
   detail: () => Checkout | null;
   counters: () => { checkout: Checkout; result: Counters } | null;
   openDetail: (checkout: Checkout) => void;
@@ -97,11 +138,15 @@ export function createCheckoutsPresenter(
   onChanged: () => void = () => undefined
 ): CheckoutsPresenter {
   const controls = createTableControls<CheckoutSort>();
+  const [filters, setFiltersSignal] = createSignal<CheckoutFilters>(EMPTY_FILTERS);
   const checkouts = createPaged(
-    (cursor) => checkoutsModel.page(slug(), cursor, controls.params()),
-    controls.key
+    (cursor) => checkoutsModel.page(slug(), cursor, controls.params(), filters()),
+    () => `${controls.key()}|${filters().status}|${filters().purpose}`
   );
-  const table: TableView<Checkout, CheckoutSort> = { ...controls, rows: checkouts.value };
+  const table: TableControls<CheckoutSort> & { rows: () => Checkout[] } = {
+    ...controls,
+    rows: checkouts.value,
+  };
   const [detail, setDetail] = createSignal<Checkout | null>(null);
   const [counters, setCounters] = createSignal<{ checkout: Checkout; result: Counters } | null>(
     null
@@ -113,6 +158,8 @@ export function createCheckoutsPresenter(
   return {
     ...checkouts,
     table,
+    filters,
+    setFilters: (patch) => setFiltersSignal((current) => ({ ...current, ...patch })),
     detail,
     counters,
     openDetail: (checkout) => setDetail(checkout),

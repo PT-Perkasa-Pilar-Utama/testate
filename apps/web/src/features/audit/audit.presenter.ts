@@ -15,7 +15,7 @@ export type AuditPresenter = Paged<AuditRow> & {
   clearFilter: () => void;
 };
 
-const EMPTY: AuditFilter = { action: "", actor: "", outcome: "" };
+const EMPTY: AuditFilter = { action: "", actor: "", outcome: "", from: "", to: "" };
 
 /**
  * The API has taken action, actor, outcome and a cursor since it was written; the screen sent none
@@ -23,7 +23,12 @@ const EMPTY: AuditFilter = { action: "", actor: "", outcome: "" };
  */
 export function createAuditPresenter(): AuditPresenter {
   const [filter, setFilterSignal] = createSignal<AuditFilter>(EMPTY);
-  const rows = createPaged((cursor) => auditModel.page(filter(), cursor));
+  // Keyed on the filter, or a page appended under the old one survives a filter change: without
+  // this, `createPaged` never sees the question changed and never drops those stale extra pages.
+  const rows = createPaged(
+    (cursor) => auditModel.page(filter(), cursor),
+    () => JSON.stringify(filter())
+  );
   return {
     ...rows,
     filter,

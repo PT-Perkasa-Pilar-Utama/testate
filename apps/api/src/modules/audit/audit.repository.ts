@@ -1,3 +1,4 @@
+import { createdRangeConditions } from "../../lib/db/date-range.ts";
 import type { AuditRow, JsonObject } from "@testate/shared";
 import { jsonObjectSchema } from "@testate/shared";
 import * as v from "valibot";
@@ -108,8 +109,6 @@ const FILTERS: readonly { key: keyof AuditListQuery; sql: string; like?: boolean
   { key: "project_id", sql: "project_id = ?" },
   { key: "actor", sql: "actor_label = ?" },
   { key: "action", sql: "action LIKE ?", like: true },
-  { key: "from", sql: "created_at >= ?" },
-  { key: "to", sql: "created_at <= ?" },
   { key: "outcome", sql: "outcome = ?" },
 ];
 
@@ -121,6 +120,9 @@ function conditions(query: AuditListQuery): Condition[] {
     if (value === undefined || value === "") continue;
     found.push({ sql: filter.sql, params: [filter.like === true ? `${value}%` : String(value)] });
   }
+  // Not in FILTERS above: a bare "2026-08-30" as the upper bound compares less than every timestamp
+  // on that day, so a to-bound silently dropped the whole day it named.
+  found.push(...createdRangeConditions("created_at", query.from, query.to));
   if (query.scope !== undefined && query.scope !== null) {
     const marks = query.scope.map(() => "?").join(",");
     found.push({ sql: `project_id IN (${marks === "" ? "NULL" : marks})`, params: query.scope });

@@ -1,4 +1,4 @@
-import type { ImportReport, JsonObject, Mapping, TableSchema } from "@testate/shared";
+import type { ImportReport, ImportRun, JsonObject, Mapping, TableSchema } from "@testate/shared";
 
 import { IMPORT_MODE_LABEL, IMPORT_VALUE_TRANSFORM_LABEL } from "@/lib/labels.ts";
 
@@ -143,6 +143,14 @@ export const MODE_OPTIONS: ReadonlyArray<{
 export function modeLabel(mode: Mapping["mode"]): string {
   const found = MODE_OPTIONS.find((option) => option.value === mode);
   return found === undefined ? mode : found.label;
+}
+
+/** Whether a run's mode passes the filter; `""` means every mode passes. */
+export function matchesModeFilter(
+  mode: ImportRun["mode"],
+  filter: ImportRun["mode"] | ""
+): boolean {
+  return filter === "" || mode === filter;
 }
 
 /** The table's own name is a fine default, so naming a mapping is only her problem if she edits it. */

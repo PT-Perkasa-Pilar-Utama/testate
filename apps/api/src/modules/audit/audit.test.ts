@@ -46,6 +46,23 @@ describe("audit", () => {
     expect(page.rows[0]?.ip).toBe("10.0.0.1");
   });
 
+  it("a day named as the upper bound is inside the range, not excluded by it", async () => {
+    const { audit } = setup();
+    audit.record({
+      actor: { ...QA_ACTOR },
+      action: "user.created",
+      target_type: "user",
+      target_id: "u1",
+      outcome: "succeeded",
+    });
+    const [row] = (await audit.list({ limit: 10 })).rows;
+    const day = String(row?.created_at).slice(0, 10);
+    // A bare date compares less than every timestamp on that day, so `to` used to drop the whole
+    // day it named and a same-day from/to pair came back empty.
+    expect((await audit.list({ limit: 10, to: day })).rows).toHaveLength(1);
+    expect((await audit.list({ limit: 10, from: day, to: day })).rows).toHaveLength(1);
+  });
+
   it("records system rows without an actor", async () => {
     const { audit } = setup();
     audit.record({

@@ -1,7 +1,12 @@
-import type { AdapterKind, Engine, JsonObject } from "@testate/shared";
-import { ENGINES } from "@testate/shared";
+import type { Adapter, AdapterKind, AdapterMode, Engine, JsonObject, Tier } from "@testate/shared";
+import { ADAPTER_MODES, ADAPTER_STATUSES, ENGINES, TIERS } from "@testate/shared";
 
-import { ENGINE_LABEL } from "@/lib/labels.ts";
+import {
+  ADAPTER_MODE_LABEL,
+  ADAPTER_STATUS_LABEL,
+  ENGINE_LABEL,
+  TIER_LABEL,
+} from "@/lib/labels.ts";
 
 export type FieldType = "text" | "number" | "password" | "url" | "boolean";
 
@@ -97,6 +102,48 @@ export const ENGINE_OPTIONS = ENGINES.map((value) => ({
   value,
   label: `${ENGINE_LABEL[value]} · ${ENGINE_FORMS[value].label}`,
 }));
+
+// Neither type is exported from the shared package (labels.ts derives AdapterStatus the same way);
+// the picklist values are the only shape the filter panel needs.
+export type AdapterStatus = (typeof ADAPTER_STATUSES)[number];
+
+/** What the adapter list can be narrowed by. `""` means every value passes. */
+export type AdapterFilters = {
+  engine: Engine | "";
+  tier: Tier | "";
+  mode: AdapterMode | "";
+  status: AdapterStatus | "";
+};
+export const ADAPTER_FILTERS_EMPTY: AdapterFilters = { engine: "", tier: "", mode: "", status: "" };
+
+export const ENGINE_FILTER_OPTIONS: { value: Engine | ""; label: string }[] = [
+  { value: "", label: "All engines" },
+  ...ENGINES.map((value) => ({ value, label: ENGINE_LABEL[value] })),
+];
+export const TIER_FILTER_OPTIONS: { value: Tier | ""; label: string }[] = [
+  { value: "", label: "All tiers" },
+  ...TIERS.map((value) => ({ value, label: TIER_LABEL[value] })),
+];
+export const ADAPTER_MODE_FILTER_OPTIONS: { value: AdapterMode | ""; label: string }[] = [
+  { value: "", label: "All modes" },
+  ...ADAPTER_MODES.map((value) => ({ value, label: ADAPTER_MODE_LABEL[value] })),
+];
+export const ADAPTER_STATUS_FILTER_OPTIONS: { value: AdapterStatus | ""; label: string }[] = [
+  { value: "", label: "All statuses" },
+  ...ADAPTER_STATUSES.map((value) => ({ value, label: ADAPTER_STATUS_LABEL[value] })),
+];
+
+/** Every filter with a value set must match; `""` never excludes a row. */
+export function matchesAdapterFilters(
+  adapter: Pick<Adapter, "engine" | "tier" | "mode" | "status">,
+  filters: AdapterFilters
+): boolean {
+  if (filters.engine !== "" && adapter.engine !== filters.engine) return false;
+  if (filters.tier !== "" && adapter.tier !== filters.tier) return false;
+  if (filters.mode !== "" && adapter.mode !== filters.mode) return false;
+  if (filters.status !== "" && adapter.status !== filters.status) return false;
+  return true;
+}
 
 export type Values = Record<string, string>;
 

@@ -5,13 +5,8 @@
 
 import type * as v from "valibot";
 
-import { ENGINES, ROLES, TOKEN_KINDS, fieldModeSchema } from "@testate/shared";
-import type {
-  functionNameSchema,
-  importModeSchema,
-  maskSchema,
-  restoreModeSchema,
-} from "@testate/shared";
+import { ENGINES, ROLES, TOKEN_KINDS, fieldModeSchema, importModeSchema } from "@testate/shared";
+import type { functionNameSchema, maskSchema, restoreModeSchema } from "@testate/shared";
 import type {
   AdapterKind,
   AdapterMode,
@@ -229,6 +224,10 @@ export const IMPORT_MODE_LABEL = {
   upsert: "Add new rows, update existing ones",
   replace: "Clear the table, then load this file",
 } as const satisfies Record<ImportMode, string>;
+export const IMPORT_MODE_OPTIONS = importModeSchema.options.map((value) => ({
+  value,
+  label: IMPORT_MODE_LABEL[value],
+}));
 
 export const IMPORT_VALUE_TRANSFORM_LABEL = {
   trim: "Trim extra spaces",

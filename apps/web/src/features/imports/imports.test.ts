@@ -12,6 +12,7 @@ import {
   defaultMappingName,
   guessColumns,
   mappingBody,
+  matchesModeFilter,
   reportCounts,
   reportSummary,
   runBody,
@@ -154,5 +155,13 @@ describe("imports feature", () => {
 
     const done = reportCounts({ dry_run: false, inserted: 10, updated: 2, skipped: 0, failed: 1 });
     expect(reportSummary(done, false)).toBe("Imported 12 rows. 1 row was rejected.");
+  });
+});
+
+describe("matchesModeFilter", () => {
+  test('"" passes every mode; a set filter passes only its own mode', () => {
+    expect(matchesModeFilter("upsert", "")).toBe(true);
+    expect(matchesModeFilter("upsert", "upsert")).toBe(true);
+    expect(matchesModeFilter("upsert", "append")).toBe(false);
   });
 });

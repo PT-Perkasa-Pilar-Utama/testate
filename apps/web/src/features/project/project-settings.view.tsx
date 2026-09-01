@@ -17,7 +17,7 @@ import { Cell, Head, Row, Table, Truncated } from "@/components/table.tsx";
 import { engineLabel } from "@/lib/labels.ts";
 import { hasRole } from "@/lib/session.ts";
 import type { DeletionAffected } from "../projects/projects.model.ts";
-import { QuotaSlider } from "../projects/projects.view.tsx";
+import { QuotaSlider } from "../projects/projects.dialogs.view.tsx";
 import { PROJECT_BLANK, toProjectDraft } from "./project.presenter.ts";
 import type { ProjectPresenter } from "./project.presenter.ts";
 

@@ -7,16 +7,7 @@ import type { Entry } from "@testate/shared";
 import Banner from "@/components/banner.tsx";
 import Button, { buttonClass } from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
-import {
-  Cell,
-  EmptyRow,
-  Head,
-  Row,
-  Table,
-  TableFooter,
-  TableSearch,
-  TableToolbar,
-} from "@/components/table.tsx";
+import { Cell, EmptyRow, Head, Row, Table, TableFooter, TableSearch } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { formatBytes } from "../states/states.format.ts";
 import { PreviewDialog } from "./storage.preview.view.tsx";
@@ -158,14 +149,14 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
   );
   return (
     <section class="grid gap-4">
-      <PathBar presenter={presenter} slug={props.slug} id={props.id} />
-      <TableToolbar>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <PathBar presenter={presenter} slug={props.slug} id={props.id} />
         <TableSearch
           placeholder="Search files..."
           value={presenter.q()}
           onInput={(value) => presenter.setQ(value)}
         />
-      </TableToolbar>
+      </div>
       <Show when={presenter.changedKey()}>
         {(fingerprint) => (
           <Banner variant="alert">

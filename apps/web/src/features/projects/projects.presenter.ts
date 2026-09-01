@@ -5,7 +5,7 @@ import { humanMessage } from "@/lib/api-error.ts";
 import { createPaged, createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { createTableControls } from "@/lib/table.ts";
-import type { TableView } from "@/lib/table.ts";
+import type { TableControls } from "@/lib/table.ts";
 import type { Paged } from "@/lib/async.ts";
 import { projectsModel } from "./projects.model.ts";
 
@@ -14,10 +14,11 @@ import { projectsModel } from "./projects.model.ts";
  * this holds the quota, which is a slider rather than a field, and what only the server can
  * answer, such as a slug already taken.
  */
-export type ProjectSort = "name" | "changed_at";
+export type ProjectSort = "name" | "changed_at" | "created_at" | "updated_at";
 
 export type ProjectsPresenter = Paged<Project> & {
-  table: TableView<Project, ProjectSort>;
+  /** Sort, search and the created-date range, all performed by the API. */
+  table: TableControls<ProjectSort> & { rows: () => Project[] };
   creating: () => boolean;
   error: () => string | null;
   openCreate: () => void;
@@ -63,7 +64,10 @@ export function createProjectsPresenter(): ProjectsPresenter {
     (cursor) => projectsModel.page(cursor, controls.params()),
     controls.key
   );
-  const table: TableView<Project, ProjectSort> = { ...controls, rows: projects.value };
+  const table: TableControls<ProjectSort> & { rows: () => Project[] } = {
+    ...controls,
+    rows: projects.value,
+  };
   const defaults = createRefreshable(() => projectsModel.defaults());
   const [quota, setQuota] = createSignal(0);
   const [creating, setCreating] = createSignal(false);

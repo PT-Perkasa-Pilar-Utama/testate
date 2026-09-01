@@ -6,14 +6,26 @@ import { apiClient } from "@/lib/api-client.ts";
 import type { Page } from "@/lib/async.ts";
 import type { Query } from "@/lib/api-client.ts";
 
-export type AuditFilter = { action: string; actor: string; outcome: string };
+export type AuditFilter = {
+  action: string;
+  actor: string;
+  outcome: string;
+  from: string;
+  to: string;
+};
 
 /** Only the fields the person filled in; an empty box is not a filter. */
-function queryOf(filter: AuditFilter, cursor: string | undefined): Query {
+export function queryOf(filter: AuditFilter, cursor: string | undefined): Query {
   return {
     action: filter.action === "" ? undefined : filter.action,
     actor: filter.actor === "" ? undefined : filter.actor,
     outcome: filter.outcome === "" ? undefined : filter.outcome,
+    from: filter.from === "" ? undefined : filter.from,
+    // audit_logs.created_at is a full timestamp and the repository compares `to` with a plain
+    // `<=`, not the end-of-day widening jobs/checkouts get from `createdRangeConditions`; a bare
+    // date would drop every row logged later that same day (tokens.presenter.ts does the same
+    // widening for expires_on).
+    to: filter.to === "" ? undefined : `${filter.to}T23:59:59.999Z`,
     cursor,
   };
 }

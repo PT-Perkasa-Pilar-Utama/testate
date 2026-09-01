@@ -1,23 +1,17 @@
-import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
-import { onceSettled } from "@/lib/form.ts";
-import { For, Loading, Show, createEffect } from "solid-js";
+import { For, Loading, Show, createSignal } from "solid-js";
 import type { ApiToken } from "@testate/shared";
-import { tokenDraftSchema } from "@testate/shared";
 
 import { formatWhen } from "@/lib/format.ts";
+import { activeFilterCount } from "@/lib/table.ts";
 import Badge from "@/components/badge.tsx";
-import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import ConfirmDialog from "@/components/confirm-dialog.tsx";
-import FieldError from "@/components/field-error.tsx";
+import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
 import LoadMore from "@/components/load-more.tsx";
-import Dialog from "@/components/dialog.tsx";
-import FieldLabel from "@/components/field-label.tsx";
-import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
-import { ROLE_LABEL, ROLE_OPTIONS, TOKEN_KIND_LABEL, TOKEN_KIND_OPTIONS } from "@/lib/labels.ts";
+import { ROLE_LABEL, TOKEN_KIND_LABEL, TOKEN_KIND_OPTIONS } from "@/lib/labels.ts";
 import {
   Cell,
   EmptyRow,
@@ -27,12 +21,25 @@ import {
   Table,
   TableFooter,
   TableSearch,
-  TableToolbar,
   Truncated,
 } from "@/components/table.tsx";
-import { EMPTY_DRAFT, createTokensPresenter } from "./tokens.presenter.ts";
-import type { TokensPresenter } from "./tokens.presenter.ts";
+import { createTokensPresenter } from "./tokens.presenter.ts";
+import type { RevokedFilter, TokensPresenter } from "./tokens.presenter.ts";
+import { CreateDialog } from "./tokens.dialogs.view.tsx";
 import RevealDialog from "./tokens.reveal.view.tsx";
+
+/** "" reads as "every kind" in the select, and as "no filter" to the API. `as const` keeps it the
+ *  literal `""` rather than `string`, or `Select` could not infer `TokenKind | ""` from the union. */
+const KIND_FILTER_OPTIONS = [{ value: "" as const, label: "All kinds" }, ...TOKEN_KIND_OPTIONS];
+
+/** The `revoked` filter is tri-state at the API (unset, true, false); this names the states a
+ *  person picks from, not the token's own status, which the table's Status column already reads
+ *  off `revoked_at` and `expires_at` together. */
+const REVOKED_FILTER_OPTIONS: { value: RevokedFilter; label: string }[] = [
+  { value: "", label: "Any" },
+  { value: "false", label: "Not revoked" },
+  { value: "true", label: "Revoked" },
+];
 
 /** A revoked token stays "revoked" forever; short of that, a token past its own date reads
  *  as "expired" rather than the misleading "active" a stale expiry check used to leave it at. */
@@ -44,124 +51,57 @@ function tokenStatus(token: ApiToken) {
   return { label: "active", variant: "success" } as const;
 }
 
-function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
-  const form = createForm({ schema: tokenDraftSchema, initialInput: EMPTY_DRAFT });
-  // Dialogs stay mounted, so the form does not reset itself; put it back to a fresh draft
-  // every time this one opens.
-  createEffect(
-    () => props.presenter.creating(),
-    (creating) => {
-      if (creating) onceSettled(() => reset(form, { initialInput: EMPTY_DRAFT }));
-    }
-  );
-  return (
-    <Dialog
-      open={props.presenter.creating()}
-      onClose={() => props.presenter.closeCreate()}
-      title="New API token"
-      description="Standard tokens act as their role on the REST API. Agent tokens are viewer-only and reach the MCP endpoint alone."
-    >
-      <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.create(input)}>
-        <Field of={form} path={["name"]}>
-          {(field) => (
-            <label class="grid content-start gap-1.5 text-base">
-              <FieldLabel required={true}>Name</FieldLabel>
-              <Input
-                {...field.props}
-                required
-                maxlength="80"
-                value={field.input}
-                variant={field.errors ? "error" : "default"}
-                aria-invalid={field.errors ? "true" : undefined}
-              />
-              <FieldError message={field.errors?.[0]} />
-            </label>
-          )}
-        </Field>
-        <Field of={form} path={["kind"]}>
-          {(field) => (
-            <label class="grid content-start gap-1.5 text-base">
-              <span>Kind</span>
-              <Select
-                options={TOKEN_KIND_OPTIONS}
-                value={field.input ?? EMPTY_DRAFT.kind}
-                onChange={(kind) => field.onInput(kind)}
-              />
-            </label>
-          )}
-        </Field>
-        {/* Reads the kind field through `getInput`, not a sibling Field's own render-prop object,
-            so this Show never chains off another Field's narrowed value. */}
-        <Show when={getInput(form, { path: ["kind"] }) === "standard"}>
-          <Field of={form} path={["role"]}>
-            {(field) => (
-              <label class="grid content-start gap-1.5 text-base">
-                <span>Role</span>
-                <Select
-                  options={ROLE_OPTIONS}
-                  value={field.input ?? EMPTY_DRAFT.role}
-                  onChange={(role) => field.onInput(role)}
-                />
-              </label>
-            )}
-          </Field>
-        </Show>
-        <Field of={form} path={["expires_on"]}>
-          {(field) => (
-            <label class="grid content-start gap-1.5 text-base">
-              <FieldLabel required={false}>
-                {getInput(form, { path: ["kind"] }) === "agent"
-                  ? "Expires on (default 90 days, at most 365)"
-                  : "Expires on"}
-              </FieldLabel>
-              <Input
-                {...field.props}
-                type="date"
-                value={field.input}
-                variant={field.errors ? "error" : "default"}
-                aria-invalid={field.errors ? "true" : undefined}
-              />
-              <FieldError message={field.errors?.[0]} />
-            </label>
-          )}
-        </Field>
-        <Show when={props.presenter.error()}>
-          {(message) => <Banner variant="error">{message()}</Banner>}
-        </Show>
-        <div class="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={() => props.presenter.closeCreate()}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="primary">
-            Create
-          </Button>
-        </div>
-      </Form>
-    </Dialog>
-  );
+/** Search text, kind or revoked narrows the list; an empty result under any of them reads as
+ *  "no matches", not as "no tokens", which is what the fallback text below has to tell apart. */
+function isFiltered(presenter: TokensPresenter): boolean {
+  return presenter.table.query() !== "" || presenter.kind() !== "" || presenter.revoked() !== "";
 }
 
 export default function TokensView(): JSX.Element {
   const presenter = createTokensPresenter();
+  const [filtersOpen, setFiltersOpen] = createSignal(false);
+  const activeCount = (): number =>
+    activeFilterCount(presenter.kind() !== "", presenter.revoked() !== "");
   return (
     <section class="grid gap-6">
       <PageHeader
         title="API tokens"
         description="Personal tokens act as their role; agent tokens are viewer-only and reach the MCP endpoint alone."
         actions={
-          <Button variant="primary" onClick={() => presenter.openCreate()}>
-            New token
-          </Button>
+          <>
+            <TableSearch
+              placeholder="Search tokens..."
+              value={presenter.table.query()}
+              onInput={(value) => presenter.table.setQuery(value)}
+            />
+            <FilterToggle
+              open={filtersOpen()}
+              active={activeCount()}
+              onToggle={() => setFiltersOpen((open) => !open)}
+            />
+            <Button variant="primary" onClick={() => presenter.openCreate()}>
+              New token
+            </Button>
+          </>
         }
       />
-      <Loading fallback={<p class="text-muted">Loading tokens...</p>}>
-        <TableToolbar>
-          <TableSearch
-            placeholder="Search tokens..."
-            value={presenter.table.query()}
-            onInput={(value) => presenter.table.setQuery(value)}
+      <FilterPanel open={filtersOpen()}>
+        <FilterField label="Kind">
+          <Select
+            options={KIND_FILTER_OPTIONS}
+            value={presenter.kind()}
+            onChange={(kind) => presenter.setKind(kind)}
           />
-        </TableToolbar>
+        </FilterField>
+        <FilterField label="Revoked">
+          <Select
+            options={REVOKED_FILTER_OPTIONS}
+            value={presenter.revoked()}
+            onChange={(revoked) => presenter.setRevoked(revoked)}
+          />
+        </FilterField>
+      </FilterPanel>
+      <Loading fallback={<p class="text-muted">Loading tokens...</p>}>
         <Table>
           <thead>
             <tr>
@@ -191,10 +131,10 @@ export default function TokensView(): JSX.Element {
               fallback={
                 <EmptyRow>
                   <Show
-                    when={presenter.value().length > 0}
+                    when={isFiltered(presenter)}
                     fallback="No tokens yet. Create one for CI, or for an agent that may only read."
                   >
-                    No token matches that search.
+                    No token matches that search or filter.
                   </Show>
                 </EmptyRow>
               }

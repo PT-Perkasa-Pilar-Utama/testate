@@ -1,20 +1,36 @@
 import { createEffect, createSignal } from "solid-js";
-import type { Job, JsonObject } from "@testate/shared";
-import { TERMINAL_JOB_STATUSES } from "@testate/shared";
+import type { Job, JobKind, JobStatus, JsonObject } from "@testate/shared";
+import { JOB_KINDS, JOB_STATUSES, TERMINAL_JOB_STATUSES } from "@testate/shared";
 import * as v from "valibot";
 
 import { attempt } from "@/lib/toast.ts";
 import { createPaged } from "@/lib/async.ts";
 import { createTableControls } from "@/lib/table.ts";
-import type { TableView } from "@/lib/table.ts";
+import type { TableControls } from "@/lib/table.ts";
 import type { Paged } from "@/lib/async.ts";
+import { JOB_KIND_LABEL, JOB_STATUS_LABEL } from "@/lib/labels.ts";
 import { subscribeJob } from "@/lib/sse.ts";
 import { jobsModel } from "./jobs.model.ts";
 
 export type JobSort = "kind" | "status" | "actor" | "created_at";
 
+/** Kind and status: the two extra filters `/jobs` takes beyond sort, search and date range. */
+export type JobFilters = { kind: JobKind | ""; status: JobStatus | "" };
+const EMPTY_FILTERS: JobFilters = { kind: "", status: "" };
+
+export const JOB_KIND_FILTER_OPTIONS: { value: JobKind | ""; label: string }[] = [
+  { value: "", label: "All kinds" },
+  ...JOB_KINDS.map((value) => ({ value, label: JOB_KIND_LABEL[value] })),
+];
+export const JOB_STATUS_FILTER_OPTIONS: { value: JobStatus | ""; label: string }[] = [
+  { value: "", label: "All statuses" },
+  ...JOB_STATUSES.map((value) => ({ value, label: JOB_STATUS_LABEL[value] })),
+];
+
 export type JobsPresenter = Paged<Job> & {
-  table: TableView<Job, JobSort>;
+  table: TableControls<JobSort> & { rows: () => Job[] };
+  filters: () => JobFilters;
+  setFilters: (patch: Partial<JobFilters>) => void;
   cancel: (id: string) => Promise<void>;
 };
 
@@ -113,11 +129,17 @@ export function progressFraction(progress: JsonObject | null): number | null {
 
 export function createJobsPresenter(): JobsPresenter {
   const controls = createTableControls<JobSort>();
-  const jobs = createPaged((cursor) => jobsModel.page(cursor, controls.params()), controls.key);
-  const table: TableView<Job, JobSort> = { ...controls, rows: jobs.value };
+  const [filters, setFiltersSignal] = createSignal<JobFilters>(EMPTY_FILTERS);
+  const jobs = createPaged(
+    (cursor) => jobsModel.page(cursor, controls.params(), filters()),
+    () => `${controls.key()}|${filters().kind}|${filters().status}`
+  );
+  const table: TableControls<JobSort> & { rows: () => Job[] } = { ...controls, rows: jobs.value };
   return {
     ...jobs,
     table,
+    filters,
+    setFilters: (patch) => setFiltersSignal((current) => ({ ...current, ...patch })),
     cancel: (id) =>
       attempt(async () => {
         await jobsModel.cancel(id);

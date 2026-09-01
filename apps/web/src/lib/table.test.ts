@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { compareBy, matchesQuery, nextSort, sortRows } from "./table.ts";
+import { activeFilterCount, compareBy, matchesQuery, nextSort, sortRows } from "./table.ts";
 import type { SortState } from "./table.ts";
 
 type Row = { name: string; size: number | null; note: string | null };
@@ -72,5 +72,14 @@ describe("what the search box matches", () => {
 
   test("an empty box matches every row, including one with nothing in it", () => {
     expect(matchesQuery([null], "   ")).toBe(true);
+  });
+});
+
+describe("the badge on Filters", () => {
+  test("counts each flag as one filter, not each field it took to set", () => {
+    expect(activeFilterCount(false, false)).toBe(0);
+    // A date range is two boxes (from, to) but the caller passes one flag for the pair.
+    expect(activeFilterCount(true)).toBe(1);
+    expect(activeFilterCount(true, false, true)).toBe(2);
   });
 });

@@ -7,16 +7,7 @@ import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
 import { Menu, MenuItem, MenuLink } from "@/components/menu.tsx";
-import {
-  Cell,
-  EmptyRow,
-  Head,
-  Row,
-  SortColumn,
-  Table,
-  TableSearch,
-  TableToolbar,
-} from "@/components/table.tsx";
+import { Cell, EmptyRow, Head, Row, SortColumn, Table, TableSearch } from "@/components/table.tsx";
 import { DIFF_STATUS_LABEL } from "@/lib/labels.ts";
 import { hasRole } from "@/lib/session.ts";
 import { DetailDialog } from "./diffs.detail.view.tsx";
@@ -111,21 +102,19 @@ export default function DiffsView(props: { slug: string }): JSX.Element {
   const presenter = createDiffsPresenter(() => props.slug);
   return (
     <div class="grid gap-3">
-      <Show when={hasRole("qa")}>
-        <div class="flex justify-end">
+      <div class="flex flex-wrap items-center justify-end gap-2">
+        <TableSearch
+          placeholder="Search diffs..."
+          value={presenter.table.query()}
+          onInput={(value) => presenter.table.setQuery(value)}
+        />
+        <Show when={hasRole("qa")}>
           <Button variant="primary" onClick={() => presenter.openCreate()}>
             New diff
           </Button>
-        </div>
-      </Show>
+        </Show>
+      </div>
       <Loading fallback={<p class="text-muted">Loading diffs...</p>}>
-        <TableToolbar>
-          <TableSearch
-            placeholder="Search diffs..."
-            value={presenter.table.query()}
-            onInput={(value) => presenter.table.setQuery(value)}
-          />
-        </TableToolbar>
         <Table>
           <thead>
             <tr>

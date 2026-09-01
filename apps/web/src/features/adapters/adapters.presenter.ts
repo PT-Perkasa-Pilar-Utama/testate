@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createMemo, createSignal } from "solid-js";
 import type { Adapter, AdapterCreateFormInput } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
@@ -10,11 +10,16 @@ import {
   ENGINE_LABEL,
   TIER_LABEL,
 } from "@/lib/labels.ts";
-import { createTableView } from "@/lib/table.ts";
+import { activeFilterCount, createTableView } from "@/lib/table.ts";
 import type { TableView } from "@/lib/table.ts";
 import type { Refreshable } from "@/lib/async.ts";
-import { missingRequiredFields, toDraftBody } from "./adapters.fields.ts";
-import type { Values } from "./adapters.fields.ts";
+import {
+  ADAPTER_FILTERS_EMPTY,
+  matchesAdapterFilters,
+  missingRequiredFields,
+  toDraftBody,
+} from "./adapters.fields.ts";
+import type { AdapterFilters, Values } from "./adapters.fields.ts";
 import { adaptersModel } from "./adapters.model.ts";
 import type { ProbeOutcome } from "./adapters.model.ts";
 
@@ -27,6 +32,11 @@ export type AdapterSort = "name" | "engine" | "tier" | "mode" | "status";
 
 export type AdaptersPresenter = Refreshable<Adapter[]> & {
   table: TableView<Adapter, AdapterSort>;
+  filters: () => AdapterFilters;
+  setFilters: (patch: Partial<AdapterFilters>) => void;
+  activeFilters: () => number;
+  filtersOpen: () => boolean;
+  toggleFilters: () => void;
   creating: () => boolean;
   values: () => Values;
   outcome: () => ProbeOutcome | null;
@@ -81,6 +91,11 @@ export function createAdaptersPresenter(slug: () => string): AdaptersPresenter {
       ADAPTER_STATUS_LABEL[adapter.status],
     ],
   });
+  const [filters, setFiltersSignal] = createSignal<AdapterFilters>(ADAPTER_FILTERS_EMPTY);
+  const [filtersOpen, setFiltersOpen] = createSignal(false);
+  const filteredRows = createMemo((): Adapter[] =>
+    table.rows().filter((adapter) => matchesAdapterFilters(adapter, filters()))
+  );
   const [creating, setCreating] = createSignal(false);
   const [values, setValues] = createSignal<Values>({});
   const [outcome, setOutcome] = createSignal<ProbeOutcome | null>(null);
@@ -99,7 +114,20 @@ export function createAdaptersPresenter(slug: () => string): AdaptersPresenter {
   };
   return {
     ...adapters,
-    table,
+    table: { ...table, rows: filteredRows },
+    filters,
+    setFilters: (patch) => setFiltersSignal((current) => ({ ...current, ...patch })),
+    activeFilters: () => {
+      const current = filters();
+      return activeFilterCount(
+        current.engine !== "",
+        current.tier !== "",
+        current.mode !== "",
+        current.status !== ""
+      );
+    },
+    filtersOpen,
+    toggleFilters: () => setFiltersOpen((open) => !open),
     creating,
     values,
     outcome,

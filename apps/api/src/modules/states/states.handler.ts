@@ -39,7 +39,12 @@ const listQuerySchema = v.object({
   include_stash: v.optional(flag),
   cursor: v.optional(v.array(v.string())),
   protected: v.optional(flag),
+  created_from: v.optional(v.array(v.string())),
+  created_to: v.optional(v.array(v.string())),
 });
+
+/** Every string filter, folded through one loop: a branch per field is what tipped this over 10. */
+const TEXT_KEYS = ["cursor", "tag", "name", "created_from", "created_to"] as const;
 
 function toFilter(parsed: v.InferOutput<typeof listQuerySchema>): StatesFilter {
   const filter: StatesFilter = {
@@ -48,14 +53,12 @@ function toFilter(parsed: v.InferOutput<typeof listQuerySchema>): StatesFilter {
     order: firstQuery(parsed.order) ?? "desc",
     includeStash: firstQuery(parsed.include_stash) === "true",
   };
-  const cursor = firstQuery(parsed.cursor);
-  if (cursor !== undefined) filter.cursor = cursor;
+  for (const key of TEXT_KEYS) {
+    const value = firstQuery(parsed[key]);
+    if (value !== undefined) filter[key] = value;
+  }
   const kind = firstQuery(parsed.kind);
   if (kind !== undefined) filter.kind = kind;
-  const tag = firstQuery(parsed.tag);
-  if (tag !== undefined) filter.tag = tag;
-  const name = firstQuery(parsed.name);
-  if (name !== undefined) filter.name = name;
   const isProtected = firstQuery(parsed.protected);
   if (isProtected !== undefined) filter.protected = isProtected === "true";
   return filter;

@@ -1,16 +1,19 @@
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
-import { For, Loading, Show } from "solid-js";
+import { For, Loading, Show, createSignal } from "solid-js";
 
 import { formatWhen } from "@/lib/format.ts";
-import { ROLE_LABEL } from "@/lib/labels.ts";
+import { activeFilterCount } from "@/lib/table.ts";
+import { ROLE_LABEL, ROLE_OPTIONS } from "@/lib/labels.ts";
 import type { User } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
 import ConfirmDialog from "@/components/confirm-dialog.tsx";
+import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Icon from "@/components/icon.tsx";
+import Select from "@/components/select.tsx";
 import {
   Cell,
   EmptyRow,
@@ -20,12 +23,15 @@ import {
   Table,
   TableFooter,
   TableSearch,
-  TableToolbar,
   Truncated,
 } from "@/components/table.tsx";
 import { createUsersPresenter } from "./users.presenter.ts";
 import { CreateDialog, EditDialog, ResetDialog } from "./users.dialogs.view.tsx";
 import type { UsersPresenter } from "./users.presenter.ts";
+
+/** "" reads as "every role" in the select, and as "no filter" to the API. `as const` keeps it the
+ *  literal `""` rather than `string`, or `Select` could not infer `Role | ""` from the union. */
+const ROLE_FILTER_OPTIONS = [{ value: "" as const, label: "All roles" }, ...ROLE_OPTIONS];
 
 /**
  * Accent (`info`) is reserved for admin: the role that can do this to every other account. `qa`
@@ -70,25 +76,41 @@ function Actions(props: { presenter: UsersPresenter; user: User }): JSX.Element 
 
 export default function UsersView(): JSX.Element {
   const presenter = createUsersPresenter();
+  const [filtersOpen, setFiltersOpen] = createSignal(false);
+  const activeCount = (): number => activeFilterCount(presenter.role() !== "");
   return (
     <section class="grid gap-6">
       <PageHeader
         title="Users"
         description="Accounts on this instance. Roles are cumulative."
         actions={
-          <Button variant="primary" onClick={() => presenter.openCreate()}>
-            New user
-          </Button>
+          <>
+            <TableSearch
+              placeholder="Search users..."
+              value={presenter.table.query()}
+              onInput={(value) => presenter.table.setQuery(value)}
+            />
+            <FilterToggle
+              open={filtersOpen()}
+              active={activeCount()}
+              onToggle={() => setFiltersOpen((open) => !open)}
+            />
+            <Button variant="primary" onClick={() => presenter.openCreate()}>
+              New user
+            </Button>
+          </>
         }
       />
-      <Loading fallback={<p class="text-muted">Loading users...</p>}>
-        <TableToolbar>
-          <TableSearch
-            placeholder="Search users..."
-            value={presenter.table.query()}
-            onInput={(value) => presenter.table.setQuery(value)}
+      <FilterPanel open={filtersOpen()}>
+        <FilterField label="Role">
+          <Select
+            options={ROLE_FILTER_OPTIONS}
+            value={presenter.role()}
+            onChange={(role) => presenter.setRole(role)}
           />
-        </TableToolbar>
+        </FilterField>
+      </FilterPanel>
+      <Loading fallback={<p class="text-muted">Loading users...</p>}>
         <Table>
           <thead>
             <tr>
@@ -110,7 +132,7 @@ export default function UsersView(): JSX.Element {
           </thead>
           <tbody>
             <Show when={presenter.table.rows().length === 0}>
-              <EmptyRow>No account matches that search.</EmptyRow>
+              <EmptyRow>No account matches that search or filter.</EmptyRow>
             </Show>
             <For each={presenter.table.rows()}>
               {(user) => (

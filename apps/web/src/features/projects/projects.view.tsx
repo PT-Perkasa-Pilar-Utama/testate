@@ -1,23 +1,15 @@
-import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
-import { onceSettled } from "@/lib/form.ts";
 import { formatWhen } from "@/lib/format.ts";
-import { formatBytes } from "../states/states.format.ts";
-import { For, Loading, Show, createEffect } from "solid-js";
-import { createProjectSchema, projectSlug } from "@testate/shared";
+import { For, Loading, Show, createSignal } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
-import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import EmptyState from "@/components/empty-state.tsx";
-import FieldError from "@/components/field-error.tsx";
-import FieldLabel from "@/components/field-label.tsx";
-import Slider from "@/components/slider.tsx";
+import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
 import Icon from "@/components/icon.tsx";
-import LoadMore from "@/components/load-more.tsx";
-import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
+import LoadMore from "@/components/load-more.tsx";
 import {
   Cell,
   EmptyRow,
@@ -27,133 +19,15 @@ import {
   Table,
   TableFooter,
   TableSearch,
-  TableToolbar,
   Truncated,
 } from "@/components/table.tsx";
+import { activeFilterCount } from "@/lib/table.ts";
 import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { headBadge } from "./projects.format.ts";
-import { QUOTA_STEPS, createProjectsPresenter } from "./projects.presenter.ts";
+import { CreateDialog } from "./projects.dialogs.view.tsx";
+import { createProjectsPresenter } from "./projects.presenter.ts";
 import type { ProjectsPresenter } from "./projects.presenter.ts";
-
-/** The size a step means, with the instance default named rather than left as "default". */
-/** Formisch needs a shape to reset to; a missing `initialInput` leaves the fields undefined. */
-const BLANK_PROJECT = { name: "", description: "" } as const;
-
-function quotaLabels(inherited: number): string[] {
-  return QUOTA_STEPS.map((step) => {
-    if (step === null) return `Instance default (${formatBytes(inherited)})`;
-    return step === 0 ? "No limit" : formatBytes(step);
-  });
-}
-
-/** The quota control, the same one the edit dialog uses, so the two cannot drift apart. */
-export function QuotaSlider(props: {
-  inherited: number;
-  index: number;
-  onIndex: (index: number) => void;
-}): JSX.Element {
-  return (
-    <div class="grid gap-1.5 text-sm">
-      <span class="flex items-center gap-1.5">
-        Snapshot quota
-        <span class="text-xs font-normal text-muted">optional</span>
-      </span>
-      <Slider
-        label="Snapshot quota"
-        steps={quotaLabels(props.inherited)}
-        ends={["Default", "No limit"]}
-        index={props.index}
-        onIndex={(index) => props.onIndex(index)}
-      />
-    </div>
-  );
-}
-
-function CreateDialog(props: { presenter: ProjectsPresenter }): JSX.Element {
-  const form = createForm({ schema: createProjectSchema, initialInput: BLANK_PROJECT });
-  const name = (): string => getInput(form, { path: ["name"] }) ?? "";
-
-  createEffect(
-    () => props.presenter.creating(),
-    (open) => {
-      if (open) onceSettled(() => reset(form, { initialInput: BLANK_PROJECT }));
-    }
-  );
-
-  return (
-    <Dialog
-      open={props.presenter.creating()}
-      onClose={() => props.presenter.closeCreate()}
-      title="New project"
-      description="A project groups adapters and the states taken across them."
-    >
-      <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.submit(input)}>
-        <Field of={form} path={["name"]}>
-          {(field) => (
-            <label class="grid gap-1.5 text-sm">
-              <FieldLabel required>Name</FieldLabel>
-              <Input
-                {...field.props}
-                required
-                value={field.input}
-                variant={field.errors ? "error" : "default"}
-                aria-invalid={field.errors ? "true" : undefined}
-              />
-              <FieldError message={field.errors?.[0]} />
-            </label>
-          )}
-        </Field>
-        <Field of={form} path={["description"]}>
-          {(field) => (
-            <label class="grid gap-1.5 text-sm">
-              <FieldLabel required={false}>Description</FieldLabel>
-              <Input
-                {...field.props}
-                maxlength="2000"
-                value={field.input}
-                variant={field.errors ? "error" : "default"}
-                aria-invalid={field.errors ? "true" : undefined}
-              />
-              <FieldError message={field.errors?.[0]} />
-            </label>
-          )}
-        </Field>
-        {/* Read-only, and a preview rather than the answer: the API adds `-2` if the slug is taken,
-            and only it knows what is taken. */}
-        <label class="grid gap-1.5 text-sm">
-          <span>URL</span>
-          <Input
-            readonly
-            tabindex="-1"
-            aria-label="URL"
-            value={`/projects/${projectSlug(name())}`}
-          />
-        </label>
-        <Show when={hasRole("admin")}>
-          <Loading fallback={<p class="text-sm text-muted">Reading the instance default...</p>}>
-            <QuotaSlider
-              inherited={props.presenter.defaults.value().quota_bytes}
-              index={props.presenter.quotaIndex()}
-              onIndex={(index) => props.presenter.setQuotaIndex(index)}
-            />
-          </Loading>
-        </Show>
-        <Show when={props.presenter.error()}>
-          {(message) => <Banner variant="error">{message()}</Banner>}
-        </Show>
-        <div class="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={() => props.presenter.closeCreate()}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="primary">
-            Create
-          </Button>
-        </div>
-      </Form>
-    </Dialog>
-  );
-}
 
 /** The "New project" control, shared by the header and the empty state so there is one to keep in sync. */
 function NewProjectButton(props: { presenter: ProjectsPresenter }): JSX.Element {
@@ -166,18 +40,61 @@ function NewProjectButton(props: { presenter: ProjectsPresenter }): JSX.Element 
   );
 }
 
+/** Search text or a date bound narrows the list; an empty result under either reads as "no
+ *  matches", not as "no projects", so the big empty state gives way to the table's own row. */
+function isFiltered(presenter: ProjectsPresenter): boolean {
+  return (
+    presenter.table.query() !== "" ||
+    presenter.table.createdFrom() !== "" ||
+    presenter.table.createdTo() !== ""
+  );
+}
+
 export default function ProjectsView(): JSX.Element {
   const presenter = createProjectsPresenter();
+  const [filtersOpen, setFiltersOpen] = createSignal(false);
+  const activeCount = (): number =>
+    activeFilterCount(presenter.table.createdFrom() !== "" || presenter.table.createdTo() !== "");
   return (
     <section class="grid gap-6">
       <PageHeader
         title="Projects"
         description="Each project owns its adapters and states."
-        actions={<NewProjectButton presenter={presenter} />}
+        actions={
+          <>
+            <TableSearch
+              placeholder="Search projects..."
+              value={presenter.table.query()}
+              onInput={(value) => presenter.table.setQuery(value)}
+            />
+            <FilterToggle
+              open={filtersOpen()}
+              active={activeCount()}
+              onToggle={() => setFiltersOpen((open) => !open)}
+            />
+            <NewProjectButton presenter={presenter} />
+          </>
+        }
       />
+      <FilterPanel open={filtersOpen()}>
+        <FilterField label="Created from">
+          <Input
+            type="date"
+            value={presenter.table.createdFrom()}
+            onInput={(event) => presenter.table.setCreatedFrom(event.currentTarget.value)}
+          />
+        </FilterField>
+        <FilterField label="Created to">
+          <Input
+            type="date"
+            value={presenter.table.createdTo()}
+            onInput={(event) => presenter.table.setCreatedTo(event.currentTarget.value)}
+          />
+        </FilterField>
+      </FilterPanel>
       <Loading fallback={<p class="text-muted">Loading projects...</p>}>
         <Show
-          when={presenter.value().length > 0}
+          when={presenter.table.rows().length > 0 || isFiltered(presenter)}
           fallback={
             <EmptyState
               icon="folder"
@@ -190,13 +107,6 @@ export default function ProjectsView(): JSX.Element {
             </EmptyState>
           }
         >
-          <TableToolbar>
-            <TableSearch
-              placeholder="Search projects..."
-              value={presenter.table.query()}
-              onInput={(value) => presenter.table.setQuery(value)}
-            />
-          </TableToolbar>
           <Table>
             <thead>
               <tr>
@@ -207,11 +117,17 @@ export default function ProjectsView(): JSX.Element {
                 <SortColumn view={presenter.table} column="changed_at">
                   Last moved
                 </SortColumn>
+                <SortColumn view={presenter.table} column="created_at">
+                  Created
+                </SortColumn>
+                <SortColumn view={presenter.table} column="updated_at">
+                  Updated
+                </SortColumn>
               </tr>
             </thead>
             <tbody>
               <Show when={presenter.table.rows().length === 0}>
-                <EmptyRow>No project matches that search.</EmptyRow>
+                <EmptyRow>No project matches that search or filter.</EmptyRow>
               </Show>
               <For each={presenter.table.rows()}>
                 {(project) => {
@@ -269,6 +185,8 @@ export default function ProjectsView(): JSX.Element {
                           {(changedAt) => <>{formatWhen(changedAt())}</>}
                         </Show>
                       </Cell>
+                      <Cell>{formatWhen(project.created_at)}</Cell>
+                      <Cell>{formatWhen(project.updated_at)}</Cell>
                     </Row>
                   );
                 }}

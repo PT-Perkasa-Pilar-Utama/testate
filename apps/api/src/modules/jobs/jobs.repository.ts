@@ -61,6 +61,8 @@ export type JobsListQuery = {
   adapter_id?: string;
   kind?: JobKind;
   status?: JobStatus;
+  created_from?: string;
+  created_to?: string;
   /** Project ids a scoped token may see; null means every project. */
   scope: string[] | null;
   /** Instance-level jobs (no project) show for admins only. */

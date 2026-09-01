@@ -35,7 +35,19 @@ const listQuery = v.object({
   adapter_id: v.optional(v.array(v.string())),
   kind: v.optional(v.array(jobKindSchema)),
   status: v.optional(v.array(jobStatusSchema)),
+  created_from: v.optional(v.array(v.string())),
+  created_to: v.optional(v.array(v.string())),
 });
+
+/** Every string filter, folded through one loop: a branch per field is what tipped this over 10. */
+const TEXT_KEYS = [
+  "q",
+  "cursor",
+  "project_id",
+  "adapter_id",
+  "created_from",
+  "created_to",
+] as const;
 
 function toFilter(parsed: v.InferOutput<typeof listQuery>): JobsFilter {
   const filter: JobsFilter = {
@@ -43,14 +55,10 @@ function toFilter(parsed: v.InferOutput<typeof listQuery>): JobsFilter {
     sort: firstQuery(parsed.sort) ?? "created_at",
     order: firstQuery(parsed.order) ?? "desc",
   };
-  const q = firstQuery(parsed.q);
-  if (q !== undefined) filter.q = q;
-  const cursor = firstQuery(parsed.cursor);
-  if (cursor !== undefined) filter.cursor = cursor;
-  const projectId = firstQuery(parsed.project_id);
-  if (projectId !== undefined) filter.project_id = projectId;
-  const adapterId = firstQuery(parsed.adapter_id);
-  if (adapterId !== undefined) filter.adapter_id = adapterId;
+  for (const key of TEXT_KEYS) {
+    const value = firstQuery(parsed[key]);
+    if (value !== undefined) filter[key] = value;
+  }
   const kind = firstQuery(parsed.kind);
   if (kind !== undefined) filter.kind = kind;
   const status = firstQuery(parsed.status);

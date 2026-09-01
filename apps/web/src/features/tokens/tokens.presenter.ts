@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import type { ApiToken, JsonObject, TokenDraft } from "@testate/shared";
+import type { ApiToken, JsonObject, TokenDraft, TokenKind } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
@@ -15,8 +15,15 @@ export const EMPTY_DRAFT: TokenDraft = { name: "", kind: "standard", role: "qa",
 
 export type TokenSort = "name" | "kind" | "role" | "last_used_at" | "expires_at";
 
+/** "" is unfiltered; otherwise the exact string the API's `revoked` query param takes. */
+export type RevokedFilter = "" | "true" | "false";
+
 export type TokensPresenter = Paged<ApiToken> & {
   table: TableView<ApiToken, TokenSort>;
+  kind: () => TokenKind | "";
+  setKind: (kind: TokenKind | "") => void;
+  revoked: () => RevokedFilter;
+  setRevoked: (revoked: RevokedFilter) => void;
   creating: () => boolean;
   error: () => string | null;
   /** The freshly minted token plus the record it belongs to; null once dismissed. Testate never
@@ -45,7 +52,14 @@ export function toCreateBody(draft: TokenDraft): JsonObject {
 
 export function createTokensPresenter(): TokensPresenter {
   const controls = createTableControls<TokenSort>();
-  const tokens = createPaged((cursor) => tokensModel.page(cursor, controls.params()), controls.key);
+  const [kind, setKind] = createSignal<TokenKind | "">("");
+  const [revoked, setRevoked] = createSignal<RevokedFilter>("");
+  const tokens = createPaged(
+    (cursor) => tokensModel.page(cursor, controls.params(), kind(), revoked()),
+    // Kind and revoked narrow the same list the sort and search do, so either changing has to
+    // drop the pages already appended the way a new sort or search does (see `createPaged`).
+    () => `${controls.key()}|${kind()}|${revoked()}`
+  );
   const table: TableView<ApiToken, TokenSort> = { ...controls, rows: tokens.value };
   const [creating, setCreating] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
@@ -54,6 +68,10 @@ export function createTokensPresenter(): TokensPresenter {
   return {
     ...tokens,
     table,
+    kind,
+    setKind,
+    revoked,
+    setRevoked,
     creating,
     error,
     created,

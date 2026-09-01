@@ -1,13 +1,16 @@
 import type { JSX } from "@solidjs/web";
 import { formatWhen } from "@/lib/format.ts";
-import { For, Loading, Show, createEffect } from "solid-js";
+import { For, Loading, Show, createEffect, createSignal } from "solid-js";
 import type { Checkout } from "@testate/shared";
 import { TERMINAL_JOB_STATUSES } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
+import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
 import Icon from "@/components/icon.tsx";
+import Input from "@/components/input.tsx";
 import LoadMore from "@/components/load-more.tsx";
+import Select from "@/components/select.tsx";
 import {
   Cell,
   EmptyRow,
@@ -17,14 +20,16 @@ import {
   Table,
   TableFooter,
   TableSearch,
-  TableToolbar,
   Truncated,
 } from "@/components/table.tsx";
+import { activeFilterCount } from "@/lib/table.ts";
 import { CHECKOUT_PURPOSE_LABEL, CHECKOUT_RESULT_LABEL, JOB_STATUS_LABEL } from "@/lib/labels.ts";
 import { hasRole } from "@/lib/session.ts";
 import { subscribeJob } from "@/lib/sse.ts";
 import { CountersDialog, DetailDialog, RESULT_VARIANT } from "./checkouts.dialogs.view.tsx";
 import {
+  CHECKOUT_PURPOSE_FILTER_OPTIONS,
+  CHECKOUT_STATUS_FILTER_OPTIONS,
   blockedAdapters,
   createCheckoutsPresenter,
   outcomeLine,
@@ -107,6 +112,27 @@ function RecoveryActions(props: {
   );
 }
 
+/** Search text or a picked filter narrows the list; an empty result under either reads as "no
+ *  matches", not as "no restores yet". */
+function isFiltered(presenter: CheckoutsPresenter): boolean {
+  return (
+    presenter.table.query() !== "" ||
+    presenter.filters().status !== "" ||
+    presenter.filters().purpose !== "" ||
+    presenter.table.createdFrom() !== "" ||
+    presenter.table.createdTo() !== ""
+  );
+}
+
+/** The panel's own fields only; the search box's own text is already visible without opening it. */
+function activeCount(presenter: CheckoutsPresenter): number {
+  return activeFilterCount(
+    presenter.filters().status !== "",
+    presenter.filters().purpose !== "",
+    presenter.table.createdFrom() !== "" || presenter.table.createdTo() !== ""
+  );
+}
+
 export default function CheckoutsView(props: {
   slug: string;
   onChanged?: () => void;
@@ -115,118 +141,158 @@ export default function CheckoutsView(props: {
     () => props.slug,
     () => props.onChanged?.()
   );
+  const [open, setOpen] = createSignal(false);
   return (
-    <Loading fallback={<p class="text-muted">Loading checkouts...</p>}>
-      <TableToolbar>
+    <div class="grid gap-3">
+      <div class="flex flex-wrap items-center justify-end gap-2">
         <TableSearch
           placeholder="Search restores..."
           value={presenter.table.query()}
           onInput={(value) => presenter.table.setQuery(value)}
         />
-      </TableToolbar>
-      <Table>
-        <thead>
-          <tr>
-            <SortColumn view={presenter.table} column="state">
-              Restore
-            </SortColumn>
-            <SortColumn view={presenter.table} column="status">
-              Result
-            </SortColumn>
-            <Head>Databases</Head>
-            <SortColumn view={presenter.table} column="actor">
-              By
-            </SortColumn>
-            <SortColumn view={presenter.table} column="created_at">
-              Started
-            </SortColumn>
-            <Head pinned>Actions</Head>
-          </tr>
-        </thead>
-        <tbody>
-          <Show
-            when={presenter.table.rows().length > 0}
-            fallback={
-              <EmptyRow>
-                <Show
-                  when={presenter.value().length > 0}
-                  fallback="No restores yet. This tab is the record of past restores and the place to retry a failed one. To start a restore, open the States tab and press Check out on a state."
-                >
-                  No restore matches that search.
-                </Show>
-              </EmptyRow>
-            }
-          >
-            <For each={presenter.table.rows()}>
-              {(checkout) => (
-                <Row>
-                  <Follow checkout={checkout} onDone={() => presenter.refresh()} />
-                  <Cell>
-                    <div class="grid gap-0.5">
-                      <Truncated class="max-w-[18rem] font-medium text-heading">
-                        {checkout.state.name}
-                      </Truncated>
-                      <span class="text-muted text-xs">
-                        {CHECKOUT_PURPOSE_LABEL[checkout.purpose]}
+        <FilterToggle
+          open={open()}
+          active={activeCount(presenter)}
+          onToggle={() => setOpen((value) => !value)}
+        />
+      </div>
+      <FilterPanel open={open()}>
+        <FilterField label="Status">
+          <Select
+            options={CHECKOUT_STATUS_FILTER_OPTIONS}
+            value={presenter.filters().status}
+            onChange={(value) => presenter.setFilters({ status: value })}
+          />
+        </FilterField>
+        <FilterField label="Purpose">
+          <Select
+            options={CHECKOUT_PURPOSE_FILTER_OPTIONS}
+            value={presenter.filters().purpose}
+            onChange={(value) => presenter.setFilters({ purpose: value })}
+          />
+        </FilterField>
+        <FilterField label="Started from">
+          <Input
+            type="date"
+            value={presenter.table.createdFrom()}
+            onInput={(event) => presenter.table.setCreatedFrom(event.currentTarget.value)}
+          />
+        </FilterField>
+        <FilterField label="Started to">
+          <Input
+            type="date"
+            value={presenter.table.createdTo()}
+            onInput={(event) => presenter.table.setCreatedTo(event.currentTarget.value)}
+          />
+        </FilterField>
+      </FilterPanel>
+      <Loading fallback={<p class="text-muted">Loading checkouts...</p>}>
+        <Table>
+          <thead>
+            <tr>
+              <SortColumn view={presenter.table} column="state">
+                Restore
+              </SortColumn>
+              <SortColumn view={presenter.table} column="status">
+                Result
+              </SortColumn>
+              <Head>Databases</Head>
+              <SortColumn view={presenter.table} column="actor">
+                By
+              </SortColumn>
+              <SortColumn view={presenter.table} column="created_at">
+                Started
+              </SortColumn>
+              <Head pinned>Actions</Head>
+            </tr>
+          </thead>
+          <tbody>
+            <Show
+              when={presenter.table.rows().length > 0}
+              fallback={
+                <EmptyRow>
+                  <Show
+                    when={isFiltered(presenter)}
+                    fallback="No restores yet. This tab is the record of past restores and the place to retry a failed one. To start a restore, open the States tab and press Check out on a state."
+                  >
+                    No restore matches your search or filters.
+                  </Show>
+                </EmptyRow>
+              }
+            >
+              <For each={presenter.table.rows()}>
+                {(checkout) => (
+                  <Row>
+                    <Follow checkout={checkout} onDone={() => presenter.refresh()} />
+                    <Cell>
+                      <div class="grid gap-0.5">
+                        <Truncated class="max-w-[18rem] font-medium text-heading">
+                          {checkout.state.name}
+                        </Truncated>
+                        <span class="text-muted text-xs">
+                          {CHECKOUT_PURPOSE_LABEL[checkout.purpose]}
+                        </span>
+                      </div>
+                    </Cell>
+                    <Cell wrap>
+                      <Outcome checkout={checkout} />
+                    </Cell>
+                    <Cell>
+                      <span class="inline-flex flex-wrap gap-1">
+                        <For each={checkout.adapters}>
+                          {(adapter) => (
+                            <Badge variant={RESULT_VARIANT[adapter.result]}>
+                              <span class="block max-w-[8rem] truncate" title={adapter.name}>
+                                {adapter.name}
+                              </span>
+                              <span class="shrink-0">
+                                : {CHECKOUT_RESULT_LABEL[adapter.result]}
+                              </span>
+                            </Badge>
+                          )}
+                        </For>
                       </span>
-                    </div>
-                  </Cell>
-                  <Cell wrap>
-                    <Outcome checkout={checkout} />
-                  </Cell>
-                  <Cell>
-                    <span class="inline-flex flex-wrap gap-1">
-                      <For each={checkout.adapters}>
-                        {(adapter) => (
-                          <Badge variant={RESULT_VARIANT[adapter.result]}>
-                            <span class="block max-w-[8rem] truncate" title={adapter.name}>
-                              {adapter.name}
-                            </span>
-                            <span class="shrink-0">: {CHECKOUT_RESULT_LABEL[adapter.result]}</span>
-                          </Badge>
-                        )}
-                      </For>
-                    </span>
-                  </Cell>
-                  <Cell class="whitespace-nowrap">
-                    <Truncated class="max-w-[10rem]">{checkout.actor.label}</Truncated>
-                  </Cell>
-                  <Cell class="whitespace-nowrap">{formatWhen(checkout.created_at)}</Cell>
-                  <Cell pinned>
-                    <div class="flex flex-wrap justify-end gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => presenter.openDetail(checkout)}
-                      >
-                        Details
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => void presenter.openCounters(checkout)}
-                      >
-                        Counters
-                      </Button>
-                      <RecoveryActions presenter={presenter} checkout={checkout} />
-                    </div>
-                  </Cell>
-                </Row>
-              )}
-            </For>
-          </Show>
-        </tbody>
-      </Table>
-      <TableFooter
-        shown={presenter.table.rows().length}
-        noun="checkouts"
-        hasMore={presenter.hasMore()}
-        total={presenter.total()}
-      >
-        <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
-      </TableFooter>
-      <DetailDialog presenter={presenter} />
-      <CountersDialog presenter={presenter} />
-    </Loading>
+                    </Cell>
+                    <Cell class="whitespace-nowrap">
+                      <Truncated class="max-w-[10rem]">{checkout.actor.label}</Truncated>
+                    </Cell>
+                    <Cell class="whitespace-nowrap">{formatWhen(checkout.created_at)}</Cell>
+                    <Cell pinned>
+                      <div class="flex flex-wrap justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => presenter.openDetail(checkout)}
+                        >
+                          Details
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => void presenter.openCounters(checkout)}
+                        >
+                          Counters
+                        </Button>
+                        <RecoveryActions presenter={presenter} checkout={checkout} />
+                      </div>
+                    </Cell>
+                  </Row>
+                )}
+              </For>
+            </Show>
+          </tbody>
+        </Table>
+        <TableFooter
+          shown={presenter.table.rows().length}
+          noun="checkouts"
+          hasMore={presenter.hasMore()}
+          total={presenter.total()}
+        >
+          <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
+        </TableFooter>
+        <DetailDialog presenter={presenter} />
+        <CountersDialog presenter={presenter} />
+      </Loading>
+    </div>
   );
 }

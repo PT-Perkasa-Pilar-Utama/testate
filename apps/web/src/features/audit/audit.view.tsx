@@ -1,25 +1,18 @@
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
-import { For, Loading, Show } from "solid-js";
+import { For, Loading, Show, createSignal } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
+import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
 import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Select from "@/components/select.tsx";
 import { AUDIT_OUTCOME_LABEL } from "@/lib/labels.ts";
-import {
-  Cell,
-  Head,
-  Row,
-  Table,
-  EmptyRow,
-  TableFooter,
-  TableToolbar,
-  Truncated,
-} from "@/components/table.tsx";
+import { activeFilterCount } from "@/lib/table.ts";
+import { Cell, Head, Row, Table, EmptyRow, TableFooter, Truncated } from "@/components/table.tsx";
 import { OUTCOMES, createAuditPresenter } from "./audit.presenter.ts";
 import type { AuditPresenter } from "./audit.presenter.ts";
 
@@ -30,58 +23,98 @@ const ACTOR_ICON = { user: "user", token: "key-round", system: "terminal" } as c
 
 function hasFilter(filter: AuditPresenter["filter"]): boolean {
   const current = filter();
-  return current.action !== "" || current.actor !== "" || current.outcome !== "";
+  return (
+    current.action !== "" ||
+    current.actor !== "" ||
+    current.outcome !== "" ||
+    current.from !== "" ||
+    current.to !== ""
+  );
 }
 
-/** The API has filtered by action, actor and outcome since it was written. This is the screen. */
+/** The panel's own fields only; a date range is two boxes but counts as the one filter it is. */
+function activeCount(filter: AuditPresenter["filter"]): number {
+  const current = filter();
+  return activeFilterCount(
+    current.action !== "",
+    current.actor !== "",
+    current.outcome !== "",
+    current.from !== "" || current.to !== ""
+  );
+}
+
+/** The API has filtered by action, actor, outcome and a created-date range since it was written. */
 function Filters(props: { presenter: AuditPresenter }): JSX.Element {
   return (
-    <TableToolbar
-      actions={
-        <Show when={hasFilter(props.presenter.filter)}>
-          <Button size="sm" variant="ghost" onClick={() => props.presenter.clearFilter()}>
-            Clear filters
-          </Button>
-        </Show>
-      }
-    >
-      <label class="grid gap-1.5 text-sm">
-        <span>Action</span>
+    <>
+      <FilterField label="Action">
         <Input
           placeholder="auth.login"
           value={props.presenter.filter().action}
           onInput={(event) => props.presenter.setFilter({ action: event.currentTarget.value })}
         />
-      </label>
-      <label class="grid gap-1.5 text-sm">
-        <span>Actor</span>
+      </FilterField>
+      <FilterField label="Actor">
         <Input
           placeholder="qa-user"
           value={props.presenter.filter().actor}
           onInput={(event) => props.presenter.setFilter({ actor: event.currentTarget.value })}
         />
-      </label>
-      <label class="grid gap-1.5 text-sm">
-        <span>Outcome</span>
+      </FilterField>
+      <FilterField label="Outcome">
         <Select
           options={OUTCOMES.map((value) => ({
             value,
-            label: value === "" ? "any" : AUDIT_OUTCOME_LABEL[value],
+            label: value === "" ? "All outcomes" : AUDIT_OUTCOME_LABEL[value],
           }))}
           value={props.presenter.filter().outcome}
           onChange={(outcome) => props.presenter.setFilter({ outcome })}
         />
-      </label>
-    </TableToolbar>
+      </FilterField>
+      <FilterField label="Logged from">
+        <Input
+          type="date"
+          value={props.presenter.filter().from}
+          onInput={(event) => props.presenter.setFilter({ from: event.currentTarget.value })}
+        />
+      </FilterField>
+      <FilterField label="Logged to">
+        <Input
+          type="date"
+          value={props.presenter.filter().to}
+          onInput={(event) => props.presenter.setFilter({ to: event.currentTarget.value })}
+        />
+      </FilterField>
+      <Show when={hasFilter(props.presenter.filter)}>
+        <div class="flex items-end">
+          <Button size="sm" variant="ghost" onClick={() => props.presenter.clearFilter()}>
+            Clear filters
+          </Button>
+        </div>
+      </Show>
+    </>
   );
 }
 
 export default function AuditView(): JSX.Element {
   const presenter = createAuditPresenter();
+  const [open, setOpen] = createSignal(false);
   return (
     <section class="grid gap-6">
-      <PageHeader title="Audit log" description="Every write, by whom, and how it ended." />
-      <Filters presenter={presenter} />
+      <PageHeader
+        title="Audit log"
+        description="Every write, by whom, and how it ended."
+        actions={
+          <FilterToggle
+            open={open()}
+            active={activeCount(presenter.filter)}
+            onToggle={() => setOpen((value) => !value)}
+          />
+        }
+      />
+      <FilterPanel open={open()}>
+        <Filters presenter={presenter} />
+      </FilterPanel>
       <Loading fallback={<p class="text-muted">Loading audit rows...</p>}>
         <Table>
           <thead>

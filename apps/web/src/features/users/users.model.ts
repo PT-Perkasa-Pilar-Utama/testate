@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import type { JsonObject, User } from "@testate/shared";
+import type { JsonObject, Role, User } from "@testate/shared";
 import { userSchema } from "@testate/shared";
 
 import { apiClient } from "@/lib/api-client.ts";
@@ -12,8 +12,15 @@ const path = (id: string): string => `/users/${encodeURIComponent(id)}`;
 
 export const usersModel = {
   list: (): Promise<User[]> => apiClient.get("/users", { schema: v.array(userSchema) }),
-  page: (cursor: string | undefined, params: TableParams<UserSort>): Promise<Page<User>> =>
-    apiClient.page("/users", userSchema, tableQuery(params, cursor)),
+  page: (
+    cursor: string | undefined,
+    params: TableParams<UserSort>,
+    role: Role | ""
+  ): Promise<Page<User>> =>
+    apiClient.page("/users", userSchema, {
+      ...tableQuery(params, cursor),
+      role: role === "" ? undefined : role,
+    }),
   create: (body: JsonObject): Promise<User> =>
     apiClient.post("/users", { schema: userSchema, body }),
   update: (id: string, body: JsonObject): Promise<User> =>

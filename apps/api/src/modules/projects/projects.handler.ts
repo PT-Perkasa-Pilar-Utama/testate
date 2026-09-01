@@ -4,6 +4,7 @@ import { nextCursor } from "../../lib/db/keyset.ts";
 
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
 import { ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.ts";
+import type { Project } from "@testate/shared";
 import type { Handler } from "../../lib/http/index.ts";
 import { firstQuery } from "../../lib/http/query.ts";
 import type { ProjectPatch, ProjectsListQuery } from "./projects.repository.ts";
@@ -27,10 +28,12 @@ const listQuery = v.object({
   limit: v.optional(
     v.array(v.pipe(v.string(), v.transform(Number), v.integer(), v.minValue(1), v.maxValue(200)))
   ),
-  sort: v.optional(v.array(v.picklist(["name", "created_at"]))),
+  sort: v.optional(v.array(v.picklist(["name", "created_at", "updated_at", "changed_at"]))),
   order: v.optional(v.array(v.picklist(["asc", "desc"]))),
   q: v.optional(v.array(v.string())),
   cursor: v.optional(v.array(v.string())),
+  created_from: v.optional(v.array(v.string())),
+  created_to: v.optional(v.array(v.string())),
 });
 
 const deletionSchema = v.object({
@@ -53,6 +56,10 @@ export function toListQuery(
   if (cursor !== undefined) query.cursor = cursor;
   const q = firstQuery(parsed.q);
   if (q !== undefined) query.q = q;
+  const createdFrom = firstQuery(parsed.created_from);
+  if (createdFrom !== undefined) query.created_from = createdFrom;
+  const createdTo = firstQuery(parsed.created_to);
+  if (createdTo !== undefined) query.created_to = createdTo;
   return query;
 }
 
@@ -73,6 +80,12 @@ function toPatch(parsed: v.InferOutput<typeof updateProjectSchema>): ProjectPatc
   return patch;
 }
 
+/** The value the page ended on, read from the same place the sort ordered by. */
+function sortValue(row: Project, sort: ProjectsListQuery["sort"]): string | null {
+  // "Last moved" is the head's timestamp, which sits a level down from the other three.
+  return sort === "changed_at" ? row.head.changed_at : row[sort];
+}
+
 export function createProjectsHandlers(
   service: ProjectsService,
   apiPrefix: string,
@@ -85,7 +98,10 @@ export function createProjectsHandlers(
     list: async (c) => {
       const query = toListQuery(parseQuery(c, listQuery));
       const rows = await service.list(c.get("projectScope"), query);
-      const next = nextCursor(rows, query.limit, query, (row) => [row[query.sort], row.id]);
+      const next = nextCursor(rows, query.limit, query, (row) => [
+        sortValue(row, query.sort),
+        row.id,
+      ]);
       const total = await service.total(c.get("projectScope"), query);
       return okPage(c, rows, next, query.limit, total);
     },

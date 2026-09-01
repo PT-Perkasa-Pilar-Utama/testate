@@ -2,6 +2,7 @@ import type { Project } from "@testate/shared";
 import { headStatusSchema } from "@testate/shared";
 import type { HeadStatus } from "@testate/shared";
 import * as v from "valibot";
+import { createdRangeConditions } from "../../lib/db/date-range.ts";
 import { keysetCondition } from "../../lib/db/keyset.ts";
 import { likeTerm } from "../../lib/db/like.ts";
 
@@ -25,9 +26,11 @@ type ProjectRecord = v.InferOutput<typeof projectRecordSchema>;
 
 export type ProjectsListQuery = {
   limit: number;
-  sort: "name" | "created_at";
+  sort: "name" | "created_at" | "updated_at" | "changed_at";
   order: "asc" | "desc";
   q?: string;
+  created_from?: string;
+  created_to?: string;
   /** Continues after a `next_cursor` from the page before. */
   cursor?: string;
   /** Null means every project; a list restricts to a token's scope (09 §9.5). */
@@ -84,7 +87,14 @@ export type DeletionCounts = {
 const SELECT = `SELECT p.*, s.name AS head_state_name
   FROM projects p LEFT JOIN states s ON s.id = p.head_state_id`;
 
-const SORT_COLUMNS = { name: "p.name COLLATE NOCASE", created_at: "p.created_at" } as const;
+const SORT_COLUMNS = {
+  name: "p.name COLLATE NOCASE",
+  created_at: "p.created_at",
+  updated_at: "p.updated_at",
+  // The "Last moved" column. The SPA has offered this sort since the column existed and the
+  // picklist refused it, so clicking that header answered 400 rather than sorting.
+  changed_at: "p.head_changed_at",
+} as const satisfies Record<ProjectsListQuery["sort"], string>;
 
 function toProject(row: ProjectRecord): Project {
   return {
@@ -120,6 +130,7 @@ function conditions(query: ProjectsListQuery): Condition[] {
     const marks = query.ids.map(() => "?").join(",");
     found.push({ sql: `p.id IN (${marks === "" ? "NULL" : marks})`, params: query.ids });
   }
+  found.push(...createdRangeConditions("p.created_at", query.created_from, query.created_to));
   return found;
 }
 

@@ -1,20 +1,26 @@
 import * as v from "valibot";
-import { createSignal } from "solid-js";
+import { createMemo, createSignal } from "solid-js";
 import type { ImportReport, ImportRun } from "@testate/shared";
 
 import { attempt } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import { IMPORT_MODE_LABEL } from "@/lib/labels.ts";
-import { createTableView } from "@/lib/table.ts";
+import { activeFilterCount, createTableView } from "@/lib/table.ts";
 import type { TableView } from "@/lib/table.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { importsModel } from "./imports.model.ts";
-import { reportCounts, reportSummary } from "./imports.helpers.ts";
+import { matchesModeFilter, reportCounts, reportSummary } from "./imports.helpers.ts";
 
 export type ImportSort = "mode" | "actor" | "created_at";
+export type ImportModeFilter = ImportRun["mode"] | "";
 
 export type ImportsPresenter = Refreshable<ImportRun[]> & {
   table: TableView<ImportRun, ImportSort>;
+  modeFilter: () => ImportModeFilter;
+  setModeFilter: (value: ImportModeFilter) => void;
+  activeFilters: () => number;
+  filtersOpen: () => boolean;
+  toggleFilters: () => void;
   report: () => ImportReport | null;
   openReport: (run: ImportRun) => Promise<void>;
   closeReport: () => void;
@@ -49,10 +55,20 @@ export function createImportsPresenter(slug: () => string): ImportsPresenter {
     // The stored value and the word on screen both match, or a search fails whichever is typed.
     fields: (run) => [run.id, run.mode, IMPORT_MODE_LABEL[run.mode], run.actor.label],
   });
+  const [modeFilter, setModeFilter] = createSignal<ImportModeFilter>("");
+  const [filtersOpen, setFiltersOpen] = createSignal(false);
+  const filteredRows = createMemo((): ImportRun[] =>
+    table.rows().filter((run) => matchesModeFilter(run.mode, modeFilter()))
+  );
   const [report, setReport] = createSignal<ImportReport | null>(null);
   return {
     ...runs,
-    table,
+    table: { ...table, rows: filteredRows },
+    modeFilter,
+    setModeFilter,
+    activeFilters: () => activeFilterCount(modeFilter() !== ""),
+    filtersOpen,
+    toggleFilters: () => setFiltersOpen((open) => !open),
     report,
     openReport: (run) => {
       const staticSlug = slug();

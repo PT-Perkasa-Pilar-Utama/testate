@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Checkout, Counters } from "@testate/shared";
 
+import { checkoutsQuery } from "./checkouts.model.ts";
 import {
   blockedAdapters,
   blockingSessions,
@@ -147,5 +148,32 @@ describe("checkouts feature", () => {
     expect(
       hasFailure({ adapters: [{ adapter_id: "a1", counters: [{ name: "s", ok: true }] }] })
     ).toBe(false);
+  });
+});
+
+describe("checkoutsQuery", () => {
+  test("adds status and purpose only once a filter has picked one", () => {
+    expect(checkoutsQuery({}, undefined, { status: "", purpose: "" })).toStrictEqual({
+      cursor: undefined,
+      sort: undefined,
+      order: undefined,
+      q: undefined,
+      created_from: undefined,
+      created_to: undefined,
+      status: undefined,
+      purpose: undefined,
+    });
+    expect(checkoutsQuery({}, "c1", { status: "failed", purpose: "return_to_init" })).toStrictEqual(
+      {
+        cursor: "c1",
+        sort: undefined,
+        order: undefined,
+        q: undefined,
+        created_from: undefined,
+        created_to: undefined,
+        status: "failed",
+        purpose: "return_to_init",
+      }
+    );
   });
 });

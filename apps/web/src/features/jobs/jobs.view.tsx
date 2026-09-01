@@ -1,14 +1,17 @@
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
-import { For, Loading, Show } from "solid-js";
+import { For, Loading, Show, createSignal } from "solid-js";
 import type { Job, JsonObject } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
+import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
 import Icon from "@/components/icon.tsx";
+import Input from "@/components/input.tsx";
 import Meter from "@/components/meter.tsx";
 import LoadMore from "@/components/load-more.tsx";
+import Select from "@/components/select.tsx";
 import {
   Cell,
   EmptyRow,
@@ -18,12 +21,14 @@ import {
   Table,
   TableFooter,
   TableSearch,
-  TableToolbar,
   Truncated,
 } from "@/components/table.tsx";
+import { activeFilterCount } from "@/lib/table.ts";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL } from "@/lib/labels.ts";
 import { hasRole } from "@/lib/session.ts";
 import {
+  JOB_KIND_FILTER_OPTIONS,
+  JOB_STATUS_FILTER_OPTIONS,
   cancelable,
   createJobsPresenter,
   createLiveJob,
@@ -127,27 +132,84 @@ function JobRow(props: { presenter: JobsPresenter; job: Job }): JSX.Element {
   );
 }
 
+/** Search text or a picked filter narrows the list; an empty result under either reads as "no
+ *  matches", not as "no jobs yet". */
+function isFiltered(presenter: JobsPresenter): boolean {
+  return (
+    presenter.table.query() !== "" ||
+    presenter.filters().kind !== "" ||
+    presenter.filters().status !== "" ||
+    presenter.table.createdFrom() !== "" ||
+    presenter.table.createdTo() !== ""
+  );
+}
+
+/** The panel's own fields only; the search box's own text is already visible without opening it. */
+function activeCount(presenter: JobsPresenter): number {
+  return activeFilterCount(
+    presenter.filters().kind !== "",
+    presenter.filters().status !== "",
+    presenter.table.createdFrom() !== "" || presenter.table.createdTo() !== ""
+  );
+}
+
 export default function JobsView(): JSX.Element {
   const presenter = createJobsPresenter();
+  const [open, setOpen] = createSignal(false);
   return (
     <section class="grid gap-6">
       <PageHeader
         title="Jobs"
         description="Snapshots, checkouts, comparisons, imports, deletions, and maintenance. Running jobs update live."
         actions={
-          <Button size="sm" variant="secondary" onClick={() => presenter.refresh()}>
-            Refresh
-          </Button>
+          <>
+            <TableSearch
+              placeholder="Search jobs..."
+              value={presenter.table.query()}
+              onInput={(value) => presenter.table.setQuery(value)}
+            />
+            <FilterToggle
+              open={open()}
+              active={activeCount(presenter)}
+              onToggle={() => setOpen((value) => !value)}
+            />
+            <Button variant="secondary" onClick={() => presenter.refresh()}>
+              Refresh
+            </Button>
+          </>
         }
       />
-      <Loading fallback={<p class="text-muted">Loading jobs...</p>}>
-        <TableToolbar>
-          <TableSearch
-            placeholder="Search jobs..."
-            value={presenter.table.query()}
-            onInput={(value) => presenter.table.setQuery(value)}
+      <FilterPanel open={open()}>
+        <FilterField label="Kind">
+          <Select
+            options={JOB_KIND_FILTER_OPTIONS}
+            value={presenter.filters().kind}
+            onChange={(value) => presenter.setFilters({ kind: value })}
           />
-        </TableToolbar>
+        </FilterField>
+        <FilterField label="Status">
+          <Select
+            options={JOB_STATUS_FILTER_OPTIONS}
+            value={presenter.filters().status}
+            onChange={(value) => presenter.setFilters({ status: value })}
+          />
+        </FilterField>
+        <FilterField label="Created from">
+          <Input
+            type="date"
+            value={presenter.table.createdFrom()}
+            onInput={(event) => presenter.table.setCreatedFrom(event.currentTarget.value)}
+          />
+        </FilterField>
+        <FilterField label="Created to">
+          <Input
+            type="date"
+            value={presenter.table.createdTo()}
+            onInput={(event) => presenter.table.setCreatedTo(event.currentTarget.value)}
+          />
+        </FilterField>
+      </FilterPanel>
+      <Loading fallback={<p class="text-muted">Loading jobs...</p>}>
         <Table>
           <thead>
             <tr>
@@ -174,10 +236,10 @@ export default function JobsView(): JSX.Element {
               fallback={
                 <EmptyRow>
                   <Show
-                    when={presenter.value().length > 0}
+                    when={isFiltered(presenter)}
                     fallback="No jobs yet. Snapshots, checkouts, comparisons and imports all run as jobs and show up here."
                   >
-                    No job matches that search.
+                    No job matches your search or filters.
                   </Show>
                 </EmptyRow>
               }

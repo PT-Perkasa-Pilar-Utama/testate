@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { jobsQuery } from "./jobs.model.ts";
 import { describeProgress, progressFraction } from "./jobs.presenter.ts";
 
 describe("describeProgress", () => {
@@ -48,5 +49,30 @@ describe("progressFraction", () => {
     expect(progressFraction(null)).toBeNull();
     expect(progressFraction({ phase: "stash" })).toBeNull();
     expect(progressFraction({ phase: "restore", tables_done: 0, tables_total: 0 })).toBeNull();
+  });
+});
+
+describe("jobsQuery", () => {
+  test("adds kind and status only once a filter has picked one", () => {
+    expect(jobsQuery({}, undefined, { kind: "", status: "" })).toStrictEqual({
+      cursor: undefined,
+      sort: undefined,
+      order: undefined,
+      q: undefined,
+      created_from: undefined,
+      created_to: undefined,
+      kind: undefined,
+      status: undefined,
+    });
+    expect(jobsQuery({}, "c1", { kind: "snapshot", status: "failed" })).toStrictEqual({
+      cursor: "c1",
+      sort: undefined,
+      order: undefined,
+      q: undefined,
+      created_from: undefined,
+      created_to: undefined,
+      kind: "snapshot",
+      status: "failed",
+    });
   });
 });

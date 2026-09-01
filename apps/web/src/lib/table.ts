@@ -154,11 +154,13 @@ export function createTableView<TRow, TKey extends string>(options: {
   };
 }
 
-/** What a list endpoint takes beyond the page: the order and the search it wants it in. */
+/** What a list endpoint takes beyond the page: the order, the search, and the date range it wants it in. */
 export type TableParams<TKey extends string> = {
   sort?: TKey;
   order?: Direction;
   q?: string;
+  created_from?: string;
+  created_to?: string;
 };
 
 /** The query string for one page of a sorted, searched list. `toQuery` drops what is undefined. */
@@ -166,12 +168,25 @@ export function tableQuery<TKey extends string>(
   params: TableParams<TKey>,
   cursor: string | undefined
 ): Query {
-  return { cursor, sort: params.sort, order: params.order, q: params.q };
+  return {
+    cursor,
+    sort: params.sort,
+    order: params.order,
+    q: params.q,
+    created_from: params.created_from,
+    created_to: params.created_to,
+  };
 }
 
 export type TableControls<TKey extends string> = SortControl<TKey> & {
   query: () => string;
   setQuery: (value: string) => void;
+  /** The "created on or after" bound, as the ISO date "2026-08-30"; "" means unset. */
+  createdFrom: () => string;
+  setCreatedFrom: (value: string) => void;
+  /** The "created on or before" bound, inclusive of that whole day; "" means unset. */
+  createdTo: () => string;
+  setCreatedTo: (value: string) => void;
   /** What the model sends. Read it inside the loader so a change fetches the new answer. */
   params: () => TableParams<TKey>;
   /** Changes whenever the question changes, so `createPaged` drops the pages that answered the old one. */
@@ -179,6 +194,15 @@ export type TableControls<TKey extends string> = SortControl<TKey> & {
   /** True while what you see still answers the previous keystroke. */
   draining: () => boolean;
 };
+
+/**
+ * How many of a filter panel's fields are set, for the badge on `FilterToggle`. Each argument is
+ * one filter, on or off, however many boxes it takes: a created-date range is two inputs but one
+ * filter, so callers pass a single flag for it rather than one per input.
+ */
+export function activeFilterCount(...flags: boolean[]): number {
+  return flags.filter(Boolean).length;
+}
 
 const TYPING_MS = 250;
 
@@ -196,17 +220,24 @@ export function createTableControls<TKey extends string>(
   const [sort, setSort] = createSignal<SortState<TKey>>(null);
   const [typed, setTyped] = createSignal("");
   const [settled, setSettled] = createSignal("");
+  // A date is picked, not typed one keystroke at a time, so it wants no debounce.
+  const [createdFrom, setCreatedFrom] = createSignal("");
+  const [createdTo, setCreatedTo] = createSignal("");
   let timer: ReturnType<typeof setTimeout> | undefined;
   onCleanup(() => clearTimeout(timer));
   const params = (): TableParams<TKey> => {
     const current = sort();
     const search = settled().trim();
+    const from = createdFrom().trim();
+    const to = createdTo().trim();
     const built: TableParams<TKey> = {};
     if (current !== null) {
       built.sort = current.key;
       built.order = current.direction;
     }
     if (search !== "") built.q = search;
+    if (from !== "") built.created_from = from;
+    if (to !== "") built.created_to = to;
     return built;
   };
   return {
@@ -218,6 +249,10 @@ export function createTableControls<TKey extends string>(
       clearTimeout(timer);
       timer = setTimeout(() => setSettled(value), debounceMs);
     },
+    createdFrom,
+    setCreatedFrom,
+    createdTo,
+    setCreatedTo,
     params,
     key: () => JSON.stringify(params()),
     draining: () => typed().trim() !== settled().trim(),

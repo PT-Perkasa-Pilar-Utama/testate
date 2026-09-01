@@ -1,3 +1,4 @@
+import { createdRangeConditions } from "../../lib/db/date-range.ts";
 import { keysetCondition } from "../../lib/db/keyset.ts";
 import type { Keyset } from "../../lib/db/keyset.ts";
 import { likeTerm } from "../../lib/db/like.ts";
@@ -56,5 +57,6 @@ export function conditions(query: JobsListQuery): Condition[] {
       params: [like, like, like],
     });
   }
+  found.push(...createdRangeConditions("j.created_at", query.created_from, query.created_to));
   return found;
 }

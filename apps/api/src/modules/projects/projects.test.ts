@@ -102,6 +102,25 @@ describe("projects", () => {
     expect(inherits.quota_bytes).toBeNull();
   });
 
+  it("sorts by the head's own timestamp, the one the Last moved column shows", async () => {
+    const { projects, qa, repo } = await setup();
+    // Three, and the head order matches neither the creation order nor its id tiebreak: with two
+    // rows created in the same millisecond every ordering agrees and the test proves nothing.
+    const heads = [
+      ["Alpha", "2020-01-01T00:00:00.000Z"],
+      ["Bravo", "2030-01-01T00:00:00.000Z"],
+      ["Charlie", "2025-01-01T00:00:00.000Z"],
+    ] as const;
+    for (const [name, at] of heads) {
+      const project = await projects.create(qa, { name }, TEST_META);
+      repo.setHead(project.id, null, "none", at);
+    }
+    // The screen has offered this sort since the column existed; the API's picklist refused it, so
+    // clicking the header answered 400 instead of sorting.
+    const rows = await projects.list(null, { limit: 10, sort: "changed_at", order: "desc" });
+    expect(rows.map((row) => row.name)).toStrictEqual(["Bravo", "Charlie", "Alpha"]);
+  });
+
   it("creates a project with HEAD none and refuses a duplicate slug", async () => {
     const { projects, qa } = await setup();
     const project = await projects.create(qa, { slug: "shop", name: "Shop" }, TEST_META);
@@ -132,6 +151,24 @@ describe("projects", () => {
     expect(await names(null, { q: "sho" })).toStrictEqual(["shop"]);
     expect(await names([shop.id])).toStrictEqual(["shop"]);
     expect(await names([])).toStrictEqual([]);
+  });
+
+  it("sorts by updated_at, which moves independently of created_at", async () => {
+    const { projects, qa, advance } = await setup();
+    await projects.create(qa, { slug: "billing", name: "Billing" }, TEST_META);
+    advance(1000);
+    await projects.create(qa, { slug: "shop", name: "Shop" }, TEST_META);
+    advance(1000);
+    // Touching billing after shop was created flips their update order without touching the
+    // order they were created in, which is the only way this test can tell "updated_at" apart
+    // from "created_at" actually landing on the SQL.
+    await projects.update(qa, "billing", { description: "touched" }, TEST_META);
+    const bySlug = async (order: "asc" | "desc"): Promise<string[]> =>
+      (await projects.list(null, { ...LIST, sort: "updated_at", order })).map(
+        (project) => project.slug
+      );
+    expect(await bySlug("asc")).toStrictEqual(["shop", "billing"]);
+    expect(await bySlug("desc")).toStrictEqual(["billing", "shop"]);
   });
 
   it("resolves the quota from settings when the project has none", async () => {

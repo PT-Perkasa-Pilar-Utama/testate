@@ -1,3 +1,4 @@
+import { createdRangeConditions } from "../../lib/db/date-range.ts";
 import { likeTerm } from "../../lib/db/like.ts";
 import type { CheckoutSort, CheckoutsFilter } from "./checkouts.repository.ts";
 
@@ -41,6 +42,14 @@ export function conditions(projectId: string, filter: CheckoutsFilter): ListCond
         OR COALESCE(u.username, t.name) LIKE ? ESCAPE '\\')`
     );
     params.push(like, like, like);
+  }
+  for (const condition of createdRangeConditions(
+    "c.created_at",
+    filter.created_from,
+    filter.created_to
+  )) {
+    where.push(condition.sql);
+    params.push(...condition.params);
   }
   return { where, params };
 }

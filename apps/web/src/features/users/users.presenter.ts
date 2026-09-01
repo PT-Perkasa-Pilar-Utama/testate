@@ -1,5 +1,11 @@
 import { createSignal } from "solid-js";
-import type { CreateUserInput, EditUserInput, ResetPasswordInput, User } from "@testate/shared";
+import type {
+  CreateUserInput,
+  EditUserInput,
+  ResetPasswordInput,
+  Role,
+  User,
+} from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
@@ -15,6 +21,9 @@ export type UserSort = "username" | "display_name" | "role" | "last_login_at";
 export type UsersPresenter = Paged<User> & {
   /** Sort and search, performed by the API over every account rather than the page on screen. */
   table: TableView<User, UserSort>;
+  /** The role narrowing; "" means every role. */
+  role: () => Role | "";
+  setRole: (role: Role | "") => void;
   creating: () => boolean;
   error: () => string | null;
   openCreate: () => void;
@@ -44,7 +53,13 @@ function messageOf(cause: unknown, fallback: string): string {
 
 export function createUsersPresenter(): UsersPresenter {
   const controls = createTableControls<UserSort>();
-  const users = createPaged((cursor) => usersModel.page(cursor, controls.params()), controls.key);
+  const [role, setRole] = createSignal<Role | "">("");
+  const users = createPaged(
+    (cursor) => usersModel.page(cursor, controls.params(), role()),
+    // The role narrows the same list the sort and search do, so a change to it has to drop the
+    // pages already appended the way a new sort or search does (`createPaged`'s own doc comment).
+    () => `${controls.key()}|${role()}`
+  );
   const table: TableView<User, UserSort> = { ...controls, rows: users.value };
   const [creating, setCreating] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
@@ -54,6 +69,8 @@ export function createUsersPresenter(): UsersPresenter {
   return {
     ...users,
     table,
+    role,
+    setRole,
     creating,
     error,
     openCreate: () => setCreating(true),

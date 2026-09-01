@@ -39,6 +39,8 @@ const listQuery = v.object({
   sort: v.optional(v.array(v.picklist(["created_at", "state", "status", "actor"]))),
   order: v.optional(v.array(v.picklist(["asc", "desc"]))),
   q: v.optional(v.array(v.string())),
+  created_from: v.optional(v.array(v.string())),
+  created_to: v.optional(v.array(v.string())),
 });
 const waitQuery = v.object({
   wait: v.optional(
@@ -46,20 +48,21 @@ const waitQuery = v.object({
   ),
 });
 
+/** Every string filter, folded through one loop: a branch per field is what tipped this over 10. */
+const TEXT_KEYS = ["q", "cursor", "state_id", "created_from", "created_to"] as const;
+
 function toFilter(parsed: v.InferOutput<typeof listQuery>): CheckoutsFilter {
   const filter: CheckoutsFilter = {
     limit: firstQuery(parsed.limit) ?? 50,
     sort: firstQuery(parsed.sort) ?? "created_at",
     order: firstQuery(parsed.order) ?? "desc",
   };
-  const q = firstQuery(parsed.q);
-  if (q !== undefined) filter.q = q;
-  const cursor = firstQuery(parsed.cursor);
-  if (cursor !== undefined) filter.cursor = cursor;
+  for (const key of TEXT_KEYS) {
+    const value = firstQuery(parsed[key]);
+    if (value !== undefined) filter[key] = value;
+  }
   const status = firstQuery(parsed.status);
   if (status !== undefined) filter.status = status;
-  const stateId = firstQuery(parsed.state_id);
-  if (stateId !== undefined) filter.state_id = stateId;
   const purpose = firstQuery(parsed.purpose);
   if (purpose !== undefined) filter.purpose = purpose;
   return filter;
