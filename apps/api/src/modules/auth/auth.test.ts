@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { Hono } from "hono";
 import {
   apiTokenSchema,
   createTokenResponseSchema,
@@ -9,6 +10,10 @@ import * as v from "valibot";
 
 import { ADMIN_PASSWORD, TEST_META, createAccounts } from "../../../test/accounts.ts";
 import { expectContract } from "../../../test/contract.ts";
+import { AppError } from "../../lib/http/index.ts";
+import { WideEvent } from "../../lib/logger/event.ts";
+import { SETTINGS_MOCK } from "../settings/settings.service.ts";
+import { createAuthHandlers } from "./auth.handler.ts";
 import {
   CREATE_TOKEN_RESPONSE_MOCK,
   LOGIN_RESPONSE_MOCK,
@@ -112,6 +117,93 @@ describe("login", () => {
       LOCKOUT_ATTEMPTS
     );
     expect(actions.at(-1)).toBe("auth.login");
+  });
+});
+
+describe("failed logins are limited per address", () => {
+  /**
+   * The handler owns this limit, not the service, so the test drives it over HTTP the way
+   * `projects.test.ts` drives `requireProjectInScope`. `trustProxy` is on so each request can
+   * claim its own address through `X-Forwarded-For`.
+   */
+  const appFor = async (
+    perMinute: number
+  ): Promise<{ app: Hono; advance: (ms: number) => void }> => {
+    const { auth, advance, now } = await createAccounts();
+    const handlers = createAuthHandlers(auth, {
+      env: "test",
+      basePath: "/",
+      secureCookies: false,
+      trustProxy: true,
+      now,
+      settings: {
+        get: () =>
+          Promise.resolve({
+            ...SETTINGS_MOCK,
+            limits: { ...SETTINGS_MOCK.limits, failed_logins_per_minute: perMinute },
+          }),
+      },
+    });
+    const app = new Hono();
+    app.use("*", async (c, next) => {
+      c.set("event", new WideEvent("request", () => undefined));
+      await next();
+    });
+    app.post("/auth/login", handlers.login);
+    app.onError((cause, c) =>
+      c.json({ code: cause instanceof AppError ? cause.code : "OTHER" }, 500)
+    );
+    return { app, advance };
+  };
+
+  const attempt = async (app: Hono, ip: string, password: string): Promise<Response> =>
+    await app.request("/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-forwarded-for": ip },
+      body: JSON.stringify({ username: "admin", password }),
+    });
+
+  it("refuses a sixth guess from one address and tells it how long to wait", async () => {
+    const { app } = await appFor(5);
+    for (let guess = 0; guess < 5; guess += 1) {
+      expect((await attempt(app, "10.0.0.1", WRONG)).status).toBe(500);
+    }
+    const blocked = await attempt(app, "10.0.0.1", WRONG);
+    expect(await blocked.json()).toMatchObject({ code: "RATE_LIMITED" });
+    // The right password is refused too: past the budget the address gets no more guesses.
+    expect(await (await attempt(app, "10.0.0.1", ADMIN_PASSWORD)).json()).toMatchObject({
+      code: "RATE_LIMITED",
+    });
+  });
+
+  it("counts per address, so one attacker cannot lock everyone else out", async () => {
+    const { app } = await appFor(2);
+    await attempt(app, "10.0.0.1", WRONG);
+    await attempt(app, "10.0.0.1", WRONG);
+    expect(await (await attempt(app, "10.0.0.1", WRONG)).json()).toMatchObject({
+      code: "RATE_LIMITED",
+    });
+    // A different address still has its whole budget.
+    expect((await attempt(app, "10.0.0.2", WRONG)).status).toBe(500);
+  });
+
+  it("spends nothing on a login that works, which is why the limit can be tight", async () => {
+    const { app } = await appFor(2);
+    // Twenty good logins on a budget of two. A person who signs in often is not an attacker.
+    for (let time = 0; time < 20; time += 1) {
+      expect((await attempt(app, "10.0.0.1", ADMIN_PASSWORD)).status).toBe(200);
+    }
+    expect((await attempt(app, "10.0.0.1", WRONG)).status).toBe(500);
+  });
+
+  it("gives the address its budget back once the window has passed", async () => {
+    const { app, advance } = await appFor(1);
+    expect((await attempt(app, "10.0.0.1", WRONG)).status).toBe(500);
+    expect(await (await attempt(app, "10.0.0.1", WRONG)).json()).toMatchObject({
+      code: "RATE_LIMITED",
+    });
+    advance(61_000);
+    expect((await attempt(app, "10.0.0.1", WRONG)).status).toBe(500);
   });
 });
 

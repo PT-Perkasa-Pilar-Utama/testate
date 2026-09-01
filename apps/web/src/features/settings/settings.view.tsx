@@ -34,6 +34,7 @@ const LABELS = {
   "limits.upload_mb": "Upload size limit (MB)",
   "limits.token_requests_per_minute": "Token requests per minute",
   "limits.agent_requests_per_minute": "Agent requests per minute",
+  "limits.failed_logins_per_minute": "Failed logins per minute, per address",
   "limits.write_session_idle_minutes": "Write session idle timeout (minutes)",
   "limits.job_concurrency": "Concurrent jobs",
 } as const;

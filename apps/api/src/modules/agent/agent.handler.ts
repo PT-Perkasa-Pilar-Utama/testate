@@ -22,7 +22,7 @@ const methodOf = v.object({
   params: v.optional(v.object({ name: v.optional(v.string()) })),
 });
 
-/** Sliding one-minute window per token (18 §18.1); the map forgets idle tokens on its next sweep. */
+/** Sliding one-minute window per token (18 §18.1); `createRateLimiter` sweeps idle keys itself. */
 
 export function createAgentHandlers(
   service: AgentService,
@@ -53,7 +53,7 @@ export function createAgentHandlers(
             ? `mcp:${envelope.success ? (envelope.output.method ?? "?") : "?"}`
             : `mcp:${tool}`,
       });
-      const retryAfter = limiter(
+      const retryAfter = limiter.hit(
         actor.id,
         (await deps.settings.get()).limits.agent_requests_per_minute
       );

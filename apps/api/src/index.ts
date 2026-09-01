@@ -206,6 +206,8 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
       basePath: config.TESTATE_BASE_PATH,
       secureCookies: config.TESTATE_TRUST_PROXY,
       trustProxy: config.TESTATE_TRUST_PROXY,
+      now,
+      settings,
     }),
     users: createUsersHandlers(users, config.TESTATE_TRUST_PROXY),
     projects: createProjectsHandlers(projects, prefix, config.TESTATE_TRUST_PROXY, jobs),

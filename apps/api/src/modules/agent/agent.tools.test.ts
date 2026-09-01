@@ -263,11 +263,33 @@ describe("agent tools", () => {
   it("the rate limiter refuses the call past the per-minute budget and names the wait", () => {
     let clock = Date.parse("2026-08-29T00:00:00.000Z");
     const limit = createRateLimiter(() => new Date(clock));
-    expect(limit("t1", 2)).toBeNull();
-    expect(limit("t1", 2)).toBeNull();
-    expect(limit("t1", 2)).toBe(60);
+    expect(limit.hit("t1", 2)).toBeNull();
+    expect(limit.hit("t1", 2)).toBeNull();
+    expect(limit.hit("t1", 2)).toBe(60);
     clock += 61_000;
-    expect(limit("t1", 2)).toBeNull();
+    expect(limit.hit("t1", 2)).toBeNull();
+  });
+
+  it("asking whether a key is over budget spends none of it, and recording spends one", () => {
+    const clock = Date.parse("2026-08-29T00:00:00.000Z");
+    const limit = createRateLimiter(() => new Date(clock));
+    // Ten questions, no answers spent: login checks the budget before it knows the password.
+    for (let i = 0; i < 10; i += 1) expect(limit.over("ip", 2)).toBeNull();
+    limit.record("ip");
+    expect(limit.over("ip", 2)).toBeNull();
+    limit.record("ip");
+    expect(limit.over("ip", 2)).toBe(60);
+  });
+
+  it("forgets a key nobody has used for a window, so an address it never sees again is not kept", () => {
+    let clock = Date.parse("2026-08-29T00:00:00.000Z");
+    const limit = createRateLimiter(() => new Date(clock));
+    for (let i = 0; i < 500; i += 1) limit.record(`ip-${i}`);
+    expect(limit.size()).toBe(500);
+    // A different address arrives two minutes later: the 500 idle ones go, and it stays.
+    clock += 121_000;
+    limit.record("ip-later");
+    expect(limit.size()).toBe(1);
   });
   it("leads the agent with a guide it can reach as a tool and as a resource", async () => {
     const h = await createHarness();

@@ -72,6 +72,10 @@ export const SETTINGS_DEFAULTS: Settings = {
     upload_mb: 50,
     token_requests_per_minute: 600,
     agent_requests_per_minute: 120,
+    // Failed guesses only, per client address. A person who mistypes a password twice never sees
+    // this; a browser suite logging in a hundred times a minute never sees it either, because a
+    // login that succeeds spends nothing.
+    failed_logins_per_minute: 20,
     write_session_idle_minutes: 30,
     job_concurrency: 2,
   },

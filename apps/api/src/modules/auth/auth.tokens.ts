@@ -82,7 +82,7 @@ export function createTokenService(deps: TokenDeps): TokenService {
       const lastUsed = record.last_used_at === null ? 0 : new Date(record.last_used_at).getTime();
       if (nowMs() - lastUsed >= TOUCH_INTERVAL_MS) repo.touchToken(record.id, nowIso());
       if (deps.tokenBudget !== undefined) {
-        const wait = limiter(record.id, await deps.tokenBudget());
+        const wait = limiter.hit(record.id, await deps.tokenBudget());
         if (wait !== null) throw rateLimited(wait);
       }
       return {

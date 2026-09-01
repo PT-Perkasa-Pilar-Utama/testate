@@ -42,6 +42,7 @@ export const settingsSchema = v.object({
     upload_mb: positiveInt,
     token_requests_per_minute: positiveInt,
     agent_requests_per_minute: positiveInt,
+    failed_logins_per_minute: positiveInt,
     write_session_idle_minutes: positiveInt,
     job_concurrency: positiveInt,
   }),

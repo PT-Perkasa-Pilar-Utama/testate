@@ -1,4 +1,5 @@
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import type { Settings } from "@testate/shared";
 import {
   changePasswordSchema,
   createTokenSchema,
@@ -9,7 +10,8 @@ import * as v from "valibot";
 import { nextCursor } from "../../lib/db/keyset.ts";
 
 import { SESSION_COOKIE, currentActor, requestMeta } from "../../lib/http/auth.ts";
-import { ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.ts";
+import { createRateLimiter } from "../../lib/http/ratelimit.ts";
+import { ok, okPage, param, parseBody, parseQuery, rateLimited } from "../../lib/http/index.ts";
 import type { Handler } from "../../lib/http/index.ts";
 import type { TokensListQuery } from "./auth.repository.ts";
 import type { AuthService, CreateTokenInput } from "./auth.service.ts";
@@ -31,6 +33,8 @@ export type AuthHandlerOptions = {
   basePath: string;
   secureCookies: boolean;
   trustProxy: boolean;
+  now: () => Date;
+  settings: { get(): Promise<Settings> };
 };
 
 const tokensQuery = v.object({
@@ -66,6 +70,16 @@ function toCreateTokenInput(parsed: v.InferOutput<typeof createTokenSchema>): Cr
   return input;
 }
 
+/**
+ * Failed logins per client address (07 §7.5).
+ *
+ * The per-account lockout beside this one stops five guesses at one account; it does nothing about
+ * one guess at each of a thousand accounts, and an attacker can use it to lock a real person out.
+ * This counts guesses per address instead, so the two cover each other.
+ *
+ * Only failures spend budget. A login that works costs nothing, which is why the limit can be
+ * tight without touching anyone who simply signs in often.
+ */
 export function createAuthHandlers(
   service: AuthService,
   options: AuthHandlerOptions
@@ -73,10 +87,33 @@ export function createAuthHandlers(
   const cookiePath = options.basePath === "/" ? "/" : options.basePath;
   const meta = (c: Parameters<Handler>[0]): ReturnType<typeof requestMeta> =>
     requestMeta(c, options.trustProxy);
+  const guesses = createRateLimiter(options.now);
   return {
     login: async (c) => {
       const input = await parseBody(c, loginSchema);
-      const { sessionToken, response } = await service.login(input, meta(c));
+      const from = meta(c);
+      // An address with no name is still one bucket: better to share a budget than to hand out an
+      // unlimited one whenever the socket address cannot be read.
+      const key = from.ip ?? "unknown";
+      const wait = guesses.over(
+        key,
+        (await options.settings.get()).limits.failed_logins_per_minute
+      );
+      if (wait !== null) {
+        c.get("event").add("op", { login_rate_limited: true });
+        throw rateLimited(wait);
+      }
+      const { sessionToken, response } = await service
+        .login(input, from)
+        .catch((cause: unknown) => {
+          // Every refusal counts: a wrong password, an unknown name, a disabled or locked account.
+          // They are indistinguishable to the caller by design, and all four are what guessing looks
+          // like. The event carries the fact; an audit row per attempt would let an attacker fill
+          // the disk, and the per-account path already audits itself.
+          guesses.record(key);
+          c.get("event").add("op", { login_failed: true });
+          throw cause;
+        });
       setCookie(c, SESSION_COOKIE, sessionToken, {
         httpOnly: true,
         sameSite: "Strict",

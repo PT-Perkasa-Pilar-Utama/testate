@@ -19,7 +19,7 @@ Testate holds credentials to databases and can empty them. Every control below e
 
 | Concern | Implementation |
 | --- | --- |
-| Dashboard login | `POST /auth/login`; argon2id verify; lockout after five failures for fifteen minutes per username; audit row per attempt |
+| Dashboard login | `POST /auth/login`; argon2id verify; lockout after five failures for fifteen minutes per username, plus a per-address cap on failed attempts (§7.5); audit row per attempt, and the address cap adds a field to the request's wide event rather than an audit row an attacker could use to fill the disk |
 | Session | 256-bit random value, SHA-256 in `sessions`; cookie `testate_session`, `HttpOnly`, `SameSite=Strict`, `Secure` when the request arrived over HTTPS (trust proxy) , `Path` = base path; idle 12 h, absolute 7 d; touched at most once per minute |
 | Forced change | `must_change_password` gates every route except `auth.changePassword`, `auth.logout`, `auth.me`, and `health` |
 | Bearer tokens | `Authorization: Bearer tst_<base64url 32 bytes>`; SHA-256 lookup, constant-time compare; role from the token; project scope enforced by middleware on every `/projects/:slug` route and every list |
@@ -49,7 +49,7 @@ Every physical connection Testate opens (database, S3, SFTP, FTP, S3 snapshot st
 | --- | --- |
 | Body limits | JSON bodies 1 MiB; uploads `TESTATE_MAX_UPLOAD_MB` (default 50), enforced by Hono before parsing and by nginx `client_max_body_size` |
 | Validation | valibot on every body, query, param; unknown keys rejected; strings trimmed and length-capped |
-| Rate limits | Login: five failures lock; token requests: `limits.token_requests_per_minute` per token; both answer `429 RATE_LIMITED` with `Retry-After` |
+| Rate limits | Login: five failures lock the username for fifteen minutes, and `limits.failed_logins_per_minute` caps failed attempts per client address so one caller cannot spray a password across many usernames, nor lock a real person out by guessing at their name; a login that succeeds spends no budget. Token requests: `limits.token_requests_per_minute` per token. All answer `429 RATE_LIMITED` with `Retry-After` |
 | Headers | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store` on API responses |
 | CSP | `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'`; previews of storage files render inside a sandboxed `<iframe sandbox>` with `Content-Disposition: inline` only for image and PDF types, `attachment` otherwise |
 | CORS | Off. The SPA is same-origin; automation uses tokens from servers |
