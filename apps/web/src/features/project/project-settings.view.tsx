@@ -72,6 +72,7 @@ export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element 
       open={props.presenter.editing()}
       onClose={() => props.presenter.closeEdit()}
       title="Edit project"
+      size="lg"
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.save(input)}>
         <Field of={form} path={["name"]}>

@@ -48,6 +48,7 @@ function PolicyDialog(props: { presenter: PoliciesPresenter }): JSX.Element {
       open={props.presenter.draft() !== null}
       onClose={() => props.presenter.close()}
       title={`Policy for ${props.presenter.draft()?.table ?? ""}.${props.presenter.draft()?.column ?? ""}`}
+      size="lg"
       description="A required function is applied to every form, grid, and import write; a mask hides the column from viewers and agents."
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.save(input)}>

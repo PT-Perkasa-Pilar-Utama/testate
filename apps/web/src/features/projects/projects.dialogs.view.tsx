@@ -66,6 +66,7 @@ export function CreateDialog(props: { presenter: ProjectsPresenter }): JSX.Eleme
       open={props.presenter.creating()}
       onClose={() => props.presenter.closeCreate()}
       title="New project"
+      size="lg"
       description="A project groups adapters and the states taken across them."
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.submit(input)}>

@@ -29,53 +29,56 @@ export function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element 
       open={props.presenter.creating()}
       onClose={() => props.presenter.closeCreate()}
       title="New user"
+      size="lg"
       description="Hand the temporary password over out of band. The first login forces a change."
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.create(input)}>
-        <Field of={form} path={["username"]}>
-          {(field) => (
-            <label class="grid content-start gap-1.5 text-base">
-              <FieldLabel required={true}>Username</FieldLabel>
-              <Input
-                {...field.props}
-                required
-                autocomplete="off"
-                value={field.input}
-                variant={field.errors ? "error" : "default"}
-                aria-invalid={field.errors ? "true" : undefined}
-              />
-              <FieldError message={field.errors?.[0]} />
-            </label>
-          )}
-        </Field>
-        <Field of={form} path={["display_name"]}>
-          {(field) => (
-            <label class="grid content-start gap-1.5 text-base">
-              <FieldLabel required={true}>Display name</FieldLabel>
-              <Input
-                {...field.props}
-                required
-                value={field.input}
-                variant={field.errors ? "error" : "default"}
-                aria-invalid={field.errors ? "true" : undefined}
-              />
-              <FieldError message={field.errors?.[0]} />
-            </label>
-          )}
-        </Field>
-        <Field of={form} path={["role"]}>
-          {(field) => (
-            <label class="grid content-start gap-1.5 text-base">
-              <span>Role</span>
-              <Select
-                options={ROLE_OPTIONS}
-                value={field.input ?? "viewer"}
-                onChange={(role) => field.onInput(role)}
-              />
-              <FieldError message={field.errors?.[0]} />
-            </label>
-          )}
-        </Field>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <Field of={form} path={["username"]}>
+            {(field) => (
+              <label class="grid content-start gap-1.5 text-base">
+                <FieldLabel required={true}>Username</FieldLabel>
+                <Input
+                  {...field.props}
+                  required
+                  autocomplete="off"
+                  value={field.input}
+                  variant={field.errors ? "error" : "default"}
+                  aria-invalid={field.errors ? "true" : undefined}
+                />
+                <FieldError message={field.errors?.[0]} />
+              </label>
+            )}
+          </Field>
+          <Field of={form} path={["display_name"]}>
+            {(field) => (
+              <label class="grid content-start gap-1.5 text-base">
+                <FieldLabel required={true}>Display name</FieldLabel>
+                <Input
+                  {...field.props}
+                  required
+                  value={field.input}
+                  variant={field.errors ? "error" : "default"}
+                  aria-invalid={field.errors ? "true" : undefined}
+                />
+                <FieldError message={field.errors?.[0]} />
+              </label>
+            )}
+          </Field>
+          <Field of={form} path={["role"]}>
+            {(field) => (
+              <label class="grid content-start gap-1.5 text-base">
+                <span>Role</span>
+                <Select
+                  options={ROLE_OPTIONS}
+                  value={field.input ?? "viewer"}
+                  onChange={(role) => field.onInput(role)}
+                />
+                <FieldError message={field.errors?.[0]} />
+              </label>
+            )}
+          </Field>
+        </div>
         <Field of={form} path={["temporary_password"]}>
           {(field) => (
             <label class="grid content-start gap-1.5 text-base">
