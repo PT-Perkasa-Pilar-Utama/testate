@@ -201,7 +201,11 @@ export function createStorageService(deps: StorageDeps): StorageService {
       try {
         await source.put(clean, body);
         record(actor, "file.uploaded", adapter, slug, clean, { bytes: body.byteLength }, meta);
-        return source.stat(clean);
+        // Awaited, not returned bare: a bare `return promise` inside a try enters the finally at
+        // once, so `close()` would tear the connection down while this stat is still in flight.
+        // SFTP ends the transport and FTP closes the control connection, either of which turns a
+        // write that landed into an error the caller sees while the audit row says it succeeded.
+        return await source.stat(clean);
       } finally {
         await source.close();
       }

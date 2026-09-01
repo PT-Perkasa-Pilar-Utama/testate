@@ -4,7 +4,7 @@ import * as v from "valibot";
 
 import { TEST_META } from "../../../test/accounts.ts";
 import { PG, S3, createAdaptersHarness, createSettled } from "../../../test/adapters.ts";
-import { SFTP } from "../../../test/files.ts";
+import { SFTP, closesHard } from "../../../test/files.ts";
 import type { AdaptersHarness } from "../../../test/adapters.ts";
 import { expectContract } from "../../../test/contract.ts";
 import type { MemoryTree } from "../../lib/files/index.ts";
@@ -203,6 +203,27 @@ describe("storage", () => {
     ).rejects.toMatchObject({ code: "ADAPTER_READ_ONLY" });
     // Nothing was touched on the way to the refusal.
     expect((await h.storage.stat(qa, "shop", h.s3, "readme.md")).size_bytes).toBe(4);
+  });
+
+  it("answers with the entry it wrote, not with a connection torn down underneath it", async () => {
+    const h = await createHarness();
+    // closesHard() is the only source here that can see the hazard; the memory driver cannot.
+    const closing = createStorageService({
+      projects: h.harness.projectsRepo,
+      files: closesHard(h.harness.files),
+      hostKeys: h.harness.hostKeys,
+      audit: h.harness.audit,
+      now: h.harness.now,
+    });
+    const written = await closing.upload(
+      h.harness.qa,
+      "shop",
+      h.s3,
+      "exports/late.txt",
+      new TextEncoder().encode("hello"),
+      TEST_META
+    );
+    expect(written).toMatchObject({ name: "late.txt", size_bytes: 5 });
   });
 
   it("uploads, overwrites and deletes on a sandbox adapter, and audits both", async () => {
