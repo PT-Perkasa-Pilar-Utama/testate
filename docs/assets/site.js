@@ -265,8 +265,15 @@ async function startScene() {
   let running = true;
   let visible = true;
   let scrollY = 0;
+  let raf = 0;
+
+  // One loop only: a second tick() while a frame is pending would run the scene twice as fast
+  function resume() {
+    if (!raf) tick();
+  }
 
   function tick() {
+    raf = 0;
     if (!running || !visible) return;
     const t = clock.getElapsedTime() % LOOP;
     pointer.x += (pointer.tx - pointer.x) * 0.04;
@@ -277,7 +284,7 @@ async function startScene() {
     frame(t);
     narrate(t);
     renderer.render(scene, camera);
-    requestAnimationFrame(tick);
+    raf = requestAnimationFrame(tick);
   }
 
   if (reduced) {
@@ -290,13 +297,13 @@ async function startScene() {
     }, { passive: true });
     new IntersectionObserver(([e]) => {
       visible = e.isIntersecting;
-      if (visible) tick();
+      if (visible) resume();
     }).observe(canvas);
     document.addEventListener("visibilitychange", () => {
       running = !document.hidden;
-      if (running) tick();
+      if (running) resume();
     });
-    tick();
+    resume();
   }
   canvas.classList.add("on");
 }
