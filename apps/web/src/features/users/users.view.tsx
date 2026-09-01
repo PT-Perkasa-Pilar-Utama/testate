@@ -9,6 +9,7 @@ import type { User } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
+import { Menu, MenuItem } from "@/components/menu.tsx";
 import ConfirmDialog from "@/components/confirm-dialog.tsx";
 import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
 import LoadMore from "@/components/load-more.tsx";
@@ -44,32 +45,30 @@ const ROLE_META = {
   viewer: { variant: "secondary", icon: undefined },
 } as const;
 
+/**
+ * The one you usually want, and a menu for the rest.
+ *
+ * Four buttons a row put a red Delete in front of every account and wrapped onto two lines on a
+ * narrow window, which is the shape `Menu` exists for and every other table here already uses.
+ */
 function Actions(props: { presenter: UsersPresenter; user: User }): JSX.Element {
   const disabled = (): boolean => props.user.disabled_at !== null;
   return (
-    <div class="flex justify-end gap-1">
+    <div class="flex items-center justify-end gap-1">
       <Button size="xs" variant="outline" onClick={() => props.presenter.openEdit(props.user)}>
         Edit
       </Button>
-      <Button size="xs" variant="outline" onClick={() => props.presenter.openReset(props.user)}>
-        Reset password
-      </Button>
-      <Button
-        size="xs"
-        variant="outline"
-        onClick={() => void props.presenter.setDisabled(props.user, !disabled())}
-      >
-        {disabled() ? "Enable" : "Disable"}
-      </Button>
-      <Show when={!props.presenter.isSelf(props.user)}>
-        <Button
-          size="xs"
-          variant="destructive"
-          onClick={() => props.presenter.askRemove(props.user)}
-        >
-          Delete
-        </Button>
-      </Show>
+      <Menu label={`More actions for ${props.user.username}`}>
+        <MenuItem onClick={() => props.presenter.openReset(props.user)}>Reset password</MenuItem>
+        <MenuItem onClick={() => void props.presenter.setDisabled(props.user, !disabled())}>
+          {disabled() ? "Enable" : "Disable"}
+        </MenuItem>
+        <Show when={!props.presenter.isSelf(props.user)}>
+          <MenuItem danger onClick={() => props.presenter.askRemove(props.user)}>
+            Delete
+          </MenuItem>
+        </Show>
+      </Menu>
     </div>
   );
 }
@@ -127,7 +126,7 @@ export default function UsersView(): JSX.Element {
               <SortColumn view={presenter.table} column="last_login_at">
                 Last login
               </SortColumn>
-              <Head pinned />
+              <Head pinned>Action</Head>
             </tr>
           </thead>
           <tbody>

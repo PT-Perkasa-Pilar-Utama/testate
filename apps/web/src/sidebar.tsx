@@ -5,7 +5,7 @@ import type { Actor, Role } from "@testate/shared";
 import Icon from "@/components/icon.tsx";
 import type { IconName } from "@/components/icon.tsx";
 import Logo from "@/components/logo.tsx";
-import { MenuItem } from "@/components/menu.tsx";
+import { Menu, MenuItem } from "@/components/menu.tsx";
 import { ROLE_LABEL } from "@/lib/labels.ts";
 import { signOut } from "@/features/auth/auth.presenter.ts";
 import { href, navigate } from "@/lib/router.ts";
@@ -126,9 +126,9 @@ function initials(label: string): string {
  * and a sign-out button, all competing for the same corner. This is one row that says who you are,
  * and a menu holding the rest, which is where a person already looks for it.
  *
- * A plain `<details>` rather than the `Menu` component: that one is an ellipsis button anchored to
- * the right of a table row and opening downwards, and this is a full-width row at the bottom of a
- * column. `MenuItem` only needs a `<details>` ancestor, so the items still come from there.
+ * The shared `Menu`, given its own trigger and told to open upwards. It was a hand-rolled
+ * `<details>` until that one stopped closing when you clicked away from it, which the popover the
+ * menu is built on does for nothing.
  */
 function Identity(props: {
   actor: Actor;
@@ -138,56 +138,56 @@ function Identity(props: {
 }): JSX.Element {
   const face = (): (typeof THEME_FACE)[Theme] => THEME_FACE[theme()];
   return (
-    <details class="relative">
-      <summary
-        class={[
-          "flex cursor-pointer list-none items-center gap-2 rounded-md hover:bg-hover",
-          props.collapsed ? "justify-center p-1" : "p-2",
-        ]}
-        aria-label={`${props.actor.label}, account and sign out`}
-      >
-        <span class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-fill text-xs font-semibold text-body">
-          {initials(props.actor.label)}
-        </span>
-        <Show when={!props.collapsed}>
-          <span class="grid min-w-0 flex-1 text-left">
-            <span class="truncate text-base font-medium text-body">{props.actor.label}</span>
-            <span class="truncate text-xs text-muted">{ROLE_LABEL[props.actor.role]}</span>
-          </span>
-          <Icon name="chevrons-up-down" class="h-4 w-4 shrink-0 text-muted" />
-        </Show>
-      </summary>
-      <div class="absolute bottom-full left-0 z-20 mb-1 grid w-56 gap-0.5 rounded-lg bg-surface p-1 shadow-lg ring ring-line">
-        <div class="grid gap-1.5 px-2 py-1.5">
-          <span class="truncate text-sm font-medium text-body">{props.actor.label}</span>
-          <span class="truncate text-xs text-muted">{ROLE_LABEL[props.actor.role]}</span>
-        </div>
-        <div class="my-0.5 border-t border-hairline" />
-        {/* Not `MenuLink`: that one lets the browser follow the href, which is right for a download
-            and a full page load for a route the router already owns. */}
-        <a
+    <Menu
+      label={`${props.actor.label}, account and sign out`}
+      place="above-left"
+      panelClass="w-56"
+      trigger={
+        <span
           class={[
-            "rounded-md px-2 py-1.5 text-left text-sm hover:bg-hover",
-            { "bg-fill font-medium": props.current === "/account" },
+            "flex items-center gap-2 rounded-md hover:bg-hover",
+            props.collapsed ? "justify-center p-1" : "p-2",
           ]}
-          href={href("/account")}
-          onClick={(event) => {
-            event.currentTarget.closest("details")?.removeAttribute("open");
-            props.onNav(event, "/account");
-          }}
         >
-          Account
-        </a>
-        <MenuItem onClick={() => setTheme(nextTheme(theme()))}>
-          <span class="flex items-center gap-2">
-            <Icon name={face().icon} class="h-3.5 w-3.5" />
-            {face().label}
+          <span class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-fill text-xs font-semibold text-body">
+            {initials(props.actor.label)}
           </span>
-        </MenuItem>
-        <div class="my-0.5 border-t border-hairline" />
-        <MenuItem onClick={() => void signOut()}>Sign out</MenuItem>
+          <Show when={!props.collapsed}>
+            <span class="grid min-w-0 flex-1 text-left">
+              <span class="truncate text-base font-medium text-body">{props.actor.label}</span>
+              <span class="truncate text-xs text-muted">{ROLE_LABEL[props.actor.role]}</span>
+            </span>
+            <Icon name="chevrons-up-down" class="h-4 w-4 shrink-0 text-muted" />
+          </Show>
+        </span>
+      }
+    >
+      <div class="grid gap-1.5 px-2 py-1.5">
+        <span class="truncate text-sm font-medium text-body">{props.actor.label}</span>
+        <span class="truncate text-xs text-muted">{ROLE_LABEL[props.actor.role]}</span>
       </div>
-    </details>
+      <div class="my-0.5 border-t border-hairline" />
+      {/* Not `MenuLink`: that one lets the browser follow the href, which is right for a download
+          and a full page load for a route the router already owns. */}
+      <a
+        class={[
+          "rounded-md px-2 py-1.5 text-left text-sm hover:bg-hover",
+          { "bg-fill font-medium": props.current === "/account" },
+        ]}
+        href={href("/account")}
+        onClick={(event) => props.onNav(event, "/account")}
+      >
+        Account
+      </a>
+      <MenuItem onClick={() => setTheme(nextTheme(theme()))}>
+        <span class="flex items-center gap-2">
+          <Icon name={face().icon} class="h-3.5 w-3.5" />
+          {face().label}
+        </span>
+      </MenuItem>
+      <div class="my-0.5 border-t border-hairline" />
+      <MenuItem onClick={() => void signOut()}>Sign out</MenuItem>
+    </Menu>
   );
 }
 

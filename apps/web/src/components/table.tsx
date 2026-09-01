@@ -81,11 +81,11 @@ export function TableFooter(props: {
  * needs to follow the row's hover, which is why `Row` is a `group`.
  */
 const PINNED_HEAD = "sticky right-0 z-20 bg-surface shadow-[inset_1px_0_0_0_var(--color-hairline)]";
-// No standing z-index: every frozen cell is positioned, so they paint in row order, and a row menu
-// opening downwards would be covered by the next row's frozen cell, which swallows the click on
-// its items. The cell lifts itself only while its own menu is open, which `<details open>` says.
+// No standing z-index: every frozen cell is positioned, so they paint in row order. A row menu used
+// to need this cell lifted above the next row's, and no longer does: the menu is a popover, drawn
+// in the top layer above the whole page rather than inside this cell's stacking context.
 const PINNED_CELL =
-  "sticky right-0 bg-canvas group-hover:bg-hover has-[details[open]]:z-30 shadow-[inset_1px_0_0_0_var(--color-hairline)]";
+  "sticky right-0 bg-canvas group-hover:bg-hover shadow-[inset_1px_0_0_0_var(--color-hairline)]";
 
 export function Head(
   props: ComponentProps<"th"> & { numeric?: boolean; pinned?: boolean }

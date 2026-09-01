@@ -217,11 +217,11 @@ test.describe("admin stories", () => {
     await page.getByRole("button", { name: "Create" }).click();
     const row = page.locator("tr", { hasText: `tmp-${STAMP}` });
     await expect(row).toBeVisible();
-    await row.getByRole("button", { name: "Disable" }).click();
-    await expect(row.getByRole("button", { name: "Enable" })).toBeVisible();
-    await row.getByRole("button", { name: "Enable" }).click();
-    await expect(row.getByRole("button", { name: "Disable" })).toBeVisible();
-    await row.getByRole("button", { name: "Reset password" }).click();
+    // Edit stays in the row; everything else moved behind the row's overflow menu. The Enable
+    // click is the assertion that Disable worked: the item is only there if the toggle flipped.
+    await (await rowMenu(row)).getByRole("button", { name: "Disable" }).click();
+    await (await rowMenu(row)).getByRole("button", { name: "Enable" }).click();
+    await (await rowMenu(row)).getByRole("button", { name: "Reset password" }).click();
     const dialog = page.locator("dialog[open]");
     await dialog.getByLabel(/Temporary password/).fill("tmp-reset-password-1");
     await dialog.getByRole("button", { name: "Reset" }).click();
