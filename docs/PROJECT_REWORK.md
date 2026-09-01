@@ -61,8 +61,8 @@ sidebar                    project page                adapter page
 | 1 | Storage gets its own menu; project tab becomes Databases | done | 4e1b6ec |
 | 2 | Project tabs five to three, with `?tab=` redirects | done | 966acb8 |
 | 3 | Activity: chips over the three existing lists | done | 8ea4faa |
-| 4 | Imports move under the adapter and shrink to one screen | done | pending |
-| 5 | States: tree by default, rows link, select to compare | pending | |
+| 4 | Imports move under the adapter and shrink to one screen | done | 3eaf9d4, 08bffea |
+| 5 | States: tree by default, rows link, select to compare | done | pending |
 | 6 | Each state row carries what it produced | pending | |
 | 7 | Policies becomes Column masks | pending | |
 | 8 | ERD: a List / Diagram toggle on the adapter page | pending | |

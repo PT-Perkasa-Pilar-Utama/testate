@@ -11,7 +11,7 @@ import { Cell, EmptyRow, Head, Row, SortColumn, Table, TableSearch } from "@/com
 import { DIFF_STATUS_LABEL } from "@/lib/labels.ts";
 import { hasRole } from "@/lib/session.ts";
 import { DetailDialog } from "./diffs.detail.view.tsx";
-import { CreateDialog, RowsDialog } from "./diffs.dialogs.view.tsx";
+import { RowsDialog } from "./diffs.dialogs.view.tsx";
 import {
   changedRows,
   createDiffsPresenter,
@@ -108,11 +108,8 @@ export default function DiffsView(props: { slug: string }): JSX.Element {
           value={presenter.table.query()}
           onInput={(value) => presenter.table.setQuery(value)}
         />
-        <Show when={hasRole("qa")}>
-          <Button variant="primary" onClick={() => presenter.openCreate()}>
-            New diff
-          </Button>
-        </Show>
+        {/* No New diff here: a diff is two states, and the place to pick two states is the
+            States tab, where ticking two offers Compare (docs/PROJECT_REWORK.md). */}
       </div>
       <Loading fallback={<p class="text-muted">Loading diffs...</p>}>
         <Table>
@@ -154,7 +151,6 @@ export default function DiffsView(props: { slug: string }): JSX.Element {
           </tbody>
         </Table>
       </Loading>
-      <CreateDialog presenter={presenter} />
       <DetailDialog presenter={presenter} />
       <RowsDialog presenter={presenter} />
     </div>

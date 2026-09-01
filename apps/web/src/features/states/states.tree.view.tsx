@@ -13,10 +13,16 @@ import { formatBytes } from "./states.format.ts";
  * timeline uses. Children hang off a rail the way a git graph draws them, so a person can tell a
  * child from a sibling without counting indentation.
  */
-function Node(props: { node: StateTreeNode }): JSX.Element {
+function Node(props: { node: StateTreeNode; onOpen: (node: StateTreeNode) => void }): JSX.Element {
   return (
     <li class="grid gap-1.5">
-      <div class="flex items-start gap-2">
+      {/* A button, not a paragraph. The tree drew a name and a badge and did nothing when you
+          pressed it, which is why it read as decoration (docs/PROJECT_REWORK.md). */}
+      <button
+        type="button"
+        class="flex w-full cursor-pointer items-start gap-2 rounded-md p-1 text-left hover:bg-hover"
+        onClick={() => props.onOpen(props.node)}
+      >
         <Icon
           name="git-commit-horizontal"
           class={
@@ -41,10 +47,12 @@ function Node(props: { node: StateTreeNode }): JSX.Element {
             <span class="whitespace-nowrap tabular-nums">{formatWhen(props.node.created_at)}</span>
           </div>
         </div>
-      </div>
+      </button>
       <Show when={props.node.children.length > 0}>
         <ul class="grid gap-3 border-l border-line pl-5">
-          <For each={props.node.children}>{(child) => <Node node={child} />}</For>
+          <For each={props.node.children}>
+            {(child) => <Node node={child} onOpen={props.onOpen} />}
+          </For>
         </ul>
       </Show>
     </li>
@@ -54,6 +62,7 @@ function Node(props: { node: StateTreeNode }): JSX.Element {
 export type TreeProps = {
   nodes: readonly StateTreeNode[];
   empty: JSX.Element;
+  onOpen: (node: StateTreeNode) => void;
 };
 
 /**
@@ -70,7 +79,7 @@ export default function Tree(props: TreeProps): JSX.Element {
       }
     >
       <ul class="grid gap-3 rounded-lg px-5 py-4 ring ring-line" aria-label="State history">
-        <For each={props.nodes}>{(node) => <Node node={node} />}</For>
+        <For each={props.nodes}>{(node) => <Node node={node} onOpen={props.onOpen} />}</For>
       </ul>
     </Show>
   );

@@ -159,13 +159,11 @@ test.describe("state stories", () => {
     await expect(page.locator("dialog[open]")).toHaveCount(0);
     await page.goto("/projects/demo");
     await settle(page);
+    // Ticking one state and comparing it with live replaces the New diff dialog.
+    await page.getByRole("tab", { name: "List" }).click();
+    await page.getByRole("checkbox", { name: "Compare seeded-baseline" }).check();
+    await page.getByRole("button", { name: "Compare with live" }).click();
     await page.getByRole("tab", { name: "Activity" }).click();
-    await page.getByRole("button", { name: "New diff" }).click();
-    const create = page.locator("dialog[open]");
-    await create.getByLabel("Base state").selectOption({ label: "seeded-baseline" });
-    await create.getByLabel("Target").selectOption({ label: "live database" });
-    await create.getByRole("button", { name: "Compare" }).click();
-    await expect(page.locator("dialog[open]")).toHaveCount(0);
     const row = page.locator("tr", { hasText: "live database" }).first();
     await expect(row.getByText("ready")).toBeVisible({ timeout: 90_000 });
     await row.getByRole("button", { name: "Details" }).click();

@@ -8,6 +8,7 @@ import LoadMore from "@/components/load-more.tsx";
 import Switch from "@/components/switch.tsx";
 import Tabs from "@/components/tabs.tsx";
 import { TableFooter } from "@/components/table.tsx";
+import { navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { createPreflightPresenter } from "../checkouts/preflight.presenter.ts";
 import PreflightDialog from "../checkouts/preflight.view.tsx";
@@ -80,6 +81,8 @@ export default function StatesView(props: {
   slug: string;
   /** The state the databases are on; the timeline marks it HEAD. */
   headStateId?: string | null;
+  /** A restore failed part way, so nobody knows what the databases hold; the row says so. */
+  headUnknown?: boolean;
   onChanged?: () => void;
 }): JSX.Element {
   const presenter = createStatesPresenter(
@@ -94,6 +97,12 @@ export default function StatesView(props: {
       props.onChanged?.();
     }
   );
+  // The diff lands in Activity, which is where every event about a state lives.
+  const onCompare = async (): Promise<void> => {
+    const staticSlug = props.slug;
+    if (await presenter.compare())
+      navigate(`/projects/${encodeURIComponent(staticSlug)}?tab=activity`);
+  };
   return (
     <div class="grid gap-3">
       <div class="flex items-center justify-between gap-4">
@@ -117,17 +126,40 @@ export default function StatesView(props: {
           </Show>
         </div>
       </div>
+      {/* Two ticked states are a comparison waiting to be asked for, which is where the New diff
+          dialog used to ask the same question with two selects (docs/PROJECT_REWORK.md). */}
+      <Show when={presenter.selected().length > 0}>
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-fill px-4 py-2.5 ring ring-line">
+          <span class="text-base text-body">
+            {presenter.selected().length === 1
+              ? "1 state selected. Compare it with the live databases?"
+              : "2 states selected."}
+          </span>
+          <div class="flex items-center gap-2">
+            <Button size="sm" variant="ghost" onClick={() => presenter.clearSelected()}>
+              Clear
+            </Button>
+            <Button size="sm" variant="primary" onClick={() => void onCompare()}>
+              {presenter.selected().length === 1 ? "Compare with live" : "Compare"}
+            </Button>
+          </div>
+        </div>
+      </Show>
       <Loading fallback={<p class="text-muted">Loading states...</p>}>
         <Show when={presenter.view() === "tree"}>
           <Tree
             nodes={presenter.tree.value()}
             empty="No states yet. Take one to keep what the databases hold right now."
+            onOpen={(node) => void presenter.openDetailById(node.id)}
           />
         </Show>
         <Show when={presenter.view() === "list"}>
           <Timeline
             states={presenter.value()}
             headStateId={props.headStateId ?? null}
+            headUnknown={props.headUnknown === true}
+            onPick={hasRole("qa") ? (id) => presenter.toggleSelected(id) : undefined}
+            picked={presenter.selected()}
             actionsFor={(state) => (
               <RowActions
                 presenter={presenter}

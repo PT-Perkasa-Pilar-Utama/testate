@@ -49,8 +49,11 @@ function Meta(props: { state: State }): JSX.Element {
 export type TimelineRowProps = {
   state: State;
   head: boolean;
+  headUnknown?: boolean | undefined;
   /** The row's own controls, so this file never learns what a checkout is. */
   actions: JSX.Element;
+  onPick?: ((id: string) => void) | undefined;
+  picked?: boolean | undefined;
 };
 
 function TimelineRow(props: TimelineRowProps): JSX.Element {
@@ -60,17 +63,33 @@ function TimelineRow(props: TimelineRowProps): JSX.Element {
         The rail runs behind the dots and stops at the last one, so the newest state reads as the
         top of a history rather than as something cut off.
       */}
+      {/* `pointer-events-none` because it is a drawn line: without it the rail sits over the
+          checkbox beside it and swallows the click. */}
       <span
-        class="absolute top-5 bottom-0 left-1.5 w-px bg-line group-last:hidden"
+        class="pointer-events-none absolute top-5 bottom-0 left-1.5 w-px bg-line group-last:hidden"
         aria-hidden="true"
       />
+      <Show when={props.onPick !== undefined}>
+        <input
+          type="checkbox"
+          class="mt-1 shrink-0 cursor-pointer"
+          aria-label={`Compare ${props.state.name}`}
+          checked={props.picked === true}
+          onChange={() => props.onPick?.(props.state.id)}
+        />
+      </Show>
       <Dot head={props.head} />
       <div class="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div class="grid min-w-0 gap-1">
           <div class="flex flex-wrap items-center gap-2">
             <Truncated class="max-w-[20rem] font-medium text-heading">{props.state.name}</Truncated>
             <Show when={props.head}>
-              <Badge variant="primary">HEAD</Badge>
+              {/* A checkout that failed part way leaves head_status 'unknown': the databases hold
+                  some of this state and some of whatever came before, and saying HEAD flat would
+                  be a claim nobody checked (docs/PROJECT_REWORK.md). */}
+              <Badge variant={props.headUnknown === true ? "warning" : "primary"}>
+                {props.headUnknown === true ? "HEAD, unverified" : "HEAD"}
+              </Badge>
             </Show>
             <Show when={props.state.protected}>
               <Badge variant="outline">
@@ -107,8 +126,13 @@ export type TimelineProps = {
   states: readonly State[];
   /** The state the databases are on right now; null when the project has never been restored. */
   headStateId: string | null;
+  /** A failed restore leaves HEAD unknown; the badge says so rather than claiming the state. */
+  headUnknown?: boolean;
   actionsFor: (state: State) => JSX.Element;
   empty: JSX.Element;
+  /** Ticking picks a state to compare; absent means the column is not there at all. */
+  onPick?: ((id: string) => void) | undefined;
+  picked?: readonly string[] | undefined;
 };
 
 /**
@@ -131,7 +155,10 @@ export default function Timeline(props: TimelineProps): JSX.Element {
             <TimelineRow
               state={state}
               head={state.id === props.headStateId}
+              headUnknown={props.headUnknown === true}
               actions={props.actionsFor(state)}
+              onPick={props.onPick}
+              picked={props.picked?.includes(state.id) === true}
             />
           )}
         </For>

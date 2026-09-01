@@ -75,14 +75,12 @@ test.describe("README screens", () => {
     await take("checkout-flow-baseline", "release-2.4");
     await take("after-the-failed-refund", "bug-4182");
 
-    // The demo has no diff of its own, so make one against the live database first.
-    await openTab(page, "Diffs");
-    await page.getByRole("button", { name: "New diff" }).click();
-    const create = page.locator("dialog[open]");
-    await create.getByLabel("Base state").selectOption({ label: "seeded-baseline" });
-    await create.getByLabel("Target").selectOption({ label: "live database" });
-    await create.getByRole("button", { name: "Compare" }).click();
-    await expect(page.locator("dialog[open]")).toHaveCount(0);
+    // The demo has no diff of its own, so make one against the live database first: tick a state
+    // on the States tab and compare it, which is where a diff starts now.
+    await openTab(page, "States");
+    await page.getByRole("tab", { name: "List" }).click();
+    await page.getByRole("checkbox", { name: "Compare seeded-baseline" }).check();
+    await page.getByRole("button", { name: "Compare with live" }).click();
     await expect(
       page.locator("tr", { hasText: "live database" }).first().getByText("ready")
     ).toBeVisible({ timeout: 90_000 });

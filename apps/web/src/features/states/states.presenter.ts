@@ -14,6 +14,8 @@ import { createPaged, createRefreshable } from "@/lib/async.ts";
 import type { Paged, Refreshable } from "@/lib/async.ts";
 import { followJob } from "@/lib/sse.ts";
 import { adaptersModel } from "../adapters/adapters.model.ts";
+import { diffsModel } from "../diffs/diffs.model.ts";
+import { LIVE } from "../diffs/diffs.presenter.ts";
 import { statesModel } from "./states.model.ts";
 
 export type StatesView = "list" | "tree";
@@ -34,12 +36,25 @@ export type StatesPresenter = Paged<State> & {
   openEdit: (state: State) => void;
   openDelete: (state: State) => void;
   openDetail: (state: State) => Promise<void>;
+  /** The same dialog from a tree node, which carries an id and not the whole state. */
+  openDetailById: (id: string) => Promise<void>;
   close: () => void;
   take: (input: StateDraftInput) => Promise<void>;
   save: (input: StateDraftInput) => Promise<void>;
   setProtected: (state: State, value: boolean) => Promise<void>;
   confirmDelete: () => Promise<void>;
   archiveUrl: (state: State) => string;
+  /** The states ticked for a comparison, in the order they were ticked. */
+  selected: () => readonly string[];
+  toggleSelected: (id: string) => void;
+  clearSelected: () => void;
+  /**
+   * Two ticked compares them; one compares it with the live databases.
+   *
+   * It does not navigate. `lib/router.ts` reads `window` when it loads, so a presenter that
+   * imports it cannot be tested outside a browser; where to go next is the view's answer anyway.
+   */
+  compare: () => Promise<boolean>;
 };
 
 /** "a, b,,a " -> ["a", "b"]. */
@@ -92,7 +107,9 @@ export function createStatesPresenter(
   const databases = createRefreshable(async () =>
     (await adaptersModel.list(slug())).filter((adapter) => adapter.kind === "database")
   );
-  const [view, setView] = createSignal<StatesView>("list");
+  // Tree first: `parent_state_id` is the whole git analogy, and a stash hanging off the state it
+  // protected is the thing a person came to see. List is the escape hatch (docs/PROJECT_REWORK.md).
+  const [view, setView] = createSignal<StatesView>("tree");
   const [taking, setTaking] = createSignal(false);
   const [editing, setEditing] = createSignal<State | null>(null);
   const [deleting, setDeleting] = createSignal<State | null>(null);
@@ -119,6 +136,13 @@ export function createStatesPresenter(
       setError(messageOf(cause));
     }
   };
+  const [selected, setSelected] = createSignal<readonly string[]>([]);
+  const openById = (id: string): Promise<void> => {
+    const staticSlug = slug();
+    return attempt(async () => {
+      setDetail(await statesModel.get(staticSlug, id));
+    });
+  };
   return {
     ...states,
     tree,
@@ -144,12 +168,33 @@ export function createStatesPresenter(
       setError(null);
       setDeleting(state);
     },
-    openDetail: (state) => {
+    selected,
+    toggleSelected: (id) =>
+      setSelected((current) =>
+        current.includes(id)
+          ? current.filter((one) => one !== id)
+          : // Two at a time: ticking a third drops the older of the two, which is what a person
+            // means by ticking a third rather than an error to explain.
+            [...current, id].slice(-2)
+      ),
+    clearSelected: () => setSelected([]),
+    compare: async () => {
       const staticSlug = slug();
-      return attempt(async () => {
-        setDetail(await statesModel.get(staticSlug, state.id));
+      const staticPicked = selected();
+      const base = staticPicked[0];
+      if (base === undefined) return false;
+      // One ticked means "what has changed since", which is the live databases.
+      const target = staticPicked[1] === undefined ? LIVE : { state_id: staticPicked[1] };
+      let made = false;
+      await attempt(async () => {
+        await diffsModel.create(staticSlug, { base_state_id: base, target });
+        setSelected([]);
+        made = true;
       });
+      return made;
     },
+    openDetail: (state) => openById(state.id),
+    openDetailById: (id) => openById(id),
     close,
     take: (input) => {
       const staticSlug = slug();

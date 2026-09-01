@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { For, Loading, Show } from "solid-js";
+import { For, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
@@ -7,7 +7,7 @@ import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Select from "@/components/select.tsx";
 import { DIFF_OP_LABEL } from "@/lib/labels.ts";
-import { LIVE, keyLabel } from "./diffs.presenter.ts";
+import { keyLabel } from "./diffs.presenter.ts";
 import type { DiffsPresenter } from "./diffs.presenter.ts";
 
 const OP_OPTIONS = [
@@ -18,60 +18,6 @@ const OP_OPTIONS = [
 ] as const;
 const OP_VARIANT = { added: "success", removed: "error", changed: "warning" } as const;
 
-export function CreateDialog(props: { presenter: DiffsPresenter }): JSX.Element {
-  const onSubmit = (event: SubmitEvent): void => {
-    event.preventDefault();
-    void props.presenter.create();
-  };
-  const stateOptions = (): { value: string; label: string }[] =>
-    props.presenter.states.value().map((state) => ({ value: state.id, label: state.name }));
-  return (
-    <Dialog
-      open={props.presenter.creating()}
-      onClose={() => props.presenter.close()}
-      title="New diff"
-      description="Compare a state with another state or with the live database. Tables without a primary key compare by row content."
-    >
-      <form class="grid gap-4" onSubmit={onSubmit}>
-        <Loading fallback={<p class="text-muted">Listing states...</p>}>
-          <label class="grid content-start gap-1.5 text-base">
-            <span>Base state</span>
-            <Select
-              options={[{ value: "", label: "choose a state" }, ...stateOptions()]}
-              value={props.presenter.draft().base_state_id}
-              onChange={(value) => props.presenter.setDraft({ base_state_id: value })}
-            />
-          </label>
-          <label class="grid content-start gap-1.5 text-base">
-            <span>Target</span>
-            <Select
-              options={[{ value: LIVE, label: "live database" }, ...stateOptions()]}
-              value={props.presenter.draft().target}
-              onChange={(value) => props.presenter.setDraft({ target: value })}
-            />
-          </label>
-        </Loading>
-        <Show when={props.presenter.error()}>
-          {(message) => <Banner variant="error">{message()}</Banner>}
-        </Show>
-        <div class="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={() => props.presenter.close()}>
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={props.presenter.draft().base_state_id === ""}
-          >
-            Compare
-          </Button>
-        </div>
-      </form>
-    </Dialog>
-  );
-}
-
-/** Before and after values per changed row of one table (story 90). */
 export function RowsDialog(props: { presenter: DiffsPresenter }): JSX.Element {
   return (
     <Show when={props.presenter.rows()}>
