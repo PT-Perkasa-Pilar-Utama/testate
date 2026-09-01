@@ -1,5 +1,7 @@
 import type { ImportReport, JsonObject, Mapping, TableSchema } from "@testate/shared";
 
+import { IMPORT_MODE_LABEL, IMPORT_VALUE_TRANSFORM_LABEL } from "@/lib/labels.ts";
+
 export const TRANSFORMS = ["", "trim", "emptyToNull", "number", "uuid", "now", "json"] as const;
 export type Transform = (typeof TRANSFORMS)[number];
 export type ColumnDraft = { target: string; source: string; transform: Transform };
@@ -107,12 +109,12 @@ export function runBody(
 
 export const TRANSFORM_OPTIONS: ReadonlyArray<{ value: Transform; label: string }> = [
   { value: "", label: "Leave as is" },
-  { value: "trim", label: "Trim extra spaces" },
-  { value: "emptyToNull", label: "Treat blank cells as no value" },
-  { value: "number", label: "Convert text to a number" },
-  { value: "uuid", label: "Generate a unique ID" },
-  { value: "now", label: "Fill in today's date and time" },
-  { value: "json", label: "Read as structured data (JSON)" },
+  { value: "trim", label: IMPORT_VALUE_TRANSFORM_LABEL.trim },
+  { value: "emptyToNull", label: IMPORT_VALUE_TRANSFORM_LABEL.emptyToNull },
+  { value: "number", label: IMPORT_VALUE_TRANSFORM_LABEL.number },
+  { value: "uuid", label: IMPORT_VALUE_TRANSFORM_LABEL.uuid },
+  { value: "now", label: IMPORT_VALUE_TRANSFORM_LABEL.now },
+  { value: "json", label: IMPORT_VALUE_TRANSFORM_LABEL.json },
 ];
 
 export const MODE_OPTIONS: ReadonlyArray<{
@@ -122,18 +124,18 @@ export const MODE_OPTIONS: ReadonlyArray<{
 }> = [
   {
     value: "append",
-    label: "Add these rows",
+    label: IMPORT_MODE_LABEL.append,
     description: "Every row in the file becomes a new row. Nothing already in the table changes.",
   },
   {
     value: "upsert",
-    label: "Add new rows, update existing ones",
+    label: IMPORT_MODE_LABEL.upsert,
     description:
       "Rows are matched by the key columns below. New rows are added; matching rows are updated.",
   },
   {
     value: "replace",
-    label: "Clear the table, then load this file",
+    label: IMPORT_MODE_LABEL.replace,
     description: "Every row already in the table is removed first, then these rows are added.",
   },
 ];

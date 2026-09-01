@@ -12,12 +12,13 @@ import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import Switch from "@/components/switch.tsx";
+import { STORE_DRIVER_LABEL } from "@/lib/labels.ts";
 import { MIGRATE_BLANK } from "./settings.presenter.ts";
 import type { SettingsPresenter } from "./settings.presenter.ts";
 
 const DRIVER_OPTIONS = [
-  { value: "local", label: "local disk" },
-  { value: "s3", label: "S3-compatible bucket" },
+  { value: "local", label: STORE_DRIVER_LABEL.local },
+  { value: "s3", label: STORE_DRIVER_LABEL.s3 },
 ] as const;
 
 /** Move every snapshot to another store as a job (stories 118, 119). */

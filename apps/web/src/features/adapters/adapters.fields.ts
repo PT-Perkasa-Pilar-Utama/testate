@@ -1,5 +1,4 @@
 import type { AdapterKind, Engine, JsonObject } from "@testate/shared";
-import { ENGINES } from "@testate/shared";
 
 export type FieldType = "text" | "number" | "password" | "url" | "boolean";
 
@@ -17,11 +16,6 @@ export type EngineForm = { kind: AdapterKind; label: string; config: Field[]; se
  * a neutral grey by default; that hides the one state operators most need to notice, so it takes
  * the warning tone instead. */
 export const STATUS_VARIANT = { ok: "success", error: "error", disabled: "warning" } as const;
-
-export const MODE_OPTIONS = [
-  { value: "sandbox", label: "sandbox (restores allowed)" },
-  { value: "read_only", label: "read-only" },
-] as const;
 
 const HOST_PORT = (port: number): Field[] => [
   { key: "host", label: "Host", type: "text", required: true, placeholder: "db.sit.internal" },
@@ -91,11 +85,6 @@ export const ENGINE_FORMS = {
     secrets: [{ key: "password", label: "Password", type: "password", required: true }],
   },
 } as const satisfies Record<Engine, EngineForm>;
-
-export const ENGINE_OPTIONS = ENGINES.map((engine) => ({
-  value: engine,
-  label: `${engine} · ${ENGINE_FORMS[engine].label}`,
-}));
 
 export type Values = Record<string, string>;
 

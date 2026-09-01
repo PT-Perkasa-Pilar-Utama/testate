@@ -6,6 +6,7 @@ import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
+import { FUNCTION_NAME_LABEL, MASK_LABEL } from "@/lib/labels.ts";
 import { adapterModel } from "../adapter/adapter.model.ts";
 import { qualifiedName } from "./grid.presenter.ts";
 import { policiesModel } from "./policies.model.ts";
@@ -13,11 +14,11 @@ import { policiesModel } from "./policies.model.ts";
 export const NONE = "none";
 export const FUNCTION_CHOICES = policyFunctionChoiceSchema.options.map((value) => ({
   value,
-  label: value === NONE ? "no function" : value,
+  label: value === NONE ? "no function" : FUNCTION_NAME_LABEL[value],
 }));
 export const MASK_CHOICES = policyMaskChoiceSchema.options.map((value) => ({
   value,
-  label: value === NONE ? "no mask" : value,
+  label: value === NONE ? "no mask" : MASK_LABEL[value],
 }));
 
 export type PolicyDraft = { table: string; column: string } & PolicyFormInput;

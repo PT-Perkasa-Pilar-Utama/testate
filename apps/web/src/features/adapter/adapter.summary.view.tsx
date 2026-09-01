@@ -7,10 +7,11 @@ import { statusReason } from "@/lib/api-error.ts";
 import Banner from "@/components/banner.tsx";
 import LayerCard from "@/components/layer-card.tsx";
 import { formatWhen } from "@/lib/format.ts";
-import { MODE_OPTIONS, STATUS_VARIANT } from "../adapters/adapters.fields.ts";
+import { ADAPTER_MODE_LABEL } from "@/lib/labels.ts";
+import { STATUS_VARIANT } from "../adapters/adapters.fields.ts";
 
 function modeLabel(mode: AdapterMode): string {
-  return MODE_OPTIONS.find((option) => option.value === mode)?.label ?? mode;
+  return ADAPTER_MODE_LABEL[mode];
 }
 
 /** What the adapter is, on one quiet line: engine, tier, mode, and when it was last checked. */

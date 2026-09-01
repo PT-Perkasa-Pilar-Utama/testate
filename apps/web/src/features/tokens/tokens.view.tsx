@@ -17,6 +17,7 @@ import Dialog from "@/components/dialog.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
+import { ROLE_OPTIONS, TOKEN_KIND_OPTIONS } from "@/lib/labels.ts";
 import {
   Cell,
   EmptyRow,
@@ -29,12 +30,7 @@ import {
   TableToolbar,
   Truncated,
 } from "@/components/table.tsx";
-import {
-  EMPTY_DRAFT,
-  KIND_OPTIONS,
-  ROLE_OPTIONS,
-  createTokensPresenter,
-} from "./tokens.presenter.ts";
+import { EMPTY_DRAFT, createTokensPresenter } from "./tokens.presenter.ts";
 import type { TokensPresenter } from "./tokens.presenter.ts";
 import RevealDialog from "./tokens.reveal.view.tsx";
 
@@ -87,7 +83,7 @@ function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
             <label class="grid content-start gap-1.5 text-base">
               <span>Kind</span>
               <Select
-                options={KIND_OPTIONS}
+                options={TOKEN_KIND_OPTIONS}
                 value={field.input ?? EMPTY_DRAFT.kind}
                 onChange={(kind) => field.onInput(kind)}
               />

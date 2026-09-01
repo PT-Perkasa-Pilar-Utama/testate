@@ -6,14 +6,15 @@ import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Select from "@/components/select.tsx";
+import { DIFF_OP_LABEL } from "@/lib/labels.ts";
 import { LIVE, keyLabel } from "./diffs.presenter.ts";
 import type { DiffsPresenter } from "./diffs.presenter.ts";
 
 const OP_OPTIONS = [
   { value: "", label: "all rows" },
-  { value: "added", label: "added" },
-  { value: "removed", label: "removed" },
-  { value: "changed", label: "changed" },
+  { value: "added", label: DIFF_OP_LABEL.added },
+  { value: "removed", label: DIFF_OP_LABEL.removed },
+  { value: "changed", label: DIFF_OP_LABEL.changed },
 ] as const;
 const OP_VARIANT = { added: "success", removed: "error", changed: "warning" } as const;
 

@@ -8,10 +8,11 @@ import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import Switch from "@/components/switch.tsx";
 import { hasRole } from "@/lib/session.ts";
+import { FILTER_OP_LABEL } from "@/lib/labels.ts";
 import { FILTER_OPS, filterNeedsValue } from "./grid.presenter.ts";
 import type { Filter, FilterOp, GridPresenter } from "./grid.presenter.ts";
 
-const OP_OPTIONS = FILTER_OPS.map((op) => ({ value: op, label: op }));
+const OP_OPTIONS = FILTER_OPS.map((op) => ({ value: op, label: FILTER_OP_LABEL[op] }));
 
 /** One removable filter, in the words it reads as: "status eq active". */
 function FilterChip(props: { filter: Filter; onRemove: () => void }): JSX.Element {

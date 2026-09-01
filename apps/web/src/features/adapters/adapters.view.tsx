@@ -2,7 +2,7 @@ import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import { For, Loading, Show, createEffect } from "solid-js";
 import type { AdapterCreateFormInput, Engine } from "@testate/shared";
-import { adapterCreateFormSchema } from "@testate/shared";
+import { ENGINES, adapterCreateFormSchema } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import { statusReason } from "@/lib/api-error.ts";
@@ -24,9 +24,19 @@ import {
   TableSearch,
   TableToolbar,
 } from "@/components/table.tsx";
+import { ADAPTER_MODE_OPTIONS, ENGINE_LABEL } from "@/lib/labels.ts";
 import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
-import { ENGINE_OPTIONS, ENGINE_FORMS, MODE_OPTIONS, STATUS_VARIANT } from "./adapters.fields.ts";
+import { ENGINE_FORMS, STATUS_VARIANT } from "./adapters.fields.ts";
+
+/**
+ * The engine, and what kind of thing it is. The name alone does not say whether you are connecting
+ * a database or a place files live, and that is the first thing the rest of the form depends on.
+ */
+const ENGINE_OPTIONS = ENGINES.map((value) => ({
+  value,
+  label: `${ENGINE_LABEL[value]} · ${ENGINE_FORMS[value].label}`,
+}));
 import type { Field as EngineField } from "./adapters.fields.ts";
 import { createAdaptersPresenter, describeOutcome, outcomeWarnings } from "./adapters.presenter.ts";
 import type { AdaptersPresenter } from "./adapters.presenter.ts";
@@ -133,7 +143,7 @@ function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Element {
               <label class="grid content-start gap-1.5 text-base">
                 <span>Mode</span>
                 <Select
-                  options={MODE_OPTIONS}
+                  options={ADAPTER_MODE_OPTIONS}
                   value={field.input ?? "sandbox"}
                   onChange={(value) => field.onInput(value)}
                 />

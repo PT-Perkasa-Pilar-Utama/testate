@@ -11,7 +11,7 @@ import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
-import { ROLE_OPTIONS } from "./users.presenter.ts";
+import { ROLE_OPTIONS } from "@/lib/labels.ts";
 import type { UsersPresenter } from "./users.presenter.ts";
 
 export function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element {

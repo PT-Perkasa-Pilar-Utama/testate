@@ -11,10 +11,9 @@ import Dialog from "@/components/dialog.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
-import { FIELD_MODES, FUNCTION_OPTIONS, MAX_COPIES, cellsOf } from "./editing.presenter.ts";
+import { FIELD_MODE_OPTIONS } from "@/lib/labels.ts";
+import { FUNCTION_OPTIONS, MAX_COPIES, cellsOf } from "./editing.presenter.ts";
 import type { EditingPresenter } from "./editing.presenter.ts";
-
-const MODE_OPTIONS = FIELD_MODES.map((mode) => ({ value: mode, label: mode }));
 
 type RowForm = ReturnType<typeof createForm<typeof rowFormSchema>>;
 
@@ -53,7 +52,7 @@ function Cell(props: {
           <Select
             size="sm"
             aria-label={`${props.column.name} mode`}
-            options={MODE_OPTIONS}
+            options={FIELD_MODE_OPTIONS}
             value={field.input ?? "value"}
             onChange={(next) => field.onInput(next)}
           />

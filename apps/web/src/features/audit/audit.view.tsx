@@ -9,6 +9,7 @@ import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Select from "@/components/select.tsx";
+import { AUDIT_OUTCOME_LABEL } from "@/lib/labels.ts";
 import {
   Cell,
   Head,
@@ -65,7 +66,10 @@ function Filters(props: { presenter: AuditPresenter }): JSX.Element {
         <span>Outcome</span>
         <Select
           size="sm"
-          options={OUTCOMES.map((value) => ({ value, label: value === "" ? "any" : value }))}
+          options={OUTCOMES.map((value) => ({
+            value,
+            label: value === "" ? "any" : AUDIT_OUTCOME_LABEL[value],
+          }))}
           value={props.presenter.filter().outcome}
           onChange={(outcome) => props.presenter.setFilter({ outcome })}
         />

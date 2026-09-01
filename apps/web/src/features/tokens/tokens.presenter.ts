@@ -1,6 +1,5 @@
 import { createSignal } from "solid-js";
 import type { ApiToken, JsonObject, TokenDraft } from "@testate/shared";
-import { ROLES, TOKEN_KINDS } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
@@ -10,9 +9,6 @@ import type { TableView } from "@/lib/table.ts";
 import type { Paged } from "@/lib/async.ts";
 import type { CreatedToken } from "./tokens.model.ts";
 import { tokensModel } from "./tokens.model.ts";
-
-export const KIND_OPTIONS = TOKEN_KINDS.map((kind) => ({ value: kind, label: kind }));
-export const ROLE_OPTIONS = ROLES.map((role) => ({ value: role, label: role }));
 
 /** The dialog's own starting point; also what it resets to on close (`tokenDraftSchema`). */
 export const EMPTY_DRAFT: TokenDraft = { name: "", kind: "standard", role: "qa", expires_on: "" };

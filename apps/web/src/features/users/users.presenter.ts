@@ -1,6 +1,5 @@
 import { createSignal } from "solid-js";
 import type { CreateUserInput, EditUserInput, ResetPasswordInput, User } from "@testate/shared";
-import { ROLES } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
@@ -10,8 +9,6 @@ import { createTableControls } from "@/lib/table.ts";
 import type { TableView } from "@/lib/table.ts";
 import { actor } from "@/lib/session.ts";
 import { usersModel } from "./users.model.ts";
-
-export const ROLE_OPTIONS = ROLES.map((role) => ({ value: role, label: role }));
 
 export type UserSort = "username" | "display_name" | "role" | "last_login_at";
 
