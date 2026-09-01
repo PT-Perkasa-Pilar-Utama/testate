@@ -204,9 +204,6 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
               <div class="grid gap-1">
                 <p>Each database below is put back to its starting point, nothing saved first.</p>
                 <p>The project and everything in it is gone for good.</p>
-                <p class="text-xs">
-                  Want to keep a state? Download it first, from its menu on the States tab.
-                </p>
               </div>
             </Banner>
             <AffectedList affected={plan().affected} />
