@@ -4,6 +4,8 @@ import type { Diff, DiffRow, JsonObject, State } from "@testate/shared";
 import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
+import { createTableView } from "@/lib/table.ts";
+import type { TableView } from "@/lib/table.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { followJob } from "@/lib/sse.ts";
 import { statesModel } from "../states/states.model.ts";
@@ -14,7 +16,10 @@ export const LIVE = "live";
 export type DiffDraft = { base_state_id: string; target: string };
 export type RowsTarget = { diff: Diff; adapter_id: string; adapter_name: string; table: string };
 
+export type DiffSort = "base" | "status" | "changed" | "expires_at";
+
 export type DiffsPresenter = Refreshable<Diff[]> & {
+  table: TableView<Diff, DiffSort>;
   states: Refreshable<State[]>;
   creating: () => boolean;
   draft: () => DiffDraft;
@@ -118,6 +123,16 @@ function messageOf(cause: unknown): string {
 
 export function createDiffsPresenter(slug: () => string): DiffsPresenter {
   const diffs = createRefreshable(() => diffsModel.list(slug()));
+  const table = createTableView<Diff, DiffSort>({
+    rows: () => diffs.value(),
+    sorters: {
+      base: { text: (diff) => diff.base.name },
+      status: { text: (diff) => diff.status },
+      changed: { number: (diff) => changedRows(diff) },
+      expires_at: { text: (diff) => diff.expires_at },
+    },
+    fields: (diff) => [diff.base.name, targetLabel(diff.target), diff.status],
+  });
   const states = createRefreshable(() => statesModel.list(slug(), false));
   const [creating, setCreating] = createSignal(false);
   const [draft, setDraftSignal] = createSignal<DiffDraft>({ base_state_id: "", target: LIVE });
@@ -127,6 +142,7 @@ export function createDiffsPresenter(slug: () => string): DiffsPresenter {
     createSignal<DiffsPresenter["rows"] extends () => infer T ? T : never>(null);
   return {
     ...diffs,
+    table,
     states,
     creating,
     draft,

@@ -15,7 +15,17 @@ import Icon from "@/components/icon.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
-import { Cell, Head, Row, Table, TableFooter } from "@/components/table.tsx";
+import {
+  Cell,
+  EmptyRow,
+  Head,
+  Row,
+  SortColumn,
+  Table,
+  TableFooter,
+  TableSearch,
+  TableToolbar,
+} from "@/components/table.tsx";
 import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { headBadge } from "./projects.format.ts";
@@ -136,16 +146,31 @@ export default function ProjectsView(): JSX.Element {
             </EmptyState>
           }
         >
+          <TableToolbar>
+            <TableSearch
+              label="Search projects"
+              placeholder="name or slug"
+              value={presenter.table.query()}
+              onInput={(value) => presenter.table.setQuery(value)}
+            />
+          </TableToolbar>
           <Table>
             <thead>
               <tr>
-                <Head>Project</Head>
+                <SortColumn view={presenter.table} column="name">
+                  Project
+                </SortColumn>
                 <Head>HEAD</Head>
-                <Head>Last moved</Head>
+                <SortColumn view={presenter.table} column="changed_at">
+                  Last moved
+                </SortColumn>
               </tr>
             </thead>
             <tbody>
-              <For each={presenter.value()}>
+              <Show when={presenter.table.rows().length === 0}>
+                <EmptyRow>No project matches that search.</EmptyRow>
+              </Show>
+              <For each={presenter.table.rows()}>
                 {(project) => {
                   const badge = () => headBadge(project.head);
                   return (
@@ -169,7 +194,7 @@ export default function ProjectsView(): JSX.Element {
                       <Cell>
                         <Badge variant={badge().tone}>{badge().label}</Badge>
                       </Cell>
-                      <Cell class="whitespace-nowrap">
+                      <Cell>
                         <Show
                           when={project.head.changed_at}
                           fallback={<span class="text-muted">—</span>}
@@ -184,7 +209,7 @@ export default function ProjectsView(): JSX.Element {
             </tbody>
           </Table>
           <TableFooter
-            shown={presenter.value().length}
+            shown={presenter.table.rows().length}
             noun="projects"
             hasMore={presenter.hasMore()}
           >

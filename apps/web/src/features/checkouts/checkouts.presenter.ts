@@ -4,11 +4,16 @@ import type { Checkout, Counters } from "@testate/shared";
 
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createPaged } from "@/lib/async.ts";
+import { createTableView } from "@/lib/table.ts";
+import type { TableView } from "@/lib/table.ts";
 import type { Paged } from "@/lib/async.ts";
 import { followJob } from "@/lib/sse.ts";
 import { checkoutsModel } from "./checkouts.model.ts";
 
+export type CheckoutSort = "state" | "status" | "actor" | "created_at";
+
 export type CheckoutsPresenter = Paged<Checkout> & {
+  table: TableView<Checkout, CheckoutSort>;
   detail: () => Checkout | null;
   counters: () => { checkout: Checkout; result: Counters } | null;
   openDetail: (checkout: Checkout) => void;
@@ -92,6 +97,17 @@ export function createCheckoutsPresenter(
   onChanged: () => void = () => undefined
 ): CheckoutsPresenter {
   const checkouts = createPaged((cursor) => checkoutsModel.page(slug(), cursor));
+  const table = createTableView<Checkout, CheckoutSort>({
+    rows: () => checkouts.value(),
+    sorters: {
+      state: { text: (checkout) => checkout.state.name },
+      status: { text: (checkout) => checkout.status },
+      actor: { text: (checkout) => checkout.actor.label },
+      created_at: { text: (checkout) => checkout.created_at },
+    },
+    fields: (checkout) => [checkout.state.name, checkout.status, checkout.actor.label],
+    pager: { hasMore: checkouts.hasMore, loadMore: checkouts.loadMore },
+  });
   const [detail, setDetail] = createSignal<Checkout | null>(null);
   const [counters, setCounters] = createSignal<{ checkout: Checkout; result: Counters } | null>(
     null
@@ -102,6 +118,7 @@ export function createCheckoutsPresenter(
   };
   return {
     ...checkouts,
+    table,
     detail,
     counters,
     openDetail: (checkout) => setDetail(checkout),

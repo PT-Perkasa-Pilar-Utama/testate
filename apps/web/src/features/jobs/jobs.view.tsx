@@ -8,7 +8,16 @@ import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
 import Meter from "@/components/meter.tsx";
-import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
+import {
+  Cell,
+  EmptyRow,
+  Head,
+  Row,
+  SortColumn,
+  Table,
+  TableSearch,
+  TableToolbar,
+} from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import {
   JOB_KIND_LABEL,
@@ -118,29 +127,49 @@ export default function JobsView(): JSX.Element {
         }
       />
       <Loading fallback={<p class="text-muted">Loading jobs...</p>}>
+        <TableToolbar>
+          <TableSearch
+            label="Search jobs"
+            placeholder="kind or status"
+            value={presenter.table.query()}
+            onInput={(value) => presenter.table.setQuery(value)}
+          />
+        </TableToolbar>
         <Table>
           <thead>
             <tr>
-              <Head>Kind</Head>
-              <Head>Status</Head>
+              <SortColumn view={presenter.table} column="kind">
+                Kind
+              </SortColumn>
+              <SortColumn view={presenter.table} column="status">
+                Status
+              </SortColumn>
               <Head>Progress</Head>
               <Head>Error</Head>
-              <Head>By</Head>
-              <Head>Created</Head>
+              <SortColumn view={presenter.table} column="actor">
+                By
+              </SortColumn>
+              <SortColumn view={presenter.table} column="created_at">
+                Created
+              </SortColumn>
               <Head pinned />
             </tr>
           </thead>
           <tbody>
             <Show
-              when={presenter.value().length > 0}
+              when={presenter.table.rows().length > 0}
               fallback={
                 <EmptyRow>
-                  No jobs yet. Snapshots, checkouts, comparisons and imports all run as jobs and
-                  show up here.
+                  <Show
+                    when={presenter.value().length > 0}
+                    fallback="No jobs yet. Snapshots, checkouts, comparisons and imports all run as jobs and show up here."
+                  >
+                    No job matches that search.
+                  </Show>
                 </EmptyRow>
               }
             >
-              <For each={presenter.value()}>
+              <For each={presenter.table.rows()}>
                 {(job) => <JobRow presenter={presenter} job={job} />}
               </For>
             </Show>

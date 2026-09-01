@@ -13,7 +13,16 @@ import Dialog from "@/components/dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
-import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
+import {
+  Cell,
+  EmptyRow,
+  Head,
+  Row,
+  SortColumn,
+  Table,
+  TableSearch,
+  TableToolbar,
+} from "@/components/table.tsx";
 import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { ENGINE_OPTIONS, ENGINE_FORMS, MODE_OPTIONS, STATUS_VARIANT } from "./adapters.fields.ts";
@@ -187,28 +196,50 @@ export default function AdaptersView(props: { slug: string }): JSX.Element {
         </div>
       </Show>
       <Loading fallback={<p class="text-muted">Loading adapters...</p>}>
+        <TableToolbar>
+          <TableSearch
+            label="Search adapters"
+            placeholder="name or engine"
+            value={presenter.table.query()}
+            onInput={(value) => presenter.table.setQuery(value)}
+          />
+        </TableToolbar>
         <Table>
           <thead>
             <tr>
-              <Head>Name</Head>
-              <Head>Engine</Head>
-              <Head>Tier</Head>
-              <Head>Mode</Head>
+              <SortColumn view={presenter.table} column="name">
+                Name
+              </SortColumn>
+              <SortColumn view={presenter.table} column="engine">
+                Engine
+              </SortColumn>
+              <SortColumn view={presenter.table} column="tier">
+                Tier
+              </SortColumn>
+              <SortColumn view={presenter.table} column="mode">
+                Mode
+              </SortColumn>
               <Head>Credential</Head>
-              <Head>Status</Head>
+              <SortColumn view={presenter.table} column="status">
+                Status
+              </SortColumn>
             </tr>
           </thead>
           <tbody>
             <Show
-              when={presenter.value().length > 0}
+              when={presenter.table.rows().length > 0}
               fallback={
                 <EmptyRow>
-                  No adapters yet. Connect the databases behind the system under test to snapshot
-                  them.
+                  <Show
+                    when={presenter.value().length > 0}
+                    fallback="No adapters yet. Connect the databases behind the system under test to snapshot them."
+                  >
+                    No adapter matches that search.
+                  </Show>
                 </EmptyRow>
               }
             >
-              <For each={presenter.value()}>
+              <For each={presenter.table.rows()}>
                 {(adapter) => (
                   <Row>
                     <Cell>

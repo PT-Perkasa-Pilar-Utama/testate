@@ -7,7 +7,16 @@ import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
 import { Menu, MenuItem, MenuLink } from "@/components/menu.tsx";
-import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
+import {
+  Cell,
+  EmptyRow,
+  Head,
+  Row,
+  SortColumn,
+  Table,
+  TableSearch,
+  TableToolbar,
+} from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { DetailDialog } from "./diffs.detail.view.tsx";
 import { CreateDialog, RowsDialog } from "./diffs.dialogs.view.tsx";
@@ -54,7 +63,7 @@ function DiffRow(props: { presenter: DiffsPresenter; diff: Diff }): JSX.Element 
       >
         {changedRows(props.diff)}
       </Cell>
-      <Cell class="whitespace-nowrap">{formatWhen(props.diff.expires_at)}</Cell>
+      <Cell>{formatWhen(props.diff.expires_at)}</Cell>
       <Cell pinned>
         <div class="flex items-center justify-end gap-1">
           <Button
@@ -99,27 +108,47 @@ export default function DiffsView(props: { slug: string }): JSX.Element {
         </div>
       </Show>
       <Loading fallback={<p class="text-muted">Loading diffs...</p>}>
+        <TableToolbar>
+          <TableSearch
+            label="Search diffs"
+            placeholder="state or status"
+            value={presenter.table.query()}
+            onInput={(value) => presenter.table.setQuery(value)}
+          />
+        </TableToolbar>
         <Table>
           <thead>
             <tr>
-              <Head>Compare</Head>
-              <Head>Status</Head>
-              <Head numeric>Changed rows</Head>
-              <Head>Expires</Head>
+              <SortColumn view={presenter.table} column="base">
+                Compare
+              </SortColumn>
+              <SortColumn view={presenter.table} column="status">
+                Status
+              </SortColumn>
+              <SortColumn view={presenter.table} column="changed" numeric>
+                Changed rows
+              </SortColumn>
+              <SortColumn view={presenter.table} column="expires_at">
+                Expires
+              </SortColumn>
               <Head pinned>Actions</Head>
             </tr>
           </thead>
           <tbody>
             <Show
-              when={presenter.value().length > 0}
+              when={presenter.table.rows().length > 0}
               fallback={
                 <EmptyRow>
-                  No diffs yet. Compare two states, or a state against what the databases hold now,
-                  to see what a test run changed.
+                  <Show
+                    when={presenter.value().length > 0}
+                    fallback="No diffs yet. Compare two states, or a state against what the databases hold now, to see what a test run changed."
+                  >
+                    No diff matches that search.
+                  </Show>
                 </EmptyRow>
               }
             >
-              <For each={presenter.value()}>
+              <For each={presenter.table.rows()}>
                 {(diff) => <DiffRow presenter={presenter} diff={diff} />}
               </For>
             </Show>

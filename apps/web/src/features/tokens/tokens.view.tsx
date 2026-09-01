@@ -16,7 +16,18 @@ import LoadMore from "@/components/load-more.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
-import { Cell, Head, Row, Table, EmptyRow, TableFooter } from "@/components/table.tsx";
+import {
+  Cell,
+  EmptyRow,
+  Head,
+  Row,
+  SortColumn,
+  Table,
+  TableFooter,
+  TableSearch,
+  TableToolbar,
+  Truncated,
+} from "@/components/table.tsx";
 import {
   EMPTY_DRAFT,
   KIND_OPTIONS,
@@ -147,34 +158,59 @@ export default function TokensView(): JSX.Element {
         }
       />
       <Loading fallback={<p class="text-muted">Loading tokens...</p>}>
+        <TableToolbar>
+          <TableSearch
+            label="Search tokens"
+            placeholder="name or prefix"
+            value={presenter.table.query()}
+            onInput={(value) => presenter.table.setQuery(value)}
+          />
+        </TableToolbar>
         <Table>
           <thead>
             <tr>
-              <Head>Name</Head>
-              <Head>Kind</Head>
-              <Head>Role</Head>
+              <SortColumn view={presenter.table} column="name">
+                Name
+              </SortColumn>
+              <SortColumn view={presenter.table} column="kind">
+                Kind
+              </SortColumn>
+              <SortColumn view={presenter.table} column="role">
+                Role
+              </SortColumn>
               <Head>Prefix</Head>
-              <Head>Last used</Head>
-              <Head>Expires</Head>
+              <SortColumn view={presenter.table} column="last_used_at">
+                Last used
+              </SortColumn>
+              <SortColumn view={presenter.table} column="expires_at">
+                Expires
+              </SortColumn>
               <Head>Status</Head>
               <Head pinned />
             </tr>
           </thead>
           <tbody>
             <Show
-              when={presenter.value().length > 0}
+              when={presenter.table.rows().length > 0}
               fallback={
                 <EmptyRow>
-                  No tokens yet. Create one for CI, or for an agent that may only read.
+                  <Show
+                    when={presenter.value().length > 0}
+                    fallback="No tokens yet. Create one for CI, or for an agent that may only read."
+                  >
+                    No token matches that search.
+                  </Show>
                 </EmptyRow>
               }
             >
-              <For each={presenter.value()}>
+              <For each={presenter.table.rows()}>
                 {(token) => {
                   const status = tokenStatus(token);
                   return (
                     <Row>
-                      <Cell class="font-semibold">{token.name}</Cell>
+                      <Cell class="font-semibold">
+                        <Truncated>{token.name}</Truncated>
+                      </Cell>
                       <Cell>
                         <Badge variant={token.kind === "agent" ? "info" : "outline"}>
                           {token.kind}
@@ -184,12 +220,12 @@ export default function TokensView(): JSX.Element {
                       <Cell>
                         <code>{token.prefix}</code>
                       </Cell>
-                      <Cell class="whitespace-nowrap">
+                      <Cell>
                         <Show when={token.last_used_at} fallback="never">
                           {(at) => <>{formatWhen(at())}</>}
                         </Show>
                       </Cell>
-                      <Cell class="whitespace-nowrap">
+                      <Cell>
                         <Show when={token.expires_at} fallback="no expiry">
                           {(at) => <>{formatWhen(at())}</>}
                         </Show>
@@ -215,7 +251,11 @@ export default function TokensView(): JSX.Element {
             </Show>
           </tbody>
         </Table>
-        <TableFooter shown={presenter.value().length} noun="tokens" hasMore={presenter.hasMore()}>
+        <TableFooter
+          shown={presenter.table.rows().length}
+          noun="tokens"
+          hasMore={presenter.hasMore()}
+        >
           <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
         </TableFooter>
       </Loading>

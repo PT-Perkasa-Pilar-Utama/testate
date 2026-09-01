@@ -5,7 +5,16 @@ import { For, Loading, Show } from "solid-js";
 import Badge from "@/components/badge.tsx";
 import Button, { buttonClass } from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
-import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
+import {
+  Cell,
+  EmptyRow,
+  Head,
+  Row,
+  SortColumn,
+  Table,
+  TableSearch,
+  TableToolbar,
+} from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { modeLabel } from "./imports.helpers.ts";
 import { countsLabel, createImportsPresenter } from "./imports.presenter.ts";
@@ -31,29 +40,47 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
         </div>
       </Show>
       <Loading fallback={<p class="text-muted">Loading import runs...</p>}>
+        <TableToolbar>
+          <TableSearch
+            label="Search imports"
+            placeholder="run or who ran it"
+            value={presenter.table.query()}
+            onInput={(value) => presenter.table.setQuery(value)}
+          />
+        </TableToolbar>
         <Table>
           <thead>
             <tr>
               <Head>Run</Head>
-              <Head>What happens</Head>
+              <SortColumn view={presenter.table} column="mode">
+                What happens
+              </SortColumn>
               <Head>Type</Head>
               <Head>Result</Head>
-              <Head>By</Head>
-              <Head>Started</Head>
+              <SortColumn view={presenter.table} column="actor">
+                By
+              </SortColumn>
+              <SortColumn view={presenter.table} column="created_at">
+                Started
+              </SortColumn>
               <Head pinned>Actions</Head>
             </tr>
           </thead>
           <tbody>
             <Show
-              when={presenter.value().length > 0}
+              when={presenter.table.rows().length > 0}
               fallback={
                 <EmptyRow>
-                  No imports yet. Bring in a CSV or XLSX file and preview it before anything
-                  changes.
+                  <Show
+                    when={presenter.value().length > 0}
+                    fallback="No imports yet. Bring in a CSV or XLSX file and preview it before anything changes."
+                  >
+                    No import matches that search.
+                  </Show>
                 </EmptyRow>
               }
             >
-              <For each={presenter.value()}>
+              <For each={presenter.table.rows()}>
                 {(run) => (
                   <Row>
                     <Cell>
@@ -66,8 +93,8 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
                       </Badge>
                     </Cell>
                     <Cell>{countsLabel(run)}</Cell>
-                    <Cell class="whitespace-nowrap">{run.actor.label}</Cell>
-                    <Cell class="whitespace-nowrap">{formatWhen(run.created_at)}</Cell>
+                    <Cell>{run.actor.label}</Cell>
+                    <Cell>{formatWhen(run.created_at)}</Cell>
                     <Cell pinned>
                       <div class="flex flex-wrap justify-end gap-1">
                         <Button

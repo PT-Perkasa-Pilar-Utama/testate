@@ -3,6 +3,8 @@ import type { CreateProjectInput, Project } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
 import { createPaged } from "@/lib/async.ts";
+import { createTableView } from "@/lib/table.ts";
+import type { TableView } from "@/lib/table.ts";
 import type { Paged } from "@/lib/async.ts";
 import { projectsModel } from "./projects.model.ts";
 
@@ -11,7 +13,10 @@ import { projectsModel } from "./projects.model.ts";
  * slug from the name until the slug is edited directly (see the view); this holds only what the
  * server can answer, such as a slug already taken.
  */
+export type ProjectSort = "name" | "changed_at";
+
 export type ProjectsPresenter = Paged<Project> & {
+  table: TableView<Project, ProjectSort>;
   creating: () => boolean;
   error: () => string | null;
   openCreate: () => void;
@@ -30,10 +35,20 @@ export function slugify(name: string): string {
 
 export function createProjectsPresenter(): ProjectsPresenter {
   const projects = createPaged((cursor) => projectsModel.page(cursor));
+  const table = createTableView<Project, ProjectSort>({
+    rows: () => projects.value(),
+    sorters: {
+      name: { text: (project) => project.name },
+      changed_at: { text: (project) => project.head.changed_at },
+    },
+    fields: (project) => [project.name, project.slug],
+    pager: { hasMore: projects.hasMore, loadMore: projects.loadMore },
+  });
   const [creating, setCreating] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   return {
     ...projects,
+    table,
     creating,
     error,
     openCreate: () => setCreating(true),

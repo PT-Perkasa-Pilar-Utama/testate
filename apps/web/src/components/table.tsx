@@ -1,6 +1,11 @@
 import type { ComponentProps, JSX } from "@solidjs/web";
 import { Show, children, omit } from "solid-js";
 
+import Icon from "./icon.tsx";
+import Input from "./input.tsx";
+import { directionOf } from "@/lib/table.ts";
+import type { Direction, SortControl } from "@/lib/table.ts";
+
 /**
  * The table shell, in the shape shadcn's data table settled on: a toolbar over a bordered table,
  * a sticky header, a row that lifts under the pointer, one full-width row when there is nothing,
@@ -116,19 +121,118 @@ export function EmptyRow(props: { children: JSX.Element }): JSX.Element {
   );
 }
 
+/**
+ * One line per row unless the cell asks otherwise. A project called
+ * `somelong-really-long-project-name` used to wrap to four lines and take the whole row with it,
+ * which pushed every other row out of the window. The table already scrolls sideways, so a value
+ * too wide for its column costs a scroll rather than the shape of the list. `wrap` is for the cells
+ * that really are paragraphs: an error message, a query, a diff value.
+ */
 export function Cell(
-  props: ComponentProps<"td"> & { numeric?: boolean; pinned?: boolean }
+  props: ComponentProps<"td"> & { numeric?: boolean; pinned?: boolean; wrap?: boolean }
 ): JSX.Element {
-  const rest = omit(props, "class", "numeric", "pinned");
+  const rest = omit(props, "class", "numeric", "pinned", "wrap");
   return (
     <td
       {...rest}
       class={[
         "px-4 py-2.5 align-middle text-body",
-        props.numeric === true ? "text-right tabular-nums whitespace-nowrap" : "",
+        props.wrap === true ? "" : "whitespace-nowrap",
+        props.numeric === true ? "text-right tabular-nums" : "",
         props.pinned === true ? PINNED_CELL : "",
         props.class,
       ]}
     />
+  );
+}
+
+/**
+ * A value that has no length limit: an id, a path, a name someone typed. It stops at the width of
+ * its column and the whole thing is one hover away, rather than every row paying for the longest.
+ */
+export function Truncated(props: { children: string; class?: string }): JSX.Element {
+  return (
+    <span class={["block truncate", props.class ?? "max-w-[18rem]"]} title={props.children}>
+      {props.children}
+    </span>
+  );
+}
+
+const SORT_ARROW = { asc: "chevron-up", desc: "chevron-down" } as const;
+const SORT_LABEL = { asc: "ascending", desc: "descending" } as const;
+
+/**
+ * A column you can order the table by. The arrow says which way it points and `aria-sort` says the
+ * same thing to a screen reader; a column nobody has clicked shows the pair of arrows, which is how
+ * you tell "sortable" from "sorted".
+ */
+export function SortHead(props: {
+  direction: Direction | null;
+  onSort: () => void;
+  numeric?: boolean;
+  children: JSX.Element;
+}): JSX.Element {
+  return (
+    <Head
+      numeric={props.numeric === true}
+      aria-sort={props.direction === null ? "none" : SORT_LABEL[props.direction]}
+    >
+      <button
+        type="button"
+        class={[
+          "-mx-2 inline-flex items-center gap-1 rounded-md px-2 py-1 hover:bg-hover hover:text-body",
+          props.numeric === true ? "flex-row-reverse" : "",
+        ]}
+        onClick={() => props.onSort()}
+      >
+        {props.children}
+        <Icon
+          name={props.direction === null ? "arrow-up-down" : SORT_ARROW[props.direction]}
+          class="h-3 w-3"
+        />
+      </button>
+    </Head>
+  );
+}
+
+/**
+ * One sortable column, wired to the screen's table view. Every list that sorts writes the same
+ * line, which is the point: the header, the arrow and the `aria-sort` cannot drift apart per screen.
+ */
+export function SortColumn<TKey extends string>(props: {
+  view: SortControl<TKey>;
+  column: TKey;
+  numeric?: boolean;
+  children: JSX.Element;
+}): JSX.Element {
+  return (
+    <SortHead
+      direction={directionOf(props.view.sort(), props.column)}
+      onSort={() => props.view.toggleSort(props.column)}
+      numeric={props.numeric === true}
+    >
+      {props.children}
+    </SortHead>
+  );
+}
+
+/** The toolbar's search box. One box over every column the screen names, the way shadcn does it. */
+export function TableSearch(props: {
+  value: string;
+  onInput: (value: string) => void;
+  label?: string;
+  placeholder?: string;
+}): JSX.Element {
+  return (
+    <label class="grid gap-1.5 text-sm">
+      <span>{props.label ?? "Search"}</span>
+      <Input
+        type="search"
+        class="w-64"
+        value={props.value}
+        placeholder={props.placeholder}
+        onInput={(event) => props.onInput(event.currentTarget.value)}
+      />
+    </label>
   );
 }

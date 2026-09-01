@@ -10,7 +10,18 @@ import Button from "@/components/button.tsx";
 import ConfirmDialog from "@/components/confirm-dialog.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Icon from "@/components/icon.tsx";
-import { Cell, Head, Row, Table, TableFooter } from "@/components/table.tsx";
+import {
+  Cell,
+  EmptyRow,
+  Head,
+  Row,
+  SortColumn,
+  Table,
+  TableFooter,
+  TableSearch,
+  TableToolbar,
+  Truncated,
+} from "@/components/table.tsx";
 import { createUsersPresenter } from "./users.presenter.ts";
 import { CreateDialog, EditDialog, ResetDialog } from "./users.dialogs.view.tsx";
 import type { UsersPresenter } from "./users.presenter.ts";
@@ -70,23 +81,44 @@ export default function UsersView(): JSX.Element {
         }
       />
       <Loading fallback={<p class="text-muted">Loading users...</p>}>
+        <TableToolbar>
+          <TableSearch
+            label="Search users"
+            placeholder="username or name"
+            value={presenter.table.query()}
+            onInput={(value) => presenter.table.setQuery(value)}
+          />
+        </TableToolbar>
         <Table>
           <thead>
             <tr>
-              <Head>Username</Head>
-              <Head>Name</Head>
-              <Head>Role</Head>
+              <SortColumn view={presenter.table} column="username">
+                Username
+              </SortColumn>
+              <SortColumn view={presenter.table} column="display_name">
+                Name
+              </SortColumn>
+              <SortColumn view={presenter.table} column="role">
+                Role
+              </SortColumn>
               <Head>Status</Head>
-              <Head>Last login</Head>
+              <SortColumn view={presenter.table} column="last_login_at">
+                Last login
+              </SortColumn>
               <Head pinned />
             </tr>
           </thead>
           <tbody>
-            <For each={presenter.value()}>
+            <Show when={presenter.table.rows().length === 0}>
+              <EmptyRow>No account matches that search.</EmptyRow>
+            </Show>
+            <For each={presenter.table.rows()}>
               {(user) => (
                 <Row>
-                  <Cell class="font-semibold whitespace-nowrap">{user.username}</Cell>
-                  <Cell>{user.display_name}</Cell>
+                  <Cell class="font-semibold">{user.username}</Cell>
+                  <Cell>
+                    <Truncated>{user.display_name}</Truncated>
+                  </Cell>
                   <Cell>
                     <Badge variant={ROLE_META[user.role].variant}>
                       <Show when={ROLE_META[user.role].icon}>
@@ -123,7 +155,7 @@ export default function UsersView(): JSX.Element {
                       </Show>
                     </span>
                   </Cell>
-                  <Cell class="whitespace-nowrap">
+                  <Cell>
                     <Show when={user.last_login_at} fallback="never">
                       {(at) => <>{formatWhen(at())}</>}
                     </Show>
@@ -136,7 +168,11 @@ export default function UsersView(): JSX.Element {
             </For>
           </tbody>
         </Table>
-        <TableFooter shown={presenter.value().length} noun="users" hasMore={presenter.hasMore()}>
+        <TableFooter
+          shown={presenter.table.rows().length}
+          noun="users"
+          hasMore={presenter.hasMore()}
+        >
           <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
         </TableFooter>
       </Loading>

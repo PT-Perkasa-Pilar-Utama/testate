@@ -38,6 +38,8 @@ export default defineConfig({
     // Contract and agent stories talk to the API only; nothing they touch is shared state.
     { name: "api", testMatch: /(api|agent)\.e2e\.ts/ },
 
+    // Sorting and searching, before any spec adds accounts the counts here would not expect.
+    { name: "tables", testMatch: /tables\.e2e\.ts/, dependencies: ["routes"] },
     {
       name: "flows",
       testMatch: /(flows|stories|gaps|admin|jobs)\.e2e\.ts/,

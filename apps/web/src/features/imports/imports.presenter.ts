@@ -4,11 +4,16 @@ import type { ImportReport, ImportRun } from "@testate/shared";
 
 import { attempt } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
+import { createTableView } from "@/lib/table.ts";
+import type { TableView } from "@/lib/table.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { importsModel } from "./imports.model.ts";
 import { reportCounts, reportSummary } from "./imports.helpers.ts";
 
+export type ImportSort = "mode" | "actor" | "created_at";
+
 export type ImportsPresenter = Refreshable<ImportRun[]> & {
+  table: TableView<ImportRun, ImportSort>;
   report: () => ImportReport | null;
   openReport: (run: ImportRun) => Promise<void>;
   closeReport: () => void;
@@ -33,9 +38,19 @@ export function countsLabel(run: ImportRun): string {
 
 export function createImportsPresenter(slug: () => string): ImportsPresenter {
   const runs = createRefreshable(() => importsModel.list(slug()));
+  const table = createTableView<ImportRun, ImportSort>({
+    rows: () => runs.value(),
+    sorters: {
+      mode: { text: (run) => run.mode },
+      actor: { text: (run) => run.actor.label },
+      created_at: { text: (run) => run.created_at },
+    },
+    fields: (run) => [run.id, run.mode, run.actor.label],
+  });
   const [report, setReport] = createSignal<ImportReport | null>(null);
   return {
     ...runs,
+    table,
     report,
     openReport: (run) => {
       const staticSlug = slug();

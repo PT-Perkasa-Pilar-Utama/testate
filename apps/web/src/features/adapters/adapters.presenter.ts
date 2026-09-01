@@ -4,6 +4,8 @@ import type { Adapter, AdapterCreateFormInput } from "@testate/shared";
 import { humanMessage } from "@/lib/api-error.ts";
 import { showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
+import { createTableView } from "@/lib/table.ts";
+import type { TableView } from "@/lib/table.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { missingRequiredFields, toDraftBody } from "./adapters.fields.ts";
 import type { Values } from "./adapters.fields.ts";
@@ -15,7 +17,10 @@ import type { ProbeOutcome } from "./adapters.model.ts";
  * holds what the form cannot: the per-engine config/secret values (their keys are decided at
  * runtime by `ENGINE_FORMS`, so no static schema can own them) and what the server answers.
  */
+export type AdapterSort = "name" | "engine" | "tier" | "mode" | "status";
+
 export type AdaptersPresenter = Refreshable<Adapter[]> & {
+  table: TableView<Adapter, AdapterSort>;
   creating: () => boolean;
   values: () => Values;
   outcome: () => ProbeOutcome | null;
@@ -47,6 +52,17 @@ function messageOf(cause: unknown, fallback: string): string {
 
 export function createAdaptersPresenter(slug: () => string): AdaptersPresenter {
   const adapters = createRefreshable(() => adaptersModel.list(slug()));
+  const table = createTableView<Adapter, AdapterSort>({
+    rows: () => adapters.value(),
+    sorters: {
+      name: { text: (adapter) => adapter.name },
+      engine: { text: (adapter) => adapter.engine },
+      tier: { text: (adapter) => adapter.tier },
+      mode: { text: (adapter) => adapter.mode },
+      status: { text: (adapter) => adapter.status },
+    },
+    fields: (adapter) => [adapter.name, adapter.engine, adapter.tier, adapter.mode, adapter.status],
+  });
   const [creating, setCreating] = createSignal(false);
   const [values, setValues] = createSignal<Values>({});
   const [outcome, setOutcome] = createSignal<ProbeOutcome | null>(null);
@@ -65,6 +81,7 @@ export function createAdaptersPresenter(slug: () => string): AdaptersPresenter {
   };
   return {
     ...adapters,
+    table,
     creating,
     values,
     outcome,

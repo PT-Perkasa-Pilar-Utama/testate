@@ -8,7 +8,17 @@ import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
 import LoadMore from "@/components/load-more.tsx";
-import { Cell, Head, Row, Table, EmptyRow, TableFooter } from "@/components/table.tsx";
+import {
+  Cell,
+  EmptyRow,
+  Head,
+  Row,
+  SortColumn,
+  Table,
+  TableFooter,
+  TableSearch,
+  TableToolbar,
+} from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { subscribeJob } from "@/lib/sse.ts";
 import {
@@ -112,28 +122,48 @@ export default function CheckoutsView(props: {
   );
   return (
     <Loading fallback={<p class="text-muted">Loading checkouts...</p>}>
+      <TableToolbar>
+        <TableSearch
+          label="Search restores"
+          placeholder="state or result"
+          value={presenter.table.query()}
+          onInput={(value) => presenter.table.setQuery(value)}
+        />
+      </TableToolbar>
       <Table>
         <thead>
           <tr>
-            <Head>Restore</Head>
-            <Head>Result</Head>
+            <SortColumn view={presenter.table} column="state">
+              Restore
+            </SortColumn>
+            <SortColumn view={presenter.table} column="status">
+              Result
+            </SortColumn>
             <Head>Databases</Head>
-            <Head>By</Head>
-            <Head>Started</Head>
+            <SortColumn view={presenter.table} column="actor">
+              By
+            </SortColumn>
+            <SortColumn view={presenter.table} column="created_at">
+              Started
+            </SortColumn>
             <Head pinned>Actions</Head>
           </tr>
         </thead>
         <tbody>
           <Show
-            when={presenter.value().length > 0}
+            when={presenter.table.rows().length > 0}
             fallback={
               <EmptyRow>
-                No restores yet. This tab is the record of past restores and the place to retry a
-                failed one. To start a restore, open the States tab and press Check out on a state.
+                <Show
+                  when={presenter.value().length > 0}
+                  fallback="No restores yet. This tab is the record of past restores and the place to retry a failed one. To start a restore, open the States tab and press Check out on a state."
+                >
+                  No restore matches that search.
+                </Show>
               </EmptyRow>
             }
           >
-            <For each={presenter.value()}>
+            <For each={presenter.table.rows()}>
               {(checkout) => (
                 <Row>
                   <Follow checkout={checkout} onDone={() => presenter.refresh()} />
@@ -184,7 +214,11 @@ export default function CheckoutsView(props: {
           </Show>
         </tbody>
       </Table>
-      <TableFooter shown={presenter.value().length} noun="checkouts" hasMore={presenter.hasMore()}>
+      <TableFooter
+        shown={presenter.table.rows().length}
+        noun="checkouts"
+        hasMore={presenter.hasMore()}
+      >
         <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
       </TableFooter>
       <DetailDialog presenter={presenter} />

@@ -5,6 +5,8 @@ import { ROLES, TOKEN_KINDS } from "@testate/shared";
 import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createPaged } from "@/lib/async.ts";
+import { createTableView } from "@/lib/table.ts";
+import type { TableView } from "@/lib/table.ts";
 import type { Paged } from "@/lib/async.ts";
 import type { CreatedToken } from "./tokens.model.ts";
 import { tokensModel } from "./tokens.model.ts";
@@ -15,7 +17,10 @@ export const ROLE_OPTIONS = ROLES.map((role) => ({ value: role, label: role }));
 /** The dialog's own starting point; also what it resets to on close (`tokenDraftSchema`). */
 export const EMPTY_DRAFT: TokenDraft = { name: "", kind: "standard", role: "qa", expires_on: "" };
 
+export type TokenSort = "name" | "kind" | "role" | "last_used_at" | "expires_at";
+
 export type TokensPresenter = Paged<ApiToken> & {
+  table: TableView<ApiToken, TokenSort>;
   creating: () => boolean;
   error: () => string | null;
   /** The freshly minted token plus the record it belongs to; null once dismissed. Testate never
@@ -44,12 +49,25 @@ export function toCreateBody(draft: TokenDraft): JsonObject {
 
 export function createTokensPresenter(): TokensPresenter {
   const tokens = createPaged((cursor) => tokensModel.page(cursor));
+  const table = createTableView<ApiToken, TokenSort>({
+    rows: () => tokens.value(),
+    sorters: {
+      name: { text: (token) => token.name },
+      kind: { text: (token) => token.kind },
+      role: { text: (token) => token.role },
+      last_used_at: { text: (token) => token.last_used_at },
+      expires_at: { text: (token) => token.expires_at },
+    },
+    fields: (token) => [token.name, token.kind, token.role, token.prefix],
+    pager: { hasMore: tokens.hasMore, loadMore: tokens.loadMore },
+  });
   const [creating, setCreating] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const [created, setCreated] = createSignal<CreatedToken | null>(null);
   const [revoking, setRevoking] = createSignal<ApiToken | null>(null);
   return {
     ...tokens,
+    table,
     creating,
     error,
     created,
