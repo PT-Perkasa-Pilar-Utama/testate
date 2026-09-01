@@ -218,6 +218,7 @@ export default function CheckoutsView(props: {
         shown={presenter.table.rows().length}
         noun="checkouts"
         hasMore={presenter.hasMore()}
+        total={presenter.total()}
       >
         <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
       </TableFooter>

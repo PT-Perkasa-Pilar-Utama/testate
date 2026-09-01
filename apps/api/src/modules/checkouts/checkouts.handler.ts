@@ -11,6 +11,7 @@ import { ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.t
 import type { Handler } from "../../lib/http/index.ts";
 import { firstQuery } from "../../lib/http/query.ts";
 import type { JobsService } from "../jobs/jobs.service.ts";
+import type { Checkout } from "@testate/shared";
 import type { CheckoutsFilter } from "./checkouts.repository.ts";
 import type { CheckoutWithJob, CheckoutsService } from "./checkouts.service.ts";
 
@@ -35,6 +36,9 @@ const listQuery = v.object({
   ),
   state_id: v.optional(v.array(v.string())),
   purpose: v.optional(v.array(v.picklist(["checkout", "return_to_init"]))),
+  sort: v.optional(v.array(v.picklist(["created_at", "state", "status", "actor"]))),
+  order: v.optional(v.array(v.picklist(["asc", "desc"]))),
+  q: v.optional(v.array(v.string())),
 });
 const waitQuery = v.object({
   wait: v.optional(
@@ -43,7 +47,13 @@ const waitQuery = v.object({
 });
 
 function toFilter(parsed: v.InferOutput<typeof listQuery>): CheckoutsFilter {
-  const filter: CheckoutsFilter = { limit: firstQuery(parsed.limit) ?? 50 };
+  const filter: CheckoutsFilter = {
+    limit: firstQuery(parsed.limit) ?? 50,
+    sort: firstQuery(parsed.sort) ?? "created_at",
+    order: firstQuery(parsed.order) ?? "desc",
+  };
+  const q = firstQuery(parsed.q);
+  if (q !== undefined) filter.q = q;
   const cursor = firstQuery(parsed.cursor);
   if (cursor !== undefined) filter.cursor = cursor;
   const status = firstQuery(parsed.status);
@@ -53,6 +63,14 @@ function toFilter(parsed: v.InferOutput<typeof listQuery>): CheckoutsFilter {
   const purpose = firstQuery(parsed.purpose);
   if (purpose !== undefined) filter.purpose = purpose;
   return filter;
+}
+
+/** The value the page ended on, read from the same field the sort ordered by. */
+function sortValue(row: Checkout, sort: CheckoutsFilter["sort"]): string | null {
+  if (sort === "state") return row.state.name;
+  if (sort === "status") return row.status;
+  if (sort === "actor") return row.actor.label;
+  return row.created_at;
 }
 
 export function createCheckoutsHandlers(
@@ -82,8 +100,12 @@ export function createCheckoutsHandlers(
     list: async (c) => {
       const filter = toFilter(parseQuery(c, listQuery));
       const rows = await service.list(param(c, "slug"), filter);
-      const next = nextCursor(rows, filter.limit, (row) => [row.created_at, row.id]);
-      return okPage(c, rows, next, filter.limit);
+      const next = nextCursor(rows, filter.limit, filter, (row) => [
+        sortValue(row, filter.sort),
+        row.id,
+      ]);
+      const total = await service.total(param(c, "slug"), filter);
+      return okPage(c, rows, next, filter.limit, total);
     },
     get: async (c) => ok(c, await service.get(param(c, "slug"), param(c, "id"))),
     retry: async (c) =>

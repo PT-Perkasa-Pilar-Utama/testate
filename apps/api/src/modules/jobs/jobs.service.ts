@@ -43,6 +43,7 @@ export type JobsService = {
     scope: string[] | null,
     filter: JobsFilter
   ): Promise<{ rows: Job[]; nextCursor: string | null }>;
+  total(actor: Actor, scope: string[] | null, filter: JobsFilter): Promise<number>;
   wait(scope: string[] | null, id: string, seconds: number): Promise<Job>;
   cancel(actor: Actor, scope: string[] | null, id: string): Promise<Job>;
   /** SSE frames until a terminal status or the signal fires; `afterSeq` replays the last status. */
@@ -179,6 +180,9 @@ export function createJobsService(deps: JobsDeps): JobsService {
     },
     async list(actor, scope, filter) {
       return repo.list({ ...filter, scope, includeInstance: actor.role === "admin" });
+    },
+    async total(actor, scope, filter) {
+      return repo.total({ ...filter, scope, includeInstance: actor.role === "admin" });
     },
     async wait(scope, id, seconds) {
       visible(scope, id);

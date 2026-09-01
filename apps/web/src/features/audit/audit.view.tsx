@@ -138,7 +138,12 @@ export default function AuditView(): JSX.Element {
             </Show>
           </tbody>
         </Table>
-        <TableFooter shown={presenter.value().length} noun="rows" hasMore={presenter.hasMore()}>
+        <TableFooter
+          shown={presenter.value().length}
+          noun="rows"
+          hasMore={presenter.hasMore()}
+          total={presenter.total()}
+        >
           <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
         </TableFooter>
       </Loading>

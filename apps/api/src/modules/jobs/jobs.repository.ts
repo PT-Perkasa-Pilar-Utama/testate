@@ -9,7 +9,9 @@ import {
 } from "@testate/shared";
 import * as v from "valibot";
 
+import { encodeCursor } from "../../lib/db/keyset.ts";
 import type { MetadataDb } from "../../lib/db/index.ts";
+import { conditions, cursorCondition, keysetOf } from "./jobs.query.ts";
 
 const rowSchema = v.object({
   id: v.string(),
@@ -47,10 +49,14 @@ export type NewJob = {
   created_at: string;
 };
 
+export type JobSort = "created_at" | "kind" | "status";
+
 export type JobsListQuery = {
   limit: number;
   cursor?: string;
+  sort: JobSort;
   order: "asc" | "desc";
+  q?: string;
   project_id?: string;
   adapter_id?: string;
   kind?: JobKind;
@@ -72,6 +78,8 @@ export type Interrupted = {
 export type IdempotencyRecord = { job_id: string; body_hash: string; expires_at: string };
 
 export type JobsRepository = {
+  /** How many rows the filter matches, ignoring the page. */
+  total(query: JobsListQuery): number;
   insert(job: NewJob): JobRecord;
   byId(id: string): JobRecord | null;
   list(query: JobsListQuery): { rows: Job[]; nextCursor: string | null };
@@ -143,49 +151,6 @@ const SELECT = `SELECT j.*, CASE WHEN j.status = 'queued'
     ELSE NULL END AS queue_position
   FROM jobs j`;
 
-const cursorSchema = v.object({ created_at: v.string(), id: v.string() });
-
-function encodeCursor(job: Job): string {
-  return Buffer.from(JSON.stringify({ created_at: job.created_at, id: job.id })).toString(
-    "base64url"
-  );
-}
-
-type Condition = { sql: string; params: string[] };
-
-function conditions(query: JobsListQuery): Condition[] {
-  const found: Condition[] = [];
-  if (query.scope !== null) {
-    const marks = query.scope.map(() => "?").join(",");
-    const own = `j.project_id IN (${marks === "" ? "NULL" : marks})`;
-    found.push({
-      sql: query.includeInstance ? `(${own} OR j.project_id IS NULL)` : own,
-      params: query.scope,
-    });
-  } else if (!query.includeInstance) {
-    found.push({ sql: "j.project_id IS NOT NULL", params: [] });
-  }
-  for (const key of ["project_id", "kind", "status"] as const) {
-    const value = query[key];
-    if (value !== undefined) found.push({ sql: `j.${key} = ?`, params: [value] });
-  }
-  if (query.adapter_id !== undefined) {
-    found.push({ sql: "j.adapter_ids LIKE ?", params: [`%"${query.adapter_id}"%`] });
-  }
-  if (query.cursor !== undefined) {
-    const after = v.parse(
-      cursorSchema,
-      JSON.parse(Buffer.from(query.cursor, "base64url").toString("utf8"))
-    );
-    const op = query.order === "asc" ? ">" : "<";
-    found.push({
-      sql: `(j.created_at ${op} ? OR (j.created_at = ? AND j.id ${op} ?))`,
-      params: [after.created_at, after.created_at, after.id],
-    });
-  }
-  return found;
-}
-
 export function createJobsRepository(db: MetadataDb): JobsRepository {
   const one = (where: string, ...params: string[]): JobRecord | null => {
     const row = db.query(`${SELECT} WHERE ${where}`).get(...params);
@@ -218,21 +183,38 @@ export function createJobsRepository(db: MetadataDb): JobsRepository {
       return inserted;
     },
     byId: (id) => one("j.id = ?", id),
-    list(query) {
+    total(query) {
+      // The same conditions as `list` without the cursor: counting from the cursor would answer
+      // "how many are left", not "how many match".
       const found = conditions(query);
       const where =
         found.length === 0 ? "" : ` WHERE ${found.map((item) => item.sql).join(" AND ")}`;
+      return count(
+        `SELECT COUNT(*) AS n FROM jobs j${where}`,
+        ...found.flatMap((item) => item.params)
+      );
+    },
+    list(query) {
+      const keyset = keysetOf(query);
+      const found = conditions(query);
+      const after = cursorCondition(query);
+      if (after !== null) found.push(after);
+      const where =
+        found.length === 0 ? "" : ` WHERE ${found.map((item) => item.sql).join(" AND ")}`;
       const dir = query.order === "asc" ? "ASC" : "DESC";
+      // One row past the page, so "is there more" is an answer rather than a guess about a full page.
       const rows = many(
-        `${SELECT}${where} ORDER BY j.created_at ${dir}, j.id ${dir} LIMIT ?`,
+        `${SELECT}${where} ORDER BY ${keyset.column} ${dir}, j.id ${dir} LIMIT ?`,
         ...found.flatMap((item) => item.params),
         query.limit + 1
       );
       const page = rows.slice(0, query.limit).map(toJob);
       const last = page.at(-1);
+      const more = rows.length > query.limit && last !== undefined;
       return {
         rows: page,
-        nextCursor: rows.length > query.limit && last !== undefined ? encodeCursor(last) : null,
+        nextCursor:
+          more && last !== undefined ? encodeCursor(keyset, [last[query.sort], last.id]) : null,
       };
     },
     queued: () => many(`${SELECT} WHERE j.status = 'queued' ORDER BY j.created_at ASC, j.id ASC`),

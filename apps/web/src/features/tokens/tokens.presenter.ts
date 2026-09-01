@@ -5,7 +5,7 @@ import { ROLES, TOKEN_KINDS } from "@testate/shared";
 import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createPaged } from "@/lib/async.ts";
-import { createTableView } from "@/lib/table.ts";
+import { createTableControls } from "@/lib/table.ts";
 import type { TableView } from "@/lib/table.ts";
 import type { Paged } from "@/lib/async.ts";
 import type { CreatedToken } from "./tokens.model.ts";
@@ -48,19 +48,9 @@ export function toCreateBody(draft: TokenDraft): JsonObject {
 }
 
 export function createTokensPresenter(): TokensPresenter {
-  const tokens = createPaged((cursor) => tokensModel.page(cursor));
-  const table = createTableView<ApiToken, TokenSort>({
-    rows: () => tokens.value(),
-    sorters: {
-      name: { text: (token) => token.name },
-      kind: { text: (token) => token.kind },
-      role: { text: (token) => token.role },
-      last_used_at: { text: (token) => token.last_used_at },
-      expires_at: { text: (token) => token.expires_at },
-    },
-    fields: (token) => [token.name, token.kind, token.role, token.prefix],
-    pager: { hasMore: tokens.hasMore, loadMore: tokens.loadMore },
-  });
+  const controls = createTableControls<TokenSort>();
+  const tokens = createPaged((cursor) => tokensModel.page(cursor, controls.params()), controls.key);
+  const table: TableView<ApiToken, TokenSort> = { ...controls, rows: tokens.value };
   const [creating, setCreating] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const [created, setCreated] = createSignal<CreatedToken | null>(null);

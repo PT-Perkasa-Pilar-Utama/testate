@@ -3,6 +3,7 @@ import { headStatusSchema } from "@testate/shared";
 import type { HeadStatus } from "@testate/shared";
 import * as v from "valibot";
 import { keysetCondition } from "../../lib/db/keyset.ts";
+import { likeTerm } from "../../lib/db/like.ts";
 
 import type { MetadataDb } from "../../lib/db/index.ts";
 
@@ -51,6 +52,8 @@ export type ProjectPatch = {
 
 export type ProjectsRepository = {
   list(query: ProjectsListQuery): Project[];
+  /** How many rows the filter matches, ignoring the page. */
+  total(query: ProjectsListQuery): number;
   bySlug(slug: string): Project | null;
   byId(id: string): Project | null;
   exists(id: string): boolean;
@@ -107,8 +110,11 @@ type Condition = { sql: string; params: (string | number)[] };
 function conditions(query: ProjectsListQuery): Condition[] {
   const found: Condition[] = [];
   if (query.q !== undefined && query.q !== "") {
-    const like = `%${query.q}%`;
-    found.push({ sql: "(p.slug LIKE ? OR p.name LIKE ?)", params: [like, like] });
+    const like = likeTerm(query.q);
+    found.push({
+      sql: "(p.slug LIKE ? ESCAPE '\\' OR p.name LIKE ? ESCAPE '\\')",
+      params: [like, like],
+    });
   }
   if (query.ids !== null) {
     const marks = query.ids.map(() => "?").join(",");
@@ -126,10 +132,27 @@ export function createProjectsRepository(db: MetadataDb): ProjectsRepository {
     return row === null ? null : toProject(v.parse(projectRecordSchema, row));
   };
   return {
+    total(query) {
+      // The same conditions as `list` without the cursor, which is what makes it a page and not
+      // a filter: counting from the cursor would answer "how many are left", not "how many match".
+      const found = conditions(query);
+      const where =
+        found.length === 0 ? "" : ` WHERE ${found.map((item) => item.sql).join(" AND ")}`;
+      const row = db
+        .query(`SELECT COUNT(*) AS n FROM projects p${where}`)
+        .get(...found.flatMap((item) => item.params));
+      return v.parse(countRow, row).n;
+    },
     list(query) {
       const found = conditions(query);
       const after = keysetCondition(
-        { column: SORT_COLUMNS[query.sort], id: "p.id", order: query.order, idOrder: "asc" },
+        {
+          column: SORT_COLUMNS[query.sort],
+          id: "p.id",
+          sort: query.sort,
+          order: query.order,
+          idOrder: "asc",
+        },
         query.cursor
       );
       if (after !== null) found.push(after);

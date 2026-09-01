@@ -8,6 +8,7 @@ import {
 } from "@testate/shared";
 import * as v from "valibot";
 import { keysetCondition } from "../../lib/db/keyset.ts";
+import { FROM, SORT_COLUMNS, conditions } from "./checkouts.query.ts";
 
 import type { CounterResult } from "../../lib/engines/index.ts";
 import type { MetadataDb } from "../../lib/db/index.ts";
@@ -25,11 +26,16 @@ export type NewCheckout = {
   created_at: string;
 };
 
+export type CheckoutSort = "created_at" | "state" | "status" | "actor";
+
 export type CheckoutsFilter = {
   limit: number;
+  sort: CheckoutSort;
+  order: "asc" | "desc";
   status?: Checkout["status"];
   state_id?: string;
   purpose?: Checkout["purpose"];
+  q?: string;
   cursor?: string;
 };
 
@@ -41,6 +47,8 @@ export type CheckoutsRepository = {
   /** The checkout a job belongs to; a replayed `Idempotency-Key` answers with it (09 §9.3). */
   byJobId(projectId: string, jobId: string): Checkout | null;
   list(projectId: string, filter: CheckoutsFilter): Checkout[];
+  /** How many rows the filter matches, ignoring the page. */
+  total(projectId: string, filter: CheckoutsFilter): number;
   setStash(id: string, stashStateId: string): void;
   /** The job id lands after `enqueue`; the row itself exists before it (09 §9.2). */
   setJob(id: string, jobId: string): void;
@@ -97,10 +105,7 @@ const adapterRow = v.object({
 const SELECT = `
   SELECT c.*, s.name AS state_name, u.username AS user_name, u.role AS user_role,
          t.name AS token_name, t.role AS token_role, t.kind AS token_kind
-  FROM checkouts c
-  LEFT JOIN states s ON s.id = c.state_id
-  LEFT JOIN users u ON u.id = c.actor_user_id
-  LEFT JOIN api_tokens t ON t.id = c.actor_token_id`;
+  ${FROM}`;
 
 /** Adapter name and engine come from the live row, else from the state's manifest once the adapter is gone. */
 const ADAPTERS = `
@@ -220,23 +225,21 @@ export function createCheckoutsRepository(db: MetadataDb): CheckoutsRepository {
       const parsed = v.parse(checkoutRow, row);
       return toCheckout(parsed, adaptersOf([parsed.id]).get(parsed.id) ?? []);
     },
+    total(projectId, filter) {
+      // The same conditions as `list` without the cursor: counting from the cursor would answer
+      // "how many are left", not "how many match". The joins stay, because `q` searches them.
+      const { where, params } = conditions(projectId, filter);
+      const row = db
+        .query(`SELECT COUNT(*) AS n ${FROM} WHERE ${where.join(" AND ")}`)
+        .get(...params);
+      return v.parse(v.object({ n: v.number() }), row).n;
+    },
     list(projectId, filter) {
-      const where = ["c.project_id = ?"];
-      const params: (string | number)[] = [projectId];
-      if (filter.status !== undefined) {
-        where.push("c.status = ?");
-        params.push(filter.status);
-      }
-      if (filter.state_id !== undefined) {
-        where.push("c.state_id = ?");
-        params.push(filter.state_id);
-      }
-      if (filter.purpose !== undefined) {
-        where.push("c.purpose = ?");
-        params.push(filter.purpose);
-      }
+      const { where, params } = conditions(projectId, filter);
+      const column = SORT_COLUMNS[filter.sort];
+      const direction = filter.order === "desc" ? "DESC" : "ASC";
       const after = keysetCondition(
-        { column: "c.created_at", id: "c.id", order: "desc", idOrder: "desc" },
+        { column, id: "c.id", sort: filter.sort, order: filter.order, idOrder: "asc" },
         filter.cursor
       );
       if (after !== null) {
@@ -247,7 +250,7 @@ export function createCheckoutsRepository(db: MetadataDb): CheckoutsRepository {
         v.array(checkoutRow),
         db
           .query(
-            `${SELECT} WHERE ${where.join(" AND ")} ORDER BY c.created_at DESC, c.id DESC LIMIT ?`
+            `${SELECT} WHERE ${where.join(" AND ")} ORDER BY ${column} ${direction}, c.id ASC LIMIT ?`
           )
           .all(...params, filter.limit)
       );

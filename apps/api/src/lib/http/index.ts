@@ -26,13 +26,23 @@ export function ok<T>(c: Context, data: T, status: SuccessStatus = 200): Respons
 }
 
 /** Collection envelope: `{ data, page }`. */
+/**
+ * A page of rows. `total` is how many match the filter across every page; leave it out and the
+ * answer is the honest one this envelope can give on its own: the row count when the whole list is
+ * here, and null when there is a page after this one that nobody has counted.
+ */
 export function okPage<T>(
   c: Context,
   data: T[],
   nextCursor: string | null,
-  limit: number
+  limit: number,
+  total?: number
 ): Response {
-  return c.json({ data, page: { next_cursor: nextCursor, limit } }, { status: 200 });
+  const counted = total ?? (nextCursor === null ? data.length : null);
+  return c.json(
+    { data, page: { next_cursor: nextCursor, limit, total: counted } },
+    { status: 200 }
+  );
 }
 
 /** Job-backed operations: `202` with the job and a `Location` header. */

@@ -8,6 +8,7 @@ import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
 import Meter from "@/components/meter.tsx";
+import LoadMore from "@/components/load-more.tsx";
 import {
   Cell,
   EmptyRow,
@@ -15,6 +16,7 @@ import {
   Row,
   SortColumn,
   Table,
+  TableFooter,
   TableSearch,
   TableToolbar,
 } from "@/components/table.tsx";
@@ -175,6 +177,14 @@ export default function JobsView(): JSX.Element {
             </Show>
           </tbody>
         </Table>
+        <TableFooter
+          shown={presenter.table.rows().length}
+          noun="jobs"
+          hasMore={presenter.hasMore()}
+          total={presenter.total()}
+        >
+          <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
+        </TableFooter>
       </Loading>
     </section>
   );

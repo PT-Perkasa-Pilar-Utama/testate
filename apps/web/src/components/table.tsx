@@ -46,15 +46,24 @@ export function TableFooter(props: {
   shown: number;
   noun: string;
   hasMore?: boolean;
+  /** How many match across every page. Null where the endpoint does not count. */
+  total?: number | null;
   children?: JSX.Element;
 }): JSX.Element {
   // See the note in page-header.tsx: a JSX prop read inside `when` is read outside tracking.
   const extra = children(() => props.children);
+  // "12 of 340" only when the two differ: "340 of 340" is a worse way of writing "340".
+  const count = (): string => {
+    const total = props.total;
+    if (total === undefined || total === null) return `${props.shown}`;
+    return total === props.shown ? `${total}` : `${props.shown} of ${total}`;
+  };
+  const trailing = (): string => (props.hasMore === true && props.total == null ? " so far" : "");
   return (
     <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
       <span>
-        {props.shown} {props.noun}
-        {props.hasMore === true ? " so far" : ""}
+        {count()} {props.noun}
+        {trailing()}
       </span>
       <Show when={extra()}>
         <div class="flex items-center gap-2">{extra()}</div>

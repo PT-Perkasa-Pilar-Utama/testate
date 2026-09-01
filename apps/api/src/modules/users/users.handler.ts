@@ -67,8 +67,8 @@ export function createUsersHandlers(service: UsersService, trustProxy: boolean):
     list: async (c) => {
       const query = toListQuery(parseQuery(c, listQuery));
       const rows = await service.list(query);
-      const next = nextCursor(rows, query.limit, (row) => [row[query.sort], row.id]);
-      return okPage(c, rows, next, query.limit);
+      const next = nextCursor(rows, query.limit, query, (row) => [row[query.sort], row.id]);
+      return okPage(c, rows, next, query.limit, await service.total(query));
     },
     create: async (c) => {
       const input = await parseBody(c, createUserSchema);

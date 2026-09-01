@@ -172,6 +172,7 @@ export default function UsersView(): JSX.Element {
           shown={presenter.table.rows().length}
           noun="users"
           hasMore={presenter.hasMore()}
+          total={presenter.total()}
         >
           <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
         </TableFooter>

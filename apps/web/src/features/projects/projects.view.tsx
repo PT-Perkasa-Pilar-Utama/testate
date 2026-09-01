@@ -212,6 +212,7 @@ export default function ProjectsView(): JSX.Element {
             shown={presenter.table.rows().length}
             noun="projects"
             hasMore={presenter.hasMore()}
+            total={presenter.total()}
           >
             <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
           </TableFooter>

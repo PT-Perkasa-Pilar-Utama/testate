@@ -137,7 +137,12 @@ export default function StatesView(props: {
             )}
             empty="No states yet. Take one to keep what the databases hold right now."
           />
-          <TableFooter shown={presenter.value().length} noun="states" hasMore={presenter.hasMore()}>
+          <TableFooter
+            shown={presenter.value().length}
+            noun="states"
+            hasMore={presenter.hasMore()}
+            total={presenter.total()}
+          >
             <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
           </TableFooter>
         </Show>

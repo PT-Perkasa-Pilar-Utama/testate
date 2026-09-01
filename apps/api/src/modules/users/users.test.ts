@@ -36,9 +36,74 @@ describe("users", () => {
     );
     const [first] = await users.list({ ...BASE, limit: 1 });
     expect(first).toMatchObject({ username: "admin" });
-    const cursor = encodeCursor(["admin", String(first?.id)]);
+    const cursor = encodeCursor(BASE, ["admin", String(first?.id)]);
     const second = await users.list({ ...BASE, limit: 1, cursor });
     expect(second.map((user) => user.username)).toStrictEqual(["zed"]);
+  });
+
+  it("pages under a chosen sort without dropping or repeating a row", async () => {
+    const { users, admin } = await createAccounts();
+    for (const username of ["carol", "alice", "bob"]) {
+      await users.create(
+        admin,
+        {
+          username,
+          display_name: username.toUpperCase(),
+          role: "viewer",
+          temporary_password: "temporary-password-1",
+        },
+        TEST_META
+      );
+    }
+    const query = { limit: 2, sort: "username", order: "asc" } as const;
+    const first = await users.list(query);
+    const cursor = encodeCursor(query, [String(first.at(-1)?.username), String(first.at(-1)?.id)]);
+    const second = await users.list({ ...query, cursor });
+    const seen = [...first, ...second].map((user) => user.username);
+    expect(seen).toStrictEqual(["admin", "alice", "bob", "carol"]);
+    expect(new Set(seen).size).toBe(seen.length);
+  });
+
+  it("counts what the filter matches, not what fits on the page", async () => {
+    const { users, admin } = await createAccounts();
+    const people = [
+      { username: "ana.qa", role: "qa" },
+      { username: "beto.qa", role: "qa" },
+      { username: "cleo.viewer", role: "viewer" },
+    ] as const;
+    for (const person of people) {
+      await users.create(
+        admin,
+        {
+          username: person.username,
+          display_name: person.username,
+          role: person.role,
+          temporary_password: "temporary-password-1",
+        },
+        TEST_META
+      );
+    }
+    const query = { limit: 1, sort: "username", order: "asc" } as const;
+    expect((await users.list(query)).length).toBe(1);
+    expect(await users.total(query)).toBe(4);
+    expect(await users.total({ ...query, role: "qa" })).toBe(2);
+    expect(await users.total({ ...query, q: "cleo" })).toBe(1);
+  });
+
+  it("a search term keeps a wildcard someone typed as a character, not a match-everything", async () => {
+    const { users, admin } = await createAccounts();
+    await users.create(
+      admin,
+      {
+        username: "odd.name",
+        display_name: "100% coverage",
+        role: "viewer",
+        temporary_password: "temporary-password-1",
+      },
+      TEST_META
+    );
+    expect(await users.total({ ...BASE, q: "100%" })).toBe(1);
+    expect(await users.total({ ...BASE, q: "%" })).toBe(1);
   });
 
   it("bootstraps one admin that must change its password, and only once", async () => {

@@ -4,16 +4,16 @@ import { TERMINAL_JOB_STATUSES } from "@testate/shared";
 import * as v from "valibot";
 
 import { attempt } from "@/lib/toast.ts";
-import { createRefreshable } from "@/lib/async.ts";
-import { createTableView } from "@/lib/table.ts";
+import { createPaged } from "@/lib/async.ts";
+import { createTableControls } from "@/lib/table.ts";
 import type { TableView } from "@/lib/table.ts";
-import type { Refreshable } from "@/lib/async.ts";
+import type { Paged } from "@/lib/async.ts";
 import { subscribeJob } from "@/lib/sse.ts";
 import { jobsModel } from "./jobs.model.ts";
 
 export type JobSort = "kind" | "status" | "actor" | "created_at";
 
-export type JobsPresenter = Refreshable<Job[]> & {
+export type JobsPresenter = Paged<Job> & {
   table: TableView<Job, JobSort>;
   cancel: (id: string) => Promise<void>;
 };
@@ -126,17 +126,9 @@ export function progressFraction(progress: JsonObject | null): number | null {
 }
 
 export function createJobsPresenter(): JobsPresenter {
-  const jobs = createRefreshable(() => jobsModel.list());
-  const table = createTableView<Job, JobSort>({
-    rows: () => jobs.value(),
-    sorters: {
-      kind: { text: (job) => job.kind },
-      status: { text: (job) => job.status },
-      actor: { text: (job) => job.actor.label },
-      created_at: { text: (job) => job.created_at },
-    },
-    fields: (job) => [JOB_KIND_LABEL[job.kind], job.status, job.actor.label],
-  });
+  const controls = createTableControls<JobSort>();
+  const jobs = createPaged((cursor) => jobsModel.page(cursor, controls.params()), controls.key);
+  const table: TableView<Job, JobSort> = { ...controls, rows: jobs.value };
   return {
     ...jobs,
     table,

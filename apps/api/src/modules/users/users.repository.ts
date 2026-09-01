@@ -2,6 +2,7 @@ import type { Role, User } from "@testate/shared";
 import { roleSchema } from "@testate/shared";
 import * as v from "valibot";
 import { keysetCondition } from "../../lib/db/keyset.ts";
+import { likeTerm } from "../../lib/db/like.ts";
 
 import type { MetadataDb } from "../../lib/db/index.ts";
 
@@ -46,6 +47,8 @@ export type NewUser = {
 
 export type UsersRepository = {
   count(): number;
+  /** How many rows the filter matches, ignoring the page. */
+  total(query: UsersListQuery): number;
   countEnabledAdmins(): number;
   list(query: UsersListQuery): UserRecord[];
   byId(id: string): UserRecord | null;
@@ -105,8 +108,11 @@ function conditions(query: UsersListQuery): Condition[] {
   if (query.disabled === true) found.push({ sql: "disabled_at IS NOT NULL", params: [] });
   if (query.disabled === false) found.push({ sql: "disabled_at IS NULL", params: [] });
   if (query.q !== undefined && query.q !== "") {
-    const like = `%${query.q}%`;
-    found.push({ sql: "(username LIKE ? OR display_name LIKE ?)", params: [like, like] });
+    const like = likeTerm(query.q);
+    found.push({
+      sql: "(username LIKE ? ESCAPE '\\' OR display_name LIKE ? ESCAPE '\\')",
+      params: [like, like],
+    });
   }
   return found;
 }
@@ -120,12 +126,29 @@ export function createUsersRepository(db: MetadataDb): UsersRepository {
   const count = (sql: string): number => v.parse(countRow, db.query(sql).get()).n;
   return {
     count: () => count("SELECT COUNT(*) AS n FROM users"),
+    total(query) {
+      // The same conditions as `list` without the cursor, which is what makes it a page and not
+      // a filter: counting from the cursor would answer "how many are left", not "how many match".
+      const found = conditions(query);
+      const where =
+        found.length === 0 ? "" : ` WHERE ${found.map((item) => item.sql).join(" AND ")}`;
+      const row = db
+        .query(`SELECT COUNT(*) AS n FROM users${where}`)
+        .get(...found.flatMap((item) => item.params));
+      return v.parse(countRow, row).n;
+    },
     countEnabledAdmins: () =>
       count("SELECT COUNT(*) AS n FROM users WHERE role = 'admin' AND disabled_at IS NULL"),
     list(query) {
       const found = conditions(query);
       const after = keysetCondition(
-        { column: SORT_COLUMNS[query.sort], id: "id", order: query.order, idOrder: "asc" },
+        {
+          column: SORT_COLUMNS[query.sort],
+          id: "id",
+          sort: query.sort,
+          order: query.order,
+          idOrder: "asc",
+        },
         query.cursor
       );
       if (after !== null) found.push(after);

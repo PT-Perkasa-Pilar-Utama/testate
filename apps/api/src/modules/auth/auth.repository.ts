@@ -2,6 +2,7 @@ import type { ApiToken, Role } from "@testate/shared";
 import { idSchema, roleSchema, tokenKindSchema } from "@testate/shared";
 import * as v from "valibot";
 import { keysetCondition } from "../../lib/db/keyset.ts";
+import { likeTerm } from "../../lib/db/like.ts";
 
 import type { MetadataDb } from "../../lib/db/index.ts";
 
@@ -60,12 +61,40 @@ export type NewToken = {
   created_at: string;
 };
 
+export type TokenSort = "name" | "created_at" | "last_used_at" | "expires_at";
+
 export type TokensListQuery = {
   kind?: ApiToken["kind"];
   revoked?: boolean;
   limit?: number;
+  sort: TokenSort;
+  order: "asc" | "desc";
+  q?: string;
   cursor?: string;
 };
+
+/** Only these, and only through the map: a sort arriving as text never reaches the SQL. */
+const TOKEN_SORT_COLUMNS = {
+  name: "name COLLATE NOCASE",
+  created_at: "created_at",
+  last_used_at: "last_used_at",
+  expires_at: "expires_at",
+} as const satisfies Record<TokenSort, string>;
+
+function tokenConditions(query: TokensListQuery): { sql: string; params: (string | number)[] }[] {
+  const found: { sql: string; params: (string | number)[] }[] = [];
+  if (query.kind !== undefined) found.push({ sql: "kind = ?", params: [query.kind] });
+  if (query.revoked === true) found.push({ sql: "revoked_at IS NOT NULL", params: [] });
+  if (query.revoked === false) found.push({ sql: "revoked_at IS NULL", params: [] });
+  if (query.q !== undefined && query.q !== "") {
+    const like = likeTerm(query.q);
+    found.push({
+      sql: "(name LIKE ? ESCAPE '\\' OR prefix LIKE ? ESCAPE '\\')",
+      params: [like, like],
+    });
+  }
+  return found;
+}
 
 export type AuthRepository = {
   insertSession(session: NewSession): void;
@@ -79,6 +108,8 @@ export type AuthRepository = {
   tokenByHash(hash: string): TokenRecord | null;
   tokenById(id: string): TokenRecord | null;
   listTokens(query: TokensListQuery): TokenRecord[];
+  /** How many tokens the filter matches, ignoring the page. */
+  totalTokens(query: TokensListQuery): number;
   touchToken(id: string, at: string): void;
   revokeToken(id: string, at: string): void;
 };
@@ -175,20 +206,30 @@ export function createAuthRepository(db: MetadataDb): AuthRepository {
     },
     tokenByHash: (hash) => oneToken("SELECT * FROM api_tokens WHERE token_hash = ?", hash),
     tokenById: (id) => oneToken("SELECT * FROM api_tokens WHERE id = ?", id),
+    totalTokens(query) {
+      // The same conditions as `listTokens` without the cursor: counting from the cursor would
+      // answer "how many are left", not "how many match".
+      const found = tokenConditions(query);
+      const where =
+        found.length === 0 ? "" : ` WHERE ${found.map((item) => item.sql).join(" AND ")}`;
+      const row = db
+        .query(`SELECT COUNT(*) AS n FROM api_tokens${where}`)
+        .get(...found.flatMap((item) => item.params));
+      return v.parse(v.object({ n: v.number() }), row).n;
+    },
     listTokens(query) {
-      const found: { sql: string; params: (string | number)[] }[] = [];
-      if (query.kind !== undefined) found.push({ sql: "kind = ?", params: [query.kind] });
-      if (query.revoked === true) found.push({ sql: "revoked_at IS NOT NULL", params: [] });
-      if (query.revoked === false) found.push({ sql: "revoked_at IS NULL", params: [] });
+      const found = tokenConditions(query);
+      const column = TOKEN_SORT_COLUMNS[query.sort];
+      const direction = query.order === "desc" ? "DESC" : "ASC";
       const after = keysetCondition(
-        { column: "created_at", id: "id", order: "desc", idOrder: "desc" },
+        { column, id: "id", sort: query.sort, order: query.order, idOrder: "asc" },
         query.cursor
       );
       if (after !== null) found.push(after);
       const where =
         found.length === 0 ? "" : ` WHERE ${found.map((item) => item.sql).join(" AND ")}`;
       const rows = db
-        .query(`SELECT * FROM api_tokens${where} ORDER BY created_at DESC, id DESC LIMIT ?`)
+        .query(`SELECT * FROM api_tokens${where} ORDER BY ${column} ${direction}, id ASC LIMIT ?`)
         .all(...found.flatMap((item) => item.params), query.limit ?? 200);
       return v.parse(v.array(tokenRecordSchema), rows).map(toToken);
     },

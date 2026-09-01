@@ -3,13 +3,17 @@ import type { JsonObject, User } from "@testate/shared";
 import { userSchema } from "@testate/shared";
 
 import { apiClient } from "@/lib/api-client.ts";
+import type { Page } from "@/lib/async.ts";
+import { tableQuery } from "@/lib/table.ts";
+import type { TableParams } from "@/lib/table.ts";
+import type { UserSort } from "./users.presenter.ts";
 
 const path = (id: string): string => `/users/${encodeURIComponent(id)}`;
 
 export const usersModel = {
   list: (): Promise<User[]> => apiClient.get("/users", { schema: v.array(userSchema) }),
-  page: (cursor?: string): Promise<{ data: User[]; next: string | null }> =>
-    apiClient.page("/users", userSchema, cursor === undefined ? undefined : { cursor }),
+  page: (cursor: string | undefined, params: TableParams<UserSort>): Promise<Page<User>> =>
+    apiClient.page("/users", userSchema, tableQuery(params, cursor)),
   create: (body: JsonObject): Promise<User> =>
     apiClient.post("/users", { schema: userSchema, body }),
   update: (id: string, body: JsonObject): Promise<User> =>

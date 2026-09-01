@@ -72,7 +72,7 @@ export function createStatesHandlers(
     list: async (c) => {
       const filter = toFilter(parseQuery(c, listQuerySchema));
       const rows = await service.list(param(c, "slug"), filter);
-      const next = nextCursor(rows, filter.limit, (row) => [row[filter.sort], row.id]);
+      const next = nextCursor(rows, filter.limit, filter, (row) => [row[filter.sort], row.id]);
       return okPage(c, rows, next, filter.limit);
     },
     tree: async (c) => {

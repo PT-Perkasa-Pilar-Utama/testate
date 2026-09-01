@@ -60,6 +60,7 @@ export type DeletionInput = {
 
 export type ProjectsService = {
   list(scope: string[] | null, query: Omit<ProjectsListQuery, "ids">): Promise<Project[]>;
+  total(scope: string[] | null, query: Omit<ProjectsListQuery, "ids">): Promise<number>;
   create(actor: Actor, input: CreateProjectInput, meta: RequestMeta): Promise<Project>;
   get(actor: Actor, slug: string): Promise<ProjectOverview>;
   update(actor: Actor, slug: string, patch: ProjectPatch, meta: RequestMeta): Promise<Project>;
@@ -149,6 +150,9 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
     }));
 
   return {
+    async total(scope, query) {
+      return repo.total({ ...query, ids: scope });
+    },
     async list(scope, query) {
       return repo.list({ ...query, ids: scope });
     },
@@ -180,7 +184,12 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
       const [settings, adapters, jobs] = await Promise.all([
         deps.settings.get(),
         summaries(slug),
-        deps.jobs.list(actor, null, { limit: 10, order: "desc", project_id: project.id }),
+        deps.jobs.list(actor, null, {
+          limit: 10,
+          sort: "created_at",
+          order: "desc",
+          project_id: project.id,
+        }),
       ]);
       return {
         project,

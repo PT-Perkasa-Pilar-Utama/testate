@@ -16,6 +16,12 @@ export const cursorQuerySchema = v.object({
 export const pageSchema = v.object({
   next_cursor: v.nullable(v.string()),
   limit: v.pipe(v.number(), v.integer()),
+  /**
+   * How many rows match, ignoring the page. Null where the endpoint does not count: an append-only
+   * log answers "how many" with a scan of the whole table, and a screen that says "12 of 340" is
+   * worth less than a list that stays fast. Null means unknown, never zero.
+   */
+  total: v.nullable(v.pipe(v.number(), v.integer())),
 });
 export type Page = v.InferOutput<typeof pageSchema>;
 

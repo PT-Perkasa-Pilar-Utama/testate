@@ -6,7 +6,7 @@ import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createPaged } from "@/lib/async.ts";
 import type { Paged } from "@/lib/async.ts";
-import { createTableView } from "@/lib/table.ts";
+import { createTableControls } from "@/lib/table.ts";
 import type { TableView } from "@/lib/table.ts";
 import { actor } from "@/lib/session.ts";
 import { usersModel } from "./users.model.ts";
@@ -16,7 +16,7 @@ export const ROLE_OPTIONS = ROLES.map((role) => ({ value: role, label: role }));
 export type UserSort = "username" | "display_name" | "role" | "last_login_at";
 
 export type UsersPresenter = Paged<User> & {
-  /** Sort and search over the accounts already loaded; the box pulls the rest in behind it. */
+  /** Sort and search, performed by the API over every account rather than the page on screen. */
   table: TableView<User, UserSort>;
   creating: () => boolean;
   error: () => string | null;
@@ -46,18 +46,9 @@ function messageOf(cause: unknown, fallback: string): string {
 }
 
 export function createUsersPresenter(): UsersPresenter {
-  const users = createPaged((cursor) => usersModel.page(cursor));
-  const table = createTableView<User, UserSort>({
-    rows: () => users.value(),
-    sorters: {
-      username: { text: (user) => user.username },
-      display_name: { text: (user) => user.display_name },
-      role: { text: (user) => user.role },
-      last_login_at: { text: (user) => user.last_login_at },
-    },
-    fields: (user) => [user.username, user.display_name, user.role],
-    pager: { hasMore: users.hasMore, loadMore: users.loadMore },
-  });
+  const controls = createTableControls<UserSort>();
+  const users = createPaged((cursor) => usersModel.page(cursor, controls.params()), controls.key);
+  const table: TableView<User, UserSort> = { ...controls, rows: users.value };
   const [creating, setCreating] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const [editing, setEditing] = createSignal<User | null>(null);

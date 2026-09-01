@@ -78,9 +78,11 @@ describe("checkouts", () => {
       state_name: "init",
       status: "at_state",
     });
-    expect((await h.checkouts.list("shop", { limit: 10 })).map((item) => item.id)).toEqual([
-      done.id,
-    ]);
+    expect(
+      (await h.checkouts.list("shop", { limit: 10, sort: "created_at", order: "desc" })).map(
+        (item) => item.id
+      )
+    ).toEqual([done.id]);
   });
 
   it("a preflight names the project adapters a partial state leaves untouched (story 79)", async () => {
@@ -124,7 +126,9 @@ describe("checkouts", () => {
     const again = await h.checkouts.create(h.harness.qa, "shop", body, meta);
     expect(again.job.id).toBe(first.job.id);
     expect(again.checkout.id).toBe(first.checkout.id);
-    expect((await h.checkouts.list("shop", { limit: 10 })).length).toBe(1);
+    expect(
+      (await h.checkouts.list("shop", { limit: 10, sort: "created_at", order: "desc" })).length
+    ).toBe(1);
     await expect(
       h.checkouts.create(h.harness.qa, "shop", { state_name: "init", force: true }, meta)
     ).rejects.toMatchObject({ code: "CONFLICT" });

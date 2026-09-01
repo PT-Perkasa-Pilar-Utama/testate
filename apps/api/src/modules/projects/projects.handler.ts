@@ -82,8 +82,9 @@ export function createProjectsHandlers(
     list: async (c) => {
       const query = toListQuery(parseQuery(c, listQuery));
       const rows = await service.list(c.get("projectScope"), query);
-      const next = nextCursor(rows, query.limit, (row) => [row[query.sort], row.id]);
-      return okPage(c, rows, next, query.limit);
+      const next = nextCursor(rows, query.limit, query, (row) => [row[query.sort], row.id]);
+      const total = await service.total(c.get("projectScope"), query);
+      return okPage(c, rows, next, query.limit, total);
     },
     create: async (c) => {
       const input = toCreateInput(await parseBody(c, createProjectSchema));

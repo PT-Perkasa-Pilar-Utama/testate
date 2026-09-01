@@ -131,7 +131,13 @@ function createStateRows(db: MetadataDb): StateRows {
       const found = conditions(projectId, filter);
       const order = `${SORT_COLUMNS[filter.sort]} ${filter.order === "desc" ? "DESC" : "ASC"}, s.id ASC`;
       const after = keysetCondition(
-        { column: SORT_COLUMNS[filter.sort], id: "s.id", order: filter.order, idOrder: "asc" },
+        {
+          column: SORT_COLUMNS[filter.sort],
+          id: "s.id",
+          sort: filter.sort,
+          order: filter.order,
+          idOrder: "asc",
+        },
         filter.cursor
       );
       if (after !== null) found.push(after);

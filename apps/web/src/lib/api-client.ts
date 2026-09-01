@@ -135,15 +135,16 @@ async function page<TSchema extends v.GenericSchema>(
   path: string,
   schema: TSchema,
   query?: Query
-): Promise<{ data: v.InferOutput<TSchema>[]; next: string | null }> {
+): Promise<{ data: v.InferOutput<TSchema>[]; next: string | null; total: number | null }> {
   const pageSchema = v.object({
     data: v.array(schema),
-    page: v.object({ next_cursor: v.nullable(v.string()) }),
+    // `total` is how many match across every page, null where the endpoint does not count.
+    page: v.object({ next_cursor: v.nullable(v.string()), total: v.nullable(v.number()) }),
   });
   const options: RequestOptions<typeof pageSchema> = { schema: pageSchema };
   if (query !== undefined) options.query = query;
   const parsed = await envelope(path, options);
-  return { data: parsed.data, next: parsed.page.next_cursor };
+  return { data: parsed.data, next: parsed.page.next_cursor, total: parsed.page.total };
 }
 
 export const apiClient = {

@@ -3,6 +3,10 @@ import type { Checkout, Counters, Job, JsonObject, Preflight } from "@testate/sh
 import { checkoutSchema, countersSchema, jobSchema, preflightSchema } from "@testate/shared";
 
 import { apiClient } from "@/lib/api-client.ts";
+import type { Page } from "@/lib/async.ts";
+import { tableQuery } from "@/lib/table.ts";
+import type { TableParams } from "@/lib/table.ts";
+import type { CheckoutSort } from "./checkouts.presenter.ts";
 
 const base = (slug: string): string => `/projects/${encodeURIComponent(slug)}/checkouts`;
 const one = (slug: string, id: string): string => `${base(slug)}/${encodeURIComponent(id)}`;
@@ -11,8 +15,12 @@ const withJob = v.object({ checkout: checkoutSchema, job: jobSchema });
 export const checkoutsModel = {
   list: (slug: string): Promise<Checkout[]> =>
     apiClient.get(base(slug), { schema: v.array(checkoutSchema) }),
-  page: (slug: string, cursor?: string): Promise<{ data: Checkout[]; next: string | null }> =>
-    apiClient.page(base(slug), checkoutSchema, cursor === undefined ? undefined : { cursor }),
+  page: (
+    slug: string,
+    cursor: string | undefined,
+    params: TableParams<CheckoutSort>
+  ): Promise<Page<Checkout>> =>
+    apiClient.page(base(slug), checkoutSchema, tableQuery(params, cursor)),
   preflight: (slug: string, body: JsonObject): Promise<Preflight> =>
     apiClient.post(`${base(slug)}/preflight`, { schema: preflightSchema, body }),
   create: (slug: string, body: JsonObject): Promise<{ checkout: Checkout; job: Job }> =>

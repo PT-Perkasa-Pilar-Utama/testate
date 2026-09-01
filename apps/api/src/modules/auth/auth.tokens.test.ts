@@ -1,5 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
+const NEWEST_FIRST = { sort: "created_at", order: "desc" } as const;
+
 import { TEST_META, actorOf, createAccounts } from "../../../test/accounts.ts";
 
 const HOUR = 60 * 60 * 1000;
@@ -80,9 +82,13 @@ describe("api tokens", () => {
     );
     await auth.createToken(admin, { name: "agent", kind: "agent", project_ids: null }, TEST_META);
     await auth.revokeToken(admin, standard.record.id, TEST_META);
-    expect((await auth.listTokens({ kind: "agent" })).map((t) => t.name)).toStrictEqual(["agent"]);
-    expect((await auth.listTokens({ revoked: true })).map((t) => t.name)).toStrictEqual(["ci"]);
-    expect((await auth.listTokens({})).length).toBe(2);
+    expect(
+      (await auth.listTokens({ ...NEWEST_FIRST, kind: "agent" })).map((t) => t.name)
+    ).toStrictEqual(["agent"]);
+    expect(
+      (await auth.listTokens({ ...NEWEST_FIRST, revoked: true })).map((t) => t.name)
+    ).toStrictEqual(["ci"]);
+    expect((await auth.listTokens(NEWEST_FIRST)).length).toBe(2);
   });
 
   it("survives deleting the admin who created the token", async () => {
@@ -104,7 +110,7 @@ describe("api tokens", () => {
     );
     await users.remove(actorOf(second), admin.id, TEST_META);
     expect((await auth.fromBearer(token))?.actor.role).toBe("qa");
-    expect((await auth.listTokens({}))[0]?.created_by).toBeNull();
+    expect((await auth.listTokens(NEWEST_FIRST))[0]?.created_by).toBeNull();
   });
 
   it("writes token audit rows", async () => {

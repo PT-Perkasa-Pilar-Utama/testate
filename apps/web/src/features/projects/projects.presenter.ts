@@ -3,7 +3,7 @@ import type { CreateProjectInput, Project } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
 import { createPaged } from "@/lib/async.ts";
-import { createTableView } from "@/lib/table.ts";
+import { createTableControls } from "@/lib/table.ts";
 import type { TableView } from "@/lib/table.ts";
 import type { Paged } from "@/lib/async.ts";
 import { projectsModel } from "./projects.model.ts";
@@ -34,16 +34,12 @@ export function slugify(name: string): string {
 }
 
 export function createProjectsPresenter(): ProjectsPresenter {
-  const projects = createPaged((cursor) => projectsModel.page(cursor));
-  const table = createTableView<Project, ProjectSort>({
-    rows: () => projects.value(),
-    sorters: {
-      name: { text: (project) => project.name },
-      changed_at: { text: (project) => project.head.changed_at },
-    },
-    fields: (project) => [project.name, project.slug],
-    pager: { hasMore: projects.hasMore, loadMore: projects.loadMore },
-  });
+  const controls = createTableControls<ProjectSort>();
+  const projects = createPaged(
+    (cursor) => projectsModel.page(cursor, controls.params()),
+    controls.key
+  );
+  const table: TableView<Project, ProjectSort> = { ...controls, rows: projects.value };
   const [creating, setCreating] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   return {

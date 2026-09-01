@@ -85,7 +85,12 @@ export function createDiffsHandlers(
       return c.json(
         {
           data: page.data,
-          page: { next_cursor: page.next_cursor, limit: query.limit },
+          // Diff rows are cursor-paged and nothing counts them; `total` says so rather than lying.
+          page: {
+            next_cursor: page.next_cursor,
+            limit: query.limit,
+            total: page.next_cursor === null ? page.data.length : null,
+          },
           masked_columns: page.masked_columns,
         },
         { status: 200 }

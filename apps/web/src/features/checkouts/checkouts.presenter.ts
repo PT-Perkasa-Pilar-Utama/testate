@@ -4,7 +4,7 @@ import type { Checkout, Counters } from "@testate/shared";
 
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createPaged } from "@/lib/async.ts";
-import { createTableView } from "@/lib/table.ts";
+import { createTableControls } from "@/lib/table.ts";
 import type { TableView } from "@/lib/table.ts";
 import type { Paged } from "@/lib/async.ts";
 import { followJob } from "@/lib/sse.ts";
@@ -96,18 +96,12 @@ export function createCheckoutsPresenter(
   slug: () => string,
   onChanged: () => void = () => undefined
 ): CheckoutsPresenter {
-  const checkouts = createPaged((cursor) => checkoutsModel.page(slug(), cursor));
-  const table = createTableView<Checkout, CheckoutSort>({
-    rows: () => checkouts.value(),
-    sorters: {
-      state: { text: (checkout) => checkout.state.name },
-      status: { text: (checkout) => checkout.status },
-      actor: { text: (checkout) => checkout.actor.label },
-      created_at: { text: (checkout) => checkout.created_at },
-    },
-    fields: (checkout) => [checkout.state.name, checkout.status, checkout.actor.label],
-    pager: { hasMore: checkouts.hasMore, loadMore: checkouts.loadMore },
-  });
+  const controls = createTableControls<CheckoutSort>();
+  const checkouts = createPaged(
+    (cursor) => checkoutsModel.page(slug(), cursor, controls.params()),
+    controls.key
+  );
+  const table: TableView<Checkout, CheckoutSort> = { ...controls, rows: checkouts.value };
   const [detail, setDetail] = createSignal<Checkout | null>(null);
   const [counters, setCounters] = createSignal<{ checkout: Checkout; result: Counters } | null>(
     null

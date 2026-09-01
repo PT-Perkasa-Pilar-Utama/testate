@@ -47,6 +47,9 @@ export type AuthHandlerOptions = {
 
 const tokensQuery = v.object({
   kind: v.optional(v.array(tokenKindSchema)),
+  sort: v.optional(v.array(v.picklist(["name", "created_at", "last_used_at", "expires_at"]))),
+  order: v.optional(v.array(v.picklist(["asc", "desc"]))),
+  q: v.optional(v.array(v.string())),
   revoked: v.optional(v.array(v.picklist(["true", "false"]))),
   limit: v.optional(
     v.array(v.pipe(v.string(), v.transform(Number), v.integer(), v.minValue(1), v.maxValue(200)))
@@ -54,13 +57,23 @@ const tokensQuery = v.object({
   cursor: v.optional(v.array(v.string())),
 });
 
-function toTokensQuery(parsed: v.InferOutput<typeof tokensQuery>): TokensListQuery {
-  const query: TokensListQuery = {};
+/** The narrowing half: what a caller filters the list down to. */
+function applyTokenFilter(query: TokensListQuery, parsed: v.InferOutput<typeof tokensQuery>): void {
   const kind = parsed.kind?.[0];
   if (kind !== undefined) query.kind = kind;
   const revoked = parsed.revoked?.[0];
   if (revoked !== undefined) query.revoked = revoked === "true";
-  query.limit = parsed.limit?.[0] ?? 50;
+  const q = parsed.q?.[0];
+  if (q !== undefined) query.q = q;
+}
+
+function toTokensQuery(parsed: v.InferOutput<typeof tokensQuery>): TokensListQuery {
+  const query: TokensListQuery = {
+    sort: parsed.sort?.[0] ?? "created_at",
+    order: parsed.order?.[0] ?? "desc",
+    limit: parsed.limit?.[0] ?? 50,
+  };
+  applyTokenFilter(query, parsed);
   const cursor = parsed.cursor?.[0];
   if (cursor !== undefined) query.cursor = cursor;
   return query;
@@ -178,12 +191,8 @@ export function createAuthHandlers(
       const query = toTokensQuery(parseQuery(c, tokensQuery));
       const rows = await service.listTokens(query);
       const limit = query.limit ?? 50;
-      return okPage(
-        c,
-        rows,
-        nextCursor(rows, limit, (row) => [row.created_at, row.id]),
-        limit
-      );
+      const next = nextCursor(rows, limit, query, (row) => [row[query.sort], row.id]);
+      return okPage(c, rows, next, limit, await service.totalTokens(query));
     },
     createToken: async (c) => {
       const input = toCreateTokenInput(await parseBody(c, createTokenSchema));

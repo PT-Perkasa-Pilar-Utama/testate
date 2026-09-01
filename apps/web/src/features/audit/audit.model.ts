@@ -3,6 +3,7 @@ import type { AuditRow } from "@testate/shared";
 import { auditRowSchema } from "@testate/shared";
 
 import { apiClient } from "@/lib/api-client.ts";
+import type { Page } from "@/lib/async.ts";
 import type { Query } from "@/lib/api-client.ts";
 
 export type AuditFilter = { action: string; actor: string; outcome: string };
@@ -20,9 +21,6 @@ function queryOf(filter: AuditFilter, cursor: string | undefined): Query {
 export const auditModel = {
   list: (): Promise<AuditRow[]> =>
     apiClient.get("/audit-logs", { schema: v.array(auditRowSchema) }),
-  page: (
-    filter: AuditFilter,
-    cursor?: string
-  ): Promise<{ data: AuditRow[]; next: string | null }> =>
+  page: (filter: AuditFilter, cursor?: string): Promise<Page<AuditRow>> =>
     apiClient.page("/audit-logs", auditRowSchema, queryOf(filter, cursor)),
 };

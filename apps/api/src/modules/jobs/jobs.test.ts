@@ -208,21 +208,34 @@ describe("jobs runtime", () => {
     await expect(h.jobs.get([OTHER], shop.id)).rejects.toMatchObject({ code: "NOT_FOUND" });
     await expect(h.jobs.get([PROJECT], shop.id)).resolves.toBeDefined();
     const qa = { ...QA_ACTOR };
-    expect((await h.jobs.list(qa, null, { limit: 10, order: "desc" })).rows.length).toBe(2);
-    expect((await h.jobs.list(h.admin, null, { limit: 10, order: "desc" })).rows.length).toBe(3);
     expect(
-      (await h.jobs.list(h.admin, [OTHER], { limit: 10, order: "desc" })).rows.map(
-        (j) => j.project_id
-      )
+      (await h.jobs.list(qa, null, { limit: 10, sort: "created_at", order: "desc" })).rows.length
+    ).toBe(2);
+    expect(
+      (await h.jobs.list(h.admin, null, { limit: 10, sort: "created_at", order: "desc" })).rows
+        .length
+    ).toBe(3);
+    expect(
+      (
+        await h.jobs.list(h.admin, [OTHER], { limit: 10, sort: "created_at", order: "desc" })
+      ).rows.map((j) => j.project_id)
     ).toStrictEqual([null, OTHER]);
     expect(
-      (await h.jobs.list(qa, null, { limit: 10, order: "desc", adapter_id: "b1" })).rows.length
+      (
+        await h.jobs.list(qa, null, {
+          limit: 10,
+          sort: "created_at",
+          order: "desc",
+          adapter_id: "b1",
+        })
+      ).rows.length
     ).toBe(1);
-    const page = await h.jobs.list(h.admin, null, { limit: 2, order: "desc" });
+    const page = await h.jobs.list(h.admin, null, { limit: 2, sort: "created_at", order: "desc" });
     expect(page.nextCursor).not.toBeNull();
     const cursor = v.parse(v.string(), page.nextCursor);
     expect(
-      (await h.jobs.list(h.admin, null, { limit: 2, order: "desc", cursor })).rows.length
+      (await h.jobs.list(h.admin, null, { limit: 2, sort: "created_at", order: "desc", cursor }))
+        .rows.length
     ).toBe(1);
   });
 

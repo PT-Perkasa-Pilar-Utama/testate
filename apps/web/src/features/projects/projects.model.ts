@@ -3,6 +3,10 @@ import type { JsonObject, Project } from "@testate/shared";
 import { idSchema, jobSchema, projectSchema, quotaSchema } from "@testate/shared";
 
 import { apiClient } from "@/lib/api-client.ts";
+import type { Page } from "@/lib/async.ts";
+import { tableQuery } from "@/lib/table.ts";
+import type { TableParams } from "@/lib/table.ts";
+import type { ProjectSort } from "./projects.presenter.ts";
 
 const path = (slug: string): string => `/projects/${encodeURIComponent(slug)}`;
 
@@ -52,8 +56,8 @@ export type Overview = v.InferOutput<typeof overviewSchema>;
 
 export const projectsModel = {
   list: (): Promise<Project[]> => apiClient.get("/projects", { schema: v.array(projectSchema) }),
-  page: (cursor?: string): Promise<{ data: Project[]; next: string | null }> =>
-    apiClient.page("/projects", projectSchema, cursor === undefined ? undefined : { cursor }),
+  page: (cursor: string | undefined, params: TableParams<ProjectSort>): Promise<Page<Project>> =>
+    apiClient.page("/projects", projectSchema, tableQuery(params, cursor)),
   /** One request for the project, its quota and the "why" behind an unknown HEAD, not three. */
   overview: (slug: string): Promise<Overview> =>
     apiClient.get(path(slug), { schema: overviewSchema }),

@@ -39,6 +39,7 @@ export type CheckoutsService = {
     meta: RequestMeta
   ): Promise<CheckoutWithJob>;
   list(slug: string, filter: CheckoutsFilter): Promise<Checkout[]>;
+  total(slug: string, filter: CheckoutsFilter): Promise<number>;
   get(slug: string, id: string): Promise<Checkout>;
   retry(actor: Actor, slug: string, id: string, meta: RequestMeta): Promise<CheckoutWithJob>;
   terminateBlockers(
@@ -223,6 +224,9 @@ export function createCheckoutsService(deps: CheckoutsDeps): CheckoutsService {
     },
     async list(slug, filter) {
       return repo.list(projectOf(slug).id, filter);
+    },
+    async total(slug, filter) {
+      return repo.total(projectOf(slug).id, filter);
     },
     async get(slug, id) {
       return find(projectOf(slug), id);

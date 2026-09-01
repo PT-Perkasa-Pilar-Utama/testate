@@ -255,6 +255,7 @@ export default function TokensView(): JSX.Element {
           shown={presenter.table.rows().length}
           noun="tokens"
           hasMore={presenter.hasMore()}
+          total={presenter.total()}
         >
           <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
         </TableFooter>

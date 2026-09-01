@@ -1,4 +1,6 @@
-import { createMemo, createSignal } from "solid-js";
+import { createMemo, createSignal, onCleanup } from "solid-js";
+
+import type { Query } from "./api-client.ts";
 
 /**
  * Sorting and searching for the tables that list things, in the shape shadcn's data table settled
@@ -149,5 +151,75 @@ export function createTableView<TRow, TKey extends string>(options: {
       if (value !== "") void drain();
     },
     draining,
+  };
+}
+
+/** What a list endpoint takes beyond the page: the order and the search it wants it in. */
+export type TableParams<TKey extends string> = {
+  sort?: TKey;
+  order?: Direction;
+  q?: string;
+};
+
+/** The query string for one page of a sorted, searched list. `toQuery` drops what is undefined. */
+export function tableQuery<TKey extends string>(
+  params: TableParams<TKey>,
+  cursor: string | undefined
+): Query {
+  return { cursor, sort: params.sort, order: params.order, q: params.q };
+}
+
+export type TableControls<TKey extends string> = SortControl<TKey> & {
+  query: () => string;
+  setQuery: (value: string) => void;
+  /** What the model sends. Read it inside the loader so a change fetches the new answer. */
+  params: () => TableParams<TKey>;
+  /** Changes whenever the question changes, so `createPaged` drops the pages that answered the old one. */
+  key: () => string;
+  /** True while what you see still answers the previous keystroke. */
+  draining: () => boolean;
+};
+
+const TYPING_MS = 250;
+
+/**
+ * Sort and search that the API performs.
+ *
+ * The difference from `createTableView` is what the answer covers: this one orders and searches
+ * every row the filter matches, not the page in front of you, which is the only honest way to do it
+ * on a list that arrives 50 rows at a time. The typing pause is not cosmetic: without it every
+ * keystroke is a request, and a person typing a name would put eight of them on the wire.
+ */
+export function createTableControls<TKey extends string>(
+  debounceMs = TYPING_MS
+): TableControls<TKey> {
+  const [sort, setSort] = createSignal<SortState<TKey>>(null);
+  const [typed, setTyped] = createSignal("");
+  const [settled, setSettled] = createSignal("");
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  onCleanup(() => clearTimeout(timer));
+  const params = (): TableParams<TKey> => {
+    const current = sort();
+    const search = settled().trim();
+    const built: TableParams<TKey> = {};
+    if (current !== null) {
+      built.sort = current.key;
+      built.order = current.direction;
+    }
+    if (search !== "") built.q = search;
+    return built;
+  };
+  return {
+    sort,
+    toggleSort: (key) => setSort((current) => nextSort(current, key)),
+    query: typed,
+    setQuery: (value) => {
+      setTyped(value);
+      clearTimeout(timer);
+      timer = setTimeout(() => setSettled(value), debounceMs);
+    },
+    params,
+    key: () => JSON.stringify(params()),
+    draining: () => typed().trim() !== settled().trim(),
   };
 }

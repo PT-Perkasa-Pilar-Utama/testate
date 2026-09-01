@@ -18,6 +18,7 @@ export type CreateTokenInput = {
 export type TokenService = {
   fromBearer(token: string): Promise<Resolved | null>;
   listTokens(query: TokensListQuery): Promise<ApiToken[]>;
+  totalTokens(query: TokensListQuery): Promise<number>;
   createToken(
     actor: Actor,
     input: CreateTokenInput,
@@ -90,6 +91,9 @@ export function createTokenService(deps: TokenDeps): TokenService {
         mustChangePassword: false,
         projectScope: record.project_ids,
       };
+    },
+    async totalTokens(query) {
+      return repo.totalTokens(query);
     },
     async listTokens(query) {
       return repo.listTokens(query);

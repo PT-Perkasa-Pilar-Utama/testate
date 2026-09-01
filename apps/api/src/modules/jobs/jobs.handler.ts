@@ -28,7 +28,9 @@ const listQuery = v.object({
   limit: v.optional(
     v.array(v.pipe(v.string(), v.transform(Number), v.integer(), v.minValue(1), v.maxValue(200)))
   ),
+  sort: v.optional(v.array(v.picklist(["created_at", "kind", "status"]))),
   order: v.optional(v.array(v.picklist(["asc", "desc"]))),
+  q: v.optional(v.array(v.string())),
   project_id: v.optional(v.array(v.string())),
   adapter_id: v.optional(v.array(v.string())),
   kind: v.optional(v.array(jobKindSchema)),
@@ -38,8 +40,11 @@ const listQuery = v.object({
 function toFilter(parsed: v.InferOutput<typeof listQuery>): JobsFilter {
   const filter: JobsFilter = {
     limit: firstQuery(parsed.limit) ?? 50,
+    sort: firstQuery(parsed.sort) ?? "created_at",
     order: firstQuery(parsed.order) ?? "desc",
   };
+  const q = firstQuery(parsed.q);
+  if (q !== undefined) filter.q = q;
   const cursor = firstQuery(parsed.cursor);
   if (cursor !== undefined) filter.cursor = cursor;
   const projectId = firstQuery(parsed.project_id);
@@ -72,7 +77,8 @@ export function createJobsHandlers(service: JobsService): JobsHandlers {
     list: async (c) => {
       const filter = toFilter(parseQuery(c, listQuery));
       const page = await service.list(currentActor(c), c.get("projectScope"), filter);
-      return okPage(c, page.rows, page.nextCursor, filter.limit);
+      const total = await service.total(currentActor(c), c.get("projectScope"), filter);
+      return okPage(c, page.rows, page.nextCursor, filter.limit, total);
     },
     get: async (c) => {
       const scope = c.get("projectScope");

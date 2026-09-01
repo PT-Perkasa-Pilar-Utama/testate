@@ -18,6 +18,7 @@ export type UpdateUserInput = { display_name?: string; role?: User["role"] };
 
 export type UsersService = {
   list(query: UsersListQuery): Promise<User[]>;
+  total(query: UsersListQuery): Promise<number>;
   create(actor: Actor, input: CreateUserInput, meta: RequestMeta): Promise<User>;
   get(id: string): Promise<User>;
   update(actor: Actor, id: string, patch: UpdateUserInput, meta: RequestMeta): Promise<User>;
@@ -87,6 +88,9 @@ export function createUsersService(deps: UsersDeps): UsersService {
   };
 
   return {
+    async total(query) {
+      return repo.total(query);
+    },
     async list(query) {
       return repo.list(query).map(toUser);
     },

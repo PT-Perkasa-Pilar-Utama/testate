@@ -3,6 +3,7 @@ import type { Job, JsonObject, State, StateDetail, StateTreeNode } from "@testat
 import { jobSchema, stateDetailSchema, stateSchema, stateTreeNodeSchema } from "@testate/shared";
 
 import { apiClient } from "@/lib/api-client.ts";
+import type { Page } from "@/lib/async.ts";
 import type { Query } from "@/lib/api-client.ts";
 
 const base = (slug: string): string => `/projects/${encodeURIComponent(slug)}/states`;
@@ -20,11 +21,7 @@ export const statesModel = {
       schema: v.array(stateSchema),
       query: { include_stash: includeStash ? "true" : "false" },
     }),
-  page: (
-    slug: string,
-    includeStash: boolean,
-    cursor?: string
-  ): Promise<{ data: State[]; next: string | null }> =>
+  page: (slug: string, includeStash: boolean, cursor?: string): Promise<Page<State>> =>
     apiClient.page(base(slug), stateSchema, pageQuery(includeStash, cursor)),
   tree: (slug: string): Promise<StateTreeNode[]> =>
     apiClient.get(`${base(slug)}/tree`, { schema: v.array(stateTreeNodeSchema) }),

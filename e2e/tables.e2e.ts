@@ -22,15 +22,17 @@ test.describe("a list you can order and narrow", () => {
       page.locator("tbody tr td:first-child").allInnerTexts();
     const header = page.getByRole("button", { name: "Username" });
     const original = await usernames();
+    // Polled, not read: the API does the sorting now, so the rows arrive a round trip after the
+    // click. Ascending really is ascending, descending is its mirror, the third click is the reset.
     await header.click();
+    await expect
+      .poll(usernames)
+      .toStrictEqual([...original].sort((left, right) => left.localeCompare(right)));
     const up = await usernames();
     await header.click();
-    const down = await usernames();
+    await expect.poll(usernames).toStrictEqual([...up].reverse());
     await header.click();
-    // Ascending really is ascending, descending is its mirror, and the third click is the reset.
-    expect(up).toStrictEqual([...up].sort((left, right) => left.localeCompare(right)));
-    expect(down).toStrictEqual([...up].reverse());
-    expect(await usernames()).toStrictEqual(original);
+    await expect.poll(usernames).toStrictEqual(original);
     expect(issues).toStrictEqual([]);
   });
 
