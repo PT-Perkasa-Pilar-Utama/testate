@@ -121,6 +121,11 @@ export default function HealthCard(props: { presenter: SettingsPresenter }): JSX
                   <span class="text-sm text-muted">{check.description}</span>
                 </dt>
                 <dd class="flex shrink-0 items-center gap-2 text-base text-muted">
+                  <Show when={check.detail(props.presenter.health.value().checks) !== ""}>
+                    <span class="tabular-nums">
+                      {"\u00b7"} {check.detail(props.presenter.health.value().checks)}
+                    </span>
+                  </Show>
                   <span
                     class={[
                       "h-2 w-2 shrink-0 rounded-full",
@@ -129,11 +134,6 @@ export default function HealthCard(props: { presenter: SettingsPresenter }): JSX
                     aria-hidden="true"
                   />
                   <span>{props.presenter.health.value().checks[check.key].status}</span>
-                  <Show when={check.detail(props.presenter.health.value().checks) !== ""}>
-                    <span class="tabular-nums">
-                      {"\u00b7"} {check.detail(props.presenter.health.value().checks)}
-                    </span>
-                  </Show>
                 </dd>
               </div>
             )}
