@@ -24,7 +24,7 @@ import { createMatcher, location, search } from "@/lib/router.ts";
 import type { Match as RouteMatch } from "@/lib/router.ts";
 import { actor, hasRole, session, sessionReady } from "@/lib/session.ts";
 import { ROUTES } from "./routes.ts";
-import Sidebar, { SidebarToggle } from "./sidebar.tsx";
+import Sidebar from "./sidebar.tsx";
 
 type Access = "ok" | "login" | "forbidden" | "not-found";
 
@@ -130,11 +130,6 @@ export default function App(): JSX.Element {
         <Sidebar current={match()?.path} />
         {/* `min-w-0` so a wide table scrolls inside its own box rather than stretching the shell. */}
         <main class="min-w-0 flex-1 px-8 py-6">
-          {/* The rail's handle sits beside the rail, not inside it: folded away, a button in there
-              is the one thing you still have to find. */}
-          <div class="mb-4">
-            <SidebarToggle />
-          </div>
           <Errored
             fallback={(error, reset) => (
               <Crashed detail={String(error())} reset={reset} where={location()} />

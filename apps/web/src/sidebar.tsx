@@ -80,18 +80,27 @@ function toggleSidebar(): void {
   }
 }
 
-/** The rail's own handle, rendered by the shell beside it rather than inside it. */
-export function SidebarToggle(): JSX.Element {
+/**
+ * The rail's handle, at the foot of the rail and pointing the way it will move.
+ *
+ * It sat at the top beside the logo, where it competed with the thing it is not: the name of the
+ * app. Down here it is the last thing in the column and the only control on that edge, and the
+ * chevron says which way it goes without anyone having to read a tooltip.
+ */
+function SidebarToggle(): JSX.Element {
   return (
     <button
       type="button"
-      class="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted hover:bg-hover hover:text-body"
+      class={[
+        "flex h-8 items-center rounded-md text-muted hover:bg-hover hover:text-body",
+        collapsed() ? "w-8 justify-center" : "w-full justify-end px-2",
+      ]}
       aria-expanded={collapsed() ? "false" : "true"}
       aria-label={collapsed() ? "Expand the sidebar" : "Collapse the sidebar"}
       title={collapsed() ? "Expand the sidebar" : "Collapse the sidebar"}
       onClick={() => toggleSidebar()}
     >
-      <Icon name="panel-left" />
+      <Icon name={collapsed() ? "chevron-right" : "chevron-left"} class="h-4 w-4" />
     </button>
   );
 }
@@ -242,7 +251,7 @@ export default function Sidebar(props: { current: string | undefined }): JSX.Ele
           )}
         </For>
       </nav>
-      <div class="mt-auto">
+      <div class="mt-auto grid gap-1">
         <Show when={actor()}>
           {(current) => (
             <Identity
@@ -253,6 +262,7 @@ export default function Sidebar(props: { current: string | undefined }): JSX.Ele
             />
           )}
         </Show>
+        <SidebarToggle />
       </div>
     </aside>
   );
