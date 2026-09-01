@@ -6,6 +6,7 @@ import Banner from "@/components/banner.tsx";
 import Icon from "@/components/icon.tsx";
 import type { IconName } from "@/components/icon.tsx";
 import Button from "@/components/button.tsx";
+import Crashed from "@/components/crashed.tsx";
 import Toaster from "@/components/toast.tsx";
 import AdapterView from "@/features/adapter/adapter.view.tsx";
 import GridView from "@/features/data/grid.view.tsx";
@@ -278,12 +279,7 @@ export default function App(): JSX.Element {
         <main class="flex-1 px-8 py-6">
           <Errored
             fallback={(error, reset) => (
-              <div class="grid gap-3">
-                <Banner variant="error">{String(error())}</Banner>
-                <div>
-                  <Button onClick={reset}>Retry</Button>
-                </div>
-              </div>
+              <Crashed detail={String(error())} reset={reset} where={location()} />
             )}
           >
             <Show when={sessionReady()} fallback={<p class="text-muted">Loading...</p>}>

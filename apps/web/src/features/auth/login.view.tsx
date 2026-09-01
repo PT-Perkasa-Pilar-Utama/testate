@@ -5,6 +5,7 @@ import { loginSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
+import CompanyFooter from "@/components/company-footer.tsx";
 import FieldError from "@/components/field-error.tsx";
 import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
@@ -78,7 +79,7 @@ export default function LoginView(props: { next: string }): JSX.Element {
           </Button>
         </Form>
       </LayerCard>
-      <p class="text-center text-xs text-muted">Your databases, your network. Nothing leaves it.</p>
+      <CompanyFooter />
     </section>
   );
 }

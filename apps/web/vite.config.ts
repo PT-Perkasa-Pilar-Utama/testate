@@ -1,5 +1,6 @@
 import { Agent } from "node:http";
 import { fileURLToPath } from "node:url";
+import { version } from "./package.json" with { type: "json" };
 import solidPlugin from "@solidjs/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
@@ -16,6 +17,9 @@ export default defineConfig(({ command }) => ({
   // exist under Solid 2. Excluding it from pre-bundling keeps esbuild from resolving the wrong one
   // and leaves the JSX for the Solid plugin to compile (patches/README.md says why it is patched).
   optimizeDeps: { exclude: ["@formisch/solid", "@formisch/core"] },
+  // The version a bug report quotes. `bun run bump-version` already keeps this package.json in
+  // step with the others, so there is no second place to forget.
+  define: { "import.meta.env.VITE_TESTATE_VERSION": JSON.stringify(version) },
   server: {
     port: 7379,
     // No keep-alive: Bun closes idle sockets and the proxy would answer the next request with a 502.
