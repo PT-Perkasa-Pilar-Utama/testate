@@ -143,8 +143,7 @@ export default function JobsView(): JSX.Element {
       <Loading fallback={<p class="text-muted">Loading jobs...</p>}>
         <TableToolbar>
           <TableSearch
-            label="Search jobs"
-            placeholder="kind or status"
+            placeholder="Search jobs..."
             value={presenter.table.query()}
             onInput={(value) => presenter.table.setQuery(value)}
           />

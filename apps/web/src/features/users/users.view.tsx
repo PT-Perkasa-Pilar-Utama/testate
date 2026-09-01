@@ -84,8 +84,7 @@ export default function UsersView(): JSX.Element {
       <Loading fallback={<p class="text-muted">Loading users...</p>}>
         <TableToolbar>
           <TableSearch
-            label="Search users"
-            placeholder="username or name"
+            placeholder="Search users..."
             value={presenter.table.query()}
             onInput={(value) => presenter.table.setQuery(value)}
           />

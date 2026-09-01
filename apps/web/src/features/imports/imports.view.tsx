@@ -43,8 +43,7 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
       <Loading fallback={<p class="text-muted">Loading import runs...</p>}>
         <TableToolbar>
           <TableSearch
-            label="Search imports"
-            placeholder="run or who ran it"
+            placeholder="Search imports..."
             value={presenter.table.query()}
             onInput={(value) => presenter.table.setQuery(value)}
           />

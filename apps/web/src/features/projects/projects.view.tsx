@@ -192,8 +192,7 @@ export default function ProjectsView(): JSX.Element {
         >
           <TableToolbar>
             <TableSearch
-              label="Search projects"
-              placeholder="name or slug"
+              placeholder="Search projects..."
               value={presenter.table.query()}
               onInput={(value) => presenter.table.setQuery(value)}
             />

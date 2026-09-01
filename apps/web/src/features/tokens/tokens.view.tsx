@@ -157,8 +157,7 @@ export default function TokensView(): JSX.Element {
       <Loading fallback={<p class="text-muted">Loading tokens...</p>}>
         <TableToolbar>
           <TableSearch
-            label="Search tokens"
-            placeholder="name or prefix"
+            placeholder="Search tokens..."
             value={presenter.table.query()}
             onInput={(value) => presenter.table.setQuery(value)}
           />

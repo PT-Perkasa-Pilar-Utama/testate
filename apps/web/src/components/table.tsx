@@ -225,23 +225,32 @@ export function SortColumn<TKey extends string>(props: {
   );
 }
 
-/** The toolbar's search box. One box over every column the screen names, the way shadcn does it. */
+/**
+ * The search box, in the header beside the screen's own action.
+ *
+ * No label above it: a magnifier and "Search jobs..." say what it is, and the label was buying a
+ * whole row of the page for one narrow field. The placeholder is the accessible name, so it has to
+ * name what is being searched rather than say "Search".
+ */
 export function TableSearch(props: {
   value: string;
   onInput: (value: string) => void;
-  label?: string;
-  placeholder?: string;
+  placeholder: string;
 }): JSX.Element {
   return (
-    <label class="grid gap-1.5 text-sm">
-      <span>{props.label ?? "Search"}</span>
+    <div class="relative">
+      <Icon
+        name="search"
+        class="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted"
+      />
       <Input
         type="search"
-        class="w-64"
+        class="w-64 pl-8"
+        aria-label={props.placeholder}
         value={props.value}
         placeholder={props.placeholder}
         onInput={(event) => props.onInput(event.currentTarget.value)}
       />
-    </label>
+    </div>
   );
 }

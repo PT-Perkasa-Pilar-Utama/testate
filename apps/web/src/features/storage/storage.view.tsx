@@ -161,8 +161,7 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
       <PathBar presenter={presenter} slug={props.slug} id={props.id} />
       <TableToolbar>
         <TableSearch
-          label="Search files"
-          placeholder="name"
+          placeholder="Search files..."
           value={presenter.q()}
           onInput={(value) => presenter.setQ(value)}
         />

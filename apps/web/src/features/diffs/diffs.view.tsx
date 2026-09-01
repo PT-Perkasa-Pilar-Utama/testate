@@ -121,8 +121,7 @@ export default function DiffsView(props: { slug: string }): JSX.Element {
       <Loading fallback={<p class="text-muted">Loading diffs...</p>}>
         <TableToolbar>
           <TableSearch
-            label="Search diffs"
-            placeholder="state or status"
+            placeholder="Search diffs..."
             value={presenter.table.query()}
             onInput={(value) => presenter.table.setQuery(value)}
           />

@@ -119,8 +119,7 @@ export default function CheckoutsView(props: {
     <Loading fallback={<p class="text-muted">Loading checkouts...</p>}>
       <TableToolbar>
         <TableSearch
-          label="Search restores"
-          placeholder="state or result"
+          placeholder="Search restores..."
           value={presenter.table.query()}
           onInput={(value) => presenter.table.setQuery(value)}
         />

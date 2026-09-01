@@ -206,8 +206,7 @@ export default function AdaptersView(props: { slug: string }): JSX.Element {
       <Loading fallback={<p class="text-muted">Loading adapters...</p>}>
         <TableToolbar>
           <TableSearch
-            label="Search adapters"
-            placeholder="name or engine"
+            placeholder="Search adapters..."
             value={presenter.table.query()}
             onInput={(value) => presenter.table.setQuery(value)}
           />
