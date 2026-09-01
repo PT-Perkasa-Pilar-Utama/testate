@@ -99,8 +99,8 @@ function Stats(props: { presenter: HomePresenter }): JSX.Element {
       <Stat label="Projects" value={String(props.presenter.projects.value().length)} />
       <Stat label="Running now" value={String(props.presenter.running.value().total)} />
       <Stat label="Failed in a day" value={String(props.presenter.failed.value().total)} />
-      <Show when={hasRole("qa") && !hasRole("admin")}>
-        <Stat label="Checkouts in a day" value={String(props.presenter.checkouts.value())} />
+      <Show when={props.presenter.checkouts}>
+        {(checkouts) => <Stat label="Checkouts in a day" value={String(checkouts().value())} />}
       </Show>
       <Show when={props.presenter.people}>
         {(people) => (

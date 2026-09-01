@@ -1,6 +1,5 @@
 import { createSignal } from "solid-js";
 import type {
-  Adapter,
   AdapterWithProject,
   ImportReport,
   JsonObject,
@@ -15,7 +14,6 @@ import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { followJob } from "@/lib/sse.ts";
 import { adapterModel } from "../adapter/adapter.model.ts";
-import { adaptersModel } from "../adapters/adapters.model.ts";
 import { AUTO, isNullable, toTransforms } from "./imports.columns.ts";
 import type { Choice } from "./imports.columns.ts";
 import { defaultMappingName, runBody, sourceBody, tableKey } from "./imports.helpers.ts";
@@ -38,7 +36,6 @@ export type ImportPresenter = {
   schema: Refreshable<TableSchema[]>;
   /** Loads the preview when the source came from the URL rather than a file picker. */
   rejected: Refreshable<null>;
-  adapter: Refreshable<Adapter>;
   storages: Refreshable<AdapterWithProject[]>;
   source: () => Source | null;
   preview: () => Preview | null;
@@ -91,7 +88,6 @@ export function createImportPresenter(
   const [mappingId, setMappingId] = createSignal("");
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
-  const adapter = createRefreshable(() => adaptersModel.get(slug(), adapterId()));
   // A rejected-rows source has no file to pick, so its preview loads with the screen.
   const rejected = createRefreshable(async () => {
     if (initial === null) return null;
@@ -206,7 +202,6 @@ export function createImportPresenter(
   return {
     schema,
     rejected,
-    adapter,
     storages,
     source,
     preview,

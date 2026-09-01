@@ -199,10 +199,22 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
             value={presenter.q()}
             onInput={(value) => presenter.setQ(value)}
           />
-          {/* Only where a file may actually land: a tester, on an adapter an admin opened. */}
-          <Show when={hasRole("qa") && presenter.writable()}>
-            <UploadButton presenter={presenter} />
-          </Show>
+          {/*
+            Only where a file may actually land: a tester, on an adapter an admin opened.
+
+            `writable()` reads the adapter's own async memo, and this sits outside the listing's
+            `<Loading>`. Pending is handled: the region waits and draws when the adapter arrives,
+            measured in the bundle spec. A failure is not. Without `Errored` here, an adapter that
+            answers 404 or 403 throws to the boundary in `app.tsx`, which replaces the whole screen
+            with the crash banner, listing and all. Hiding one button is the right answer instead.
+          */}
+          <Errored fallback={() => null}>
+            <Loading fallback={null}>
+              <Show when={hasRole("qa") && presenter.writable()}>
+                <UploadButton presenter={presenter} />
+              </Show>
+            </Loading>
+          </Errored>
         </div>
       </div>
       <Show when={presenter.changedKey()}>

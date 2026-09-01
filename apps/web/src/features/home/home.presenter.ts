@@ -17,7 +17,8 @@ export type HomePresenter = {
   projects: Refreshable<Project[]>;
   running: Refreshable<Counted<Job>>;
   failed: Refreshable<Counted<Job>>;
-  checkouts: Refreshable<number>;
+  /** Null for a Guest, who cannot check out, and for an Admin, whose card is Users. */
+  checkouts: Refreshable<number> | null;
   /** Admin only; null for everyone else, so the card is simply not there. */
   health: Refreshable<HealthAdmin> | null;
   people: Refreshable<{ users: number; tokens: number }> | null;
@@ -41,6 +42,9 @@ function lastDay(from: string): Parameters<typeof jobsModel.page>[1] {
  */
 export function createHomePresenter(now: () => Date): HomePresenter {
   const admin = hasRole("admin");
+  // Whoever sees the card. A memo fetches when it is built, so an admin building one would ask
+  // /jobs for a number its own Stats row replaces with Users and Tokens.
+  const tester = hasRole("qa") && !admin;
   const window = (): string => since(now());
   // One status per call: the API reads a single `status`, so a second one would be a second call.
   const byStatus = async (
@@ -53,7 +57,6 @@ export function createHomePresenter(now: () => Date): HomePresenter {
     return { rows: page.data, total: page.total ?? page.data.length };
   };
   const checkoutsToday = async (): Promise<number> => {
-    if (!hasRole("qa")) return 0;
     const page = await jobsModel.page(undefined, lastDay(window()), {
       kind: "checkout",
       status: "",
@@ -69,7 +72,7 @@ export function createHomePresenter(now: () => Date): HomePresenter {
     projects: createRefreshable(() => projectsModel.list()),
     running: createRefreshable(() => byStatus("running", NEWEST)),
     failed: createRefreshable(() => byStatus("failed", lastDay(window()))),
-    checkouts: createRefreshable(() => checkoutsToday()),
+    checkouts: tester ? createRefreshable(() => checkoutsToday()) : null,
     health: admin ? createRefreshable(() => settingsModel.health()) : null,
     people: admin ? createRefreshable(() => countPeople()) : null,
     activity: admin ? createRefreshable(() => auditModel.list()) : null,
