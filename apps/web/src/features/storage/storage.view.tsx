@@ -7,7 +7,6 @@ import type { Entry } from "@testate/shared";
 import Banner from "@/components/banner.tsx";
 import Button, { buttonClass } from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
-import Input from "@/components/input.tsx";
 import {
   Cell,
   EmptyRow,
@@ -15,6 +14,7 @@ import {
   Row,
   Table,
   TableFooter,
+  TableSearch,
   TableToolbar,
 } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
@@ -153,12 +153,11 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
     <section class="grid gap-4">
       <PathBar presenter={presenter} slug={props.slug} id={props.id} />
       <TableToolbar>
-        <Input
-          size="sm"
-          class="w-56!"
-          placeholder="filter by name"
+        <TableSearch
+          label="Search files"
+          placeholder="name"
           value={presenter.q()}
-          onInput={(event) => presenter.setQ(event.currentTarget.value)}
+          onInput={(value) => presenter.setQ(value)}
         />
       </TableToolbar>
       <Show when={presenter.changedKey()}>

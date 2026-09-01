@@ -1,11 +1,12 @@
 import type { JSX } from "@solidjs/web";
 import { For, Show, createEffect, createSignal } from "solid-js";
-import type { Role } from "@testate/shared";
+import type { Actor, Role } from "@testate/shared";
 
-import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
 import type { IconName } from "@/components/icon.tsx";
 import Logo from "@/components/logo.tsx";
+import { MenuItem } from "@/components/menu.tsx";
+import { ROLE_LABEL } from "@/lib/labels.ts";
 import { signOut } from "@/features/auth/auth.presenter.ts";
 import { href, navigate } from "@/lib/router.ts";
 import { actor, hasRole } from "@/lib/session.ts";
@@ -68,20 +69,83 @@ const THEME_FACE = {
   dark: { icon: "moon", label: "Theme: dark" },
 } as const;
 
-/** System, light, dark, and back. Three states because "follow the system" is a real answer. */
-function ThemeButton(): JSX.Element {
+/** `admin` -> `AD`, `Dina Putri` -> `DP`. No avatars here, so the initials are the picture. */
+function initials(label: string): string {
+  const words = label.split(/[\s._-]+/).filter((word) => word !== "");
+  const letters =
+    words.length > 1 ? words.slice(0, 2).map((word) => word[0] ?? "") : [label.slice(0, 2)];
+  return letters.join("").toUpperCase();
+}
+
+/**
+ * Who you are, and the three things you do about it.
+ *
+ * The rail used to end in three stacked controls: a link that read `admin · admin`, a theme button
+ * and a sign-out button, all competing for the same corner. This is one row that says who you are,
+ * and a menu holding the rest, which is where a person already looks for it.
+ *
+ * A plain `<details>` rather than the `Menu` component: that one is an ellipsis button anchored to
+ * the right of a table row and opening downwards, and this is a full-width row at the bottom of a
+ * column. `MenuItem` only needs a `<details>` ancestor, so the items still come from there.
+ */
+function Identity(props: {
+  actor: Actor;
+  collapsed: boolean;
+  current: string | undefined;
+  onNav: (event: MouseEvent, path: string) => void;
+}): JSX.Element {
   const face = (): (typeof THEME_FACE)[Theme] => THEME_FACE[theme()];
   return (
-    <Button
-      size="sm"
-      variant="ghost"
-      class="justify-start"
-      title={`${face().label}. Switch to ${THEME_FACE[nextTheme(theme())].label.toLowerCase()}`}
-      onClick={() => setTheme(nextTheme(theme()))}
-    >
-      <Icon name={face().icon} class="h-3.5 w-3.5" />
-      {face().label}
-    </Button>
+    <details class="relative">
+      <summary
+        class={[
+          "flex cursor-pointer list-none items-center gap-2 rounded-md hover:bg-hover",
+          props.collapsed ? "justify-center p-1" : "p-2",
+        ]}
+        aria-label={`${props.actor.label}, account and sign out`}
+      >
+        <span class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-fill text-xs font-semibold text-body">
+          {initials(props.actor.label)}
+        </span>
+        <Show when={!props.collapsed}>
+          <span class="grid min-w-0 flex-1 text-left">
+            <span class="truncate text-base font-medium text-body">{props.actor.label}</span>
+            <span class="truncate text-xs text-muted">{ROLE_LABEL[props.actor.role]}</span>
+          </span>
+          <Icon name="chevrons-up-down" class="h-4 w-4 shrink-0 text-muted" />
+        </Show>
+      </summary>
+      <div class="absolute bottom-full left-0 z-20 mb-1 grid w-56 gap-0.5 rounded-lg bg-surface p-1 shadow-lg ring ring-line">
+        <div class="grid gap-1.5 px-2 py-1.5">
+          <span class="truncate text-sm font-medium text-body">{props.actor.label}</span>
+          <span class="truncate text-xs text-muted">{ROLE_LABEL[props.actor.role]}</span>
+        </div>
+        <div class="my-0.5 border-t border-hairline" />
+        {/* Not `MenuLink`: that one lets the browser follow the href, which is right for a download
+            and a full page load for a route the router already owns. */}
+        <a
+          class={[
+            "rounded-md px-2 py-1.5 text-left text-sm hover:bg-hover",
+            { "bg-fill font-medium": props.current === "/account" },
+          ]}
+          href={href("/account")}
+          onClick={(event) => {
+            event.currentTarget.closest("details")?.removeAttribute("open");
+            props.onNav(event, "/account");
+          }}
+        >
+          Account
+        </a>
+        <MenuItem onClick={() => setTheme(nextTheme(theme()))}>
+          <span class="flex items-center gap-2">
+            <Icon name={face().icon} class="h-3.5 w-3.5" />
+            {face().label}
+          </span>
+        </MenuItem>
+        <div class="my-0.5 border-t border-hairline" />
+        <MenuItem onClick={() => void signOut()}>Sign out</MenuItem>
+      </div>
+    </details>
   );
 }
 
@@ -104,7 +168,7 @@ export default function Sidebar(props: { current: string | undefined }): JSX.Ele
   return (
     <aside
       class={[
-        "sticky top-0 flex h-screen flex-col overflow-y-auto border-r border-line py-4",
+        "sticky top-0 flex h-screen flex-col border-r border-line py-4",
         collapsed() ? "w-12 items-center px-2" : "w-60 px-3",
       ]}
     >
@@ -128,7 +192,7 @@ export default function Sidebar(props: { current: string | undefined }): JSX.Ele
         The nav stays visible when the rail is collapsed. It used to be `hidden`, so folding the
         sidebar away left a person with no way to go anywhere except Back.
       */}
-      <nav class="grid gap-0.5">
+      <nav class="grid gap-0.5 overflow-y-auto">
         <For each={NAV.filter((item) => hasRole(item.role))}>
           {(item) => (
             <>
@@ -166,32 +230,15 @@ export default function Sidebar(props: { current: string | undefined }): JSX.Ele
           )}
         </For>
       </nav>
-      <div class={["mt-auto grid gap-2 text-sm", collapsed() ? "hidden" : ""]}>
+      <div class="mt-auto">
         <Show when={actor()}>
           {(current) => (
-            <>
-              <a
-                class={[
-                  "rounded-md px-2 py-1.5 text-base text-muted hover:bg-hover",
-                  { "bg-fill font-semibold": props.current === "/account" },
-                ]}
-                href={href("/account")}
-                onClick={(event) => onNav(event, "/account")}
-              >
-                {current().label} · {current().role}
-              </a>
-              <ThemeButton />
-              {/* A button centres its label; the account link above it reads from the left edge,
-                  and the two sitting in one grid column have to line up on that edge. */}
-              <Button
-                size="sm"
-                variant="ghost"
-                class="justify-start"
-                onClick={() => void signOut()}
-              >
-                Sign out
-              </Button>
-            </>
+            <Identity
+              actor={current()}
+              onNav={onNav}
+              collapsed={collapsed()}
+              current={props.current}
+            />
           )}
         </Show>
       </div>
