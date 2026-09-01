@@ -50,6 +50,10 @@ export const TOOL_DESCRIPTIONS = new Map<string, string>(
       "Restores a state over the live databases. This overwrites data. Pass `force` only after reading what the refusal said. Tester tokens only.",
     get_job:
       "The status of a snapshot or checkout that was still running when it answered. Poll this rather than holding a call open.",
+    upload_file:
+      "Writes a file to a sandbox file adapter, overwriting whatever is at that path. Send text in `content`, or bytes as base64 with `base64: true`. Tester tokens only.",
+    delete_file:
+      "Deletes one file from a sandbox file adapter. Directories are refused. Testate keeps no copy of what you delete. Tester tokens only.",
   })
 );
 
@@ -60,11 +64,13 @@ adapters, take a state and put one back. Everything you change is somebody's tes
 say what you are about to do before you do it.`;
 
 const READER_LIMITS = `- **No writes.** There is no tool that inserts, updates, deletes, restores or snapshots. \`run_readonly_query\` runs inside a read-only transaction, so the database refuses a write even if you construct one.`;
-const TESTER_LIMITS = `- **Writes go to sandbox adapters only.** An adapter in protected mode refuses \`run_write_query\` and \`checkout_state\`, and no argument overrides that.
+const TESTER_LIMITS = `- **Writes go to sandbox adapters only.** A read-only adapter refuses every write tool, database or file store, and no argument overrides that.
+- **A file delete is final.** A database write stashes first and a state can be checked out again. A file store has neither: what you delete there is gone.
 - **You cannot administer.** No tool creates a token, changes a setting, or touches a user. That is a person's job.`;
 
 const TESTER_ORDER = `5. \`run_write_query\` changes rows. The first one stashes the adapter, so a mistake is recoverable.
-6. \`take_snapshot\` keeps the result. \`checkout_state\` puts an earlier one back. Both answer with a job; poll \`get_job\` when it is still running.`;
+6. \`take_snapshot\` keeps the result. \`checkout_state\` puts an earlier one back. Both answer with a job; poll \`get_job\` when it is still running.
+7. \`upload_file\` and \`delete_file\` change a file store. Nothing stashes a file store, so a delete there is final.`;
 
 /**
  * The guide itself. Markdown, because every agent reads it, and short, because an agent pays for

@@ -129,14 +129,84 @@ function behavesLikeATree(open: () => FileSource): void {
   });
 }
 
+/**
+ * The write half, in a directory of its own that the test empties again.
+ *
+ * `behavesLikeATree` asserts the exact tree at the root, so a file left behind by this suite fails
+ * the read suite on the next run against the same store.
+ */
+/** Empties the scratch directory the write suite makes, for the two protocols that keep one. */
+async function dropSftpDir(): Promise<void> {
+  const sftp = new SftpClient();
+  await sftp.connect({
+    host: SFTP.host,
+    port: SFTP.port,
+    username: SFTP.user,
+    password: SFTP.password,
+  });
+  await sftp.rmdir(`${SFTP.root_path}/scratch`, true).catch(() => "");
+  await sftp.end();
+}
+
+async function dropFtpDir(): Promise<void> {
+  const ftp = new Ftp();
+  await ftp.access({ host: FTP.host, port: FTP.port, user: FTP.user, password: FTP.password });
+  await ftp.removeDir(`${FTP.root_path}/scratch`).catch(() => "");
+  ftp.close();
+}
+
+function writesAndDeletes(open: () => FileSource, dropDir: () => Promise<void>): void {
+  test("writes a file, overwrites it, reads it back, then deletes it", async () => {
+    const source = open();
+    const path = "scratch/note.txt";
+    try {
+      await source.put(path, new TextEncoder().encode("first"));
+      expect((await source.stat(path)).size_bytes).toBe(5);
+      await source.put(path, new TextEncoder().encode("second"));
+      expect(await new Response(await source.read(path)).text()).toBe("second");
+      await source.remove(path);
+      await expect(source.stat(path)).rejects.toMatchObject({ code: "NOT_FOUND" });
+      await expect(source.remove(path)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    } finally {
+      await source.remove(path).catch(() => "already gone");
+      await source.close();
+      await dropDir();
+    }
+  });
+
+  test("refuses to delete a directory", async () => {
+    const source = open();
+    const path = "scratch/keep/file.txt";
+    try {
+      await source.put(path, new TextEncoder().encode("x"));
+      await expect(source.remove("scratch/keep")).rejects.toMatchObject({
+        code: "VALIDATION_ERROR",
+      });
+    } finally {
+      await source.remove(path).catch(() => "already gone");
+      await source.close();
+      // S3 loses the prefix with its last key; the other two keep the directory, and a leftover
+      // one fails `behavesLikeATree` on the next run against the same store.
+      await dropDir();
+    }
+  });
+}
+
 describe.skipIf(!(await s3Up))("s3 source (contract)", () => {
   test("seed", seedS3);
   behavesLikeATree(() => createS3Source(S3));
+  writesAndDeletes(
+    () => createS3Source(S3),
+    async () => {
+      // S3 loses the prefix with its last key; there is nothing left to drop.
+    }
+  );
 });
 
 describe.skipIf(!(await sftpUp))("sftp source (contract)", () => {
   test("seed", seedSftp);
   behavesLikeATree(() => createSftpSource({ ...SFTP, verifyHostKey: () => true }));
+  writesAndDeletes(() => createSftpSource({ ...SFTP, verifyHostKey: () => true }), dropSftpDir);
   test("a rejected host key surfaces as CONFLICT with the fingerprint", async () => {
     const source = createSftpSource({ ...SFTP, verifyHostKey: () => false });
     await expect(source.list("", { limit: 1 })).rejects.toMatchObject({
@@ -149,4 +219,5 @@ describe.skipIf(!(await sftpUp))("sftp source (contract)", () => {
 describe.skipIf(!(await ftpUp))("ftp source (contract)", () => {
   test("seed", seedFtp);
   behavesLikeATree(() => createFtpSource(FTP));
+  writesAndDeletes(() => createFtpSource(FTP), dropFtpDir);
 });

@@ -9,6 +9,7 @@ import {
   missing,
   nameOf,
   normalizePath,
+  notAFile,
   pageEntries,
   unreachable,
 } from "./index.ts";
@@ -128,6 +129,23 @@ export function createSftpSource(config: SftpSourceConfig): FileSource {
       return guard(clean, async (sftp) => {
         await sftp.stat(joinPath(config.root_path, clean));
         return Readable.toWeb(sftp.createReadStream(joinPath(config.root_path, clean)));
+      });
+    },
+    async put(path, body) {
+      const clean = normalizePath(path);
+      if (clean === "") throw notAFile(clean);
+      return guard(clean, async (sftp) => {
+        const parent = clean.includes("/") ? clean.slice(0, clean.lastIndexOf("/")) : "";
+        if (parent !== "") await sftp.mkdir(joinPath(config.root_path, parent), true);
+        await sftp.put(Buffer.from(body), joinPath(config.root_path, clean));
+      });
+    },
+    async remove(path) {
+      const clean = normalizePath(path);
+      return guard(clean, async (sftp) => {
+        const stats = await sftp.stat(joinPath(config.root_path, clean));
+        if (stats.isDirectory) throw notAFile(clean);
+        await sftp.delete(joinPath(config.root_path, clean));
       });
     },
     async close() {

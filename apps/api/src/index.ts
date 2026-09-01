@@ -218,7 +218,11 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     states: createStatesHandlers(core.states, prefix, config.TESTATE_TRUST_PROXY),
     checkouts: createCheckoutsHandlers(core.checkouts, prefix, config.TESTATE_TRUST_PROXY, jobs),
     diffs: createDiffsHandlers(core.diffs, prefix, config.TESTATE_TRUST_PROXY),
-    storage: createStorageHandlers(storage, config.TESTATE_TRUST_PROXY),
+    storage: createStorageHandlers(
+      storage,
+      config.TESTATE_TRUST_PROXY,
+      config.TESTATE_MAX_UPLOAD_MB * 1024 * 1024
+    ),
     jobs: createJobsHandlers(jobs),
     audit: createAuditHandlers(audit),
     settings: createSettingsHandlers(settings, prefix, config.TESTATE_TRUST_PROXY),

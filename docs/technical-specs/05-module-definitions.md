@@ -216,15 +216,22 @@ pruneExpired(event): Promise<void>                                              
 
 ## 5.11 `storage`
 
-**Responsibility.** Read-only browsing of storage adapters.
+**Responsibility.** Browsing storage adapters, and changing the ones an admin put in sandbox mode.
 
 ```ts
 list(actor, adapterId, path, page): Promise<Page<Entry>>       // name, kind, size, modified
 stat(actor, adapterId, path): Promise<Entry>
 preview(actor, adapterId, path): Promise<PreviewPayload>        // text, json, csv (first 200 rows), image, pdf up to the cap
 download(actor, adapterId, path): ReadableStream
+upload(actor, adapterId, path, bytes, event): Promise<Entry>    // qa; sandbox adapters only; overwrites
+remove(actor, adapterId, path, event): Promise<void>            // qa; sandbox adapters only; files, never directories
 acceptHostKey(actor, adapterId, fingerprint, event): Promise<void>
 ```
+
+**Invariants.** The role is checked by the route or the MCP tool; the adapter's mode is checked in
+the service, once, so REST and MCP refuse the same targets for the same reason. A storage adapter
+is `read_only` unless the caller asked for `sandbox` at create, and loosening one later needs an
+admin, exactly as a database does. Nothing stashes a file store, so a delete there is final.
 
 | Invariants | No write and no delete exist on the port. Preview cap 5 MB. SFTP host key is trusted on first use and stored in `known_host_keys`; a changed key blocks every operation with `CONFLICT` until accepted. |
 

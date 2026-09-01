@@ -190,6 +190,71 @@ describe("storage", () => {
     );
   });
 
+  it("refuses a write to a read-only adapter, whoever is asking", async () => {
+    const h = await createHarness();
+    const { qa, admin } = h.harness;
+    const bytes = new TextEncoder().encode("x");
+    h.harness.repo.setMode(h.s3, "read_only", AT);
+    await expect(
+      h.storage.upload(qa, "shop", h.s3, "exports/new.txt", bytes, TEST_META)
+    ).rejects.toMatchObject({ code: "ADAPTER_READ_ONLY" });
+    await expect(
+      h.storage.remove(admin, "shop", h.s3, "readme.md", TEST_META)
+    ).rejects.toMatchObject({ code: "ADAPTER_READ_ONLY" });
+    // Nothing was touched on the way to the refusal.
+    expect((await h.storage.stat(qa, "shop", h.s3, "readme.md")).size_bytes).toBe(4);
+  });
+
+  it("uploads, overwrites and deletes on a sandbox adapter, and audits both", async () => {
+    const h = await createHarness();
+    const { qa } = h.harness;
+    const encoder = new TextEncoder();
+    const entry = await h.storage.upload(
+      qa,
+      "shop",
+      h.s3,
+      "exports/new.txt",
+      encoder.encode("first"),
+      TEST_META
+    );
+    expect(entry).toMatchObject({ name: "new.txt", kind: "file", size_bytes: 5 });
+    await h.storage.upload(
+      qa,
+      "shop",
+      h.s3,
+      "exports/new.txt",
+      encoder.encode("longer"),
+      TEST_META
+    );
+    expect((await h.storage.stat(qa, "shop", h.s3, "exports/new.txt")).size_bytes).toBe(6);
+    await h.storage.remove(qa, "shop", h.s3, "exports/new.txt", TEST_META);
+    await expect(h.storage.stat(qa, "shop", h.s3, "exports/new.txt")).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    const actions = h.harness.db
+      .query<{ action: string; target_label: string }, []>(
+        "SELECT action, target_label FROM audit_logs WHERE action LIKE 'file.%' ORDER BY created_at"
+      )
+      .all();
+    expect(actions.map((row) => `${row.action}:${row.target_label}`)).toEqual([
+      "file.uploaded:exports/new.txt",
+      "file.uploaded:exports/new.txt",
+      "file.deleted:exports/new.txt",
+    ]);
+  });
+
+  it("refuses to delete a directory, and to write to the root", async () => {
+    const h = await createHarness();
+    const { qa } = h.harness;
+    await expect(h.storage.remove(qa, "shop", h.s3, "exports", TEST_META)).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    await expect(
+      h.storage.upload(qa, "shop", h.s3, "", new Uint8Array([1]), TEST_META)
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    expect((await h.storage.stat(qa, "shop", h.s3, "exports")).kind).toBe("directory");
+  });
+
   it("trusts the SFTP host key on first use, blocks a changed key, and accepts the new one", async () => {
     const h = await createHarness();
     const listing = await h.storage.list(h.harness.qa, "shop", h.sftp, {});

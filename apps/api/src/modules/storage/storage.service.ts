@@ -1,7 +1,7 @@
 import type { Actor, Entry, Project } from "@testate/shared";
 
 import type { FileSource, ListPage } from "../../lib/files/index.ts";
-import { nameOf, normalizePath } from "../../lib/files/index.ts";
+import { nameOf, normalizePath, notAFile } from "../../lib/files/index.ts";
 import type { RequestMeta } from "../../lib/http/auth.ts";
 import { AppError, notFound } from "../../lib/http/index.ts";
 import type { FilesResolver, ResolvedFiles } from "../adapters/adapters.files.ts";
@@ -31,6 +31,23 @@ export type StorageService = {
   stat(actor: Actor, slug: string, adapterId: string, path: string): Promise<Entry>;
   preview(actor: Actor, slug: string, adapterId: string, path: string): Promise<PreviewResult>;
   download(actor: Actor, slug: string, adapterId: string, path: string): Promise<Download>;
+  /** Writes a file to a sandbox adapter, overwriting whatever is at that path. */
+  upload(
+    actor: Actor,
+    slug: string,
+    adapterId: string,
+    path: string,
+    body: Uint8Array,
+    meta: RequestMeta
+  ): Promise<Entry>;
+  /** Deletes one file from a sandbox adapter. Directories are refused. */
+  remove(
+    actor: Actor,
+    slug: string,
+    adapterId: string,
+    path: string,
+    meta: RequestMeta
+  ): Promise<void>;
   acceptHostKey(
     actor: Actor,
     slug: string,
@@ -72,7 +89,13 @@ async function requireFile(source: FileSource, path: string): Promise<Entry> {
   return entry;
 }
 
-/** Read-only browsing over `resolveFiles` (05 §5.11); no write and no delete exist here. */
+/**
+ * Browsing and, on a sandbox adapter, changing files over `resolveFiles` (05 §5.11).
+ *
+ * The role is checked by the route (`requireRole("qa")`) or by the MCP tool; the adapter's mode is
+ * checked here, once, so both paths refuse the same targets for the same reason. It is the rule a
+ * database already lives by: an admin decides which adapters may be written, and a tester writes.
+ */
 export function createStorageService(deps: StorageDeps): StorageService {
   const projectOf = (slug: string): Project => {
     const project = deps.projects.bySlug(slug);
@@ -95,6 +118,47 @@ export function createStorageService(deps: StorageDeps): StorageService {
       await source.close();
     }
   };
+  /**
+   * The source of an adapter a write may reach.
+   *
+   * `read_only` is the default and it is not an oversight: an adapter has to be loosened on
+   * purpose, by an admin, before a tester can put a file in it or take one out.
+   */
+  const writable = async (
+    actor: Actor,
+    slug: string,
+    adapterId: string
+  ): Promise<ResolvedFiles> => {
+    const resolved = await open(actor, slug, adapterId);
+    if (resolved.adapter.mode !== "sandbox") {
+      await resolved.source.close();
+      throw new AppError("ADAPTER_READ_ONLY", `${resolved.adapter.name} is read-only`, {
+        adapter_id: resolved.adapter.id,
+      });
+    }
+    return resolved;
+  };
+  const record = (
+    actor: Actor,
+    action: string,
+    adapter: ResolvedFiles["adapter"],
+    slug: string,
+    path: string,
+    details: Record<string, number>,
+    meta: RequestMeta
+  ): void =>
+    deps.audit.record({
+      actor,
+      action,
+      target_type: "file",
+      target_id: `${adapter.id}:${path}`,
+      target_label: path,
+      project: { id: projectOf(slug).id, slug },
+      adapter: { id: adapter.id, name: adapter.name },
+      details,
+      outcome: "succeeded",
+      meta,
+    });
   return {
     list: (actor, slug, adapterId, query) =>
       withSource(actor, slug, adapterId, (source) => {
@@ -128,6 +192,28 @@ export function createStorageService(deps: StorageDeps): StorageService {
       } catch (cause: unknown) {
         await source.close();
         throw cause;
+      }
+    },
+    async upload(actor, slug, adapterId, path, body, meta) {
+      const clean = normalizePath(path);
+      if (clean === "") throw notAFile(clean);
+      const { adapter, source } = await writable(actor, slug, adapterId);
+      try {
+        await source.put(clean, body);
+        record(actor, "file.uploaded", adapter, slug, clean, { bytes: body.byteLength }, meta);
+        return source.stat(clean);
+      } finally {
+        await source.close();
+      }
+    },
+    async remove(actor, slug, adapterId, path, meta) {
+      const clean = normalizePath(path);
+      const { adapter, source } = await writable(actor, slug, adapterId);
+      try {
+        await source.remove(clean);
+        record(actor, "file.deleted", adapter, slug, clean, {}, meta);
+      } finally {
+        await source.close();
       }
     },
     async acceptHostKey(actor, slug, adapterId, fingerprint, meta) {

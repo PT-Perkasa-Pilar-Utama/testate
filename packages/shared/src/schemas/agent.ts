@@ -75,6 +75,15 @@ export const AGENT_TOOL_INPUTS = {
     adapters: v.optional(v.array(adapterRef)),
   }),
   get_job: v.object({ job: v.string() }),
+  upload_file: v.object({
+    project: slugSchema,
+    adapter: adapterRef,
+    path: v.string(),
+    content: v.string(),
+    /** `content` is base64 rather than text. JSON-RPC carries no body, so bytes come this way. */
+    base64: v.optional(v.boolean()),
+  }),
+  delete_file: v.object({ project: slugSchema, adapter: adapterRef, path: v.string() }),
 } as const;
 
 export type AgentToolName = keyof typeof AGENT_TOOL_INPUTS;

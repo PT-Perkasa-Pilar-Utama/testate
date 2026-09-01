@@ -11,6 +11,7 @@ import {
   missing,
   nameOf,
   normalizePath,
+  notAFile,
   pageEntries,
   unreachable,
 } from "./index.ts";
@@ -121,6 +122,28 @@ export function createFtpSource(config: FtpSourceConfig): FileSource {
         const pipe = new PassThrough();
         void download(await connectNew(), pipe, joinPath(config.root_path, clean));
         return Readable.toWeb(pipe);
+      });
+    },
+    async put(path, body) {
+      const clean = normalizePath(path);
+      if (clean === "") throw notAFile(clean);
+      return guard(clean, async (ftp) => {
+        const parent = clean.includes("/") ? clean.slice(0, clean.lastIndexOf("/")) : "";
+        // `ensureDir` leaves the session in the directory it made, and every other call here is
+        // written against an absolute path, so put it back where it was.
+        if (parent !== "") await ftp.ensureDir(joinPath(config.root_path, parent));
+        await ftp.cd("/");
+        await ftp.uploadFrom(Readable.from([Buffer.from(body)]), joinPath(config.root_path, clean));
+      });
+    },
+    async remove(path) {
+      const clean = normalizePath(path);
+      return guard(clean, async (ftp) => {
+        const parent = clean.includes("/") ? clean.slice(0, clean.lastIndexOf("/")) : "";
+        const entry = (await listDir(ftp, parent)).find((item) => item.name === nameOf(clean));
+        if (entry === undefined) throw missing(clean);
+        if (entry.kind === "directory") throw notAFile(clean);
+        await ftp.remove(joinPath(config.root_path, clean));
       });
     },
     async close() {

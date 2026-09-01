@@ -201,7 +201,10 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
         kind: draft.kind,
         engine: draft.engine,
         name: draft.name,
-        mode: draft.kind === "database" ? draft.mode : "read_only",
+        // Storage adapters were pinned to read_only here, which is what made the file port
+        // read-only in practice. They can be a sandbox now, but only when the caller asks: the
+        // default is still the safe one, and loosening one later needs an admin.
+        mode: draft.mode ?? (draft.kind === "database" ? "sandbox" : "read_only"),
         config_public: validated.config,
         config_sealed: await sealSecrets(ring, id, CONFIG_COLUMN, draft.secrets),
         readonly_config_sealed:

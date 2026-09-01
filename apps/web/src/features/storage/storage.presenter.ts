@@ -6,6 +6,7 @@ import { attempt, showToast } from "@/lib/toast.ts";
 import { ApiError } from "@/lib/api-client.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
+import { adaptersModel } from "../adapters/adapters.model.ts";
 import { BINARY_EXTENSIONS, extensionOf, storageModel } from "./storage.model.ts";
 import type { EntriesPage } from "./storage.model.ts";
 
@@ -34,6 +35,14 @@ export type StoragePresenter = {
   /** The fingerprint of a changed SFTP host key, from the CONFLICT the last listing raised. */
   changedKey: () => string | null;
   acceptHostKey: () => Promise<void>;
+  /** Whether this adapter is a sandbox, which is what decides if a file may be added or removed. */
+  writable: () => boolean;
+  upload: (file: File) => Promise<void>;
+  /** The file the delete dialog is asking about, null when it is closed. */
+  deleting: () => Entry | null;
+  askDelete: (entry: Entry) => void;
+  cancelDelete: () => void;
+  remove: () => Promise<void>;
 };
 
 /** A screenful. The listing pages with a cursor, so a bucket with thousands of keys
@@ -62,6 +71,10 @@ export function createStoragePresenter(slug: () => string, id: () => string): St
   const [cursors, setCursors] = createSignal<string[]>([]);
   const [preview, setPreview] = createSignal<Preview | null>(null);
   const [changedKey, setChangedKey] = createSignal<string | null>(null);
+  const [deleting, setDeleting] = createSignal<Entry | null>(null);
+  // The adapter says whether it may be written; the API refuses either way, and this is only so
+  // the screen does not offer a button that always fails.
+  const adapter = createRefreshable(() => adaptersModel.get(slug(), id()));
   const page = createRefreshable(async () => {
     const query = { path: path(), q: q(), limit: PAGE_SIZE };
     const cursor = cursors().at(-1);
@@ -131,6 +144,32 @@ export function createStoragePresenter(slug: () => string, id: () => string): St
     closePreview: () => setPreview(null),
     downloadUrl: (entry) => storageModel.downloadUrl(slug(), id(), entry.path),
     changedKey,
+    writable: () => adapter.value().mode === "sandbox",
+    upload: (file) => {
+      const staticSlug = slug();
+      const staticId = id();
+      const staticTarget = path() === "" ? file.name : `${path()}/${file.name}`;
+      return attempt(async () => {
+        await storageModel.upload(staticSlug, staticId, staticTarget, file);
+        page.refresh();
+        showToast(`${file.name} uploaded.`, "success");
+      });
+    },
+    deleting,
+    askDelete: setDeleting,
+    cancelDelete: () => setDeleting(null),
+    remove: () => {
+      const staticEntry = deleting();
+      if (staticEntry === null) return Promise.resolve();
+      const staticSlug = slug();
+      const staticId = id();
+      return attempt(async () => {
+        await storageModel.remove(staticSlug, staticId, staticEntry.path);
+        setDeleting(null);
+        page.refresh();
+        showToast(`${staticEntry.name} deleted.`, "success");
+      });
+    },
     acceptHostKey: () => {
       const staticSlug = slug();
       const staticId = id();

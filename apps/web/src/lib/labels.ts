@@ -131,7 +131,7 @@ export const ADAPTER_MODE_LABEL = {
  * label above is the short form a badge or a fact line wants.
  */
 export const ADAPTER_MODE_OPTIONS = [
-  { value: "sandbox", label: "Sandbox (restores allowed)" },
+  { value: "sandbox", label: "Sandbox (may be written to)" },
   { value: "read_only", label: "Read only (never written to)" },
 ] as const satisfies readonly { value: AdapterMode; label: string }[];
 

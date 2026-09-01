@@ -45,6 +45,18 @@ export const storageModel = {
     apiClient.url(`${adapterPath(slug, id)}/entries/preview`, { path }),
   downloadUrl: (slug: string, id: string, path: string): string =>
     apiClient.url(`${adapterPath(slug, id)}/entries/download`, { path }),
+  upload: (slug: string, id: string, path: string, file: File): Promise<Entry> =>
+    apiClient.upload(
+      `${adapterPath(slug, id)}/entries?path=${encodeURIComponent(path)}`,
+      file,
+      {},
+      entrySchema
+    ),
+  remove: (slug: string, id: string, path: string): Promise<undefined> =>
+    apiClient.delete(`${adapterPath(slug, id)}/entries`, {
+      schema: v.undefined(),
+      query: { path },
+    }),
   acceptHostKey: (slug: string, id: string, fingerprint: string): Promise<undefined> =>
     apiClient.post(`${adapterPath(slug, id)}/host-key/accept`, {
       schema: v.undefined(),

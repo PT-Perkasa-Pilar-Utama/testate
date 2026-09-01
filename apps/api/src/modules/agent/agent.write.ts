@@ -1,7 +1,7 @@
 import type { CreateStateInput, Job, JsonObject, JsonValue, Project } from "@testate/shared";
 import * as v from "valibot";
 
-import { forbidden } from "../../lib/http/index.ts";
+import { AppError, forbidden } from "../../lib/http/index.ts";
 import type { AgentToolDeps, Scope, Tool } from "./agent.catalog.ts";
 import { AGENT_CAPS, cap, json, optional, text } from "./agent.catalog.ts";
 import type { AgentContext } from "./agent.service.ts";
@@ -50,7 +50,31 @@ export type WriteTools = {
   take_snapshot: Tool;
   checkout_state: Tool;
   get_job: Tool;
+  upload_file: Tool;
+  delete_file: Tool;
 };
+
+/**
+ * The bytes of a file an agent is sending.
+ *
+ * JSON-RPC has no body, so a file arrives inside the arguments and the whole thing sits in memory
+ * twice over. The agent's own byte budget is the cap; anything larger belongs on the REST upload,
+ * which streams.
+ */
+function bodyOf(args: JsonObject): Uint8Array {
+  const content = text(args, "content");
+  const bytes =
+    optional(args, "base64", v.boolean()) === true
+      ? Uint8Array.from(atob(content), (character) => character.charCodeAt(0))
+      : new TextEncoder().encode(content);
+  if (bytes.byteLength > AGENT_CAPS.byteBudget) {
+    throw new AppError("PAYLOAD_TOO_LARGE", "that file is over the agent byte budget", {
+      bytes: bytes.byteLength,
+      limit_bytes: AGENT_CAPS.byteBudget,
+    });
+  }
+  return bytes;
+}
 
 /**
  * What a tester does that a reader does not: change rows, keep a state, put one back.
@@ -133,6 +157,27 @@ export function writeTools(deps: AgentToolDeps): WriteTools {
         checkout: { id: checkout.id, state: state.name },
         job: await settle(deps, ctx, job),
       });
+    },
+    upload_file: async (args, ctx, scope) => {
+      requireTester(ctx);
+      const project = scope.project(text(args, "project"));
+      const adapter = scope.adapter(project, text(args, "adapter"));
+      const entry = await deps.storage.upload(
+        ctx.actor,
+        project.slug,
+        adapter.id,
+        text(args, "path"),
+        bodyOf(args),
+        ctx.meta
+      );
+      return json(entry);
+    },
+    delete_file: async (args, ctx, scope) => {
+      requireTester(ctx);
+      const project = scope.project(text(args, "project"));
+      const adapter = scope.adapter(project, text(args, "adapter"));
+      await deps.storage.remove(ctx.actor, project.slug, adapter.id, text(args, "path"), ctx.meta);
+      return json({ deleted: text(args, "path") });
     },
     get_job: async (args, ctx) => {
       const job = await deps.jobs.get(ctx.scope, text(args, "job"));

@@ -43,12 +43,17 @@ describe("adapters", () => {
     expect(await storedSecrets(harness, adapter.id)).toStrictEqual({ password: "pg-secret" });
   });
 
-  it("forces storage adapters read-only with no init job", async () => {
+  it("leaves a storage adapter read-only unless asked, and never takes an init state", async () => {
     const { adapters, qa } = await createAdaptersHarness();
-    const s3 = await adapters.create(qa, "shop", S3, TEST_META);
-    expect(s3.adapter.mode).toBe("read_only");
-    expect(s3.adapter.tier).toBe("files");
-    expect(s3.init_job).toBeNull();
+    const { mode: _asked, ...unasked } = S3;
+    const quiet = await adapters.create(qa, "shop", unasked, TEST_META);
+    expect(quiet.adapter.mode).toBe("read_only");
+    expect(quiet.adapter.tier).toBe("files");
+    // A file store has no rows to snapshot, whichever mode it is in.
+    expect(quiet.init_job).toBeNull();
+    const asked = await adapters.create(qa, "shop", { ...S3, name: "scratch" }, TEST_META);
+    expect(asked.adapter.mode).toBe("sandbox");
+    expect(asked.init_job).toBeNull();
   });
 
   it("refuses a kind that does not match the engine, unknown or missing secrets, and a taken name", async () => {

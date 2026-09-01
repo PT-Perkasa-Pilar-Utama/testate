@@ -1,11 +1,12 @@
 import type { JSX } from "@solidjs/web";
 import { formatWhen } from "@/lib/format.ts";
 import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
-import { Errored, For, Loading, Show } from "solid-js";
+import { Errored, For, Loading, Show, createSignal } from "solid-js";
 import type { Entry } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
 import Button, { buttonClass } from "@/components/button.tsx";
+import ConfirmDialog from "@/components/confirm-dialog.tsx";
 import Icon from "@/components/icon.tsx";
 import { Cell, EmptyRow, Head, Row, Table, TableFooter, TableSearch } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
@@ -118,14 +119,26 @@ function EntryRow(props: { presenter: StoragePresenter; entry: Entry }): JSX.Ele
       </Cell>
       <Cell pinned>
         <Show when={props.entry.kind === "file"}>
-          <a
-            class={buttonClass("ghost", "sm")}
-            href={props.presenter.downloadUrl(props.entry)}
-            download={props.entry.name}
-          >
-            <Icon name="download" class="h-3.5 w-3.5" />
-            Download
-          </a>
+          <div class="flex items-center justify-end gap-1">
+            <a
+              class={buttonClass("ghost", "sm")}
+              href={props.presenter.downloadUrl(props.entry)}
+              download={props.entry.name}
+            >
+              <Icon name="download" class="h-3.5 w-3.5" />
+              Download
+            </a>
+            <Show when={hasRole("qa") && props.presenter.writable()}>
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label={`Delete ${props.entry.name}`}
+                onClick={() => props.presenter.askDelete(props.entry)}
+              >
+                <Icon name="trash-2" class="h-3.5 w-3.5" />
+              </Button>
+            </Show>
+          </div>
         </Show>
       </Cell>
     </Row>
@@ -142,6 +155,35 @@ function EmptyMessage(props: { q: string }): JSX.Element {
 }
 
 /** Folder browsing over a storage adapter (api 11, stories 94-97). */
+/**
+ * Upload, as a button rather than a bare file input.
+ *
+ * The native control renders as "Choose file" with the browser's own chrome and nothing here
+ * matches it. The input stays in the DOM, hidden, so the picker and the keyboard both still work.
+ */
+function UploadButton(props: { presenter: StoragePresenter }): JSX.Element {
+  const [input, setInput] = createSignal<HTMLInputElement>();
+  return (
+    <>
+      <input
+        ref={setInput}
+        type="file"
+        class="hidden"
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          // Cleared before the upload runs, so picking the same file twice fires twice.
+          event.currentTarget.value = "";
+          if (file !== undefined) void props.presenter.upload(file);
+        }}
+      />
+      <Button variant="primary" onClick={() => input()?.click()}>
+        <Icon name="upload" class="h-3.5 w-3.5" />
+        Upload
+      </Button>
+    </>
+  );
+}
+
 export default function StorageView(props: { slug: string; id: string }): JSX.Element {
   const presenter = createStoragePresenter(
     () => props.slug,
@@ -151,11 +193,17 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
     <section class="grid gap-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <PathBar presenter={presenter} slug={props.slug} id={props.id} />
-        <TableSearch
-          placeholder="Search files..."
-          value={presenter.q()}
-          onInput={(value) => presenter.setQ(value)}
-        />
+        <div class="flex flex-wrap items-center gap-2">
+          <TableSearch
+            placeholder="Search files..."
+            value={presenter.q()}
+            onInput={(value) => presenter.setQ(value)}
+          />
+          {/* Only where a file may actually land: a tester, on an adapter an admin opened. */}
+          <Show when={hasRole("qa") && presenter.writable()}>
+            <UploadButton presenter={presenter} />
+          </Show>
+        </div>
       </div>
       <Show when={presenter.changedKey()}>
         {(fingerprint) => (
@@ -213,6 +261,14 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
           </TableFooter>
         </Loading>
       </Errored>
+      <ConfirmDialog
+        open={presenter.deleting() !== null}
+        title={`Delete ${presenter.deleting()?.name ?? ""}`}
+        description="This removes the file from the store itself. Testate keeps no copy of it."
+        confirmLabel="Delete"
+        onCancel={() => presenter.cancelDelete()}
+        onConfirm={() => void presenter.remove()}
+      />
       <PreviewDialog presenter={presenter} />
     </section>
   );

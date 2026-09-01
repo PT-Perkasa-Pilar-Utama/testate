@@ -39,6 +39,18 @@ export function createStorageRouter(h: StorageHandlers): Hono {
     h.download
   );
   router.post(
+    `${P}/entries`,
+    requireRole("qa"),
+    describe("storage", "Upload a file to a sandbox adapter", entrySchema, 201),
+    h.upload
+  );
+  router.delete(
+    `${P}/entries`,
+    requireRole("qa"),
+    describe("storage", "Delete a file from a sandbox adapter", v.undefined(), 204),
+    h.remove
+  );
+  router.post(
     `${P}/host-key/accept`,
     requireRole("qa"),
     describe("storage", "Accept a changed SFTP host key", v.undefined(), 204),

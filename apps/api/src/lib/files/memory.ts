@@ -1,6 +1,6 @@
 import type { Entry } from "@testate/shared";
 
-import { byName, missing, nameOf, normalizePath, pageEntries } from "./index.ts";
+import { byName, missing, nameOf, normalizePath, notAFile, pageEntries } from "./index.ts";
 import type { FileSource } from "./index.ts";
 
 export type MemoryFile = { bytes: Uint8Array; modified_at: string };
@@ -76,6 +76,16 @@ export function createMemorySource(tree: MemoryTree): FileSource {
       const file = tree.get(clean);
       if (file === undefined) throw missing(clean);
       return new Blob([file.bytes]).stream();
+    },
+    async put(path, body) {
+      const clean = normalizePath(path);
+      if (clean === "" || isDirectory(tree, clean)) throw notAFile(clean);
+      tree.set(clean, { bytes: body, modified_at: new Date().toISOString() });
+    },
+    async remove(path) {
+      const clean = normalizePath(path);
+      if (!tree.has(clean)) throw isDirectory(tree, clean) ? notAFile(clean) : missing(clean);
+      tree.delete(clean);
     },
     async close() {},
   };

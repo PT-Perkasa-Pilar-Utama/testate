@@ -7,15 +7,31 @@ export type ListQuery = { cursor?: string; limit: number; q?: string };
 export type ListPage = { data: Entry[]; next_cursor: string | null };
 
 /**
- * The read-only file port (05 §5.11): three protocols look like one directory tree. Paths are
- * relative to the adapter's root or prefix and never contain `..`. No write and no delete exist.
+ * The file port (05 §5.11): three protocols look like one directory tree. Paths are relative to
+ * the adapter's root or prefix and never contain `..`.
+ *
+ * `put` and `remove` are the whole write half, and the port is deliberately that small. Whether a
+ * caller may use them is not decided here: the storage service refuses an adapter that is not in
+ * sandbox mode, exactly as the write session does for a database.
  */
 export type FileSource = {
   list(path: string, query: ListQuery): Promise<ListPage>;
   stat(path: string): Promise<Entry>;
   read(path: string): Promise<ReadableStream<Uint8Array>>;
+  /** Writes a file, making the directories above it, overwriting whatever is there. */
+  put(path: string, body: Uint8Array): Promise<void>;
+  /**
+   * Deletes one file. A directory is refused rather than emptied: recursive delete means something
+   * different on each of the three protocols, and it is the one mistake here nothing undoes.
+   */
+  remove(path: string): Promise<void>;
   close(): Promise<void>;
 };
+
+/** A directory is not a file, and neither `put` nor `remove` pretends otherwise. */
+export function notAFile(path: string): AppError {
+  return new AppError("VALIDATION_ERROR", "that is a directory, not a file", { path });
+}
 
 export type HostKey = { type: string; fingerprint: string };
 

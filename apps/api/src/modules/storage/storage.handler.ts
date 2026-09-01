@@ -2,7 +2,15 @@ import { acceptHostKeySchema } from "@testate/shared";
 import * as v from "valibot";
 
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
-import { firstQuery, ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.ts";
+import {
+  AppError,
+  firstQuery,
+  ok,
+  okPage,
+  param,
+  parseBody,
+  parseQuery,
+} from "../../lib/http/index.ts";
 import type { Handler } from "../../lib/http/index.ts";
 import type { EntriesQuery, StorageService } from "./storage.service.ts";
 
@@ -11,6 +19,8 @@ export type StorageHandlers = {
   stat: Handler;
   preview: Handler;
   download: Handler;
+  upload: Handler;
+  remove: Handler;
   acceptHostKey: Handler;
 };
 
@@ -43,7 +53,8 @@ export function contentDisposition(kind: "inline" | "attachment", name: string):
 
 export function createStorageHandlers(
   service: StorageService,
-  trustProxy: boolean
+  trustProxy: boolean,
+  maxUploadBytes: number
 ): StorageHandlers {
   const args = (c: Parameters<Handler>[0]): [ReturnType<typeof currentActor>, string, string] => [
     currentActor(c),
@@ -81,6 +92,33 @@ export function createStorageHandlers(
       c.header("X-Content-Type-Options", "nosniff");
       if (file.size !== null) c.header("Content-Length", String(file.size));
       return c.body(file.stream, 200);
+    },
+    // Multipart, like the import upload: the browser writes the boundary and the file streams
+    // through one field. `path` names where it lands, and the name of the file is not consulted.
+    upload: async (c) => {
+      const query = parseQuery(c, requiredPathQuery);
+      const form = await c.req.formData().catch(() => null);
+      const file = form?.get("file");
+      if (!(file instanceof File))
+        throw new AppError("VALIDATION_ERROR", "choose a file to upload");
+      if (file.size > maxUploadBytes)
+        throw new AppError("PAYLOAD_TOO_LARGE", "that file is over the upload limit", {
+          bytes: file.size,
+          limit_bytes: maxUploadBytes,
+        });
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const entry = await service.upload(
+        ...args(c),
+        query.path[0] ?? "",
+        bytes,
+        requestMeta(c, trustProxy)
+      );
+      return ok(c, entry, 201);
+    },
+    remove: async (c) => {
+      const query = parseQuery(c, requiredPathQuery);
+      await service.remove(...args(c), query.path[0] ?? "", requestMeta(c, trustProxy));
+      return c.body(null, 204);
     },
     acceptHostKey: async (c) => {
       const body = await parseBody(c, acceptHostKeySchema);

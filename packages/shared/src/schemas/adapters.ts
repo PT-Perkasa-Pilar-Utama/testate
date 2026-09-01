@@ -112,7 +112,10 @@ export const adapterDraftSchema = v.object({
     v.minLength(1, "Name the adapter."),
     v.maxLength(80, "Keep the name to 80 characters.")
   ),
-  mode: v.optional(adapterModeSchema, "sandbox"),
+  // No default here on purpose: the service picks one per kind, and the two kinds want opposite
+  // answers. A database is a sandbox until someone protects it; a file store is read-only until
+  // someone opens it (23 §23.6).
+  mode: v.optional(adapterModeSchema),
   config: jsonObjectSchema,
   secrets: v.record(v.string(), secretValue),
   readonly_secrets: v.optional(v.nullable(v.record(v.string(), secretValue))),
@@ -138,15 +141,21 @@ export const adapterPatchSchema = v.partial(v.omit(adapterDraftSchema, ["kind", 
  * schema (`config`/`secrets` are `v.record`), so those stay outside this schema and are bound to
  * plain signals in `adapters.view.tsx` instead of a `<Field>`.
  */
-export const adapterCreateFormSchema = v.omit(adapterDraftSchema, [
-  "kind",
-  "config",
-  "secrets",
-  "readonly_secrets",
-  "excluded_tables",
-  "restore_mode",
-  "lock_timeout_ms",
-]);
+export const adapterCreateFormSchema = v.object({
+  ...v.omit(adapterDraftSchema, [
+    "kind",
+    "config",
+    "secrets",
+    "readonly_secrets",
+    "excluded_tables",
+    "restore_mode",
+    "lock_timeout_ms",
+    "mode",
+  ]).entries,
+  // The dialog has a Mode control, so its form always carries an answer; the wire schema leaves
+  // the field open because the service picks a different default for each kind.
+  mode: v.optional(adapterModeSchema, "sandbox"),
+});
 export type AdapterCreateFormInput = v.InferOutput<typeof adapterCreateFormSchema>;
 
 /**

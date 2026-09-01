@@ -111,6 +111,8 @@ function untrustedAware(source: FileSource, untrusted: () => boolean): FileSourc
     list: (path, query) => guard(() => source.list(path, query)),
     stat: (path) => guard(() => source.stat(path)),
     read: (path) => guard(() => source.read(path)),
+    put: (path, body) => guard(() => source.put(path, body)),
+    remove: (path) => guard(() => source.remove(path)),
     close: () => source.close(),
   };
 }

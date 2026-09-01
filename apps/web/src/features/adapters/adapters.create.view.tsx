@@ -163,21 +163,21 @@ export function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Eleme
             )}
           </Field>
         </div>
-        <Show when={engineForm().kind === "database"}>
-          <Field of={form} path={["mode"]}>
-            {(field) => (
-              <label class="grid content-start gap-1.5 text-base">
-                <span>Mode</span>
-                <Select
-                  options={ADAPTER_MODE_OPTIONS}
-                  value={field.input ?? "sandbox"}
-                  onChange={(value) => field.onInput(value)}
-                />
-                <FieldError message={field.errors?.[0]} />
-              </label>
-            )}
-          </Field>
-        </Show>
+        {/* Every kind now: a file store in sandbox mode is the one an agent or a tester may put a
+            file into, and a read-only one is the one they may not. */}
+        <Field of={form} path={["mode"]}>
+          {(field) => (
+            <label class="grid content-start gap-1.5 text-base">
+              <span>Mode</span>
+              <Select
+                options={ADAPTER_MODE_OPTIONS}
+                value={field.input ?? "sandbox"}
+                onChange={(value) => field.onInput(value)}
+              />
+              <FieldError message={field.errors?.[0]} />
+            </label>
+          )}
+        </Field>
         <div class="grid gap-3 sm:grid-cols-2">
           <For each={engineForm().config}>
             {(field) => <FieldInput presenter={props.presenter} field={field} prefix="config" />}
