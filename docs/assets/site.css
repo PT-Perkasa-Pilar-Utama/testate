@@ -887,6 +887,187 @@ code {
   white-space: nowrap;
 }
 
+/* The macOS terminal */
+.mac {
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: #0a0d12;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 40px 100px -30px rgba(0, 0, 0, 0.9),
+    0 30px 80px -40px rgba(125, 211, 192, 0.25);
+  overflow: hidden;
+}
+
+.mac .titlebar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 10px 14px;
+  background: linear-gradient(#1b2028, #151a21);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.6);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.mac .lights {
+  display: flex;
+  gap: 8px;
+}
+
+.mac .lights i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ff5f57;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.3);
+}
+
+.mac .lights i:nth-child(2) {
+  background: #febc2e;
+}
+
+.mac .lights i:nth-child(3) {
+  background: #28c840;
+}
+
+.mac .title {
+  font-family: var(--sans);
+  text-align: center;
+}
+
+.mac .replay {
+  justify-self: end;
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.mac .replay:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.mac .screen {
+  margin: 0;
+  padding: 18px 20px 22px;
+  height: 520px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink);
+  white-space: pre;
+  tab-size: 2;
+  font-variant-ligatures: none;
+}
+
+.mac .screen .ps {
+  color: var(--teal);
+}
+
+.mac .screen .cmd {
+  color: var(--ink);
+}
+
+.mac .screen .out {
+  color: var(--muted);
+}
+
+.mac .screen .ask {
+  color: var(--ink);
+}
+
+.mac .screen .ask::before {
+  content: "> ";
+  color: var(--cyan);
+}
+
+.mac .screen .tool {
+  color: var(--ink);
+}
+
+.mac .screen .tool::before {
+  content: "● ";
+  color: var(--teal);
+}
+
+.mac .screen .tool i {
+  font-style: normal;
+  color: var(--muted);
+}
+
+.mac .screen .res {
+  color: var(--muted);
+}
+
+.mac .screen .res::before {
+  content: "  ⎿  ";
+}
+
+.mac .screen .th {
+  color: var(--faint);
+}
+
+.mac .screen .td {
+  color: var(--ink);
+}
+
+.mac .screen .td .bad {
+  color: #f85149;
+}
+
+.mac .screen .td .mask {
+  color: var(--faint);
+}
+
+.mac .screen .say {
+  color: var(--ink);
+  white-space: pre-wrap;
+  padding-left: 1.4em;
+  text-indent: -1.4em;
+  max-width: 78ch;
+}
+
+.mac .screen .say::before {
+  content: "⏺ ";
+  color: var(--green);
+}
+
+.mac .screen .cur {
+  display: inline-block;
+  width: 8px;
+  height: 1.1em;
+  vertical-align: text-bottom;
+  background: var(--ink);
+  animation: blink 1s steps(2, start) infinite;
+}
+
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+@media (max-width: 720px) {
+  .mac .screen {
+    height: 440px;
+    font-size: 12px;
+  }
+  .mac .title {
+    display: none;
+  }
+  .mac .titlebar {
+    grid-template-columns: auto 1fr;
+  }
+}
+
 /* Not for */
 .nots {
   display: grid;
@@ -991,5 +1172,8 @@ footer a:hover {
   }
   .parallax {
     transform: none !important;
+  }
+  .mac .screen .cur {
+    animation: none;
   }
 }

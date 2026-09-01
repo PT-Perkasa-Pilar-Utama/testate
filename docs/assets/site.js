@@ -387,3 +387,105 @@ document.querySelectorAll(".terminal .copy").forEach((btn) => {
     }
   });
 });
+
+// The terminal: one agent session over MCP, typed out when it scrolls into view
+const term = document.getElementById("term");
+const replay = document.querySelector(".mac .replay");
+const SESSION = [
+  { k: "cmd", t: "claude mcp add --transport http testate https://testate.internal/api/v1/mcp \\" },
+  { k: "cmd", t: '  --header "Authorization: Bearer tst_g7…"', ps: false },
+  { k: "out", t: "Added HTTP MCP server testate with URL: https://testate.internal/api/v1/mcp to local config", wait: 500 },
+  { k: "gap" },
+  { k: "cmd", t: "claude", wait: 300 },
+  { k: "out", t: "Claude Code · MCP servers: testate ✔", wait: 400 },
+  { k: "gap" },
+  { k: "ask", t: "show me the last 10 transactions in the shop project", type: true, wait: 900 },
+  { k: "gap" },
+  { k: "tool", t: "testate · help", wait: 500 },
+  { k: "res", t: "guide: projects → adapters → tables → rows · reads only · 200 rows a page", wait: 500 },
+  { k: "tool", t: 'testate · list_adapters <i>(project: "shop")</i>', wait: 500 },
+  { k: "res", t: "shop-postgres · postgresql 16.3 · tabular · sandbox", wait: 500 },
+  { k: "tool", t: 'testate · describe_table <i>(adapter: "shop-postgres", table: "public.transactions")</i>', wait: 500 },
+  { k: "res", t: "7 columns · pk id · fk customer_id → public.customers · policy: card_last4 masked", wait: 600 },
+  { k: "tool", t: 'testate · run_readonly_query <i>(adapter: "shop-postgres", sql: "SELECT … ORDER BY created_at DESC LIMIT 10")</i>', wait: 900 },
+  { k: "res", t: "10 rows · 38 ms · read-only transaction · masked_columns: [card_last4]", wait: 400 },
+  { k: "gap" },
+  { k: "th", t: "  id     customer  amount    status     card  created_at" },
+  { k: "td", t: "  88213  c_4471    129.00    <b class=\"bad\">failed</b>     <b class=\"mask\">***</b>   2026-09-01 14:02:11" },
+  { k: "td", t: "  88212  c_4471    129.00    <b class=\"bad\">failed</b>     <b class=\"mask\">***</b>   2026-09-01 14:01:48" },
+  { k: "td", t: "  88211  c_1120     42.50    settled    <b class=\"mask\">***</b>   2026-09-01 13:58:03" },
+  { k: "td", t: "  88210  c_0093    310.00    settled    <b class=\"mask\">***</b>   2026-09-01 13:57:40" },
+  { k: "td", t: "  88209  c_4471    129.00    <b class=\"bad\">failed</b>     <b class=\"mask\">***</b>   2026-09-01 13:55:19" },
+  { k: "td", t: "  88208  c_2207     18.90    settled    <b class=\"mask\">***</b>   2026-09-01 13:52:02" },
+  { k: "td", t: "  88207  c_0512     77.00    refunded   <b class=\"mask\">***</b>   2026-09-01 13:49:31" },
+  { k: "td", t: "  88206  c_1120     42.50    settled    <b class=\"mask\">***</b>   2026-09-01 13:44:57" },
+  { k: "td", t: "  88205  c_3388    205.00    settled    <b class=\"mask\">***</b>   2026-09-01 13:41:10" },
+  { k: "td", t: "  88204  c_0093     12.00    settled    <b class=\"mask\">***</b>   2026-09-01 13:38:26", wait: 700 },
+  { k: "gap" },
+  {
+    k: "say",
+    t: "Ten transactions, newest first. Three are failed, all from customer c_4471, same amount, seven minutes apart: that looks like a retry loop on one order. card_last4 is masked by a column policy, so I cannot see the card. Want me to pull the customer row and the order it belongs to?",
+    wait: 0,
+  },
+  { k: "gap" },
+  { k: "ask", t: "", cursor: true },
+];
+
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+let playing = 0;
+
+async function typeInto(el, text, speed) {
+  for (const ch of text) {
+    el.textContent += ch;
+    await pause(speed + Math.random() * speed);
+  }
+}
+
+async function playTerminal() {
+  const run = ++playing;
+  term.textContent = "";
+  replay.hidden = true;
+  let cursor = document.createElement("span");
+  cursor.className = "cur";
+  for (const line of SESSION) {
+    if (run !== playing) return;
+    cursor.remove();
+    const el = document.createElement("div");
+    el.className = line.k === "gap" ? "gap" : line.k;
+    if (line.k === "gap") {
+      el.textContent = " ";
+      term.append(el);
+      continue;
+    }
+    if (line.k === "cmd" && line.ps !== false) {
+      const ps = document.createElement("span");
+      ps.className = "ps";
+      ps.textContent = "~/shop $ ";
+      el.append(ps);
+    }
+    const body = document.createElement("span");
+    el.append(body);
+    term.append(el);
+    const typed = (line.k === "cmd" || line.type) && !reduced;
+    if (typed) {
+      el.append(cursor);
+      await typeInto(body, line.t, 22);
+    } else {
+      body.innerHTML = line.t;
+    }
+    if (line.cursor) el.append(cursor);
+    term.scrollTop = term.scrollHeight;
+    if (!reduced) await pause(line.wait ?? (line.k === "td" ? 70 : 250));
+  }
+  replay.hidden = false;
+}
+
+new IntersectionObserver(
+  ([e], obs) => {
+    if (!e.isIntersecting) return;
+    obs.disconnect();
+    playTerminal();
+  },
+  { threshold: 0.35 }
+).observe(term);
+replay.addEventListener("click", playTerminal);
