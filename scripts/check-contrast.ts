@@ -65,6 +65,7 @@ const PAIRS: ReadonlyArray<{ front: string; back: string; least: number; why: st
   { front: "muted", back: "surface", least: 4.5, why: "the same, on a card" },
   { front: "heading", back: "canvas", least: 4.5, why: "headings" },
   { front: "placeholder", back: "control", least: 4.5, why: "an empty input still reads" },
+  { front: "muted", back: "sunken", least: 4.5, why: "a read-only field still reads" },
   { front: "on-accent", back: "accent", least: 4.5, why: "the primary button's own label" },
   { front: "link", back: "canvas", least: 4.5, why: "a link is text" },
   // 3:1 is the floor for a boundary rather than a glyph. The focus ring is the whole reason this

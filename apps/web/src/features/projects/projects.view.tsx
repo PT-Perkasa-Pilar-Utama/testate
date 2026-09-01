@@ -115,7 +115,6 @@ function CreateDialog(props: { presenter: ProjectsPresenter }): JSX.Element {
                 variant={field.errors ? "error" : "default"}
                 aria-invalid={field.errors ? "true" : undefined}
               />
-              <span class="text-xs text-muted">One line about what this project covers.</span>
               <FieldError message={field.errors?.[0]} />
             </label>
           )}
@@ -130,9 +129,6 @@ function CreateDialog(props: { presenter: ProjectsPresenter }): JSX.Element {
             aria-label="URL"
             value={`/projects/${projectSlug(name())}`}
           />
-          <span class="text-xs text-muted">
-            Taken from the name. A number is added if another project already has it.
-          </span>
         </label>
         <Show when={hasRole("admin")}>
           <Loading fallback={<p class="text-sm text-muted">Reading the instance default...</p>}>

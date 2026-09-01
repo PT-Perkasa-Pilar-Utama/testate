@@ -127,7 +127,6 @@ function ReuseFields(props: { presenter: WizardPresenter }): JSX.Element {
           value={props.presenter.draft().name}
           onInput={(event) => props.presenter.setDraft({ name: event.currentTarget.value })}
         />
-        <span class="text-sm text-muted">Only matters if you come back to reuse this later.</span>
       </label>
     </div>
   );
@@ -171,10 +170,6 @@ export default function MappingStep(props: { presenter: WizardPresenter }): JSX.
               props.presenter.setDraft({ key_columns: event.currentTarget.value })
             }
           />
-          <span class="text-sm text-muted">
-            Comma separated. A row already in the table with the same values here is updated instead
-            of added.
-          </span>
         </label>
       </Show>
       <ColumnsTable presenter={props.presenter} />
