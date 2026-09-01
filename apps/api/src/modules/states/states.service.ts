@@ -158,6 +158,7 @@ export function createStatesService(deps: StatesDeps): StatesService {
       action,
       target_type: "state",
       target_id: state.id,
+      target_label: state.name,
       project: { id: project.id, slug: project.slug },
       details: { name: state.name, ...details },
       outcome: "succeeded",

@@ -257,6 +257,7 @@ export function createEditing(deps: EditingDeps): Editing {
         action: "fixture.extracted",
         target_type: "adapter",
         target_id: adapter.id,
+        target_label: adapter.name,
         project: {
           id: adapter.project_id,
           slug: deps.projects.byId(adapter.project_id)?.slug ?? "",

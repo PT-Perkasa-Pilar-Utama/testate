@@ -74,12 +74,21 @@ export function createUsersService(deps: UsersDeps): UsersService {
   ): void => {
     audit.record(
       meta === undefined
-        ? { actor, action, target_type: "user", target_id: user.id, details, outcome: "succeeded" }
+        ? {
+            actor,
+            action,
+            target_type: "user",
+            target_id: user.id,
+            target_label: user.username,
+            details,
+            outcome: "succeeded",
+          }
         : {
             actor,
             action,
             target_type: "user",
             target_id: user.id,
+            target_label: user.username,
             details,
             outcome: "succeeded",
             meta,

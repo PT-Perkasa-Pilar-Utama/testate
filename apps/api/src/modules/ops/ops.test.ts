@@ -79,9 +79,13 @@ describe("migrate", () => {
     const first = migrate(db);
     const second = migrate(db);
 
-    expect(first.applied).toStrictEqual(["0001_init.sql", "0002_drop_hooks_and_rest.sql"]);
+    expect(first.applied).toStrictEqual([
+      "0001_init.sql",
+      "0002_drop_hooks_and_rest.sql",
+      "0003_audit_target_label.sql",
+    ]);
     expect(second.applied).toStrictEqual([]);
-    expect(second.skipped).toBe(2);
+    expect(second.skipped).toBe(3);
     const tables = db
       .query<{ name: string }, []>(
         "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"

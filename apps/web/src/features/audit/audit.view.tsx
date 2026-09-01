@@ -8,11 +8,19 @@ import Button from "@/components/button.tsx";
 import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
 import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
-import LoadMore from "@/components/load-more.tsx";
 import Select from "@/components/select.tsx";
 import { AUDIT_OUTCOME_LABEL } from "@/lib/labels.ts";
 import { activeFilterCount } from "@/lib/table.ts";
-import { Cell, Head, Row, Table, EmptyRow, TableFooter, Truncated } from "@/components/table.tsx";
+import {
+  Cell,
+  EmptyRow,
+  Head,
+  Row,
+  Table,
+  TableFooter,
+  TableSearch,
+  Truncated,
+} from "@/components/table.tsx";
 import { OUTCOMES, createAuditPresenter } from "./audit.presenter.ts";
 import type { AuditPresenter } from "./audit.presenter.ts";
 
@@ -105,11 +113,18 @@ export default function AuditView(): JSX.Element {
         title="Audit log"
         description="Every write, by whom, and how it ended."
         actions={
-          <FilterToggle
-            open={open()}
-            active={activeCount(presenter.filter)}
-            onToggle={() => setOpen((value) => !value)}
-          />
+          <>
+            <TableSearch
+              placeholder="Search logs..."
+              value={presenter.filter().q}
+              onInput={(value) => presenter.setFilter({ q: value })}
+            />
+            <FilterToggle
+              open={open()}
+              active={activeCount(presenter.filter)}
+              onToggle={() => setOpen((value) => !value)}
+            />
+          </>
         }
       />
       <FilterPanel open={open()}>
@@ -129,7 +144,7 @@ export default function AuditView(): JSX.Element {
           </thead>
           <tbody>
             <Show
-              when={presenter.value().length > 0}
+              when={presenter.rows().length > 0}
               fallback={
                 <EmptyRow>
                   <Show
@@ -141,7 +156,7 @@ export default function AuditView(): JSX.Element {
                 </EmptyRow>
               }
             >
-              <For each={presenter.value()}>
+              <For each={presenter.rows()}>
                 {(row) => (
                   <Row>
                     <Cell class="whitespace-nowrap tabular-nums">{formatWhen(row.created_at)}</Cell>
@@ -166,16 +181,17 @@ export default function AuditView(): JSX.Element {
                       </code>
                     </Cell>
                     <Cell class="whitespace-nowrap">
-                      {/* target_type is one of a short, fixed set of internal type names; the
-                          risk is target_id, which is usually a UUID (36 chars) but is sometimes a
-                          raw username or another table's primary key with no cap of its own. 20rem
-                          fits "<type> <uuid>" without truncating the common case. */}
-                      <code
-                        class="block max-w-[20rem] truncate text-xs text-muted"
+                      {/* The name it had when this happened, with the id behind the tooltip. The
+                          column used to print the uuid, which answers "which row" and never
+                          "which thing". Rows written before the label existed have none, and fall
+                          back to the id rather than showing an empty cell. */}
+                      <span
+                        class="block max-w-[20rem] truncate"
                         title={`${row.target_type} ${row.target_id}`}
                       >
-                        {row.target_type} {row.target_id}
-                      </code>
+                        <span class="text-xs text-muted">{row.target_type}</span>{" "}
+                        {row.target_label ?? row.target_id}
+                      </span>
                     </Cell>
                     <Cell>
                       {/* A slug is 2-64 chars with no spaces, the same shape as the username that
@@ -197,12 +213,30 @@ export default function AuditView(): JSX.Element {
           </tbody>
         </Table>
         <TableFooter
-          shown={presenter.value().length}
+          shown={presenter.rows().length}
           noun="rows"
-          hasMore={presenter.hasMore()}
+          hasMore={presenter.hasNext()}
           total={presenter.total()}
         >
-          <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
+          {/* Page by page rather than one growing list: you read a page of a log, then the one
+              before it. A keyset cursor only points forwards, so the way back is the cursors
+              already used. */}
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={presenter.depth() === 0}
+            onClick={() => presenter.previous()}
+          >
+            Previous
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={!presenter.hasNext()}
+            onClick={() => presenter.next()}
+          >
+            Next
+          </Button>
         </TableFooter>
       </Loading>
     </section>

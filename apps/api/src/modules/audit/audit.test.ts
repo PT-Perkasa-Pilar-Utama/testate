@@ -46,6 +46,44 @@ describe("audit", () => {
     expect(page.rows[0]?.ip).toBe("10.0.0.1");
   });
 
+  it("finds a row from part of a word, wherever that part sits", async () => {
+    const { audit } = setup();
+    audit.record({
+      actor: { ...QA_ACTOR, label: "administrator.jane" },
+      action: "auth.login",
+      target_type: "user",
+      target_id: "u1",
+      target_label: "orders-db",
+      outcome: "succeeded",
+    });
+    // The name is on the row the screen reads, not looked up again later.
+    expect((await audit.list({ limit: 10 })).rows[0]?.target_label).toBe("orders-db");
+    const found = async (q: string): Promise<number> =>
+      (await audit.list({ limit: 10, q })).rows.length;
+    // The actor used to match exactly and the action by prefix, so neither of the first two worked.
+    expect(await found("adm")).toBe(1);
+    expect(await found("login")).toBe(1);
+    expect(await found("orders")).toBe(1);
+    expect(await found("nothing-like-it")).toBe(0);
+  });
+
+  it("counts what the filter matches, not what fits on the page", async () => {
+    const { audit } = setup();
+    for (const action of ["user.created", "user.deleted", "project.created"]) {
+      audit.record({
+        actor: { ...QA_ACTOR },
+        action,
+        target_type: "user",
+        target_id: "u1",
+        outcome: "succeeded",
+      });
+    }
+    const page = await audit.list({ limit: 1 });
+    expect(page.rows).toHaveLength(1);
+    expect(await audit.total({ limit: 1 })).toBe(3);
+    expect(await audit.total({ limit: 1, q: "user." })).toBe(2);
+  });
+
   it("a day named as the upper bound is inside the range, not excluded by it", async () => {
     const { audit } = setup();
     audit.record({

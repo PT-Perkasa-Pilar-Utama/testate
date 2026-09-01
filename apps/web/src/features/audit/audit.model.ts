@@ -7,6 +7,8 @@ import type { Page } from "@/lib/async.ts";
 import type { Query } from "@/lib/api-client.ts";
 
 export type AuditFilter = {
+  /** The search box: one substring over the actor, the action and the target's name. */
+  q: string;
   action: string;
   actor: string;
   outcome: string;
@@ -17,15 +19,14 @@ export type AuditFilter = {
 /** Only the fields the person filled in; an empty box is not a filter. */
 export function queryOf(filter: AuditFilter, cursor: string | undefined): Query {
   return {
+    q: filter.q === "" ? undefined : filter.q,
     action: filter.action === "" ? undefined : filter.action,
     actor: filter.actor === "" ? undefined : filter.actor,
     outcome: filter.outcome === "" ? undefined : filter.outcome,
     from: filter.from === "" ? undefined : filter.from,
-    // audit_logs.created_at is a full timestamp and the repository compares `to` with a plain
-    // `<=`, not the end-of-day widening jobs/checkouts get from `createdRangeConditions`; a bare
-    // date would drop every row logged later that same day (tokens.presenter.ts does the same
-    // widening for expires_on).
-    to: filter.to === "" ? undefined : `${filter.to}T23:59:59.999Z`,
+    // A bare day, which the API widens to the end of it. The screen used to append the time itself
+    // because the repository compared `to` raw; it uses the shared helper now.
+    to: filter.to === "" ? undefined : filter.to,
     cursor,
   };
 }

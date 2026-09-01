@@ -15,6 +15,7 @@ export const AUDIT_ROW_MOCK: AuditRow = {
   action: "checkout.created",
   target_type: "checkout",
   target_id: "01991f00-0000-7000-8000-000000000050",
+  target_label: "orders",
   project: { id: PROJECT_ID, slug: "shop" },
   adapter: { id: ADAPTER_ID, name: "orders-db" },
   details: { state_name: "seeded-baseline", force: false },
@@ -30,6 +31,8 @@ export type AuditEntry = {
   action: string;
   target_type: string;
   target_id: string;
+  /** What the target is called. An audit row keeps the name it had when the event happened. */
+  target_label?: string;
   project?: { id: string | null; slug: string };
   adapter?: { id: string | null; name: string };
   details?: JsonObject;
@@ -40,6 +43,7 @@ export type AuditEntry = {
 export type AuditService = {
   record(entry: AuditEntry): void;
   list(query: AuditListQuery): Promise<AuditPage>;
+  total(query: AuditListQuery): Promise<number>;
   exportCsv(query: AuditListQuery): Promise<string>;
 };
 
@@ -107,6 +111,7 @@ export function createAuditService(deps: AuditDeps): AuditService {
       deps.repo.insert({
         id: Bun.randomUUIDv7(),
         ...actorColumns(entry.actor),
+        target_label: entry.target_label ?? null,
         action: entry.action,
         target_type: entry.target_type,
         target_id: entry.target_id,
@@ -120,6 +125,9 @@ export function createAuditService(deps: AuditDeps): AuditService {
     },
     async list(query) {
       return deps.repo.list(query);
+    },
+    async total(query) {
+      return deps.repo.total(query);
     },
     async exportCsv(query) {
       const lines = [CSV_COLUMNS.join(",")];

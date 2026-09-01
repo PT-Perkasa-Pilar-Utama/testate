@@ -97,6 +97,8 @@ export function registerRunners(dispatcher: Dispatcher, deps: RunnerDeps): void 
       .query("UPDATE api_tokens SET revoked_at = ? WHERE revoked_at IS NULL AND project_ids LIKE ?")
       .run(nowIso(), `%"${job.project_id ?? ""}"%`).changes;
     deps.db.query("DELETE FROM projects WHERE id = ?").run(job.project_id);
+    // No target_label: only the slug reaches this payload, not the project's display name, and
+    // the slug already has its own column on this row (project.slug below).
     deps.audit.record({
       actor: actorOf(job),
       action: "project.deleted",
@@ -126,6 +128,7 @@ export function registerRunners(dispatcher: Dispatcher, deps: RunnerDeps): void 
       action: "adapter.deleted",
       target_type: "adapter",
       target_id: payload.adapter_id,
+      target_label: payload.name,
       project: { id: job.project_id, slug: payload.slug },
       adapter: { id: payload.adapter_id, name: payload.name },
       details: { action: payload.action, manifests_marked: removed, restored },

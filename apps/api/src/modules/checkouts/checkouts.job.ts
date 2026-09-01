@@ -78,6 +78,7 @@ function finish(
   deps: CheckoutJobDeps,
   job: JobRecord,
   checkoutId: string,
+  stateName: string,
   payload: Payload,
   status: Checkout["status"]
 ): void {
@@ -91,6 +92,7 @@ function finish(
     action: "checkout.finished",
     target_type: "checkout",
     target_id: checkoutId,
+    target_label: stateName,
     project: { id: projectId, slug: deps.projects.byId(projectId)?.slug ?? "" },
     details: { state_id: payload.state_id, status, force: payload.force },
     outcome: status === "succeeded" || status === "partial" ? "succeeded" : "failed",
@@ -126,7 +128,7 @@ export function createCheckoutRunner(deps: CheckoutJobDeps): JobRunner {
       }
       const results = await restoreAll(deps, checkout.id, adapters, payload, signal, progress);
       const status = statusOf(results);
-      finish(deps, job, checkout.id, payload, status);
+      finish(deps, job, checkout.id, checkout.state.name, payload, status);
       return {
         status: status === "partial" ? "partial" : "succeeded",
         result: {
@@ -136,7 +138,14 @@ export function createCheckoutRunner(deps: CheckoutJobDeps): JobRunner {
         },
       };
     } catch (cause: unknown) {
-      finish(deps, job, checkout.id, payload, signal.aborted ? "cancelled" : "failed");
+      finish(
+        deps,
+        job,
+        checkout.id,
+        checkout.state.name,
+        payload,
+        signal.aborted ? "cancelled" : "failed"
+      );
       throw cause;
     } finally {
       deps.states.releasePins(job.id);

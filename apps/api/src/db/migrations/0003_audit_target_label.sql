@@ -1,0 +1,13 @@
+-- What the thing was called when it happened.
+--
+-- The log stored `target_type` and `target_id` and the screen printed the raw uuid, so the column
+-- a person reads to answer "what did this touch" said `01a05a56-bb99-75d8-9d6f-48371d700771`.
+--
+-- Denormalised rather than joined, and not for speed. An audit row is history: joining to the users
+-- table shows what the account is called today, and shows nothing at all once it is deleted, which
+-- is exactly when someone reads the audit log. The row already keeps `actor_label`, `project_slug`
+-- and `adapter_name` for the same reason; this is the one that was missed.
+--
+-- Nullable because rows written before this migration cannot be given a name after the fact. The
+-- screen falls back to the id for those.
+ALTER TABLE audit_logs ADD COLUMN target_label TEXT;

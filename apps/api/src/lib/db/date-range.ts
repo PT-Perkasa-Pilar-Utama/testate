@@ -12,7 +12,11 @@ export function createdRangeConditions(
   const found: { sql: string; params: string[] }[] = [];
   if (from !== undefined && from !== "") found.push({ sql: `${column} >= ?`, params: [from] });
   if (to !== undefined && to !== "") {
-    found.push({ sql: `${column} <= ?`, params: [`${to}T23:59:59.999Z`] });
+    // Only a bare day is widened. A caller that already sent a full timestamp means that instant,
+    // and appending a second time would build "2026-08-30T23:59:59.999ZT23:59:59.999Z", which
+    // compares greater than every row and quietly returns nothing.
+    const bare = /^\d{4}-\d{2}-\d{2}$/.test(to);
+    found.push({ sql: `${column} <= ?`, params: [bare ? `${to}T23:59:59.999Z` : to] });
   }
   return found;
 }

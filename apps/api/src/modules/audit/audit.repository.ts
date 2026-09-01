@@ -1,4 +1,5 @@
 import { createdRangeConditions } from "../../lib/db/date-range.ts";
+import { likeTerm } from "../../lib/db/like.ts";
 import type { AuditRow, JsonObject } from "@testate/shared";
 import { jsonObjectSchema } from "@testate/shared";
 import * as v from "valibot";
@@ -13,6 +14,7 @@ const auditRecordSchema = v.object({
   action: v.string(),
   target_type: v.string(),
   target_id: v.string(),
+  target_label: v.nullable(v.string()),
   project_id: v.nullable(v.string()),
   project_slug: v.nullable(v.string()),
   adapter_id: v.nullable(v.string()),
@@ -33,6 +35,7 @@ export type AuditInsert = {
   action: string;
   target_type: string;
   target_id: string;
+  target_label: string | null;
   project_id: string | null;
   project_slug: string | null;
   adapter_id: string | null;
@@ -48,6 +51,8 @@ export type AuditListQuery = {
   limit: number;
   cursor?: string;
   project_id?: string;
+  /** One substring over the actor, the action and the target's name. */
+  q?: string;
   actor?: string;
   action?: string;
   from?: string;
@@ -62,6 +67,8 @@ export type AuditPage = { rows: AuditRow[]; nextCursor: string | null };
 export type AuditRepository = {
   insert(row: AuditInsert): void;
   list(query: AuditListQuery): AuditPage;
+  /** How many rows the filter matches, ignoring the page. */
+  total(query: AuditListQuery): number;
 };
 
 function actorOf(record: AuditRecord): AuditRow["actor"] {
@@ -81,6 +88,7 @@ function toRow(record: AuditRecord): AuditRow {
     action: record.action,
     target_type: record.target_type,
     target_id: record.target_id,
+    target_label: record.target_label,
     project:
       record.project_slug === null ? null : { id: record.project_id, slug: record.project_slug },
     adapter:
@@ -105,43 +113,75 @@ export function decodeCursor(cursor: string): { created_at: string; id: string }
 
 type Condition = { sql: string; params: string[] };
 
-const FILTERS: readonly { key: keyof AuditListQuery; sql: string; like?: boolean }[] = [
+/**
+ * `actor` matched the label exactly and `action` matched a prefix, so "adm" found nothing at all
+ * and "login" never found "auth.login". Both are substrings now, which is what a person typing part
+ * of a name means, and `q` is the one box that looks in all three places at once.
+ */
+const EXACT: readonly { key: keyof AuditListQuery; sql: string }[] = [
   { key: "project_id", sql: "project_id = ?" },
-  { key: "actor", sql: "actor_label = ?" },
-  { key: "action", sql: "action LIKE ?", like: true },
   { key: "outcome", sql: "outcome = ?" },
 ];
 
-/** Equality filters plus a prefix match on action; the cursor is a keyset on (created_at, id). */
-function conditions(query: AuditListQuery): Condition[] {
+const SUBSTRING: readonly { key: keyof AuditListQuery; column: string }[] = [
+  { key: "actor", column: "actor_label" },
+  { key: "action", column: "action" },
+];
+
+/** The label if the row has one, else the id, so a search still reaches rows written before it. */
+const TARGET = "COALESCE(target_label, target_id)";
+
+/** The named boxes: an exact match where the value is one of a set, a substring where it is typed. */
+function namedFilters(query: AuditListQuery): Condition[] {
   const found: Condition[] = [];
-  for (const filter of FILTERS) {
+  for (const filter of EXACT) {
+    const value = query[filter.key];
+    if (value !== undefined && value !== "")
+      found.push({ sql: filter.sql, params: [String(value)] });
+  }
+  for (const filter of SUBSTRING) {
     const value = query[filter.key];
     if (value === undefined || value === "") continue;
-    found.push({ sql: filter.sql, params: [filter.like === true ? `${value}%` : String(value)] });
+    found.push({ sql: `${filter.column} LIKE ? ESCAPE '\\'`, params: [likeTerm(String(value))] });
   }
-  // Not in FILTERS above: a bare "2026-08-30" as the upper bound compares less than every timestamp
-  // on that day, so a to-bound silently dropped the whole day it named.
+  return found;
+}
+
+/** Everything that narrows the list. The cursor is added by `list` alone, so `total` can share this. */
+function conditions(query: AuditListQuery): Condition[] {
+  const found: Condition[] = namedFilters(query);
+  if (query.q !== undefined && query.q !== "") {
+    const like = likeTerm(query.q);
+    found.push({
+      sql: `(actor_label LIKE ? ESCAPE '\\' OR action LIKE ? ESCAPE '\\' OR ${TARGET} LIKE ? ESCAPE '\\')`,
+      params: [like, like, like],
+    });
+  }
+  // A bare "2026-08-30" as the upper bound compares less than every timestamp on that day, so a
+  // to-bound silently dropped the whole day it named.
   found.push(...createdRangeConditions("created_at", query.from, query.to));
   if (query.scope !== undefined && query.scope !== null) {
     const marks = query.scope.map(() => "?").join(",");
     found.push({ sql: `project_id IN (${marks === "" ? "NULL" : marks})`, params: query.scope });
   }
-  if (query.cursor !== undefined) {
-    const after = decodeCursor(query.cursor);
-    found.push({
-      sql: "(created_at < ? OR (created_at = ? AND id < ?))",
-      params: [after.created_at, after.created_at, after.id],
-    });
-  }
   return found;
+}
+
+/** The page's own condition. Counting from the cursor answers "how many are left", not "how many". */
+function afterCursor(query: AuditListQuery): Condition | null {
+  if (query.cursor === undefined) return null;
+  const after = decodeCursor(query.cursor);
+  return {
+    sql: "(created_at < ? OR (created_at = ? AND id < ?))",
+    params: [after.created_at, after.created_at, after.id],
+  };
 }
 
 export function createAuditRepository(db: MetadataDb): AuditRepository {
   const insert = db.query(
-    `INSERT INTO audit_logs (id, actor_user_id, actor_token_id, actor_label, action, target_type, target_id,
+    `INSERT INTO audit_logs (id, actor_user_id, actor_token_id, actor_label, action, target_type, target_id, target_label,
        project_id, project_slug, adapter_id, adapter_name, details, outcome, ip, user_agent, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
   return {
     insert(row) {
@@ -153,6 +193,7 @@ export function createAuditRepository(db: MetadataDb): AuditRepository {
         row.action,
         row.target_type,
         row.target_id,
+        row.target_label,
         row.project_id,
         row.project_slug,
         row.adapter_id,
@@ -164,8 +205,19 @@ export function createAuditRepository(db: MetadataDb): AuditRepository {
         row.created_at
       );
     },
+    total(query) {
+      const found = conditions(query);
+      const where =
+        found.length === 0 ? "" : ` WHERE ${found.map((item) => item.sql).join(" AND ")}`;
+      const row = db
+        .query(`SELECT COUNT(*) AS n FROM audit_logs${where}`)
+        .get(...found.flatMap((item) => item.params));
+      return v.parse(v.object({ n: v.number() }), row).n;
+    },
     list(query) {
       const found = conditions(query);
+      const after = afterCursor(query);
+      if (after !== null) found.push(after);
       const where =
         found.length === 0 ? "" : ` WHERE ${found.map((item) => item.sql).join(" AND ")}`;
       const params = found.flatMap((item) => item.params);

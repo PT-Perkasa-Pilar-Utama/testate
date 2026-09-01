@@ -143,6 +143,7 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
       action,
       target_type: "adapter",
       target_id: adapter.id,
+      target_label: adapter.name,
       project: { id: adapter.project_id, slug },
       adapter: { id: adapter.id, name: adapter.name },
       details,

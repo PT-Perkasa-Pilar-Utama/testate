@@ -125,6 +125,8 @@ export function createCheckoutsService(deps: CheckoutsDeps): CheckoutsService {
       action,
       target_type: "checkout",
       target_id: checkout.id,
+      // A checkout has no name of its own; the state it checks out is what a person recognises it by.
+      target_label: checkout.state.name,
       project: { id: project.id, slug: project.slug },
       details: { state_id: checkout.state.id, force: checkout.force },
       outcome: "succeeded",
@@ -282,6 +284,7 @@ export function createCheckoutsService(deps: CheckoutsDeps): CheckoutsService {
         action: "checkout.blockers_terminated",
         target_type: "checkout",
         target_id: checkout.id,
+        target_label: checkout.state.name,
         project: { id: project.id, slug: project.slug },
         adapter: { id: adapter.id, name: adapter.name },
         details: { terminated: result.terminated, failed: result.failed },

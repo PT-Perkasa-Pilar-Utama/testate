@@ -16,6 +16,7 @@ const listQuery = v.object({
     v.array(v.pipe(v.string(), v.transform(Number), v.integer(), v.minValue(1), v.maxValue(200)))
   ),
   project_id: text,
+  q: text,
   actor: text,
   action: text,
   from: text,
@@ -23,7 +24,7 @@ const listQuery = v.object({
   outcome: v.optional(v.array(v.picklist(["succeeded", "failed", "partial"]))),
 });
 
-const TEXT_KEYS = ["cursor", "project_id", "actor", "action", "from", "to"] as const;
+const TEXT_KEYS = ["cursor", "project_id", "q", "actor", "action", "from", "to"] as const;
 
 export function toListQuery(
   parsed: v.InferOutput<typeof listQuery>,
@@ -44,7 +45,8 @@ export function createAuditHandlers(service: AuditService): AuditHandlers {
     list: async (c) => {
       const query = toListQuery(parseQuery(c, listQuery), c.get("projectScope"));
       const page = await service.list(query);
-      return okPage(c, page.rows, page.nextCursor, query.limit);
+      const total = await service.total(query);
+      return okPage(c, page.rows, page.nextCursor, query.limit, total);
     },
     exportCsv: async (c) => {
       const query = toListQuery(parseQuery(c, listQuery), c.get("projectScope"));

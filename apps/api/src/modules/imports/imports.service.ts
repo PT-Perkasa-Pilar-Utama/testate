@@ -258,6 +258,8 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
         action: "import.run",
         target_type: "import_run",
         target_id: runId,
+        // The run itself has no name; the mapping it executes is what a person recognises.
+        target_label: mapping.name,
         project: { id: project.id, slug: project.slug },
         adapter: { id: adapter.id, name: adapter.name },
         details: { mapping_id: mapping.id, mode, dry_run: request.dry_run },

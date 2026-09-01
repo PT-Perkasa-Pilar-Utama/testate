@@ -71,6 +71,13 @@ export type DiffsDeps = {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Mirrors the compare view's title (diffs.presenter.ts `targetLabel`): base name, then the
+ * target's name, or "live database" for a live compare. */
+function diffLabel(diff: Diff): string {
+  const target = "live" in diff.target ? "live database" : diff.target.name;
+  return `${diff.base.name} → ${target}`;
+}
+
 /** ponytail: decoded diff rows cached up to this many across tables. Above it a blob streams from the start per page; add a chunk index when a diff table passes it. */
 const CACHED_ROWS = 200_000;
 const rowsCache = createRowsCache<DiffRow>(CACHED_ROWS);
@@ -212,6 +219,7 @@ export function createDiffsService(deps: DiffsDeps): DiffsService {
         action: "diff.created",
         target_type: "diff",
         target_id: id,
+        target_label: diffLabel(diff),
         project: { id: project.id, slug: project.slug },
         details: {
           base_state_id: base.id,
@@ -271,6 +279,7 @@ export function createDiffsService(deps: DiffsDeps): DiffsService {
         action: "diff.deleted",
         target_type: "diff",
         target_id: id,
+        target_label: diffLabel(diff),
         project: { id: project.id, slug: project.slug },
         details: {},
         outcome: "succeeded",

@@ -273,6 +273,7 @@ export function createSnapshotRunner(deps: SnapshotDeps): JobRunner {
         action: "state.created",
         target_type: "state",
         target_id: target.stateId,
+        target_label: target.name,
         project: { id: projectId, slug: deps.projects.byId(projectId)?.slug ?? "" },
         details: {
           kind: target.kind,

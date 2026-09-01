@@ -158,6 +158,7 @@ export function createStorageService(deps: StorageDeps): StorageService {
         action: "host_key.accepted",
         target_type: "adapter",
         target_id: adapterId,
+        target_label: resolved.adapter.name,
         project: { id: project.id, slug: project.slug },
         adapter: { id: adapterId, name: resolved.adapter.name },
         details: { fingerprint: live.fingerprint, key_type: live.type },

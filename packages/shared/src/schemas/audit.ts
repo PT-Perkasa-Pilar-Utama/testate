@@ -13,6 +13,8 @@ export const auditRowSchema = v.object({
   action: v.string(),
   target_type: v.string(),
   target_id: v.string(),
+  /** What it was called when this happened; null on rows written before the column existed. */
+  target_label: v.nullable(v.string()),
   project: v.nullable(v.object({ id: v.nullable(idSchema), slug: v.string() })),
   adapter: v.nullable(v.object({ id: v.nullable(idSchema), name: v.string() })),
   details: jsonObjectSchema,
@@ -27,6 +29,8 @@ export const auditQuerySchema = v.object({
   cursor: v.optional(v.string()),
   limit: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(200))),
   project_id: v.optional(idSchema),
+  /** One substring match over the actor, the action and the target's name. */
+  q: v.optional(v.string()),
   actor: v.optional(v.string()),
   action: v.optional(v.string()),
   from: v.optional(timestampSchema),

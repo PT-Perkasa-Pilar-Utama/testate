@@ -38,6 +38,7 @@ export function createStateDeleteRunner(deps: DeleteDeps): JobRunner {
       action: "state.deleted",
       target_type: "state",
       target_id: state.id,
+      target_label: state.name,
       project: { id: projectId, slug: payload.slug },
       details: { name: state.name, blobs_deleted: orphans.length, head_cleared: removal.wasHead },
       outcome: "succeeded",
