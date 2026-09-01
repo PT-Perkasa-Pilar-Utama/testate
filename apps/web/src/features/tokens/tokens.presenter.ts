@@ -2,6 +2,7 @@ import { createSignal } from "solid-js";
 import type { ApiToken, JsonObject, TokenDraft } from "@testate/shared";
 import { ROLES, TOKEN_KINDS } from "@testate/shared";
 
+import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createPaged } from "@/lib/async.ts";
 import type { Paged } from "@/lib/async.ts";
@@ -65,7 +66,7 @@ export function createTokensPresenter(): TokensPresenter {
         setCreating(false);
         tokens.refresh();
       } catch (cause: unknown) {
-        setError(cause instanceof Error ? cause.message : "could not create the token");
+        setError(humanMessage(cause, "Could not create the token."));
       }
     },
     copyCreated: () => {

@@ -3,6 +3,7 @@ import { Show } from "solid-js";
 import type { Adapter, AdapterMode } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
+import { statusReason } from "@/lib/api-error.ts";
 import Banner from "@/components/banner.tsx";
 import LayerCard from "@/components/layer-card.tsx";
 import { formatWhen } from "@/lib/format.ts";
@@ -52,7 +53,7 @@ export function StatusLine(props: { adapter: Adapter }): JSX.Element {
       </div>
       <Show when={a().status !== "ok"}>
         <Banner variant={a().status === "disabled" ? "alert" : "error"}>
-          {a().status_message ??
+          {statusReason(a().status_message) ??
             "No reason recorded. Retest the connection, or edit it to check the details."}
         </Banner>
       </Show>

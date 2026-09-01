@@ -5,6 +5,7 @@ import type { RowCell } from "@testate/shared";
 import type { formValueSchema } from "@testate/shared";
 import * as v from "valibot";
 
+import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { editingModel } from "./editing.model.ts";
 import { policiesModel } from "./policies.model.ts";
@@ -263,7 +264,7 @@ export function createEditingPresenter(
           if (keepOpen) setForm({ kind: "insert" });
           else setForm(null);
         } catch (cause: unknown) {
-          setError(cause instanceof Error ? cause.message : String(cause));
+          setError(humanMessage(cause, "Could not save that row."));
         }
       });
     },

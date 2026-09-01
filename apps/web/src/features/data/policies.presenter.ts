@@ -2,6 +2,7 @@ import { createSignal } from "solid-js";
 import type { ColumnPolicy, Introspection, JsonObject, PolicyFormInput } from "@testate/shared";
 import { policyFunctionChoiceSchema, policyMaskChoiceSchema } from "@testate/shared";
 
+import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
@@ -43,7 +44,7 @@ export function policyBody(draft: PolicyDraft): JsonObject {
 }
 
 function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : "request failed";
+  return humanMessage(cause, "Could not save that policy.");
 }
 
 export function createPoliciesPresenter(slug: () => string, id: () => string): PoliciesPresenter {

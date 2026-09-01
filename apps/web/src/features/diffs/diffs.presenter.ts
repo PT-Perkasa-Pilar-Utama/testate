@@ -1,6 +1,7 @@
 import { createSignal } from "solid-js";
 import type { Diff, DiffRow, JsonObject, State } from "@testate/shared";
 
+import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
@@ -112,7 +113,7 @@ export function keyLabel(row: DiffRow): string {
 }
 
 function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : "request failed";
+  return humanMessage(cause, "That comparison did not work.");
 }
 
 export function createDiffsPresenter(slug: () => string): DiffsPresenter {

@@ -173,7 +173,7 @@ export function createStatesService(deps: StatesDeps): StatesService {
     }
     const unknown = requested.find((id) => !all.includes(id));
     if (unknown !== undefined) throw notFound("adapter");
-    if (requested.length === 0) throw conflict("adapter_ids may not be empty");
+    if (requested.length === 0) throw conflict("pick at least one database to snapshot");
     return requested;
   };
 

@@ -8,6 +8,7 @@ import type {
   StateTreeNode,
 } from "@testate/shared";
 
+import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createPaged, createRefreshable } from "@/lib/async.ts";
 import type { Paged, Refreshable } from "@/lib/async.ts";
@@ -71,7 +72,7 @@ export function toUpdateBody(draft: StateDraftInput): JsonObject {
 }
 
 function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : "request failed";
+  return humanMessage(cause, "That did not work.");
 }
 
 /** Why "Check out" is dead for a state that is not ready, next to the button rather than a banner. */

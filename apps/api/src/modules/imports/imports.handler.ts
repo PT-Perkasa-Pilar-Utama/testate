@@ -79,7 +79,7 @@ export function createImportsHandlers(
       const form = await c.req.formData().catch(() => null);
       const file = form?.get("file");
       if (!(file instanceof File))
-        throw new AppError("VALIDATION_ERROR", "multipart field `file` is required");
+        throw new AppError("VALIDATION_ERROR", "choose a file to upload");
       const purpose = v.parse(purposeSchema, form?.get("purpose") ?? undefined);
       return ok(c, await service.upload(param(c, "slug"), file, purpose), 201);
     },

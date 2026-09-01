@@ -28,7 +28,7 @@ function assertTargets(mapping: MappingSpec, table: TableSchema): void {
 
 function assertKeys(mapping: MappingSpec): void {
   if (mapping.mode === "upsert" && mapping.key_columns.length === 0) {
-    throw new AppError("VALIDATION_ERROR", "upsert needs key_columns");
+    throw new AppError("VALIDATION_ERROR", "pick at least one key column to match rows by");
   }
   for (const key of mapping.key_columns) {
     if (!mapping.columns.some((column) => column.target === key)) {

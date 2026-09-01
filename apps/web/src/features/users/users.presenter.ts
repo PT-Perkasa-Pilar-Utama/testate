@@ -2,6 +2,7 @@ import { createSignal } from "solid-js";
 import type { CreateUserInput, EditUserInput, ResetPasswordInput, User } from "@testate/shared";
 import { ROLES } from "@testate/shared";
 
+import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createPaged } from "@/lib/async.ts";
 import type { Paged } from "@/lib/async.ts";
@@ -35,7 +36,7 @@ export type UsersPresenter = Paged<User> & {
 };
 
 function messageOf(cause: unknown, fallback: string): string {
-  return cause instanceof Error ? cause.message : fallback;
+  return humanMessage(cause, fallback);
 }
 
 export function createUsersPresenter(): UsersPresenter {

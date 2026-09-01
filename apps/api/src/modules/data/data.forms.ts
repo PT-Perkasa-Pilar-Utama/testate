@@ -33,8 +33,7 @@ const FUNCTIONS = {
   hash_sha512: (input) => tools.hash({ algorithm: "sha512", value: input }),
   hmac_sha256: (input, params) => {
     const secret = v.parse(v.optional(v.string()), params?.["secret"]);
-    if (secret === undefined)
-      throw new AppError("VALIDATION_ERROR", "hmac_sha256 needs params.secret");
+    if (secret === undefined) throw new AppError("VALIDATION_ERROR", "an HMAC needs a secret");
     return tools.hash({ algorithm: "hmac_sha256", value: input, secret });
   },
 } satisfies Record<FunctionValue["name"], Applier>;

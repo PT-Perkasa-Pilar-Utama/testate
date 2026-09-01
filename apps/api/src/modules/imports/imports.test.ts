@@ -131,7 +131,7 @@ describe("imports", () => {
     ).rejects.toThrow("unknown target column nope");
     await expect(
       h.imports.createMapping(h.harness.qa, h.adapterId, { ...MAPPING, key_columns: [] })
-    ).rejects.toThrow("upsert needs key_columns");
+    ).rejects.toThrow("pick at least one key column to match rows by");
     h.harness.policies.upsert(
       h.adapterId,
       {

@@ -149,6 +149,9 @@ export function createQueryPresenter(slug: () => string, id: () => string): Quer
     try {
       setResult(await dataModel.query(staticSlug, staticId, body));
     } catch (cause: unknown) {
+      // Deliberately the database's own words. A syntax error, a missing column, a permission
+      // refusal: on this screen that text is the answer the person came for, not a leak. Do not
+      // route it through `humanMessage`.
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setBusy(false);
@@ -156,6 +159,11 @@ export function createQueryPresenter(slug: () => string, id: () => string): Quer
     }
   };
   const isMongo = (): boolean => adapter.value().engine === "mongodb";
+  /**
+   * Throws when the query the person is writing will not parse: bad JSON in a Mongo filter, an
+   * operation the schema refuses. Every caller shows that message as it is, on purpose. This whole
+   * screen exists to report what is wrong with a query, and a friendlier sentence would say less.
+   */
   const request = (): QueryRequest => buildRequest(isMongo(), sql(), mongo(), rowCap());
   return {
     adapter,

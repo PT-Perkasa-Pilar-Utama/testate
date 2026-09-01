@@ -1,6 +1,7 @@
 import { createSignal } from "solid-js";
 import type { JsonObject, Project, ProjectDraft } from "@testate/shared";
 
+import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
@@ -107,7 +108,7 @@ export function createProjectPresenter(slug: () => string): ProjectPresenter {
         setEditing(false);
         overview.refresh();
       } catch (cause: unknown) {
-        setEditError(cause instanceof Error ? cause.message : "could not update the project");
+        setEditError(humanMessage(cause, "Could not update the project."));
       }
     },
     plan,
@@ -142,7 +143,7 @@ export function createProjectPresenter(slug: () => string): ProjectPresenter {
         showToast("Deletion job queued; every database returns to its init state first", "info");
         navigate("/projects");
       } catch (cause: unknown) {
-        setDeleteError(cause instanceof Error ? cause.message : "could not delete the project");
+        setDeleteError(humanMessage(cause, "Could not delete the project."));
       }
     },
   };

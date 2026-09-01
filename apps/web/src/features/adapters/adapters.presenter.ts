@@ -1,6 +1,7 @@
 import { createSignal } from "solid-js";
 import type { Adapter, AdapterCreateFormInput } from "@testate/shared";
 
+import { humanMessage } from "@/lib/api-error.ts";
 import { showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
@@ -41,7 +42,7 @@ export function outcomeWarnings(outcome: ProbeOutcome): string[] {
 }
 
 function messageOf(cause: unknown, fallback: string): string {
-  return cause instanceof Error ? cause.message : fallback;
+  return humanMessage(cause, fallback);
 }
 
 export function createAdaptersPresenter(slug: () => string): AdaptersPresenter {

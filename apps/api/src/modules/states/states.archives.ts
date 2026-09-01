@@ -133,7 +133,8 @@ export function createArchiveOps(deps: ArchiveDeps): ArchiveOps {
       const mapping: Mapped[] = [];
       for (const item of input.adapter_mapping)
         mapping.push(await mapOne(actor, project, archive, item, meta));
-      if (mapping.length === 0) throw new AppError("VALIDATION_ERROR", "adapter_mapping is empty");
+      if (mapping.length === 0)
+        throw new AppError("VALIDATION_ERROR", "map each database in the archive to one here");
       const stateId = Bun.randomUUIDv7();
       deps.repo.insert({
         id: stateId,

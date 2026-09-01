@@ -64,7 +64,7 @@ export function createTokenService(deps: TokenDeps): TokenService {
     const limit = nowMs() + AGENT_MAX_EXPIRY_MS;
     if (requested === undefined) return new Date(nowMs() + AGENT_DEFAULT_EXPIRY_MS).toISOString();
     if (new Date(requested).getTime() > limit) {
-      throw new AppError("VALIDATION_ERROR", "expires_at is more than 365 days ahead", {
+      throw new AppError("VALIDATION_ERROR", "an expiry is at most a year away", {
         max: new Date(limit).toISOString(),
       });
     }

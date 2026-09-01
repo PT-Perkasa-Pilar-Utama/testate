@@ -56,7 +56,13 @@ export function retryBlockedReason(checkout: Checkout): string | undefined {
   return undefined;
 }
 
-/** The one line a row has room for on a checkout that did not simply succeed. */
+/**
+ * The one line a row has room for on a checkout that did not simply succeed.
+ *
+ * The engine's own words on purpose: a restore that failed on a lock, a constraint or a missing
+ * privilege is something an operator has to read exactly, and this screen exists to be read that
+ * way. Not a case for `humanMessage`.
+ */
 export function outcomeLine(checkout: Checkout): string {
   const failed = checkout.adapters.find((adapter) => adapter.error !== null);
   if (failed?.error) return `${failed.name}: ${failed.error.message}`;

@@ -258,7 +258,8 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
         if (replayed !== null) return replayed;
       }
       const project = find(slug);
-      if (input.confirm_slug !== slug) throw conflict("confirm_slug does not match");
+      if (input.confirm_slug !== slug)
+        throw conflict("the slug you typed does not match this project");
       const plan = plans.get(input.plan_id);
       if (plan === undefined || plan.slug !== slug || plan.expires_at <= nowIso()) {
         throw conflict("deletion plan is stale");

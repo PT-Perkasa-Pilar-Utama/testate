@@ -1,3 +1,4 @@
+import { humanMessage } from "./api-error.ts";
 import { createSignal } from "solid-js";
 
 const TOAST_MS = 4000;
@@ -20,10 +21,15 @@ export function showToast(message: string, tone: ToastTone = "info"): void {
   setTimeout(() => setToasts((current) => current.filter((toast) => toast.id !== id)), TOAST_MS);
 }
 
-/** Surfaces a caught error to the user; the English message is kept for the console. */
+/**
+ * Surfaces a caught error to the user, in the app's words rather than the API's.
+ *
+ * Every `attempt` in the app lands here, which made this the widest leak: a session that ended
+ * showed "authentication required" and a missing row showed "adapter not found". The server's own
+ * wording is still in the response, the wide event and the audit row for whoever is debugging.
+ */
 export function reportError(cause: unknown): void {
-  const message = cause instanceof Error ? cause.message : String(cause);
-  showToast(message, "error");
+  showToast(humanMessage(cause, "That did not work."), "error");
 }
 
 /** Runs a detached async action from an event handler and reports its failure. */

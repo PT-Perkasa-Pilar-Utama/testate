@@ -110,7 +110,9 @@ export async function storedS3Target(
         aadFor("settings", key, "global")
       );
     } catch {
-      throw conflict("store_credential_unreadable: re-enter the S3 keys", { key });
+      throw conflict("the stored S3 keys cannot be read with the current key; re-enter them", {
+        key,
+      });
     }
   };
   return {

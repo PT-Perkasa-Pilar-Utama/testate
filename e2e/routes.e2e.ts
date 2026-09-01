@@ -124,7 +124,11 @@ test.describe("signing in", () => {
     await page.getByLabel("Username").fill(USERNAMES.qa);
     await page.getByLabel("Password").fill("not-the-password");
     await page.locator('form button[type="submit"]').click();
-    await expect(page.getByRole("status")).toBeVisible();
+    // The app's sentence, and none of the API's. "authentication required" reached this banner for
+    // weeks: it is what the server tells a log, and it tells a person nothing they can act on.
+    const banner = page.getByRole("status");
+    await expect(banner).toHaveText("That username and password do not match an account.");
+    await expect(banner).not.toContainText(/authentication|unauthori|forbidden|internal/i);
     await expect(page).toHaveURL(/\/login$/);
   });
 

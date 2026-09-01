@@ -8,6 +8,7 @@ import type {
   TableSchema,
 } from "@testate/shared";
 
+import { humanMessage } from "@/lib/api-error.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { followJob } from "@/lib/sse.ts";
@@ -65,7 +66,7 @@ const EMPTY: MappingDraft = {
 };
 
 function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : "request failed";
+  return humanMessage(cause, "Could not run that import.");
 }
 
 export function createWizardPresenter(slug: () => string, onDone: () => void): WizardPresenter {

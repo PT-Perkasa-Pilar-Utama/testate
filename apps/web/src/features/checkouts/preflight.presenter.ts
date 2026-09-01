@@ -1,6 +1,7 @@
 import { createSignal } from "solid-js";
 import type { Preflight, SchemaDrift, State } from "@testate/shared";
 
+import { humanMessage } from "@/lib/api-error.ts";
 import { showToast } from "@/lib/toast.ts";
 import { followJob } from "@/lib/sse.ts";
 import { checkoutsModel } from "./checkouts.model.ts";
@@ -61,7 +62,7 @@ export function strategyLine(adapter: PreflightAdapter): string {
 }
 
 function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : "request failed";
+  return humanMessage(cause, "Could not check out that state.");
 }
 
 export function createPreflightPresenter(

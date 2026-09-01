@@ -5,6 +5,7 @@ import type { AdapterCreateFormInput, Engine } from "@testate/shared";
 import { adapterCreateFormSchema } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
+import { statusReason } from "@/lib/api-error.ts";
 import { onceSettled } from "@/lib/form.ts";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
@@ -249,7 +250,7 @@ export default function AdaptersView(props: { slug: string }): JSX.Element {
                         <Badge variant={STATUS_VARIANT[adapter.status]}>{adapter.status}</Badge>
                         <Show when={adapter.status !== "ok"}>
                           <span class="text-xs text-muted">
-                            {adapter.status_message ?? "No reason recorded."}
+                            {statusReason(adapter.status_message) ?? "No reason recorded."}
                           </span>
                         </Show>
                       </div>

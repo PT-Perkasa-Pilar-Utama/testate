@@ -1,6 +1,7 @@
 import { createSignal } from "solid-js";
 import type { CreateProjectInput, Project } from "@testate/shared";
 
+import { humanMessage } from "@/lib/api-error.ts";
 import { createPaged } from "@/lib/async.ts";
 import type { Paged } from "@/lib/async.ts";
 import { projectsModel } from "./projects.model.ts";
@@ -47,7 +48,7 @@ export function createProjectsPresenter(): ProjectsPresenter {
         setCreating(false);
         projects.refresh();
       } catch (cause: unknown) {
-        setError(cause instanceof Error ? cause.message : "could not create the project");
+        setError(humanMessage(cause, "Could not create the project."));
       }
     },
   };

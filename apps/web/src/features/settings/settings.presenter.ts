@@ -7,6 +7,7 @@ import type {
   StoreMigrationFormInput,
 } from "@testate/shared";
 
+import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
@@ -186,7 +187,7 @@ export function createSettingsPresenter(): SettingsPresenter {
             settings.refresh();
           });
         } catch (cause: unknown) {
-          setMigrateError(cause instanceof Error ? cause.message : "request failed");
+          setMigrateError(humanMessage(cause, "Could not migrate the store."));
         }
       })();
     },
