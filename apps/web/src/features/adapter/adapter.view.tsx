@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
-import { Loading, Match, Show, Switch } from "solid-js";
+import { Loading, Match, Show, Switch, createSignal } from "solid-js";
 import type { Adapter } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
@@ -9,6 +9,15 @@ import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { ConnectionCard, StatusLine } from "./adapter.summary.view.tsx";
+import Tabs from "@/components/tabs.tsx";
+
+const TABLE_VIEWS = [
+  { id: "list", label: "List" },
+  { id: "diagram", label: "Diagram" },
+] as const;
+type TableView = (typeof TABLE_VIEWS)[number]["id"];
+
+import Erd from "../erd/erd.view.tsx";
 import { FilesView, JunctionToolbar, TablesView } from "./adapter.junction.view.tsx";
 import EditDialog from "./adapter.edit.view.tsx";
 import { createAdapterPresenter } from "./adapter.presenter.ts";
@@ -100,6 +109,7 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
     () => props.id
   );
   const base = (): string => `/projects/${props.slug}/adapters/${props.id}`;
+  const [tableView, setTableView] = createSignal<TableView>("list");
   return (
     <section class="grid gap-6">
       <Loading fallback={<p class="text-muted">Loading adapter...</p>}>
@@ -112,7 +122,25 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
           <JunctionToolbar adapter={presenter.adapter.value()} base={base()} />
           <Switch>
             <Match when={presenter.tables()}>
-              {(schema) => <TablesView schema={schema()} base={base()} />}
+              {(schema) => (
+                <div class="grid gap-3">
+                  {/* The same shape States uses for List and Tree: one set of data, two ways to
+                      read it (docs/PROJECT_REWORK.md). */}
+                  <Tabs
+                    items={TABLE_VIEWS}
+                    value={tableView()}
+                    onChange={(next) => setTableView(next)}
+                    label="How to show the tables"
+                    variant="segmented"
+                  />
+                  <Show when={tableView() === "list"}>
+                    <TablesView schema={schema()} base={base()} />
+                  </Show>
+                  <Show when={tableView() === "diagram"}>
+                    <Erd tables={schema().tables} />
+                  </Show>
+                </div>
+              )}
             </Match>
             <Match when={presenter.entries()}>
               {(entries) => <FilesView entries={entries()} />}
