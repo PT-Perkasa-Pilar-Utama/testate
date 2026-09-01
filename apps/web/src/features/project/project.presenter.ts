@@ -53,6 +53,15 @@ export type ProjectPresenter = {
 const GIB = 1024 * 1024 * 1024;
 
 /** The current project, as the edit form's initial values. */
+/**
+ * The edit form's shape before the project loads. `EditDialog` is rendered outside the `<Loading>`
+ * that waits for the overview, so building its form from `overview.value()` read a promise that was
+ * still pending: the screen re-ran to wait for it, rebuilt the presenter, asked again, and the
+ * production bundle spun on that at one request per round trip. The dialog only opens from inside
+ * the boundary, so its effect resets to the real project before anyone sees these blanks.
+ */
+export const PROJECT_BLANK: ProjectDraft = { name: "", description: "", quota_gib: "" };
+
 export function toProjectDraft(project: Project): ProjectDraft {
   return {
     name: project.name,

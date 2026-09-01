@@ -1,6 +1,6 @@
 import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import { Show, createEffect, untrack } from "solid-js";
+import { Show, createEffect } from "solid-js";
 import { storeMigrationFormSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
@@ -11,6 +11,7 @@ import FieldError from "@/components/field-error.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import Switch from "@/components/switch.tsx";
+import { MIGRATE_BLANK } from "./settings.presenter.ts";
 import type { SettingsPresenter } from "./settings.presenter.ts";
 
 const DRIVER_OPTIONS = [
@@ -24,7 +25,7 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
   // a switch have nowhere to show the message that failure would produce.
   const form = createForm({
     schema: storeMigrationFormSchema,
-    initialInput: untrack(() => props.presenter.migrateDefaults()),
+    initialInput: MIGRATE_BLANK,
   });
   createEffect(
     () => (props.presenter.migrating() ? props.presenter.migrateDefaults() : null),

@@ -92,6 +92,33 @@ async function logResponse(response: Response): Promise<void> {
   }
 }
 
+export type Refetch = { path: string; count: number };
+
+/**
+ * Counts what the page asks the API for, live. A screen asks each endpoint once; a screen that
+ * reads a still-pending async memo outside its `<Loading>` re-runs to wait for it, rebuilds its
+ * presenter, and asks again, forever, at one request per round trip.
+ */
+export function countApi(page: Page): Map<string, number> {
+  const counts = new Map<string, number>();
+  page.on("request", (request) => {
+    const tail = request.url().split("/api/v1/")[1];
+    if (tail === undefined) return;
+    // Without the query a paged endpoint counts as one endpoint, so a loop over it still shows.
+    const path = tail.split("?")[0] ?? tail;
+    counts.set(path, (counts.get(path) ?? 0) + 1);
+  });
+  return counts;
+}
+
+/** The endpoints asked for more than `limit` times, worst first. */
+export function over(counts: Map<string, number>, limit: number): Refetch[] {
+  return [...counts]
+    .map(([path, count]) => ({ path, count }))
+    .filter((entry) => entry.count > limit)
+    .sort((left, right) => right.count - left.count);
+}
+
 /** DOM-settled: the loading placeholders are gone; no `networkidle` (Vite keeps a socket open). */
 export async function settle(page: Page): Promise<void> {
   await page.waitForLoadState("domcontentloaded").catch(() => undefined);

@@ -100,6 +100,14 @@ export function migrationBody(driver: "local" | "s3", s3: S3Draft): JsonObject {
   return { target: { driver: "s3", s3: target } };
 }
 
+/**
+ * The migrate form's shape before settings load. Building the form from `settings.value()` read a
+ * promise that was still pending, because `MigrateDialog` sits outside the `<Loading>` that waits
+ * for it; the screen re-ran to wait, rebuilt this presenter, asked again, and the production bundle
+ * spun on that at one request per round trip. `migrateDefaults` picks the real driver on open.
+ */
+export const MIGRATE_BLANK: StoreMigrationFormInput = { driver: "s3", ...EMPTY_S3 };
+
 export function createSettingsPresenter(): SettingsPresenter {
   const settings = createRefreshable(() => settingsModel.get());
   const health = createRefreshable(() => settingsModel.health());

@@ -54,6 +54,9 @@ export default defineConfig({
     // The reactive-loop hunt: skipped unless STRESS=1, and it wants the data a full run leaves.
     { name: "stress", testMatch: /stress\.e2e\.ts/, dependencies: ["state-api"] },
     // Boot stories spawn API processes of their own; run them last so they never starve a browser.
+    // The only spec that drives the built bundle; the rest drive Vite, and a reactive loop can
+    // exist in one and not the other. It reads the seeded demo, so it waits for the UI phases.
+    { name: "bundle", testMatch: /bundle\.e2e\.ts/, dependencies: ["state-api"] },
     {
       name: "boot",
       testMatch: /(boot|engine|types|session|storage)\.e2e\.ts/,
@@ -81,7 +84,9 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: "bun apps/api/src/index.ts",
+      // Builds first: the API rewrites the base-path placeholder in `apps/web/dist` at boot, so a
+      // build afterwards would put the placeholder back under a server that has stopped looking.
+      command: "bun run build:web && bun apps/api/src/index.ts",
       url: `http://127.0.0.1:${API_PORT}/api/v1/health/live`,
       reuseExistingServer: false,
       timeout: 60_000,

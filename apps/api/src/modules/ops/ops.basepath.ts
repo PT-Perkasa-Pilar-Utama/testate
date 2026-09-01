@@ -53,11 +53,15 @@ export function rewriteWebAssets(source: string, target: string, basePath: strin
   return { dir: target, files, rewritten };
 }
 
-/** Static assets under the base, and index.html for every other non-API path (history routing). */
+/** Every built file under the base, and index.html for every other non-API path (history routing). */
 export function mountSpa(app: Hono, basePath: string, apiPrefix: string, webDir: string): void {
   const root = basePath === "/" ? "" : basePath;
+  // Any file the build emits, not just `assets/`: `theme.js` and `fonts/` sit at the root of dist,
+  // and matching only `assets/*` sent both to the index fallback. The browser then parsed HTML as
+  // a script and as a font, so the theme boot never ran and Mona Sans never loaded. `serveStatic`
+  // calls `next()` when there is no such file, which is what leaves the SPA routes below intact.
   app.get(
-    `${root}/assets/*`,
+    `${root}/*`,
     serveStatic({ root: webDir, rewriteRequestPath: (path) => path.slice(root.length) })
   );
   const index = Bun.file(join(webDir, "index.html"));

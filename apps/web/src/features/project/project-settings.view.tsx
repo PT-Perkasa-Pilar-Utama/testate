@@ -1,7 +1,7 @@
 import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import { formatWhen } from "@/lib/format.ts";
-import { For, Show, createEffect, untrack } from "solid-js";
+import { For, Show, createEffect } from "solid-js";
 import * as v from "valibot";
 import { projectDraftSchema } from "@testate/shared";
 
@@ -15,7 +15,7 @@ import Input from "@/components/input.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import type { DeletionAffected } from "../projects/projects.model.ts";
-import { toProjectDraft } from "./project.presenter.ts";
+import { PROJECT_BLANK, toProjectDraft } from "./project.presenter.ts";
 import type { ProjectPresenter } from "./project.presenter.ts";
 
 /** What the delete takes with it, in the order a reader cares about; zeroes stay out of the way. */
@@ -52,7 +52,7 @@ export function AffectedList(props: { affected: DeletionAffected }): JSX.Element
 export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element {
   const form = createForm({
     schema: projectDraftSchema,
-    initialInput: untrack(() => toProjectDraft(props.presenter.overview.value().project)),
+    initialInput: PROJECT_BLANK,
   });
 
   createEffect(
