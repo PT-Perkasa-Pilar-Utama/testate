@@ -101,7 +101,7 @@ test.describe("state stories", () => {
     await expect(dialog.getByText("A stash state is taken first")).toBeVisible();
     await dialog.getByRole("button", { name: "Check out" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
-    await page.getByRole("tab", { name: "History" }).click();
+    await page.getByRole("tab", { name: "Activity" }).click();
     const history = page.locator("tr", { hasText: "seeded-baseline" }).first();
     // The list reports the job's own status word, capitalized: a succeeded checkout reads "Succeeded".
     await expect(history.getByText("Succeeded", { exact: true }).first()).toBeVisible({
@@ -122,7 +122,7 @@ test.describe("state stories", () => {
     watch(page, issues);
     await page.goto("/projects/demo");
     await settle(page);
-    await page.getByRole("tab", { name: "History" }).click();
+    await page.getByRole("tab", { name: "Activity" }).click();
     const history = page.locator("tr", { hasText: "seeded-baseline" }).first();
     await expect(history.getByRole("button", { name: "Retry" })).toBeDisabled();
     await history.getByRole("button", { name: "Details" }).click();
@@ -159,7 +159,7 @@ test.describe("state stories", () => {
     await expect(page.locator("dialog[open]")).toHaveCount(0);
     await page.goto("/projects/demo");
     await settle(page);
-    await page.getByRole("tab", { name: "Diffs" }).click();
+    await page.getByRole("tab", { name: "Activity" }).click();
     await page.getByRole("button", { name: "New diff" }).click();
     const create = page.locator("dialog[open]");
     await create.getByLabel("Base state").selectOption({ label: "seeded-baseline" });
@@ -201,7 +201,7 @@ test.describe("state stories", () => {
     const table = await firstTable(postgres.id);
     await page.goto("/projects/demo");
     await settle(page);
-    await page.getByRole("tab", { name: "Imports" }).click();
+    await page.getByRole("tab", { name: "Activity" }).click();
     await page.getByRole("button", { name: "New import" }).click();
     const wizard = page.locator("dialog[open]");
     await wizard.locator('input[type="file"]').setInputFiles({
@@ -283,7 +283,7 @@ test.describe("state stories", () => {
     await expect(dialog.getByText("not in state").first()).toBeVisible({ timeout: 30_000 });
     await dialog.getByRole("button", { name: "Check out" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
-    await page.getByRole("tab", { name: "History" }).click();
+    await page.getByRole("tab", { name: "Activity" }).click();
     const history = page.locator("tr", { hasText: name }).first();
     await expect(history.getByText("Succeeded", { exact: true }).first()).toBeVisible({
       timeout: 90_000,

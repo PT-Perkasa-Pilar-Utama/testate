@@ -41,15 +41,13 @@ test.describe("qa stories", () => {
     // every table's empty case: it used to be a header row over blank space, and the demo project
     // the rest of the suite runs against is never empty enough to show it.
     await expect(page.getByText("No states yet.")).toBeVisible();
-    for (const [tab, message] of [
-      ["Imports", "No imports yet."],
-      ["Diffs", "No diffs yet."],
-      ["History", "No restores yet."],
-      ["Adapters", "No adapters yet."],
-    ] as const) {
-      await openTab(page, tab);
+    // Activity stacks all three, so one visit shows all three empty cases.
+    await openTab(page, "Activity");
+    for (const message of ["No imports yet.", "No diffs yet.", "No restores yet."]) {
       await expect(page.getByText(message)).toBeVisible();
     }
+    await openTab(page, "Databases");
+    await expect(page.getByText("No adapters yet.")).toBeVisible();
     expect(issues).toStrictEqual([]);
   });
 

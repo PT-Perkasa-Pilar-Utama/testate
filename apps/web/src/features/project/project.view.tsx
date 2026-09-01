@@ -8,9 +8,7 @@ import Meter from "@/components/meter.tsx";
 import Tabs from "@/components/tabs.tsx";
 import { hasRole } from "@/lib/session.ts";
 import AdaptersView from "../adapters/adapters.view.tsx";
-import CheckoutsView from "../checkouts/checkouts.view.tsx";
-import DiffsView from "../diffs/diffs.view.tsx";
-import ImportsView from "../imports/imports.view.tsx";
+import ActivityView from "./activity.view.tsx";
 import StatesView from "../states/states.view.tsx";
 import { formatBytes } from "../states/states.format.ts";
 import { headBadge, quotaTone } from "../projects/projects.format.ts";
@@ -116,14 +114,8 @@ export default function ProjectView(props: { slug: string }): JSX.Element {
             onChanged={() => presenter.overview.refresh()}
           />
         </Match>
-        <Match when={presenter.tab() === "checkouts"}>
-          <CheckoutsView slug={props.slug} onChanged={() => presenter.overview.refresh()} />
-        </Match>
-        <Match when={presenter.tab() === "diffs"}>
-          <DiffsView slug={props.slug} />
-        </Match>
-        <Match when={presenter.tab() === "imports"}>
-          <ImportsView slug={props.slug} />
+        <Match when={presenter.tab() === "activity"}>
+          <ActivityView slug={props.slug} onChanged={() => presenter.overview.refresh()} />
         </Match>
       </Switch>
       <EditDialog presenter={presenter} />

@@ -94,7 +94,7 @@ test.describe("qa gap stories", () => {
     await page.getByPlaceholder("SELECT ...").fill(`select 1 as h${STAMP}`);
     await page.getByRole("button", { name: "Run (read-only)" }).click();
     await expect(page.getByText(/1 row\(s\)/)).toBeVisible();
-    await page.getByRole("tab", { name: "History" }).click();
+    await page.getByRole("tab", { name: "Activity" }).click();
     await expect(page.locator("main").getByText(`select 1 as h${STAMP}`)).toBeVisible();
     const slow = swallow(
       page.request.post(
@@ -160,7 +160,7 @@ test.describe("qa gap stories", () => {
     const table = await tableNamed(postgres.id, "customers");
     await page.goto("/projects/demo");
     await settle(page);
-    await page.getByRole("tab", { name: "Imports" }).click();
+    await page.getByRole("tab", { name: "Activity" }).click();
     await page.getByRole("button", { name: "New import" }).click();
     const wizard = page.locator("dialog[open]");
     await wizard.getByRole("tab", { name: "From a storage adapter" }).click();

@@ -33,7 +33,7 @@ test.describe("adapter settings stories", () => {
     await expect(stateRow(page, `init-cfg-${STAMP}`)).toBeVisible({
       timeout: 60_000,
     });
-    await page.getByRole("tab", { name: "Adapters" }).click();
+    await page.getByRole("tab", { name: "Databases" }).click();
     await page.getByRole("link", { name: `cfg-${STAMP}` }).click();
     await settle(page);
     await page.getByRole("button", { name: "Edit adapter" }).click();
@@ -59,7 +59,7 @@ test.describe("adapter settings stories", () => {
     await expect(stateRow(page, `init-cfg-${STAMP}-2`)).toBeVisible({
       timeout: 60_000,
     });
-    await page.getByRole("tab", { name: "Adapters" }).click();
+    await page.getByRole("tab", { name: "Databases" }).click();
     await page.getByRole("link", { name: `cfg-${STAMP}-2` }).click();
     await settle(page);
     await page.getByRole("button", { name: "Delete" }).click();

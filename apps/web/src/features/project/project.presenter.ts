@@ -15,20 +15,32 @@ import type { DeletionPlan, Overview } from "../projects/projects.model.ts";
  * The work first, the plumbing last. This used to open on Adapters, which is the one tab a tester
  * never needs: an admin connects the database once and nobody touches it again.
  *
- * "Checkouts" is called History because the tab cannot start one. Check out is a button on a state,
- * which is where a person looks for it, and the tab is where you go when a restore went wrong.
+ * Three, not five. States is the front door; Activity holds the events that reference a state,
+ * which is what checkouts, diffs and import runs all are; Databases holds the connections.
+ * File stores are not here at all: they have their own menu.
  */
 export const PROJECT_TABS = [
   { id: "states", label: "States" },
-  { id: "imports", label: "Imports" },
-  { id: "diffs", label: "Diffs" },
-  { id: "checkouts", label: "History" },
+  { id: "activity", label: "Activity" },
   { id: "adapters", label: "Databases" },
 ] as const;
 export type ProjectTab = (typeof PROJECT_TABS)[number]["id"];
 
 const TAB_IDS: readonly string[] = PROJECT_TABS.map((tab) => tab.id);
 const DEFAULT_TAB: ProjectTab = "states";
+
+/**
+ * Where the old tabs went.
+ *
+ * Checkouts, diffs and import runs are all the same kind of thing: an event with a job, a status
+ * and a link back to the states it touched. A link somebody bookmarked or a test wrote still
+ * lands on the right screen (docs/PROJECT_REWORK.md).
+ */
+const MOVED = new Map<string, ProjectTab>([
+  ["checkouts", "activity"],
+  ["diffs", "activity"],
+  ["imports", "activity"],
+]);
 
 /**
  * The edit and delete forms hold their own fields now (`projectDraftSchema` and, for the confirm
@@ -90,8 +102,9 @@ export function createProjectPresenter(slug: () => string): ProjectPresenter {
    */
   const tab = (): ProjectTab => {
     const wanted = new URLSearchParams(search()).get("tab") ?? "";
+    if (!TAB_IDS.includes(wanted)) return MOVED.get(wanted) ?? DEFAULT_TAB;
     // SAFETY: the membership test above narrows `wanted` to one of the literal ids.
-    return TAB_IDS.includes(wanted) ? (wanted as ProjectTab) : DEFAULT_TAB;
+    return wanted as ProjectTab;
   };
   // Pushed, not replaced, so Back walks the tabs instead of leaving the project.
   const setTab = (next: ProjectTab): void =>

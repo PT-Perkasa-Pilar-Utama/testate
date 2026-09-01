@@ -88,13 +88,10 @@ test.describe("README screens", () => {
     ).toBeVisible({ timeout: 90_000 });
 
     await shoot("/projects", "projects");
-    await shoot("/projects/demo", "adapters", "Adapters");
+    await shoot("/projects/demo", "adapters", "Databases");
     await shoot("/projects/demo", "states", "States");
-    await shoot("/projects/demo", "checkouts", "History");
-    await shoot("/projects/demo", "imports", "Imports");
-
-    // The diff is worth showing open: the list says how many rows changed, the dialog says which.
-    await shoot("/projects/demo", "diffs", "Diffs");
+    // One shot, not three: checkouts, diffs and imports share the Activity tab now.
+    await shoot("/projects/demo", "activity", "Activity");
     await page.getByRole("button", { name: "Details" }).first().click();
     await expect(page.locator("dialog[open]")).toHaveCount(1);
     await fit(page);
