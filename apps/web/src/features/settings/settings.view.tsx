@@ -48,11 +48,18 @@ function labelFor(row: SettingRow): string {
 }
 
 /** A labelled cluster of cards, so the stack reads as sections instead of one long scroll. */
-function Group(props: { title: string; description?: string; children: JSX.Element }): JSX.Element {
+function Group(props: {
+  title: string;
+  description?: string;
+  id?: string;
+  children: JSX.Element;
+}): JSX.Element {
   return (
     <div class="grid gap-4 border-t border-line pt-6 first:border-t-0 first:pt-0">
       <div class="grid gap-1.5">
-        <h3 class="text-base font-semibold text-heading">{props.title}</h3>
+        <h3 id={props.id} class="scroll-mt-6 text-base font-semibold text-heading">
+          {props.title}
+        </h3>
         <Show when={props.description}>
           <p class="text-sm text-muted">{props.description}</p>
         </Show>
@@ -75,7 +82,9 @@ function Section(props: {
     <LayerCard class="grid gap-3 px-5 py-4">
       <form class="grid gap-3" onSubmit={onSubmit}>
         <div class="flex items-center justify-between">
-          <h3 class="text-base font-semibold text-heading capitalize">{props.name}</h3>
+          <h3 id={props.name} class="scroll-mt-6 text-base font-semibold text-heading capitalize">
+            {props.name}
+          </h3>
           <Button type="submit" size="sm" variant="primary">
             Save {props.name}
           </Button>
@@ -203,7 +212,9 @@ function NetguardCard(props: { presenter: SettingsPresenter }): JSX.Element {
   return (
     <LayerCard class="grid gap-3 px-5 py-4">
       <div class="grid gap-1">
-        <h3 class="text-base font-semibold text-heading">Blocked hosts</h3>
+        <h3 id="blocked-hosts" class="scroll-mt-6 text-base font-semibold text-heading">
+          Blocked hosts
+        </h3>
         <p class="text-sm text-muted">
           One host, CIDR or host:port per line. An adapter pointing at a blocked address is disabled
           when you save.
@@ -239,7 +250,11 @@ export default function SettingsView(): JSX.Element {
       />
       <Loading fallback={<p class="text-muted">Loading settings...</p>}>
         <HealthCard presenter={presenter} />
-        <Group title="Storage" description="Where snapshots live, and how to get a copy out.">
+        <Group
+          id="storage"
+          title="Storage"
+          description="Where snapshots live, and how to get a copy out."
+        >
           <StoreCard presenter={presenter} />
           <BackupCard presenter={presenter} />
         </Group>

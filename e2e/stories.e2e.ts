@@ -324,9 +324,9 @@ test.describe("admin stories", () => {
     watch(page, issues);
     await page.goto("/settings");
     await settle(page);
-    // "Snapshot store" also names a row in the health card above; scope to the storage section's
-    // own span (the health card's version is a <dt>) so this stays a single match.
-    await expect(page.locator("main span", { hasText: "Snapshot store" })).toBeVisible();
+    // "Snapshot store" names both a health row and the storage card, and which element each one
+    // uses is presentation. The group heading names the section without depending on that.
+    await expect(page.locator("main").getByRole("heading", { name: "Storage" })).toBeVisible();
     await expect(page.locator("main code").first()).toBeVisible();
     expect(issues).toStrictEqual([]);
   });

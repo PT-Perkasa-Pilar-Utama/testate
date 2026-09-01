@@ -22,9 +22,9 @@ const HEALTH_CHECKS = [
   "Metadata database",
   "Data directory",
   "Snapshot store",
-  "Job dispatcher",
-  "Log sink",
-  "Sealed keys",
+  "Job runner",
+  "Log file",
+  "Credential encryption",
 ] as const;
 
 /** Every role opens every top-level screen: allowed ones render, admin ones refuse below admin. */
