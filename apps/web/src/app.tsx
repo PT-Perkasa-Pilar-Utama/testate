@@ -11,6 +11,7 @@ import QueryView from "@/features/data/query.view.tsx";
 import AdapterImportsView from "@/features/imports/imports.adapter.view.tsx";
 import DiffView from "@/features/diff/diff.view.tsx";
 import StorageView from "@/features/storage/storage.view.tsx";
+import HomeView from "@/features/home/home.view.tsx";
 import StoresView from "@/features/storage/stores.view.tsx";
 import AccountView from "@/features/account/account.view.tsx";
 import AuditView from "@/features/audit/audit.view.tsx";
@@ -38,15 +39,6 @@ function accessFor(match: RouteMatch | null): Access {
   if (route.role === null) return "ok";
   if (actor() === null) return "login";
   return hasRole(route.role) ? "ok" : "forbidden";
-}
-
-function HomeView(): JSX.Element {
-  return (
-    <section class="grid gap-1.5">
-      <h2 class="text-lg font-semibold">Testate</h2>
-      <p class="text-muted">Git for your test database. Reset the database, not the developer.</p>
-    </section>
-  );
 }
 
 function Page(props: { match: RouteMatch | null }): JSX.Element {
