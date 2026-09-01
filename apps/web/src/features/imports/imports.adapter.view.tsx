@@ -142,7 +142,16 @@ export default function AdapterImportsView(props: { slug: string; id: string }):
     blockedReason(presenter.draft(), presenter.preview() !== null);
   return (
     <section class="grid gap-4">
-      <AdapterCrumb slug={props.slug} id={props.id} />
+      <div class="grid gap-1.5">
+        <h2 class="flex items-center gap-2 text-lg font-semibold">
+          <Icon name="upload" class="h-4 w-4 text-muted" />
+          <AdapterCrumb slug={props.slug} id={props.id} /> / import a file
+        </h2>
+        <p class="max-w-prose text-sm text-muted">
+          A CSV or an Excel file into one table of this database. A real run stashes the adapter
+          first, so a bad file stays reversible.
+        </p>
+      </div>
       <Errored fallback={(error) => <Banner variant="error">{String(error())}</Banner>}>
         <Loading fallback={<p class="text-muted">Loading...</p>}>
           {/* Read so the refreshable runs: it is the call that loads a rejected-rows preview. */}
