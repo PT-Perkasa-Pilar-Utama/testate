@@ -13,6 +13,7 @@ import Dialog from "@/components/dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
+import InputArea from "@/components/input-area.tsx";
 import { Cell, Head, Row, Table, Truncated } from "@/components/table.tsx";
 import { engineLabel } from "@/lib/labels.ts";
 import { hasRole } from "@/lib/session.ts";
@@ -93,12 +94,16 @@ export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element 
           {(field) => (
             <label class="grid content-start gap-1.5 text-base">
               <FieldLabel required={false}>Description</FieldLabel>
-              <Input
+              {/* A textarea, not a one-line box. The field takes 2000 characters and a single
+                  line scrolls sideways as you type, so you cannot read back the sentence you are
+                  writing. Three rows is a paragraph without taking over the dialog. */}
+              <InputArea
                 {...field.props}
                 maxlength="2000"
                 value={field.input}
                 variant={field.errors ? "error" : "default"}
                 aria-invalid={field.errors ? "true" : undefined}
+                rows="3"
               />
               <FieldError message={field.errors?.[0]} />
             </label>

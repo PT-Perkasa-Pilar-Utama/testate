@@ -12,6 +12,7 @@ import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Slider from "@/components/slider.tsx";
 import Input from "@/components/input.tsx";
+import InputArea from "@/components/input-area.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { QUOTA_STEPS } from "./projects.presenter.ts";
 import type { ProjectsPresenter } from "./projects.presenter.ts";
@@ -87,12 +88,16 @@ export function CreateDialog(props: { presenter: ProjectsPresenter }): JSX.Eleme
           {(field) => (
             <label class="grid gap-1.5 text-sm">
               <FieldLabel required={false}>Description</FieldLabel>
-              <Input
+              {/* A textarea, not a one-line box. The field takes 2000 characters and a single
+                  line scrolls sideways as you type, so you cannot read back the sentence you are
+                  writing. Three rows is a paragraph without taking over the dialog. */}
+              <InputArea
                 {...field.props}
                 maxlength="2000"
                 value={field.input}
                 variant={field.errors ? "error" : "default"}
                 aria-invalid={field.errors ? "true" : undefined}
+                rows="3"
               />
               <FieldError message={field.errors?.[0]} />
             </label>
