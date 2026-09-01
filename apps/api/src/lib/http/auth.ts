@@ -102,6 +102,23 @@ export function requireRole(minimum: Role): MiddlewareHandler {
   };
 }
 
+/**
+ * Instance administration needs a credential that is not fenced to a project.
+ *
+ * A project-scoped token is a project credential: 09 §9.4 promises it cannot list or touch another
+ * project, and 07 §7.1 counts that scope as the containment a leaked CI token relies on. Users,
+ * tokens and settings are not project resources, and two of them are a way straight out of the
+ * fence: a scoped token could mint an unscoped one, or create a user and sign in as them. Either
+ * makes the scope decorative, so the fence holds here too.
+ */
+export function requireUnscoped(): MiddlewareHandler {
+  return async (c, next) => {
+    currentActor(c);
+    if (c.get("projectScope") !== null) throw forbidden("token_is_project_scoped");
+    await next();
+  };
+}
+
 /** The MCP endpoint accepts agent tokens only. */
 export function requireAgentToken(): MiddlewareHandler {
   return async (c, next) => {

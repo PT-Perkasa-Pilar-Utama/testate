@@ -2,6 +2,11 @@
 
 Module: `auth` ([../technical-specs/05-module-definitions.md §5.2](../technical-specs/05-module-definitions.md)). Rules: [../technical-specs/09-authentication.md](../technical-specs/09-authentication.md).
 
+
+A project-scoped token answers `403 FORBIDDEN { "reason": "token_is_project_scoped" }` on `/users`,
+`/tokens` and `/settings`, whatever role it carries. Those are not project resources, and two of
+them are a way out of the scope (09 §9.4).
+
 ## 2.1 `POST /auth/login`
 
 **Purpose.** Start a dashboard session with username and password.

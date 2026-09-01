@@ -7,7 +7,7 @@ Testate holds credentials to databases and can empty them. Every control below e
 | Surface | Threat | Control |
 | --- | --- | --- |
 | Dashboard and API | Credential stuffing, session theft, CSRF | Lockout, argon2id, opaque sessions, same-site cookies plus header check, HTTPS behind nginx |
-| API tokens | Leaked CI token | Role cap, project scope, expiry, revoke, hashed at rest, rate budget |
+| API tokens | Leaked CI token | Role cap, project scope (which also bars instance administration, so the scope cannot be widened from inside it), expiry, revoke, hashed at rest, rate budget |
 | Stored credentials | Volume or backup theft | Sealed values (AES-256-GCM), key outside the volume, rotation |
 | Outbound connections | SSRF into the intranet, metadata endpoints, Testate itself | Resolve-and-check on every physical connection, fixed denies, admin deny list |
 | Destructive operations | Wrong target, wrong click | Adapter mode, admin-only loosening, stash, protection, typed-slug delete, return to init, audit |

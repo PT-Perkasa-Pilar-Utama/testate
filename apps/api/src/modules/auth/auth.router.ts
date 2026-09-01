@@ -8,7 +8,7 @@ import {
 } from "@testate/shared";
 import * as v from "valibot";
 
-import { requireCsrf, requireRole } from "../../lib/http/auth.ts";
+import { requireCsrf, requireRole, requireUnscoped } from "../../lib/http/auth.ts";
 import { describe } from "../../lib/openapi.ts";
 import type { AuthHandlers } from "./auth.handler.ts";
 
@@ -44,8 +44,8 @@ export function createAuthRouter(h: AuthHandlers): Hono {
     h.revokeSession
   );
 
-  router.use("/tokens", requireRole("admin"));
-  router.use("/tokens/*", requireRole("admin"));
+  router.use("/tokens", requireRole("admin"), requireUnscoped());
+  router.use("/tokens/*", requireRole("admin"), requireUnscoped());
   router.get(
     "/tokens",
     describe("tokens", "List API tokens", v.array(apiTokenSchema)),

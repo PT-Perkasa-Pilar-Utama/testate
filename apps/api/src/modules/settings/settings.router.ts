@@ -2,14 +2,14 @@ import { Hono } from "hono";
 import { jobSchema, settingsPatchResultSchema, settingsSchema } from "@testate/shared";
 import * as v from "valibot";
 
-import { requireRole } from "../../lib/http/auth.ts";
+import { requireRole, requireUnscoped } from "../../lib/http/auth.ts";
 import { describe } from "../../lib/openapi.ts";
 import type { SettingsHandlers } from "./settings.handler.ts";
 
 export function createSettingsRouter(h: SettingsHandlers): Hono {
   const router = new Hono();
-  router.use("/settings", requireRole("admin"));
-  router.use("/settings/*", requireRole("admin"));
+  router.use("/settings", requireRole("admin"), requireUnscoped());
+  router.use("/settings/*", requireRole("admin"), requireUnscoped());
   router.get("/settings", describe("settings", "Read settings", settingsSchema), h.get);
   router.patch(
     "/settings",

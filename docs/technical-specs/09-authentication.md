@@ -70,7 +70,11 @@ Roles are cumulative. A cell shows the minimum role.
 | Extract fixture | yes (masked) | raw | |
 | Agent access through MCP | agent-kind token only, masked | | |
 
-A `viewer` token or user never triggers a job. A `qa` token scoped to one project cannot list or touch another project.
+A `viewer` token or user never triggers a job. A token scoped to one project cannot list or touch
+another project, and it administers nothing: `/users`, `/tokens` and `/settings` answer `403
+{ "reason": "token_is_project_scoped" }` whatever role it carries. Without that last rule the scope
+is decorative, because an admin token scoped to one project could mint an unscoped one, or create a
+user and sign in as them. A user is never scoped, so this only ever refuses a token.
 
 ## 9.5 Scope enforcement
 

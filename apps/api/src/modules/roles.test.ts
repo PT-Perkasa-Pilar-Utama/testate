@@ -224,6 +224,28 @@ function scopedApp(): Hono {
   return app;
 }
 
+/** Every instance-administration route a project-scoped token still reached. */
+async function scopedReachedAdmin(): Promise<string[]> {
+  const app = scopedApp();
+  const reached: string[] = [];
+  const paths: [string, string][] = [
+    ["GET", "/users"],
+    ["POST", "/users"],
+    ["PATCH", "/users/u1"],
+    ["DELETE", "/users/u1"],
+    ["GET", "/tokens"],
+    ["POST", "/tokens"],
+    ["DELETE", "/tokens/t1"],
+    ["GET", "/settings"],
+    ["PATCH", "/settings"],
+  ];
+  for (const [method, path] of paths) {
+    const code = (await app.request(path, { method })).status;
+    reached.push(...(code === 403 ? [] : [`${method} ${path} -> ${code}`]));
+  }
+  return reached;
+}
+
 /** Where a scoped token saw a project it may not, or was refused the one it may. */
 async function scopeOffenders(): Promise<string[]> {
   const app = scopedApp();
@@ -270,5 +292,11 @@ describe("who may reach what", () => {
 
   it("a scoped token reaches its own project and 404s on every other, at every depth", async () => {
     expect(await scopeOffenders()).toEqual([]);
+  });
+
+  it("a scoped token administers nothing, so it cannot mint its own way out of the fence", async () => {
+    // It carries the admin role here on purpose: without this the token could create an unscoped
+    // token, or a user with a password it chose, and the scope would be decorative.
+    expect(await scopedReachedAdmin()).toEqual([]);
   });
 });
