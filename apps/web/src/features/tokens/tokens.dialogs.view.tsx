@@ -1,4 +1,4 @@
-import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
+import { Field, Form, createForm, getInput, reset, setInput } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import { Show, createEffect } from "solid-js";
 import { tokenDraftSchema } from "@testate/shared";
@@ -57,7 +57,15 @@ export function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element
               <Select
                 options={TOKEN_KIND_OPTIONS}
                 value={field.input ?? EMPTY_DRAFT.kind}
-                onChange={(kind) => field.onInput(kind)}
+                onChange={(kind) => {
+                  field.onInput(kind);
+                  // Administrator is not among an agent token's options. Left behind, the select
+                  // would show Guest while the form still submitted admin, and Create would come
+                  // back with an error about a role the dialog is not showing.
+                  if (kind === "agent" && getInput(form, { path: ["role"] }) === "admin") {
+                    setInput(form, { path: ["role"], input: "qa" });
+                  }
+                }}
               />
             </label>
           )}

@@ -72,7 +72,7 @@ The first admin comes from environment variables. On first login Testate forces 
 | Column policy | A rule on one table column of a Tabular adapter: a required function (a value must pass through it before it is stored) and a mask (how viewers and agents see it). |
 | Mask | A display rule for a column: `redact`, `partial` (last four characters), or `hash`. Applies to viewers and agents; `qa` and `admin` see raw. |
 | Fixture | A row plus its related rows (foreign-key parents, optionally children), extracted as SQL inserts or JSON to reproduce a case elsewhere. |
-| Agent token | An API token of kind `agent`: role `viewer`, accepted only by the MCP endpoint, masked results, lower caps, every call audited. |
+| Agent token | An API token of kind `agent`: role `viewer` or `qa` and never `admin`, accepted only by the MCP endpoint, masked results, lower caps, every call audited. A `viewer` one reads; a `qa` one also writes to sandbox adapters, snapshots, and checks a state out. |
 
 ## 3. User Stories
 

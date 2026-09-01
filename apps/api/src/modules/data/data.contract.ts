@@ -55,6 +55,8 @@ export type DataService = {
   ): Promise<WriteSession>;
   /** This actor's live session on the adapter, started if there is none (23 §23.6). */
   openWriteSession(actor: Actor, adapterId: string, meta: RequestMeta): Promise<WriteSession>;
+  /** The live session or null; unlike `openWriteSession` it starts nothing. */
+  currentWriteSession(actor: Actor, adapterId: string): WriteSession | null;
   setWriteSessionOptions(
     actor: Actor,
     sessionId: string,

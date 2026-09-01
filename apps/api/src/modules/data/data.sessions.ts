@@ -43,6 +43,8 @@ export type WriteSessions = {
    * stash per session rather than one per statement (23 §23.6).
    */
   open(actor: Actor, adapterId: string, meta: RequestMeta): Promise<WriteSession>;
+  /** This actor's live session on the adapter, or null. Starts nothing. */
+  current(actor: Actor, adapterId: string): WriteSession | null;
   /** An open, unexpired session or `CONFLICT` (06 §6.6 step 1). */
   require(id: string): WriteSessionRecord;
   /** The first write takes a stash through a synchronous snapshot job (05 §5.8); later writes count. */
@@ -103,6 +105,12 @@ export function createWriteSessions(deps: SessionDeps): WriteSessions {
     return { session, adapter: deps.adapterOf(session.adapter_id) };
   };
 
+  const current: WriteSessions["current"] = (actor, adapterId) => {
+    const live = deps.repo.openSession(adapterId, actor.id);
+    if (live === null || Date.parse(expiresAt(live)) <= deps.now().getTime()) return null;
+    return toPublic(live, deps.adapterOf(adapterId).engine);
+  };
+
   const start: WriteSessions["start"] = async (actor, adapterId, foreignKeyChecks, meta) => {
     const adapter = deps.adapterOf(adapterId);
     if (adapter.tier !== "tabular") {
@@ -147,13 +155,9 @@ export function createWriteSessions(deps: SessionDeps): WriteSessions {
       if (!enabled) record(actor, "write_session.fk_checks_off", adapter, updated, meta);
       return toPublic(updated, adapter.engine);
     },
+    current,
     async open(actor, adapterId, meta) {
-      const adapter = deps.adapterOf(adapterId);
-      const live = deps.repo.openSession(adapterId, actor.id);
-      if (live !== null && Date.parse(expiresAt(live)) > deps.now().getTime()) {
-        return toPublic(live, adapter.engine);
-      }
-      return start(actor, adapterId, true, meta);
+      return current(actor, adapterId) ?? start(actor, adapterId, true, meta);
     },
     async end(actor, id, meta) {
       const { session, adapter } = owned(actor, id);

@@ -65,7 +65,17 @@ describe("agent tools a tester has", () => {
     );
     expect(snapshot.job.status).toBe("succeeded");
 
-    await call(h, "end_write_session", { project: "shop", adapter: "orders-db" }, h.tester);
+    const ended = v.parse(
+      v.object({ ended: v.nullable(v.string()) }),
+      await call(h, "end_write_session", { project: "shop", adapter: "orders-db" }, h.tester)
+    );
+    expect(ended.ended).toBe(write.write_session_id);
+    // Ending again opens nothing: an agent that closes twice leaves one session, not two.
+    const twice = v.parse(
+      v.object({ ended: v.nullable(v.string()) }),
+      await call(h, "end_write_session", { project: "shop", adapter: "orders-db" }, h.tester)
+    );
+    expect(twice.ended).toBeNull();
     const restore = v.parse(
       v.object({ job: v.object({ id: v.string(), status: v.string() }) }),
       await call(h, "checkout_state", { project: "shop", state: "init" }, h.tester)

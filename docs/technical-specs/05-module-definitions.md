@@ -329,7 +329,7 @@ uuid(actor, { version: 4 | 7; count?: number }): { values: string[] }
 
 ## 5.17 `agent`
 
-**Responsibility.** The read-only MCP server for AI agents. Single source: [23-agent-access.md](23-agent-access.md).
+**Responsibility.** The MCP server for AI agents: read tools for every agent token, write tools for one with the tester role. Single source: [23-agent-access.md](23-agent-access.md).
 
 ```ts
 createMcpServer(deps): McpServer          // read tools and resources only

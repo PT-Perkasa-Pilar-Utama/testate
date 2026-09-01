@@ -3,7 +3,7 @@ import * as v from "valibot";
 
 import { forbidden } from "../../lib/http/index.ts";
 import type { AgentToolDeps, Scope, Tool } from "./agent.catalog.ts";
-import { cap, json, optional, text } from "./agent.catalog.ts";
+import { AGENT_CAPS, cap, json, optional, text } from "./agent.catalog.ts";
 import type { AgentContext } from "./agent.service.ts";
 
 /** How long a tool waits on a job before it answers "still running" (23 §23.6). */
@@ -74,6 +74,10 @@ export function writeTools(deps: AgentToolDeps): WriteTools {
         mode: "write",
         write_session_id: session.id,
         row_cap: cap(optional(args, "limit", v.number())),
+        // The same budgets the read query takes. Without them the instance limits apply, which are
+        // the dashboard's, and an agent loops (23 §23.1).
+        byte_budget: AGENT_CAPS.byteBudget,
+        time_budget_ms: AGENT_CAPS.timeBudgetMs,
         tag: "mcp",
       });
       return json({
@@ -87,7 +91,10 @@ export function writeTools(deps: AgentToolDeps): WriteTools {
     end_write_session: async (args, ctx, scope) => {
       requireTester(ctx);
       const adapter = scope.adapter(scope.project(text(args, "project")), text(args, "adapter"));
-      const session = await deps.data.openWriteSession(ctx.actor, adapter.id, ctx.meta);
+      // Not `openWriteSession`: an agent that ends a session it never opened would otherwise
+      // start one to end it, and leave two audit rows for something that did not happen.
+      const session = deps.data.currentWriteSession(ctx.actor, adapter.id);
+      if (session === null) return json({ ended: null, stash_state_id: null });
       await deps.data.endWriteSession(ctx.actor, session.id, ctx.meta);
       return json({ ended: session.id, stash_state_id: session.stash_state_id });
     },

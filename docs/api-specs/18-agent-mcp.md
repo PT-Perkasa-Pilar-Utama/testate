@@ -8,6 +8,7 @@ Module: `agent` ([../technical-specs/05-module-definitions.md §5.19](../technic
 | --- | --- |
 | Endpoint | `POST /api/v1/mcp` for JSON-RPC requests and notifications; `GET /api/v1/mcp` for the optional server-to-client event stream |
 | Auth | `Authorization: Bearer tst_<token>` of kind `agent` only; cookies ignored; a standard token answers HTTP `403 FORBIDDEN { "reason": "agent_token_required" }`; an agent token on any other route answers `403 { "reason": "agent_token_restricted" }` (story 139) |
+| Role | The token carries `viewer` or `qa`, never `admin`. Read tools answer either; the write tools answer `qa` only, and refuse a `viewer` with `isError` and `{ "code": "FORBIDDEN", "details": { "reason": "role" } }` (23 §23.6) |
 | Session | `Mcp-Session-Id` honored for the SDK's bookkeeping; the server keeps no agent state |
 | Protocol version | `2025-03-26` in `initialize`; the server answers with its supported version |
 | Caps | Row cap 200 default, 1 000 max; byte budget 1 MiB; time budget 15 s; preview 256 KiB; fixture 500 rows, depth 3 |
@@ -47,6 +48,11 @@ Every tool takes `project` (slug) and, where relevant, `adapter` (id or name). R
 | `diff_summary` | `project`, `diff` | 10.2 shape | existing diffs only |
 | `list_files` | `project`, `adapter`, `path?`, `cursor?` | 11.1 entries | Files adapters |
 | `preview_file` | `project`, `adapter`, `path` | `{ kind: "text" \| "json" \| "csv", content \| rows, truncated }` | 256 KiB; binaries refused |
+| `run_write_query` | `project`, `adapter`, `sql`, `limit?` | `{ columns, rows, truncated, masked_columns, write_session_id }` | `qa` only; sandbox adapters; opens or reuses the token's write session; same caps as the read query |
+| `end_write_session` | `project`, `adapter` | `{ ended, stash_state_id }` | `qa` only |
+| `take_snapshot` | `project`, `name`, `notes?`, `adapters?` | `{ state: { id, name, kind }, job }` | `qa` only; waits 15 s on the job |
+| `checkout_state` | `project`, `state` (id or name), `force?`, `adapters?` | `{ checkout: { id, state }, job }` | `qa` only; overwrites data |
+| `get_job` | `job` | `{ id, kind, status, progress, error }` | any role; poll a job past the wait |
 
 Example call and result:
 
@@ -64,6 +70,8 @@ Tool failures return `isError: true` with `text` = `{ "code": "<01 §1.6 code>",
 
 ## 18.5 What is not here
 
-No write tools, no checkout, no snapshot, no import, no download (story 139; PRD §6). A CI pipeline that needs those uses the REST API with a standard `qa` token.
+No import and no download (story 139; PRD §6). A CI pipeline that needs those uses the REST API with a standard `qa` token. No administration from any agent token, whatever its role.
+
+The write tools were not here either, until an agent token gained a role (23 §23.1). A `viewer` agent token still reaches none of them.
 
 **Traceability.** Stories 134 to 139, 150.
