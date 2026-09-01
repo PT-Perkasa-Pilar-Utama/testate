@@ -200,22 +200,12 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
             class="grid gap-4"
             onSubmit={(input) => props.presenter.confirmDelete(input.confirm_slug)}
           >
-            {/* Three questions this used to leave open: where the archive is, what "the plan
-                expires" means, and whether anything survives. All three now answered here. */}
             <Banner variant="alert">
-              <div class="grid gap-2">
-                <p>
-                  Each database below is put back to its starting point. Whatever it holds right now
-                  is overwritten, and nothing is saved first.
-                </p>
-                <p>
-                  The project is then deleted for good, along with its databases, states, restores,
-                  comparisons and imports. Tokens that could only reach this project stop working.
-                  The audit log keeps its record of what happened.
-                </p>
-                <p>
-                  To keep a state, download it before you start: open the States tab, then the
-                  state's actions menu, then Download.
+              <div class="grid gap-1">
+                <p>Each database below is put back to its starting point, nothing saved first.</p>
+                <p>The project and everything in it is gone for good.</p>
+                <p class="text-xs">
+                  Want to keep a state? Download it first, from its menu on the States tab.
                 </p>
               </div>
             </Banner>
@@ -271,12 +261,10 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
             <Show when={props.presenter.deleteError()}>
               {(message) => <Banner variant="error">{message()}</Banner>}
             </Show>
-            {/* The plan is a 15-minute reservation, and submitting after it lapses answers "the
-                deletion plan is stale". Said as what to do about it rather than as a timestamp,
-                which was the part nobody could read anything into. */}
+            {/* The plan is a 15-minute reservation and submitting after it lapses answers "the
+                deletion plan is stale", so the way out is worth one line. */}
             <p class="text-xs text-muted">
-              This list is good until {formatWhen(plan().expires_at)}. After that, close and reopen
-              this dialog so it can check the project again.
+              Good until {formatWhen(plan().expires_at)}; after that, reopen to refresh it.
             </p>
             <div class="flex justify-end gap-2">
               <Button type="button" variant="ghost" onClick={() => props.presenter.closeDelete()}>
