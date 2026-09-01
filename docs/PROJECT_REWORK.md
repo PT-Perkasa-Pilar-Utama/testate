@@ -66,7 +66,7 @@ sidebar                    project page                adapter page
 | 6 | Each state row carries what it produced | done | 85cd883 |
 | 7 | Policies becomes Column masks | done | cd78ea9 |
 | 8 | ERD: a List / Diagram toggle on the adapter page | done | 162020e |
-| 9 | Diff full page: split panes, changed cells, value diff | done | pending |
+| 9 | Diff full page: split panes, changed cells, value diff | done | e6cf3df |
 
 ### 1. Storage its own menu
 
@@ -182,7 +182,20 @@ changed.
 Split panes for rows, because a row is wide. Clicking a changed cell opens the value itself, and
 there unified reads better: JSON and JSONB are pretty-printed and compared line by line.
 
-## Costs
+## Costs, as they landed
 
-No migrations. 27 tab references across five e2e specs break and are updated with the phase that
-breaks them; the suite is not run until asked. Phases 4, 8 and 9 are the real work.
+No migrations, as planned. The e2e specs were updated with the phase that broke them and the suite
+was **not run**; that is the one thing outstanding when this was handed back.
+
+Two things the plan did not foresee:
+
+- `adapters.service.ts` and `states.repository.ts` each went one line over the 300-line limit, so
+  `adapters.probe.ts` gained the address-then-engine probe, `adapters.stores.ts` the cross-project
+  listing, and `states.events.ts` the two grouped counts. No behaviour moved with them.
+- Phase 1 needed one new endpoint after all. `GET /storage-adapters` lists file stores across the
+  projects a caller may see, because the Storage screen is instance-wide and every other adapter
+  route is scoped to one project. It respects the caller's project scope.
+
+What was deleted along the way: the four-step import wizard and the helpers only it used, the New
+diff dialog, and the diff detail and rows dialogs. A test for code nobody calls is code nobody
+calls, so those went too.
