@@ -96,7 +96,7 @@ at 6px (controls), `lg` at 8px (cards), `xl` at 12px. Those are the two radii Gi
 
 ## Components
 
-Twenty-one files under `apps/web/src/components/`. Reuse before you write.
+Twenty-three files under `apps/web/src/components/`. Reuse before you write.
 
 | File | Exports |
 | --- | --- |
@@ -106,11 +106,13 @@ Twenty-one files under `apps/web/src/components/`. Reuse before you write.
 | `confirm-dialog.tsx` | `ConfirmDialog` |
 | `dialog.tsx` | `Dialog` |
 | `empty-state.tsx` | `EmptyState` — the icon, line, and one action a screen with nothing on it shows |
-| `form-errors.tsx` | `FormErrors` |
+| `field-error.tsx` | `FieldError` — one field's own message, under the field (see the `formisch-forms` skill) |
+| `form-errors.tsx` | `FormErrors` — the old whole-form banner; only forms not yet on Formisch still use it |
 | `input.tsx` / `input-area.tsx` | `Input`, `InputArea` |
 | `kbd.tsx` | `Kbd` |
 | `layer-card.tsx` | `LayerCard` |
 | `load-more.tsx` | `LoadMore` |
+| `logo.tsx` | `Logo` — the Testate mark, drawn in `currentColor` |
 | `menu.tsx` | `Menu`, `MenuItem`, `MenuLink` |
 | `meter.tsx` | `Meter` |
 | `page-header.tsx` | `PageHeader` — title, description, actions |
