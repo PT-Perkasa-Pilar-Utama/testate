@@ -17,6 +17,8 @@ import AuditView from "@/features/audit/audit.view.tsx";
 import { signOut } from "@/features/auth/auth.presenter.ts";
 import ChangePasswordView from "@/features/auth/change-password.view.tsx";
 import Logo from "@/components/logo.tsx";
+import { nextTheme, setTheme, theme } from "@/lib/theme.ts";
+import type { Theme } from "@/lib/theme.ts";
 import LoginView from "@/features/auth/login.view.tsx";
 import JobsView from "@/features/jobs/jobs.view.tsx";
 import ProjectView from "@/features/project/project.view.tsx";
@@ -137,6 +139,29 @@ function storedCollapsed(): boolean {
   }
 }
 
+const THEME_FACE = {
+  system: { icon: "monitor", label: "Theme: follows your system" },
+  light: { icon: "sun", label: "Theme: light" },
+  dark: { icon: "moon", label: "Theme: dark" },
+} as const;
+
+/** System, light, dark, and back. Three states because "follow the system" is a real answer. */
+function ThemeButton(): JSX.Element {
+  const face = (): (typeof THEME_FACE)[Theme] => THEME_FACE[theme()];
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      class="justify-start"
+      title={`${face().label}. Switch to ${THEME_FACE[nextTheme(theme())].label.toLowerCase()}`}
+      onClick={() => setTheme(nextTheme(theme()))}
+    >
+      <Icon name={face().icon} class="h-3.5 w-3.5" />
+      {face().label}
+    </Button>
+  );
+}
+
 function Sidebar(props: { current: string | undefined }): JSX.Element {
   const [collapsed, setCollapsed] = createSignal(storedCollapsed());
   createEffect(
@@ -214,6 +239,7 @@ function Sidebar(props: { current: string | undefined }): JSX.Element {
               >
                 {current().label} · {current().role}
               </a>
+              <ThemeButton />
               {/* A button centres its label; the account link above it reads from the left edge,
                   and the two sitting in one grid column have to line up on that edge. */}
               <Button

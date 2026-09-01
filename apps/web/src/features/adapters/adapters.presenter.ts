@@ -1,32 +1,32 @@
 import { createSignal } from "solid-js";
-import type { Adapter, Engine } from "@testate/shared";
+import type { Adapter, AdapterCreateFormInput } from "@testate/shared";
 
 import { showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
-import { ENGINE_FORMS, toDraftBody } from "./adapters.fields.ts";
-import type { EngineForm, Values } from "./adapters.fields.ts";
+import { missingRequiredFields, toDraftBody } from "./adapters.fields.ts";
+import type { Values } from "./adapters.fields.ts";
 import { adaptersModel } from "./adapters.model.ts";
 import type { ProbeOutcome } from "./adapters.model.ts";
 
+/**
+ * `engine`, `name` and `mode` live in the Formisch form now (`adapterCreateFormSchema`); this only
+ * holds what the form cannot: the per-engine config/secret values (their keys are decided at
+ * runtime by `ENGINE_FORMS`, so no static schema can own them) and what the server answers.
+ */
 export type AdaptersPresenter = Refreshable<Adapter[]> & {
   creating: () => boolean;
-  engine: () => Engine;
-  form: () => EngineForm;
-  name: () => string;
-  mode: () => "sandbox" | "read_only";
   values: () => Values;
   outcome: () => ProbeOutcome | null;
   error: () => string | null;
   busy: () => boolean;
   openCreate: () => void;
   closeCreate: () => void;
-  setEngine: (engine: Engine) => void;
-  setName: (name: string) => void;
-  setMode: (mode: "sandbox" | "read_only") => void;
+  /** Call when the engine changes: a prior test outcome no longer describes what's selected. */
+  invalidateOutcome: () => void;
   setValue: (key: string, value: string) => void;
-  test: () => Promise<void>;
-  create: () => Promise<void>;
+  test: (input: AdapterCreateFormInput) => Promise<void>;
+  create: (input: AdapterCreateFormInput) => Promise<void>;
 };
 
 /** A probe outcome as one line for the test banner. */
@@ -47,9 +47,6 @@ function messageOf(cause: unknown, fallback: string): string {
 export function createAdaptersPresenter(slug: () => string): AdaptersPresenter {
   const adapters = createRefreshable(() => adaptersModel.list(slug()));
   const [creating, setCreating] = createSignal(false);
-  const [engine, setEngineSignal] = createSignal<Engine>("postgres");
-  const [name, setName] = createSignal("");
-  const [mode, setMode] = createSignal<"sandbox" | "read_only">("sandbox");
   const [values, setValues] = createSignal<Values>({});
   const [outcome, setOutcome] = createSignal<ProbeOutcome | null>(null);
   const [error, setError] = createSignal<string | null>(null);
@@ -68,45 +65,44 @@ export function createAdaptersPresenter(slug: () => string): AdaptersPresenter {
   return {
     ...adapters,
     creating,
-    engine,
-    form: () => ENGINE_FORMS[engine()],
-    name,
-    mode,
     values,
     outcome,
     error,
     busy,
     openCreate: () => {
+      // The dialog stays mounted and reopens on the same form; start every open blank rather than
+      // showing the last attempt's values (formisch-forms skill: reset a dialog form on open).
+      setValues({});
       setOutcome(null);
       setError(null);
       setCreating(true);
     },
     closeCreate: () => setCreating(false),
-    setEngine: (next) => {
-      setEngineSignal(next);
-      setOutcome(null);
-    },
-    setName,
-    setMode,
+    invalidateOutcome: () => setOutcome(null),
     setValue: (key, value) => {
       setValues((current) => ({ ...current, [key]: value }));
       setOutcome(null);
     },
-    test: () => {
-      const staticBody = toDraftBody(engine(), name(), mode(), values());
+    test: (input) => {
+      const staticBody = toDraftBody(input.engine, input.name, input.mode, values());
       const staticSlug = slug();
       return run(async () => {
         setOutcome(await adaptersModel.test(staticSlug, staticBody));
       });
     },
-    create: () => {
-      const staticBody = toDraftBody(engine(), name(), mode(), values());
+    create: (input) => {
+      // The schema validates engine/name/mode; it cannot see config/secrets (runtime-keyed), so
+      // their required fields are checked here, the way the old form guard checked every field.
+      const missing = missingRequiredFields(input.engine, values());
+      if (missing.length > 0) {
+        setError(`Fill in: ${missing.join(", ")}.`);
+        return Promise.resolve();
+      }
+      const staticBody = toDraftBody(input.engine, input.name, input.mode, values());
       const staticSlug = slug();
       return run(async () => {
         const result = await adaptersModel.create(staticSlug, staticBody);
         setCreating(false);
-        setValues({});
-        setName("");
         adapters.refresh();
         showToast(
           result.init_job === null

@@ -1,3 +1,5 @@
+import type { ChangePasswordInput } from "@testate/shared";
+
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
@@ -10,7 +12,9 @@ export type AccountPresenter = {
   sessions: Refreshable<Session[]>;
   password: PasswordPresenter;
   revoke: (session: Session) => Promise<void>;
-  changePassword: () => Promise<void>;
+  /** Resolves true once the password actually changed, so the view knows whether it may clear
+   *  its own form - a refusal leaves the presenter's error for the banner instead. */
+  changePassword: (input: ChangePasswordInput) => Promise<boolean>;
 };
 
 export function createAccountPresenter(): AccountPresenter {
@@ -24,13 +28,12 @@ export function createAccountPresenter(): AccountPresenter {
         await accountModel.revokeSession(session.id);
         sessions.refresh();
       }),
-    changePassword: async () => {
-      await password.submit();
-      if (password.error() !== null) return;
-      password.setCurrent("");
-      password.setNext("");
+    changePassword: async (input) => {
+      await password.submit(input);
+      if (password.error() !== null) return false;
       showToast("Password changed; other sessions were signed out", "success");
       sessions.refresh();
+      return true;
     },
   };
 }

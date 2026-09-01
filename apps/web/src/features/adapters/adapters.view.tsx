@@ -1,25 +1,27 @@
+import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import FormErrors from "@/components/form-errors.tsx";
-import { createFormGuard } from "@/lib/form.ts";
-import { For, Loading, Show } from "solid-js";
+import { For, Loading, Show, createEffect } from "solid-js";
+import type { AdapterCreateFormInput, Engine } from "@testate/shared";
+import { adapterCreateFormSchema } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
+import FieldError from "@/components/field-error.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import { Cell, Head, Row, Table, EmptyRow } from "@/components/table.tsx";
 import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
-import { ENGINE_OPTIONS, MODE_OPTIONS, STATUS_VARIANT } from "./adapters.fields.ts";
-import type { Field } from "./adapters.fields.ts";
+import { ENGINE_OPTIONS, ENGINE_FORMS, MODE_OPTIONS, STATUS_VARIANT } from "./adapters.fields.ts";
+import type { Field as EngineField } from "./adapters.fields.ts";
 import { createAdaptersPresenter, describeOutcome, outcomeWarnings } from "./adapters.presenter.ts";
 import type { AdaptersPresenter } from "./adapters.presenter.ts";
 
 function FieldInput(props: {
   presenter: AdaptersPresenter;
-  field: Field;
+  field: EngineField;
   prefix: string;
 }): JSX.Element {
   const key = (): string => `${props.prefix}.${props.field.key}`;
@@ -39,7 +41,36 @@ function FieldInput(props: {
 }
 
 function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Element {
-  const guard = createFormGuard();
+  const form = createForm({
+    schema: adapterCreateFormSchema,
+    initialInput: { engine: "postgres", name: "", mode: "sandbox" },
+  });
+  const engine = (): Engine => getInput(form, { path: ["engine"] }) ?? "postgres";
+  const engineForm = () => ENGINE_FORMS[engine()];
+
+  // The dialog stays mounted (design-system rule); start every open on a blank form rather than
+  // whatever the last attempt left behind.
+  createEffect(
+    () => props.presenter.creating(),
+    (opening) => {
+      if (opening) reset(form);
+    }
+  );
+  // A test outcome describes one engine's connectivity; switching engines makes it stale.
+  createEffect(
+    () => engine(),
+    () => props.presenter.invalidateOutcome()
+  );
+
+  const readTest = (): AdapterCreateFormInput => {
+    const raw = getInput(form);
+    return {
+      engine: raw.engine ?? "postgres",
+      name: (raw.name ?? "").trim(),
+      mode: raw.mode ?? "sandbox",
+    };
+  };
+
   return (
     <Dialog
       open={props.presenter.creating()}
@@ -48,50 +79,58 @@ function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Element {
       description="Secrets are sealed before they reach the database and never shown again."
       size="lg"
     >
-      <form
-        ref={guard.ref}
-        novalidate
-        class="grid gap-4"
-        onSubmit={(event) => {
-          if (!guard.accepts(event)) return;
-          void props.presenter.create();
-        }}
-      >
-        <FormErrors errors={guard.errors()} />
+      <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.create(input)}>
         <div class="grid gap-3 sm:grid-cols-2">
-          <label class="grid gap-1.5 text-base">
-            <span>Engine</span>
-            <Select
-              options={ENGINE_OPTIONS}
-              value={props.presenter.engine()}
-              onChange={(engine) => props.presenter.setEngine(engine)}
-            />
-          </label>
-          <label class="grid gap-1.5 text-base">
-            <span>Name</span>
-            <Input
-              required
-              maxlength="80"
-              value={props.presenter.name()}
-              onInput={(event) => props.presenter.setName(event.currentTarget.value)}
-            />
-          </label>
+          <Field of={form} path={["engine"]}>
+            {(field) => (
+              <label class="grid gap-1.5 text-base">
+                <span>Engine</span>
+                <Select
+                  options={ENGINE_OPTIONS}
+                  value={field.input ?? "postgres"}
+                  onChange={(value) => field.onInput(value)}
+                />
+                <FieldError message={field.errors?.[0]} />
+              </label>
+            )}
+          </Field>
+          <Field of={form} path={["name"]}>
+            {(field) => (
+              <label class="grid gap-1.5 text-base">
+                <span>Name</span>
+                <Input
+                  {...field.props}
+                  required
+                  maxlength="80"
+                  value={field.input}
+                  variant={field.errors ? "error" : "default"}
+                  aria-invalid={field.errors ? "true" : undefined}
+                />
+                <FieldError message={field.errors?.[0]} />
+              </label>
+            )}
+          </Field>
         </div>
-        <Show when={props.presenter.form().kind === "database"}>
-          <label class="grid gap-1.5 text-base">
-            <span>Mode</span>
-            <Select
-              options={MODE_OPTIONS}
-              value={props.presenter.mode()}
-              onChange={(mode) => props.presenter.setMode(mode)}
-            />
-          </label>
+        <Show when={engineForm().kind === "database"}>
+          <Field of={form} path={["mode"]}>
+            {(field) => (
+              <label class="grid gap-1.5 text-base">
+                <span>Mode</span>
+                <Select
+                  options={MODE_OPTIONS}
+                  value={field.input ?? "sandbox"}
+                  onChange={(value) => field.onInput(value)}
+                />
+                <FieldError message={field.errors?.[0]} />
+              </label>
+            )}
+          </Field>
         </Show>
         <div class="grid gap-3 sm:grid-cols-2">
-          <For each={props.presenter.form().config}>
+          <For each={engineForm().config}>
             {(field) => <FieldInput presenter={props.presenter} field={field} prefix="config" />}
           </For>
-          <For each={props.presenter.form().secrets}>
+          <For each={engineForm().secrets}>
             {(field) => <FieldInput presenter={props.presenter} field={field} prefix="secret" />}
           </For>
         </div>
@@ -116,7 +155,7 @@ function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Element {
             type="button"
             variant="secondary"
             disabled={props.presenter.busy()}
-            onClick={() => void props.presenter.test()}
+            onClick={() => void props.presenter.test(readTest())}
           >
             Test connection
           </Button>
@@ -124,7 +163,7 @@ function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Element {
             Create
           </Button>
         </div>
-      </form>
+      </Form>
     </Dialog>
   );
 }

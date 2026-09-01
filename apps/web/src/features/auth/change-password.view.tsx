@@ -1,10 +1,11 @@
+import { Field, Form, createForm } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import FormErrors from "@/components/form-errors.tsx";
-import { createFormGuard } from "@/lib/form.ts";
 import { Show } from "solid-js";
+import { changePasswordSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
+import FieldError from "@/components/field-error.tsx";
 import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import LayerCard from "@/components/layer-card.tsx";
@@ -13,7 +14,7 @@ import { createPasswordPresenter } from "./auth.presenter.ts";
 /** Shown instead of the app while `must_change_password` is set (bootstrap admin, admin reset). */
 export default function ChangePasswordView(): JSX.Element {
   const presenter = createPasswordPresenter();
-  const guard = createFormGuard();
+  const form = createForm({ schema: changePasswordSchema });
   return (
     // The same shape as the sign-in screen it follows.
     <section class="mx-auto grid w-full max-w-[340px] gap-6 pt-16">
@@ -23,37 +24,44 @@ export default function ChangePasswordView(): JSX.Element {
       </div>
       <LayerCard class="grid gap-4 px-6 py-5">
         <h1 class="text-base font-semibold text-heading">Choose a new password</h1>
-        <form
-          ref={guard.ref}
-          novalidate
-          class="grid gap-4"
-          onSubmit={(event) => {
-            if (!guard.accepts(event)) return;
-            void presenter.submit();
-          }}
-        >
-          <FormErrors errors={guard.errors()} />
-          <label class="grid gap-1.5 text-base">
-            <span>Current password</span>
-            <Input
-              type="password"
-              autocomplete="current-password"
-              autofocus
-              required
-              value={presenter.current()}
-              onInput={(event) => presenter.setCurrent(event.currentTarget.value)}
-            />
-          </label>
-          <label class="grid gap-1.5 text-base">
-            <span>New password</span>
-            <Input
-              type="password"
-              autocomplete="new-password"
-              required
-              value={presenter.next()}
-              onInput={(event) => presenter.setNext(event.currentTarget.value)}
-            />
-          </label>
+        <Form of={form} class="grid gap-4" onSubmit={(input) => presenter.submit(input)}>
+          <Field of={form} path={["current"]}>
+            {(field) => (
+              <label class="grid gap-1.5 text-base">
+                <span>Current password</span>
+                <Input
+                  {...field.props}
+                  type="password"
+                  autocomplete="current-password"
+                  autofocus
+                  required
+                  value={field.input}
+                  variant={field.errors ? "error" : "default"}
+                  aria-invalid={field.errors ? "true" : undefined}
+                />
+                <FieldError message={field.errors?.[0]} />
+              </label>
+            )}
+          </Field>
+          <Field of={form} path={["next"]}>
+            {(field) => (
+              <label class="grid gap-1.5 text-base">
+                <span>New password</span>
+                <Input
+                  {...field.props}
+                  type="password"
+                  autocomplete="new-password"
+                  required
+                  value={field.input}
+                  variant={field.errors ? "error" : "default"}
+                  aria-invalid={field.errors ? "true" : undefined}
+                />
+                <FieldError message={field.errors?.[0]} />
+              </label>
+            )}
+          </Field>
+          {/* A refused current password is the server's answer, not a schema failure - it stays a
+              banner rather than a field message. */}
           <Show when={presenter.error()}>
             {(message) => <Banner variant="error">{message()}</Banner>}
           </Show>
@@ -63,7 +71,7 @@ export default function ChangePasswordView(): JSX.Element {
             </Show>
             {presenter.busy() ? "Saving..." : "Save password"}
           </Button>
-        </form>
+        </Form>
       </LayerCard>
     </section>
   );

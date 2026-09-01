@@ -1,5 +1,11 @@
 import { createSignal } from "solid-js";
-import type { HealthAdmin, Job, JsonObject, Settings } from "@testate/shared";
+import type {
+  HealthAdmin,
+  Job,
+  JsonObject,
+  Settings,
+  StoreMigrationFormInput,
+} from "@testate/shared";
 
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
@@ -32,13 +38,12 @@ export type SettingsPresenter = Refreshable<Settings> & {
   setDenyDraft: (value: string) => void;
   saveDeny: () => Promise<void>;
   migrating: () => boolean;
-  targetDriver: () => "local" | "s3";
-  s3: () => S3Draft;
+  migrateError: () => string | null;
+  /** The migrate dialog resets to this on open: the driver the store isn't on, blank S3 fields. */
+  migrateDefaults: () => StoreMigrationFormInput;
   openMigrate: () => void;
   closeMigrate: () => void;
-  setTargetDriver: (driver: "local" | "s3") => void;
-  setS3: (patch: Partial<S3Draft>) => void;
-  migrate: () => Promise<void>;
+  migrate: (input: StoreMigrationFormInput) => Promise<void>;
   includeBlobs: () => boolean;
   setIncludeBlobs: (value: boolean) => void;
   backupJob: () => Job | null;
@@ -100,8 +105,7 @@ export function createSettingsPresenter(): SettingsPresenter {
   const [drafts, setDrafts] = createSignal(new Map<string, string>());
   const [denyDraft, setDenyDraft] = createSignal<string | null>(null);
   const [migrating, setMigrating] = createSignal(false);
-  const [targetDriver, setTargetDriver] = createSignal<"local" | "s3">("s3");
-  const [s3, setS3Signal] = createSignal<S3Draft>(EMPTY_S3);
+  const [migrateError, setMigrateError] = createSignal<string | null>(null);
   const [includeBlobs, setIncludeBlobs] = createSignal(false);
   const [backupJob, setBackupJob] = createSignal<Job | null>(null);
   const rows = (section: Section): SettingRow[] => {
@@ -152,30 +156,39 @@ export function createSettingsPresenter(): SettingsPresenter {
       });
     },
     migrating,
-    targetDriver,
-    s3,
+    migrateError,
+    migrateDefaults: () => ({
+      driver: settings.value().store.driver === "s3" ? "local" : "s3",
+      ...EMPTY_S3,
+    }),
     openMigrate: () => {
-      setTargetDriver(settings.value().store.driver === "s3" ? "local" : "s3");
-      setS3Signal(EMPTY_S3);
+      setMigrateError(null);
       setMigrating(true);
     },
-    closeMigrate: () => setMigrating(false),
-    setTargetDriver,
-    setS3: (patch) => setS3Signal((current) => ({ ...current, ...patch })),
-    migrate: () => {
-      const staticBody = migrationBody(targetDriver(), s3());
-      return attempt(async () => {
-        const job = await settingsModel.migrate(staticBody);
-        setMigrating(false);
-        showToast("Store migration queued; snapshots copy to the new store", "info");
-        followJob(job, (done) => {
-          showToast(
-            `Store migration ${done.status}`,
-            done.status === "succeeded" ? "success" : "error"
-          );
-          settings.refresh();
-        });
-      });
+    closeMigrate: () => {
+      setMigrating(false);
+      setMigrateError(null);
+    },
+    /** Keeps its error in the form instead of a toast; a refused connection is not a generic failure. */
+    migrate: (input) => {
+      const staticBody = migrationBody(input.driver, input);
+      setMigrateError(null);
+      return (async () => {
+        try {
+          const job = await settingsModel.migrate(staticBody);
+          setMigrating(false);
+          showToast("Store migration queued; snapshots copy to the new store", "info");
+          followJob(job, (done) => {
+            showToast(
+              `Store migration ${done.status}`,
+              done.status === "succeeded" ? "success" : "error"
+            );
+            settings.refresh();
+          });
+        } catch (cause: unknown) {
+          setMigrateError(cause instanceof Error ? cause.message : "request failed");
+        }
+      })();
     },
     includeBlobs,
     setIncludeBlobs,

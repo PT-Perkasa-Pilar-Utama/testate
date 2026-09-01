@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import type { ApiToken, JsonObject, Role, TokenKind } from "@testate/shared";
+import type { ApiToken, JsonObject, TokenDraft } from "@testate/shared";
 import { ROLES, TOKEN_KINDS } from "@testate/shared";
 
 import { attempt, showToast } from "@/lib/toast.ts";
@@ -11,21 +11,18 @@ import { tokensModel } from "./tokens.model.ts";
 export const KIND_OPTIONS = TOKEN_KINDS.map((kind) => ({ value: kind, label: kind }));
 export const ROLE_OPTIONS = ROLES.map((role) => ({ value: role, label: role }));
 
-export type TokenDraft = { name: string; kind: TokenKind; role: Role; expires_on: string };
-
-const EMPTY_DRAFT: TokenDraft = { name: "", kind: "standard", role: "qa", expires_on: "" };
+/** The dialog's own starting point; also what it resets to on close (`tokenDraftSchema`). */
+export const EMPTY_DRAFT: TokenDraft = { name: "", kind: "standard", role: "qa", expires_on: "" };
 
 export type TokensPresenter = Paged<ApiToken> & {
   creating: () => boolean;
-  draft: () => TokenDraft;
   error: () => string | null;
   /** The freshly minted token plus the record it belongs to; null once dismissed. Testate never
    *  shows the secret again after this, so the reveal reads from this signal and nowhere else. */
   created: () => CreatedToken | null;
   openCreate: () => void;
   closeCreate: () => void;
-  setDraft: (patch: Partial<TokenDraft>) => void;
-  create: () => Promise<void>;
+  create: (input: TokenDraft) => Promise<void>;
   copyCreated: () => Promise<void>;
   dismissCreated: () => void;
   /** The token the revoke dialog is asking about, null when it is closed. */
@@ -47,14 +44,12 @@ export function toCreateBody(draft: TokenDraft): JsonObject {
 export function createTokensPresenter(): TokensPresenter {
   const tokens = createPaged((cursor) => tokensModel.page(cursor));
   const [creating, setCreating] = createSignal(false);
-  const [draft, setDraftSignal] = createSignal<TokenDraft>(EMPTY_DRAFT);
   const [error, setError] = createSignal<string | null>(null);
   const [created, setCreated] = createSignal<CreatedToken | null>(null);
   const [revoking, setRevoking] = createSignal<ApiToken | null>(null);
   return {
     ...tokens,
     creating,
-    draft,
     error,
     created,
     openCreate: () => setCreating(true),
@@ -62,14 +57,12 @@ export function createTokensPresenter(): TokensPresenter {
       setCreating(false);
       setError(null);
     },
-    setDraft: (patch) => setDraftSignal((current) => ({ ...current, ...patch })),
-    create: async () => {
+    create: async (input) => {
       setError(null);
       try {
-        const result = await tokensModel.create(toCreateBody(draft()));
+        const result = await tokensModel.create(toCreateBody(input));
         setCreated(result);
         setCreating(false);
-        setDraftSignal(EMPTY_DRAFT);
         tokens.refresh();
       } catch (cause: unknown) {
         setError(cause instanceof Error ? cause.message : "could not create the token");

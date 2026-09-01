@@ -1,21 +1,27 @@
+import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import FormErrors from "@/components/form-errors.tsx";
-import { createFormGuard } from "@/lib/form.ts";
 import PageHeader from "@/components/page-header.tsx";
-import { For, Loading, Show } from "solid-js";
+import { For, Loading, Show, createEffect } from "solid-js";
 import type { ApiToken } from "@testate/shared";
+import { tokenDraftSchema } from "@testate/shared";
 
 import { formatWhen } from "@/lib/format.ts";
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import ConfirmDialog from "@/components/confirm-dialog.tsx";
+import FieldError from "@/components/field-error.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import { Cell, Head, Row, Table, EmptyRow, TableFooter } from "@/components/table.tsx";
-import { KIND_OPTIONS, ROLE_OPTIONS, createTokensPresenter } from "./tokens.presenter.ts";
+import {
+  EMPTY_DRAFT,
+  KIND_OPTIONS,
+  ROLE_OPTIONS,
+  createTokensPresenter,
+} from "./tokens.presenter.ts";
 import type { TokensPresenter } from "./tokens.presenter.ts";
 import RevealDialog from "./tokens.reveal.view.tsx";
 
@@ -30,7 +36,15 @@ function tokenStatus(token: ApiToken) {
 }
 
 function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
-  const guard = createFormGuard();
+  const form = createForm({ schema: tokenDraftSchema, initialInput: EMPTY_DRAFT });
+  // Dialogs stay mounted, so the form does not reset itself; put it back to a fresh draft
+  // every time this one opens.
+  createEffect(
+    () => props.presenter.creating(),
+    (creating) => {
+      if (creating) reset(form, { initialInput: EMPTY_DRAFT });
+    }
+  );
   return (
     <Dialog
       open={props.presenter.creating()}
@@ -38,55 +52,70 @@ function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
       title="New API token"
       description="Standard tokens act as their role on the REST API. Agent tokens are viewer-only and reach the MCP endpoint alone."
     >
-      <form
-        ref={guard.ref}
-        novalidate
-        class="grid gap-4"
-        onSubmit={(event) => {
-          if (!guard.accepts(event)) return;
-          void props.presenter.create();
-        }}
-      >
-        <FormErrors errors={guard.errors()} />
-        <label class="grid gap-1.5 text-base">
-          <span>Name</span>
-          <Input
-            required
-            maxlength="80"
-            value={props.presenter.draft().name}
-            onInput={(event) => props.presenter.setDraft({ name: event.currentTarget.value })}
-          />
-        </label>
-        <label class="grid gap-1.5 text-base">
-          <span>Kind</span>
-          <Select
-            options={KIND_OPTIONS}
-            value={props.presenter.draft().kind}
-            onChange={(kind) => props.presenter.setDraft({ kind })}
-          />
-        </label>
-        <Show when={props.presenter.draft().kind === "standard"}>
-          <label class="grid gap-1.5 text-base">
-            <span>Role</span>
-            <Select
-              options={ROLE_OPTIONS}
-              value={props.presenter.draft().role}
-              onChange={(role) => props.presenter.setDraft({ role })}
-            />
-          </label>
+      <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.create(input)}>
+        <Field of={form} path={["name"]}>
+          {(field) => (
+            <label class="grid gap-1.5 text-base">
+              <span>Name</span>
+              <Input
+                {...field.props}
+                required
+                maxlength="80"
+                value={field.input}
+                variant={field.errors ? "error" : "default"}
+                aria-invalid={field.errors ? "true" : undefined}
+              />
+              <FieldError message={field.errors?.[0]} />
+            </label>
+          )}
+        </Field>
+        <Field of={form} path={["kind"]}>
+          {(field) => (
+            <label class="grid gap-1.5 text-base">
+              <span>Kind</span>
+              <Select
+                options={KIND_OPTIONS}
+                value={field.input ?? EMPTY_DRAFT.kind}
+                onChange={(kind) => field.onInput(kind)}
+              />
+            </label>
+          )}
+        </Field>
+        {/* Reads the kind field through `getInput`, not a sibling Field's own render-prop object,
+            so this Show never chains off another Field's narrowed value. */}
+        <Show when={getInput(form, { path: ["kind"] }) === "standard"}>
+          <Field of={form} path={["role"]}>
+            {(field) => (
+              <label class="grid gap-1.5 text-base">
+                <span>Role</span>
+                <Select
+                  options={ROLE_OPTIONS}
+                  value={field.input ?? EMPTY_DRAFT.role}
+                  onChange={(role) => field.onInput(role)}
+                />
+              </label>
+            )}
+          </Field>
         </Show>
-        <label class="grid gap-1.5 text-base">
-          <span>
-            {props.presenter.draft().kind === "agent"
-              ? "Expires on (default 90 days, at most 365)"
-              : "Expires on (optional)"}
-          </span>
-          <Input
-            type="date"
-            value={props.presenter.draft().expires_on}
-            onInput={(event) => props.presenter.setDraft({ expires_on: event.currentTarget.value })}
-          />
-        </label>
+        <Field of={form} path={["expires_on"]}>
+          {(field) => (
+            <label class="grid gap-1.5 text-base">
+              <span>
+                {getInput(form, { path: ["kind"] }) === "agent"
+                  ? "Expires on (default 90 days, at most 365)"
+                  : "Expires on (optional)"}
+              </span>
+              <Input
+                {...field.props}
+                type="date"
+                value={field.input}
+                variant={field.errors ? "error" : "default"}
+                aria-invalid={field.errors ? "true" : undefined}
+              />
+              <FieldError message={field.errors?.[0]} />
+            </label>
+          )}
+        </Field>
         <Show when={props.presenter.error()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>
@@ -98,7 +127,7 @@ function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
             Create
           </Button>
         </div>
-      </form>
+      </Form>
     </Dialog>
   );
 }

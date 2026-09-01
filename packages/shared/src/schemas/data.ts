@@ -240,6 +240,20 @@ export const upsertColumnPolicySchema = v.object({
   display: v.optional(v.boolean(), false),
 });
 
+/**
+ * The policy dialog (Formisch, see the `formisch-forms` skill): a `<select>` can't carry `null`,
+ * so "none" stands in for it here and the presenter maps it back before the PUT.
+ */
+export const policyFunctionChoiceSchema = v.picklist(["none", ...functionNameSchema.options]);
+export const policyMaskChoiceSchema = v.picklist(["none", ...maskSchema.options]);
+
+export const policyFormSchema = v.object({
+  fn: policyFunctionChoiceSchema,
+  mask: policyMaskChoiceSchema,
+  display: v.boolean(),
+});
+export type PolicyFormInput = v.InferOutput<typeof policyFormSchema>;
+
 export const fixtureRequestSchema = v.object({
   table: v.string(),
   pk: jsonObjectSchema,

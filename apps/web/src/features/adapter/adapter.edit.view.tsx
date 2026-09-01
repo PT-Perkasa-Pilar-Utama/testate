@@ -1,17 +1,19 @@
+import { Field, Form, createForm, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import FormErrors from "@/components/form-errors.tsx";
-import { createFormGuard } from "@/lib/form.ts";
-import { For, Show } from "solid-js";
+import { For, Show, createEffect } from "solid-js";
 import type { Adapter } from "@testate/shared";
+import { adapterEditFormSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
+import FieldError from "@/components/field-error.tsx";
 import Input from "@/components/input.tsx";
 import InputArea from "@/components/input-area.tsx";
 import Select from "@/components/select.tsx";
 import { ENGINE_FORMS } from "../adapters/adapters.fields.ts";
-import type { Field } from "../adapters/adapters.fields.ts";
+import type { EngineForm, Field as EngineField } from "../adapters/adapters.fields.ts";
+import { draftFrom } from "./adapter.edit.ts";
 import type { AdapterPresenter } from "./adapter.presenter.ts";
 
 // ponytail: "fast" is offered nowhere because no engine implements it. The column and the API
@@ -21,7 +23,7 @@ const RESTORE_OPTIONS = [{ value: "atomic", label: "atomic (one transaction)" }]
 
 function Fields(props: {
   presenter: AdapterPresenter;
-  fields: Field[];
+  fields: EngineField[];
   prefix: string;
   hint?: string;
 }): JSX.Element {
@@ -37,7 +39,7 @@ function Fields(props: {
             type={field.type === "boolean" ? "text" : field.type}
             autocomplete={field.type === "password" ? "new-password" : "off"}
             placeholder={field.placeholder ?? ""}
-            value={props.presenter.draft().values[`${props.prefix}.${field.key}`] ?? ""}
+            value={props.presenter.values()[`${props.prefix}.${field.key}`] ?? ""}
             onInput={(event) =>
               props.presenter.setValue(`${props.prefix}.${field.key}`, event.currentTarget.value)
             }
@@ -53,8 +55,18 @@ export default function EditDialog(props: {
   presenter: AdapterPresenter;
   adapter: Adapter;
 }): JSX.Element {
-  const form = (): (typeof ENGINE_FORMS)[Adapter["engine"]] => ENGINE_FORMS[props.adapter.engine];
-  const guard = createFormGuard();
+  const engineForm = (): EngineForm => ENGINE_FORMS[props.adapter.engine];
+  const form = createForm({ schema: adapterEditFormSchema });
+
+  // The dialog stays mounted (design-system rule); prefill from the record being edited each time
+  // it opens rather than showing whatever the previous open left behind.
+  createEffect(
+    () => props.presenter.editing(),
+    (opening) => {
+      if (opening) reset(form, { initialInput: draftFrom(props.adapter) });
+    }
+  );
+
   return (
     <Dialog
       open={props.presenter.editing()}
@@ -63,77 +75,97 @@ export default function EditDialog(props: {
       description="Renaming keeps states, mappings, and saved queries. A new host or database takes a new init state."
       size="lg"
     >
-      <form
-        ref={guard.ref}
-        novalidate
-        class="grid gap-4"
-        onSubmit={(event) => {
-          if (!guard.accepts(event)) return;
-          void props.presenter.save();
-        }}
-      >
-        <FormErrors errors={guard.errors()} />
-        <label class="grid gap-1.5 text-base">
-          <span>Name</span>
-          <Input
-            required
-            maxlength="80"
-            value={props.presenter.draft().name}
-            onInput={(event) => props.presenter.setDraft({ name: event.currentTarget.value })}
-          />
-        </label>
-        <Show when={props.adapter.kind === "database"}>
-          <label class="grid gap-1.5 text-base">
-            <span>Excluded tables (comma separated; migration tables are excluded by default)</span>
-            <InputArea
-              rows="2"
-              value={props.presenter.draft().excluded_tables}
-              onInput={(event) =>
-                props.presenter.setDraft({ excluded_tables: event.currentTarget.value })
-              }
-            />
-          </label>
-          <Show when={props.adapter.engine === "postgres"}>
+      <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.save(input)}>
+        <Field of={form} path={["name"]}>
+          {(field) => (
             <label class="grid gap-1.5 text-base">
-              <span>Schemas (comma separated; empty = every non-system schema)</span>
+              <span>Name</span>
               <Input
-                value={props.presenter.draft().schemas}
-                onInput={(event) =>
-                  props.presenter.setDraft({ schemas: event.currentTarget.value })
-                }
+                {...field.props}
+                required
+                maxlength="80"
+                value={field.input}
+                variant={field.errors ? "error" : "default"}
+                aria-invalid={field.errors ? "true" : undefined}
               />
+              <FieldError message={field.errors?.[0]} />
             </label>
+          )}
+        </Field>
+        <Show when={props.adapter.kind === "database"}>
+          <Field of={form} path={["excluded_tables"]}>
+            {(field) => (
+              <label class="grid gap-1.5 text-base">
+                <span>
+                  Excluded tables (comma separated; migration tables are excluded by default)
+                </span>
+                <InputArea
+                  {...field.props}
+                  rows="2"
+                  value={field.input}
+                  variant={field.errors ? "error" : "default"}
+                  aria-invalid={field.errors ? "true" : undefined}
+                />
+                <FieldError message={field.errors?.[0]} />
+              </label>
+            )}
+          </Field>
+          <Show when={props.adapter.engine === "postgres"}>
+            <Field of={form} path={["schemas"]}>
+              {(field) => (
+                <label class="grid gap-1.5 text-base">
+                  <span>Schemas (comma separated; empty = every non-system schema)</span>
+                  <Input
+                    {...field.props}
+                    value={field.input}
+                    variant={field.errors ? "error" : "default"}
+                    aria-invalid={field.errors ? "true" : undefined}
+                  />
+                  <FieldError message={field.errors?.[0]} />
+                </label>
+              )}
+            </Field>
           </Show>
           <div class="grid gap-3 sm:grid-cols-2">
-            <label class="grid gap-1.5 text-base">
-              <span>Restore mode</span>
-              <Select
-                options={RESTORE_OPTIONS}
-                value={props.presenter.draft().restore_mode}
-                onChange={(restore_mode) => props.presenter.setDraft({ restore_mode })}
-              />
-            </label>
-            <label class="grid gap-1.5 text-base">
-              <span>Lock timeout (ms)</span>
-              <Input
-                type="number"
-                min="1000"
-                max="600000"
-                value={props.presenter.draft().lock_timeout_ms}
-                onInput={(event) =>
-                  props.presenter.setDraft({ lock_timeout_ms: event.currentTarget.value })
-                }
-              />
-            </label>
+            <Field of={form} path={["restore_mode"]}>
+              {(field) => (
+                <label class="grid gap-1.5 text-base">
+                  <span>Restore mode</span>
+                  <Select
+                    options={RESTORE_OPTIONS}
+                    value={field.input ?? "atomic"}
+                    onChange={(value) => field.onInput(value)}
+                  />
+                  <FieldError message={field.errors?.[0]} />
+                </label>
+              )}
+            </Field>
+            <Field of={form} path={["lock_timeout_ms"]}>
+              {(field) => (
+                <label class="grid gap-1.5 text-base">
+                  <span>Lock timeout (ms)</span>
+                  <Input
+                    {...field.props}
+                    type="number"
+                    min="1000"
+                    max="600000"
+                    value={field.input}
+                    variant={field.errors ? "error" : "default"}
+                    aria-invalid={field.errors ? "true" : undefined}
+                  />
+                  <FieldError message={field.errors?.[0]} />
+                </label>
+              )}
+            </Field>
           </div>
         </Show>
         <div class="grid gap-3 sm:grid-cols-2">
-          <Fields presenter={props.presenter} fields={form().config} prefix="config" />
+          <Fields presenter={props.presenter} fields={engineForm().config} prefix="config" />
         </div>
         <div class="grid gap-3 sm:grid-cols-2">
           <Fields
             presenter={props.presenter}
-            fields={form().secrets}
+            fields={engineForm().secrets}
             prefix="secret"
             hint="(blank keeps the sealed one)"
           />
@@ -142,7 +174,7 @@ export default function EditDialog(props: {
           <div class="grid gap-3 sm:grid-cols-2">
             <Fields
               presenter={props.presenter}
-              fields={form().secrets}
+              fields={engineForm().secrets}
               prefix="readonly"
               hint="for read-only sessions (optional)"
             />
@@ -159,7 +191,7 @@ export default function EditDialog(props: {
             Save adapter
           </Button>
         </div>
-      </form>
+      </Form>
     </Dialog>
   );
 }

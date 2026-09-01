@@ -96,6 +96,45 @@ export const storeMigrationSchema = v.object({
   ]),
 });
 
+/**
+ * The migrate-store dialog (Formisch, see the `formisch-forms` skill): one flat object, not
+ * `storeMigrationSchema`'s discriminated union, so every field keeps a plain `Field` path. Bucket
+ * and the two keys are required only once `driver` is "s3" - the S3 fields stay hidden, and
+ * unvalidated, for a local target. Forwarded to the field a person needs to fill in, same as
+ * `changePasswordSchema`.
+ */
+export const storeMigrationFormSchema = v.pipe(
+  v.object({
+    driver: v.picklist(["local", "s3"]),
+    bucket: v.string(),
+    prefix: v.string(),
+    region: v.string(),
+    endpoint: v.string(),
+    virtual_hosted: v.boolean(),
+    access_key_id: v.string(),
+    secret_access_key: v.string(),
+  }),
+  v.forward(
+    v.check((input) => input.driver !== "s3" || input.bucket.trim() !== "", "Enter a bucket."),
+    ["bucket"]
+  ),
+  v.forward(
+    v.check(
+      (input) => input.driver !== "s3" || input.access_key_id.trim() !== "",
+      "Enter an access key id."
+    ),
+    ["access_key_id"]
+  ),
+  v.forward(
+    v.check(
+      (input) => input.driver !== "s3" || input.secret_access_key.trim() !== "",
+      "Enter a secret access key."
+    ),
+    ["secret_access_key"]
+  )
+);
+export type StoreMigrationFormInput = v.InferOutput<typeof storeMigrationFormSchema>;
+
 export const backupRequestSchema = v.object({
   include_blobs: v.optional(v.boolean(), false),
   destination: v.optional(v.picklist(["download", "store"]), "download"),

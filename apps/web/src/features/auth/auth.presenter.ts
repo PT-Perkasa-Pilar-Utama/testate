@@ -1,6 +1,5 @@
 import { createSignal } from "solid-js";
-import { PASSWORD_MIN_LENGTH } from "@testate/shared";
-import type { LoginInput } from "@testate/shared";
+import type { ChangePasswordInput, LoginInput } from "@testate/shared";
 
 import { navigate } from "@/lib/router.ts";
 import { loadSession, setSession } from "@/lib/session.ts";
@@ -42,37 +41,27 @@ export function createLoginPresenter(next: () => string): LoginPresenter {
   };
 }
 
+/**
+ * The form validates current/next against `changePasswordSchema` (length, and "next differs from
+ * current"); this holds only what the server can answer - a current password the API refuses.
+ */
 export type PasswordPresenter = {
-  current: () => string;
-  next: () => string;
   error: () => string | null;
   busy: () => boolean;
-  setCurrent: (value: string) => void;
-  setNext: (value: string) => void;
-  submit: () => Promise<void>;
+  submit: (input: ChangePasswordInput) => Promise<void>;
 };
 
 export function createPasswordPresenter(): PasswordPresenter {
-  const [current, setCurrent] = createSignal("");
-  const [next, setNext] = createSignal("");
   const [error, setError] = createSignal<string | null>(null);
   const [busy, setBusy] = createSignal(false);
   return {
-    current,
-    next,
     error,
     busy,
-    setCurrent,
-    setNext,
-    submit: async () => {
-      if (next().length < PASSWORD_MIN_LENGTH) {
-        setError(`new password needs at least ${PASSWORD_MIN_LENGTH} characters`);
-        return;
-      }
+    submit: async (input) => {
       setBusy(true);
       setError(null);
       try {
-        await authModel.changePassword({ current: current(), next: next() });
+        await authModel.changePassword(input);
         await loadSession();
       } catch (cause: unknown) {
         setError(messageOf(cause));

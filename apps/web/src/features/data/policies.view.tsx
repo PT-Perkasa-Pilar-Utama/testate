@@ -1,9 +1,9 @@
+import { Field, Form, createForm, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import FormErrors from "@/components/form-errors.tsx";
-import { createFormGuard } from "@/lib/form.ts";
 import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
-import { For, Loading, Show } from "solid-js";
+import { For, Loading, Show, createEffect } from "solid-js";
 import type { ColumnPolicy } from "@testate/shared";
+import { policyFormSchema } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
@@ -13,69 +13,81 @@ import Icon from "@/components/icon.tsx";
 import Select from "@/components/select.tsx";
 import Switch from "@/components/switch.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import Banner from "@/components/banner.tsx";
 import { hasRole } from "@/lib/session.ts";
 import {
   FUNCTION_CHOICES,
   MASK_CHOICES,
+  NONE,
   createPoliciesPresenter,
   qualifiedName,
 } from "./policies.presenter.ts";
 import type { PoliciesPresenter } from "./policies.presenter.ts";
 
 function PolicyDialog(props: { presenter: PoliciesPresenter }): JSX.Element {
-  const guard = createFormGuard();
+  const form = createForm({ schema: policyFormSchema });
+  createEffect(
+    () => props.presenter.draft(),
+    (draft) => {
+      if (draft !== null) {
+        reset(form, { initialInput: { fn: draft.fn, mask: draft.mask, display: draft.display } });
+      }
+    }
+  );
   return (
-    <Show when={props.presenter.draft()}>
-      {(draft) => (
-        <Dialog
-          open
-          onClose={() => props.presenter.close()}
-          title={`Policy for ${draft().table}.${draft().column}`}
-          description="A required function is applied to every form, grid, and import write; a mask hides the column from viewers and agents."
-        >
-          <form
-            ref={guard.ref}
-            novalidate
-            class="grid gap-4"
-            onSubmit={(event) => {
-              if (!guard.accepts(event)) return;
-              void props.presenter.save();
-            }}
-          >
-            <FormErrors errors={guard.errors()} />
+    <Dialog
+      open={props.presenter.draft() !== null}
+      onClose={() => props.presenter.close()}
+      title={`Policy for ${props.presenter.draft()?.table ?? ""}.${props.presenter.draft()?.column ?? ""}`}
+      description="A required function is applied to every form, grid, and import write; a mask hides the column from viewers and agents."
+    >
+      <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.save(input)}>
+        <Field of={form} path={["fn"]}>
+          {(field) => (
             <label class="grid gap-1.5 text-base">
               <span>Required function</span>
               <Select
                 options={FUNCTION_CHOICES}
-                value={draft().fn}
-                onChange={(fn) => props.presenter.setDraft({ fn })}
+                value={field.input ?? NONE}
+                onChange={(fn) => field.onInput(fn)}
               />
             </label>
+          )}
+        </Field>
+        <Field of={form} path={["mask"]}>
+          {(field) => (
             <label class="grid gap-1.5 text-base">
               <span>Mask</span>
               <Select
                 options={MASK_CHOICES}
-                value={draft().mask}
-                onChange={(mask) => props.presenter.setDraft({ mask })}
+                value={field.input ?? NONE}
+                onChange={(mask) => field.onInput(mask)}
               />
             </label>
+          )}
+        </Field>
+        <Field of={form} path={["display"]}>
+          {(field) => (
             <Switch
               label="Use as the table's display column for lookups"
-              checked={draft().display}
-              onChange={(display) => props.presenter.setDraft({ display })}
+              checked={field.input ?? false}
+              onChange={(display) => field.onInput(display)}
             />
-            <div class="flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={() => props.presenter.close()}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary">
-                Save
-              </Button>
-            </div>
-          </form>
-        </Dialog>
-      )}
-    </Show>
+          )}
+        </Field>
+        <Show when={props.presenter.error()}>
+          {(message) => <Banner variant="error">{message()}</Banner>}
+        </Show>
+        <div class="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={() => props.presenter.close()}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary">
+            Save
+          </Button>
+        </div>
+      </Form>
+    </Dialog>
   );
 }
 

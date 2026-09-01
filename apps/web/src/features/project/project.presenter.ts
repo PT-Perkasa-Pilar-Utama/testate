@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import type { JsonObject } from "@testate/shared";
+import type { JsonObject, Project, ProjectDraft } from "@testate/shared";
 
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
@@ -28,27 +28,37 @@ export type ProjectTab = (typeof PROJECT_TABS)[number]["id"];
 const TAB_IDS: readonly string[] = PROJECT_TABS.map((tab) => tab.id);
 const DEFAULT_TAB: ProjectTab = "states";
 
-export type ProjectDraft = { name: string; description: string; quota_gib: string };
-
+/**
+ * The edit and delete forms hold their own fields now (`projectDraftSchema` and, for the confirm
+ * slug, a check built against the project being deleted); this holds what only the server can
+ * answer, such as a refused connection, which is why edit and delete each keep their own error.
+ */
 export type ProjectPresenter = {
   overview: Refreshable<Overview>;
   tab: () => ProjectTab;
   setTab: (tab: ProjectTab) => void;
   editing: () => boolean;
-  draft: () => ProjectDraft;
+  editError: () => string | null;
   openEdit: () => void;
   closeEdit: () => void;
-  setDraft: (patch: Partial<ProjectDraft>) => void;
-  save: () => Promise<void>;
+  save: (draft: ProjectDraft) => Promise<void>;
   plan: () => DeletionPlan | null;
-  confirmSlug: () => string;
-  setConfirmSlug: (value: string) => void;
+  deleteError: () => string | null;
   openDelete: () => Promise<void>;
   closeDelete: () => void;
-  confirmDelete: () => Promise<void>;
+  confirmDelete: (confirmSlug: string) => Promise<void>;
 };
 
 const GIB = 1024 * 1024 * 1024;
+
+/** The current project, as the edit form's initial values. */
+export function toProjectDraft(project: Project): ProjectDraft {
+  return {
+    name: project.name,
+    description: project.description ?? "",
+    quota_gib: project.quota_bytes === null ? "" : String(project.quota_bytes / GIB),
+  };
+}
 
 /** The edit body: qa sends name and description; only an admin's draft carries the quota. */
 export function toUpdateBody(draft: ProjectDraft, admin: boolean): JsonObject {
@@ -74,58 +84,52 @@ export function createProjectPresenter(slug: () => string): ProjectPresenter {
   const setTab = (next: ProjectTab): void =>
     navigate(`/projects/${encodeURIComponent(slug())}?tab=${next}`);
   const [editing, setEditing] = createSignal(false);
-  const [draft, setDraftSignal] = createSignal<ProjectDraft>({
-    name: "",
-    description: "",
-    quota_gib: "",
-  });
+  const [editError, setEditError] = createSignal<string | null>(null);
   const [plan, setPlan] = createSignal<DeletionPlan | null>(null);
-  const [confirmSlug, setConfirmSlug] = createSignal("");
+  const [deleteError, setDeleteError] = createSignal<string | null>(null);
   return {
     overview,
     tab,
     setTab,
     editing,
-    draft,
-    openEdit: () => {
-      const current = overview.value().project;
-      setDraftSignal({
-        name: current.name,
-        description: current.description ?? "",
-        quota_gib: current.quota_bytes === null ? "" : String(current.quota_bytes / GIB),
-      });
-      setEditing(true);
+    editError,
+    openEdit: () => setEditing(true),
+    closeEdit: () => {
+      setEditing(false);
+      setEditError(null);
     },
-    closeEdit: () => setEditing(false),
-    setDraft: (patch) => setDraftSignal((current) => ({ ...current, ...patch })),
-    save: () => {
-      const staticBody = toUpdateBody(draft(), hasRole("admin"));
+    save: async (draft) => {
+      const staticBody = toUpdateBody(draft, hasRole("admin"));
       const staticSlug = slug();
-      return attempt(async () => {
+      setEditError(null);
+      try {
         await projectsModel.update(staticSlug, staticBody);
         setEditing(false);
         overview.refresh();
-      });
+      } catch (cause: unknown) {
+        setEditError(cause instanceof Error ? cause.message : "could not update the project");
+      }
     },
     plan,
-    confirmSlug,
-    setConfirmSlug,
+    deleteError,
     openDelete: () => {
       const staticSlug = slug();
-      setConfirmSlug("");
       return attempt(async () => {
         setPlan(await projectsModel.deletionPlan(staticSlug));
       });
     },
-    closeDelete: () => setPlan(null),
-    confirmDelete: () => {
+    closeDelete: () => {
+      setPlan(null);
+      setDeleteError(null);
+    },
+    confirmDelete: async (confirmSlug) => {
       const staticPlan = plan();
       const staticSlug = slug();
-      const staticConfirm = confirmSlug();
-      if (staticPlan === null) return Promise.resolve();
-      return attempt(async () => {
+      if (staticPlan === null) return;
+      setDeleteError(null);
+      try {
         await projectsModel.deleteProject(staticSlug, {
-          confirm_slug: staticConfirm,
+          confirm_slug: confirmSlug,
           plan_id: staticPlan.plan_id,
           adapters: staticPlan.adapters
             .filter((adapter) => adapter.action !== "none")
@@ -137,7 +141,9 @@ export function createProjectPresenter(slug: () => string): ProjectPresenter {
         setPlan(null);
         showToast("Deletion job queued; every database returns to its init state first", "info");
         navigate("/projects");
-      });
+      } catch (cause: unknown) {
+        setDeleteError(cause instanceof Error ? cause.message : "could not delete the project");
+      }
     },
   };
 }

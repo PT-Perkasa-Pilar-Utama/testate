@@ -51,7 +51,9 @@
   --color-body: #ffffff;
   --color-heading: #ffffff;
   --color-muted: #8b949e;
-  --color-placeholder: #6e7681;
+  /* #6e7681 was GitHub's, and it measures 4.12:1 on `control`. An empty input still has to be
+     read, so this is the nearest value that clears AA. `scripts/check-contrast.ts` found it. */
+  --color-placeholder: #767e89;
   --color-inactive: #6e7681;
   --color-inverse: #111111;
   --color-link: #8dd6ff;
@@ -72,9 +74,116 @@
   --radius-xl: 12px;
 }
 
-/* Not a token, so it cannot live in `@theme`. The SPA is dark only. */
+/*
+ * Light.
+ *
+ * The supplied specification (docs/design/github.md) is dark only, so these are Primer's light
+ * values, which is the same design language read in its other half; ADR 0002 records that as an
+ * extension rather than a transcription.
+ *
+ * The dark palette stays in `@theme` above, so it is what Tailwind generates from and what a
+ * viewer with no stated preference still gets. Light arrives two ways and neither may override the
+ * other by accident: the media query answers a system preference but stands aside once someone has
+ * chosen dark in the app, and the attribute answers that choice. `scripts/check-contrast.ts` holds
+ * both palettes to the same contrast floors.
+ *
+ * `@theme inline` would break all of this: an inlined value is substituted where it is used and
+ * cannot be redefined by a selector, and the failure is silent.
+ */
 :root {
   color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-mode="dark"]) {
+    color-scheme: light;
+
+    --color-canvas: #ffffff;
+    --color-surface: #ffffff;
+    --color-sunken: #f6f8fa;
+    --color-hover: #f6f8fa;
+    --color-fill: #f6f8fa;
+    --color-fill-hover: #eaeef2;
+    --color-control: #ffffff;
+
+    --color-line: #d1d9e0;
+    --color-hairline: #eaeef2;
+
+    /* Cyan on white is a 1.5:1 focus ring, which is no ring at all. Light takes Primer's blue and
+       carries white on it, the exact inverse of the dark pair. */
+    --color-accent: #0969da;
+    --color-accent-hover: #0550ae;
+    --color-on-accent: #ffffff;
+
+    --color-success: #1f883d;
+    --color-success-tint: #dafbe1;
+    --color-success-fg: #1a7f37;
+    --color-warning: #bf8700;
+    --color-warning-tint: #fff8c5;
+    --color-warning-fg: #9a6700;
+    --color-danger: #cf222e;
+    --color-danger-tint: #ffebe9;
+    --color-danger-fg: #d1242f;
+    --color-info: #0969da;
+    --color-info-tint: #ddf4ff;
+    --color-info-fg: #0550ae;
+
+    --color-body: #1f2328;
+    --color-heading: #1f2328;
+    --color-muted: #59636e;
+    --color-placeholder: #6e7781;
+    --color-inactive: #8c959f;
+    /* Text on a dark ground, which is the uncommon one in this theme. */
+    --color-inverse: #ffffff;
+    --color-link: #0969da;
+  }
+}
+
+:root[data-mode="light"] {
+  color-scheme: light;
+
+  --color-canvas: #ffffff;
+  --color-surface: #ffffff;
+  --color-sunken: #f6f8fa;
+  --color-hover: #f6f8fa;
+  --color-fill: #f6f8fa;
+  --color-fill-hover: #eaeef2;
+  --color-control: #ffffff;
+
+  --color-line: #d1d9e0;
+  --color-hairline: #eaeef2;
+
+  --color-accent: #0969da;
+  --color-accent-hover: #0550ae;
+  --color-on-accent: #ffffff;
+
+  --color-success: #1f883d;
+  --color-success-tint: #dafbe1;
+  --color-success-fg: #1a7f37;
+  --color-warning: #bf8700;
+  --color-warning-tint: #fff8c5;
+  --color-warning-fg: #9a6700;
+  --color-danger: #cf222e;
+  --color-danger-tint: #ffebe9;
+  --color-danger-fg: #d1242f;
+  --color-info: #0969da;
+  --color-info-tint: #ddf4ff;
+  --color-info-fg: #0550ae;
+
+  --color-body: #1f2328;
+  --color-heading: #1f2328;
+  --color-muted: #59636e;
+  --color-placeholder: #6e7781;
+  --color-inactive: #8c959f;
+  --color-inverse: #ffffff;
+  --color-link: #0969da;
+}
+
+/* The page paints its own ground, or the browser's white shows through a dark theme on first
+   paint and behind an overscroll. */
+body {
+  background: var(--color-canvas);
+  color: var(--color-body);
 }
 
 /* One file each, every weight inside it, and the fallback stack keeps the page readable meanwhile. */

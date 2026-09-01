@@ -1,44 +1,34 @@
 import { createSignal } from "solid-js";
-import type { ColumnPolicy, Introspection, JsonObject } from "@testate/shared";
-import { maskSchema } from "@testate/shared";
-import type * as v from "valibot";
+import type { ColumnPolicy, Introspection, JsonObject, PolicyFormInput } from "@testate/shared";
+import { policyFunctionChoiceSchema, policyMaskChoiceSchema } from "@testate/shared";
 
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { adapterModel } from "../adapter/adapter.model.ts";
-import { FUNCTION_OPTIONS } from "./editing.presenter.ts";
-import type { FunctionName } from "./editing.presenter.ts";
 import { qualifiedName } from "./grid.presenter.ts";
 import { policiesModel } from "./policies.model.ts";
 
-export type Mask = v.InferOutput<typeof maskSchema>;
 export const NONE = "none";
-export const FUNCTION_CHOICES = [
-  { value: NONE, label: "no function" },
-  ...FUNCTION_OPTIONS,
-] as const;
-export const MASK_CHOICES = [
-  { value: NONE, label: "no mask" },
-  ...maskSchema.options.map((mask) => ({ value: mask, label: mask })),
-] as const;
+export const FUNCTION_CHOICES = policyFunctionChoiceSchema.options.map((value) => ({
+  value,
+  label: value === NONE ? "no function" : value,
+}));
+export const MASK_CHOICES = policyMaskChoiceSchema.options.map((value) => ({
+  value,
+  label: value === NONE ? "no mask" : value,
+}));
 
-export type PolicyDraft = {
-  table: string;
-  column: string;
-  fn: FunctionName | typeof NONE;
-  mask: Mask | typeof NONE;
-  display: boolean;
-};
+export type PolicyDraft = { table: string; column: string } & PolicyFormInput;
 
 export type PoliciesPresenter = {
   schema: Refreshable<Introspection>;
   policies: Refreshable<ColumnPolicy[]>;
   draft: () => PolicyDraft | null;
+  error: () => string | null;
   open: (table: string, column: string) => void;
   close: () => void;
-  setDraft: (patch: Partial<PolicyDraft>) => void;
-  save: () => Promise<void>;
+  save: (input: PolicyFormInput) => Promise<void>;
   remove: (policy: ColumnPolicy) => Promise<void>;
   setLock: (policy: ColumnPolicy, locked: boolean) => Promise<void>;
 };
@@ -52,14 +42,33 @@ export function policyBody(draft: PolicyDraft): JsonObject {
   };
 }
 
+function messageOf(cause: unknown): string {
+  return cause instanceof Error ? cause.message : "request failed";
+}
+
 export function createPoliciesPresenter(slug: () => string, id: () => string): PoliciesPresenter {
   const schema = createRefreshable(() => adapterModel.schema(slug(), id()));
   const policies = createRefreshable(() => policiesModel.list(slug(), id()));
   const [draft, setDraftSignal] = createSignal<PolicyDraft | null>(null);
+  const [error, setError] = createSignal<string | null>(null);
+  const close = (): void => {
+    setDraftSignal(null);
+    setError(null);
+  };
+  /** The dialog's submit keeps its error in the form instead of a toast. */
+  const inForm = async (task: () => Promise<void>): Promise<void> => {
+    setError(null);
+    try {
+      await task();
+    } catch (cause: unknown) {
+      setError(messageOf(cause));
+    }
+  };
   return {
     schema,
     policies,
     draft,
+    error,
     open: (table, column) => {
       const existing = policies
         .value()
@@ -72,23 +81,21 @@ export function createPoliciesPresenter(slug: () => string, id: () => string): P
         display: existing?.display ?? false,
       });
     },
-    close: () => setDraftSignal(null),
-    setDraft: (patch) =>
-      setDraftSignal((current) => (current === null ? null : { ...current, ...patch })),
-    save: () => {
+    close,
+    save: (input) => {
       const staticSlug = slug();
       const staticId = id();
-      const staticDraft = draft();
-      if (staticDraft === null) return Promise.resolve();
-      return attempt(async () => {
+      const staticTarget = draft();
+      if (staticTarget === null) return Promise.resolve();
+      return inForm(async () => {
         await policiesModel.upsert(
           staticSlug,
           staticId,
-          staticDraft.table,
-          staticDraft.column,
-          policyBody(staticDraft)
+          staticTarget.table,
+          staticTarget.column,
+          policyBody({ ...staticTarget, ...input })
         );
-        setDraftSignal(null);
+        close();
         policies.refresh();
         showToast("Policy saved", "success");
       });

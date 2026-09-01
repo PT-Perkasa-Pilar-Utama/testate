@@ -8,8 +8,8 @@ const UUID_LIKE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 
 export const stateNameSchema = v.pipe(
   v.string(),
-  v.minLength(1),
-  v.maxLength(80),
+  v.minLength(1, "Enter a name."),
+  v.maxLength(80, "A name is at most 80 characters."),
   v.check((name) => !UUID_LIKE.test(name), "a state name may not look like an id")
 );
 
@@ -81,6 +81,22 @@ export const updateStateSchema = v.object({
   protected: v.optional(v.boolean()),
 });
 export type UpdateStateInput = v.InferOutput<typeof updateStateSchema>;
+
+/**
+ * The take/edit dialogs (Formisch, see the `formisch-forms` skill): tags as the comma-separated
+ * text a person types rather than the array `createStateSchema`/`updateStateSchema` send, and
+ * `adapter_ids` present on both so one schema serves both dialogs - edit just never renders it.
+ */
+export const stateDraftSchema = v.object({
+  name: stateNameSchema,
+  notes: v.pipe(v.string(), v.maxLength(4000, "Notes are at most 4000 characters.")),
+  tags: v.string(),
+  adapter_ids: v.array(idSchema),
+});
+export type StateDraftInput = v.InferOutput<typeof stateDraftSchema>;
+
+/** The delete-state dialog confirms with a button, not a field; Formisch still needs a schema. */
+export const deleteStateFormSchema = v.object({});
 
 export const stateTreeNodeSchema: v.GenericSchema<StateTreeNode> = v.lazy(() =>
   v.object({

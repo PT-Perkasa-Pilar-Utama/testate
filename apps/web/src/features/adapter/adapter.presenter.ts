@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import type { Adapter, Entry, Introspection } from "@testate/shared";
+import type { Adapter, AdapterEditFormInput, Entry, Introspection } from "@testate/shared";
 
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
@@ -9,14 +9,20 @@ import { followJob } from "@/lib/sse.ts";
 import { adaptersModel } from "../adapters/adapters.model.ts";
 import type { AdapterDeletionPlan } from "../adapters/adapters.model.ts";
 import { describeOutcome } from "../adapters/adapters.presenter.ts";
+import type { Values } from "../adapters/adapters.fields.ts";
 import { adapterModel } from "./adapter.model.ts";
 import { draftFrom, toPatchBody } from "./adapter.edit.ts";
-import type { EditDraft } from "./adapter.edit.ts";
 
 export type AdapterDetail =
   | { view: "tables"; schema: Introspection }
   | { view: "files"; entries: Entry[] };
 
+/**
+ * Rename, exclusions, schemas and the restore knobs live in the Formisch form now
+ * (`adapterEditFormSchema`); this only holds what the form cannot: the per-engine config/secret/
+ * readonly values (their keys are decided at runtime by `ENGINE_FORMS`, so no static schema can own
+ * them) and what the server answers.
+ */
 export type AdapterPresenter = {
   adapter: Refreshable<Adapter>;
   detail: Refreshable<AdapterDetail>;
@@ -24,12 +30,11 @@ export type AdapterPresenter = {
   entries: () => Entry[] | null;
   setMode: (mode: "sandbox" | "read_only") => Promise<void>;
   editing: () => boolean;
-  draft: () => EditDraft;
+  values: () => Values;
   openEdit: () => void;
   closeEdit: () => void;
-  setDraft: (patch: Partial<EditDraft>) => void;
   setValue: (key: string, value: string) => void;
-  save: () => Promise<void>;
+  save: (input: AdapterEditFormInput) => Promise<void>;
   retest: () => Promise<void>;
   plan: () => AdapterDeletionPlan | null;
   openDelete: () => Promise<void>;
@@ -50,29 +55,23 @@ export function createAdapterPresenter(slug: () => string, id: () => string): Ad
   const detail = createRefreshable(() => loadDetail(slug(), adapter.value()));
   const [plan, setPlan] = createSignal<AdapterDeletionPlan | null>(null);
   const [editing, setEditing] = createSignal(false);
-  const [draft, setDraftSignal] = createSignal<EditDraft>({
-    name: "",
-    excluded_tables: "",
-    schemas: "",
-    restore_mode: "atomic",
-    lock_timeout_ms: "60000",
-    values: {},
-  });
+  const [values, setValues] = createSignal<Values>({});
   return {
     editing,
-    draft,
+    values,
     openEdit: () => {
-      setDraftSignal(draftFrom(adapter.value()));
+      // The dialog stays mounted (design-system rule); seed the per-engine values from the record
+      // being edited each time it opens. The view resets the Formisch fields the same way.
+      setValues(draftFrom(adapter.value()).values);
       setEditing(true);
     },
     closeEdit: () => setEditing(false),
-    setDraft: (patch) => setDraftSignal((current) => ({ ...current, ...patch })),
-    setValue: (key, value) =>
-      setDraftSignal((current) => ({ ...current, values: { ...current.values, [key]: value } })),
-    save: () => {
+    setValue: (key, value) => setValues((current) => ({ ...current, [key]: value })),
+    save: (input) => {
       const staticSlug = slug();
       const staticId = id();
-      const staticBody = toPatchBody(draft(), adapter.value());
+      const currentAdapter = adapter.value();
+      const staticBody = toPatchBody({ ...input, values: values() }, currentAdapter);
       return attempt(async () => {
         const result = await adaptersModel.update(staticSlug, staticId, staticBody);
         setEditing(false);

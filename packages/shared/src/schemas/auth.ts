@@ -44,10 +44,25 @@ export type Me = v.InferOutput<typeof meSchema>;
 
 export const changePasswordSchema = v.pipe(
   v.object({
-    current: v.pipe(v.string(), v.minLength(1)),
-    next: v.pipe(v.string(), v.minLength(PASSWORD_MIN_LENGTH), v.maxLength(1024)),
+    current: v.pipe(v.string(), v.minLength(1, "Enter your current password.")),
+    next: v.pipe(
+      v.string(),
+      v.minLength(
+        PASSWORD_MIN_LENGTH,
+        `A new password needs at least ${PASSWORD_MIN_LENGTH} characters.`
+      ),
+      v.maxLength(1024, "That password is too long to be one of ours.")
+    ),
   }),
-  v.check((input) => input.current !== input.next, "next must differ from current")
+  // Forwarded to "next" so the message lands under the field a person needs to change, rather
+  // than a form-level error nothing in this app's markup ever displays.
+  v.forward(
+    v.check(
+      (input) => input.current !== input.next,
+      "Choose a password that differs from the current one."
+    ),
+    ["next"]
+  )
 );
 export type ChangePasswordInput = v.InferOutput<typeof changePasswordSchema>;
 
@@ -94,3 +109,20 @@ export const createTokenResponseSchema = v.object({
   token: v.pipe(v.string(), v.startsWith("tst_")),
   record: apiTokenSchema,
 });
+
+// The "New API token" dialog's own shape, not the wire body: it picks a plain calendar date
+// ("expires_on"), and always carries a role even for an agent token, where it is simply unused.
+// `toCreateBody` in the tokens presenter turns this into the `createTokenSchema` body the API
+// expects (an ISO timestamp, role omitted for agents) - reusing `createTokenSchema` directly here
+// would mean binding a date input to a field that must already be a full ISO timestamp.
+export const tokenDraftSchema = v.object({
+  name: v.pipe(
+    v.string(),
+    v.minLength(1, "Enter a name."),
+    v.maxLength(80, "A name is at most 80 characters.")
+  ),
+  kind: tokenKindSchema,
+  role: roleSchema,
+  expires_on: v.string(),
+});
+export type TokenDraft = v.InferOutput<typeof tokenDraftSchema>;

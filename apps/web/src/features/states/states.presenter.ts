@@ -1,5 +1,12 @@
 import { createSignal } from "solid-js";
-import type { Adapter, JsonObject, State, StateDetail, StateTreeNode } from "@testate/shared";
+import type {
+  Adapter,
+  JsonObject,
+  State,
+  StateDetail,
+  StateDraftInput,
+  StateTreeNode,
+} from "@testate/shared";
 
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createPaged, createRefreshable } from "@/lib/async.ts";
@@ -8,7 +15,6 @@ import { followJob } from "@/lib/sse.ts";
 import { adaptersModel } from "../adapters/adapters.model.ts";
 import { statesModel } from "./states.model.ts";
 
-export type StateDraft = { name: string; notes: string; tags: string; adapter_ids: string[] };
 export type StatesView = "list" | "tree";
 
 export type StatesPresenter = Paged<State> & {
@@ -22,23 +28,18 @@ export type StatesPresenter = Paged<State> & {
   editing: () => State | null;
   deleting: () => State | null;
   detail: () => StateDetail | null;
-  draft: () => StateDraft;
   error: () => string | null;
   openTake: () => void;
   openEdit: (state: State) => void;
   openDelete: (state: State) => void;
   openDetail: (state: State) => Promise<void>;
   close: () => void;
-  setDraft: (patch: Partial<StateDraft>) => void;
-  toggleAdapter: (id: string) => void;
-  take: () => Promise<void>;
-  save: () => Promise<void>;
+  take: (input: StateDraftInput) => Promise<void>;
+  save: (input: StateDraftInput) => Promise<void>;
   setProtected: (state: State, value: boolean) => Promise<void>;
   confirmDelete: () => Promise<void>;
   archiveUrl: (state: State) => string;
 };
-
-const EMPTY: StateDraft = { name: "", notes: "", tags: "", adapter_ids: [] };
 
 /** "a, b,,a " -> ["a", "b"]. */
 export function parseTags(text: string): string[] {
@@ -53,7 +54,7 @@ export function parseTags(text: string): string[] {
 }
 
 /** The create body: every database adapter by default (story 62); `adapter_ids` only for a subset. */
-export function toCreateBody(draft: StateDraft, databaseIds: string[]): JsonObject {
+export function toCreateBody(draft: StateDraftInput, databaseIds: string[]): JsonObject {
   const body: JsonObject = { name: draft.name.trim(), tags: parseTags(draft.tags) };
   if (draft.notes.trim() !== "") body["notes"] = draft.notes.trim();
   const subset = draft.adapter_ids.filter((id) => databaseIds.includes(id));
@@ -61,7 +62,7 @@ export function toCreateBody(draft: StateDraft, databaseIds: string[]): JsonObje
   return body;
 }
 
-export function toUpdateBody(draft: StateDraft): JsonObject {
+export function toUpdateBody(draft: StateDraftInput): JsonObject {
   return {
     name: draft.name.trim(),
     notes: draft.notes.trim() === "" ? null : draft.notes.trim(),
@@ -95,7 +96,6 @@ export function createStatesPresenter(
   const [editing, setEditing] = createSignal<State | null>(null);
   const [deleting, setDeleting] = createSignal<State | null>(null);
   const [detail, setDetail] = createSignal<StateDetail | null>(null);
-  const [draft, setDraftSignal] = createSignal<StateDraft>(EMPTY);
   const [error, setError] = createSignal<string | null>(null);
   const refreshAll = (): void => {
     states.refresh();
@@ -130,20 +130,12 @@ export function createStatesPresenter(
     editing,
     deleting,
     detail,
-    draft,
     error,
     openTake: () => {
-      setDraftSignal(EMPTY);
       setError(null);
       setTaking(true);
     },
     openEdit: (state) => {
-      setDraftSignal({
-        name: state.name,
-        notes: state.notes ?? "",
-        tags: state.tags.join(", "),
-        adapter_ids: [],
-      });
       setError(null);
       setEditing(state);
     },
@@ -158,18 +150,10 @@ export function createStatesPresenter(
       });
     },
     close,
-    setDraft: (patch) => setDraftSignal((current) => ({ ...current, ...patch })),
-    toggleAdapter: (id) =>
-      setDraftSignal((current) => ({
-        ...current,
-        adapter_ids: current.adapter_ids.includes(id)
-          ? current.adapter_ids.filter((other) => other !== id)
-          : [...current.adapter_ids, id],
-      })),
-    take: () => {
+    take: (input) => {
       const staticSlug = slug();
       const staticBody = toCreateBody(
-        draft(),
+        input,
         databases.value().map((adapter) => adapter.id)
       );
       return inForm(async () => {
@@ -188,10 +172,10 @@ export function createStatesPresenter(
         });
       });
     },
-    save: () => {
+    save: (input) => {
       const staticSlug = slug();
       const staticTarget = editing();
-      const staticBody = toUpdateBody(draft());
+      const staticBody = toUpdateBody(input);
       if (staticTarget === null) return Promise.resolve();
       return inForm(async () => {
         await statesModel.update(staticSlug, staticTarget.id, staticBody);

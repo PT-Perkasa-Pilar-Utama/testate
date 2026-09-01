@@ -120,3 +120,25 @@ export function toDraftBody(
   }
   return { kind: form.kind, engine, name: name.trim(), mode, config, secrets };
 }
+
+/**
+ * Every required config/secret field the create draft left blank, by label. ENGINE_FORMS keys are
+ * decided at runtime, so Formisch's schema cannot cover them (`createForm` throws on a `record`
+ * schema); the create dialog checks them by hand in their place, the way the old form guard did.
+ */
+export function missingRequiredFields(engine: Engine, values: Values): string[] {
+  const form: EngineForm = ENGINE_FORMS[engine];
+  const sections: [string, Field[]][] = [
+    ["config", form.config],
+    ["secret", form.secrets],
+  ];
+  const missing: string[] = [];
+  for (const [prefix, fields] of sections) {
+    for (const field of fields) {
+      if (field.required === true && (values[`${prefix}.${field.key}`] ?? "") === "") {
+        missing.push(field.label);
+      }
+    }
+  }
+  return missing;
+}

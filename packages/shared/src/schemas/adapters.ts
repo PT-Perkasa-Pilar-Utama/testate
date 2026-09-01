@@ -38,6 +38,10 @@ export type RestoreStrategy = v.InferOutput<typeof restoreStrategySchema>;
 
 export const readOnlyEnforcementSchema = v.picklist(["transaction", "credential", "filter"]);
 
+export const restoreModeSchema = v.picklist(["atomic", "fast"]);
+const LOCK_TIMEOUT_MIN_MS = 1000;
+const LOCK_TIMEOUT_MAX_MS = 600000;
+
 export const probeResultSchema = v.object({
   engine: engineSchema,
   dialect: v.picklist(["postgres", "mysql", "mariadb", "mongodb"]),
@@ -81,7 +85,7 @@ export const adapterSchema = v.object({
   credential: sealedSchema,
   readonly_credential: sealedSchema,
   excluded_tables: v.array(v.string()),
-  restore_mode: v.picklist(["atomic", "fast"]),
+  restore_mode: restoreModeSchema,
   lock_timeout_ms: v.number(),
   engine_version: v.nullable(v.string()),
   dialect: v.nullable(v.string()),
@@ -99,20 +103,72 @@ const secretValue = v.pipe(v.string(), v.minLength(1), v.maxLength(16384));
 export const adapterDraftSchema = v.object({
   kind: adapterKindSchema,
   engine: engineSchema,
-  name: v.pipe(v.string(), v.minLength(1), v.maxLength(80)),
+  name: v.pipe(
+    v.string(),
+    v.minLength(1, "Name the adapter."),
+    v.maxLength(80, "Keep the name to 80 characters.")
+  ),
   mode: v.optional(adapterModeSchema, "sandbox"),
   config: jsonObjectSchema,
   secrets: v.record(v.string(), secretValue),
   readonly_secrets: v.optional(v.nullable(v.record(v.string(), secretValue))),
   excluded_tables: v.optional(v.array(v.string())),
-  restore_mode: v.optional(v.picklist(["atomic", "fast"])),
+  restore_mode: v.optional(restoreModeSchema),
   lock_timeout_ms: v.optional(
-    v.pipe(v.number(), v.integer(), v.minValue(1000), v.maxValue(600000))
+    v.pipe(
+      v.number(),
+      v.integer(),
+      v.minValue(LOCK_TIMEOUT_MIN_MS, `Lock timeout is at least ${LOCK_TIMEOUT_MIN_MS} ms.`),
+      v.maxValue(LOCK_TIMEOUT_MAX_MS, `Lock timeout is at most ${LOCK_TIMEOUT_MAX_MS} ms.`)
+    )
   ),
 });
 export type AdapterDraft = v.InferOutput<typeof adapterDraftSchema>;
 
 export const adapterPatchSchema = v.partial(v.omit(adapterDraftSchema, ["kind", "engine", "mode"]));
+
+/**
+ * The Create dialog's static fields: `kind` is derived from the engine, and `config`/`secrets`/
+ * `readonly_secrets` are keyed per engine at runtime from `ENGINE_FORMS` (`adapters.fields.ts`).
+ * Formisch initializes its whole field tree from the schema up front and throws on a `record`
+ * schema (`config`/`secrets` are `v.record`), so those stay outside this schema and are bound to
+ * plain signals in `adapters.view.tsx` instead of a `<Field>`.
+ */
+export const adapterCreateFormSchema = v.omit(adapterDraftSchema, [
+  "kind",
+  "config",
+  "secrets",
+  "readonly_secrets",
+  "excluded_tables",
+  "restore_mode",
+  "lock_timeout_ms",
+]);
+export type AdapterCreateFormInput = v.InferOutput<typeof adapterCreateFormSchema>;
+
+/**
+ * The Edit dialog's static fields: rename, exclusions, schemas, restore knobs. `excluded_tables`
+ * and `schemas` stay comma-separated text here (the same shape `adapter.edit.ts`'s `list()` already
+ * turns into an array for the patch body) rather than transforming to `string[]` in the schema, so
+ * an untouched draft still round-trips through the existing, already-tested patch-diffing logic.
+ * `config`/`secrets`/`readonly_secrets` are the same runtime-keyed fields left out of the create
+ * form above, for the same reason.
+ */
+export const adapterEditFormSchema = v.object({
+  name: adapterDraftSchema.entries.name,
+  excluded_tables: v.string(),
+  schemas: v.string(),
+  restore_mode: restoreModeSchema,
+  lock_timeout_ms: v.pipe(
+    v.string(),
+    v.check((raw: string) => {
+      const value = Number(raw);
+      return (
+        Number.isInteger(value) && value >= LOCK_TIMEOUT_MIN_MS && value <= LOCK_TIMEOUT_MAX_MS
+      );
+    }, `Enter a whole number of milliseconds, from ${LOCK_TIMEOUT_MIN_MS} to ${LOCK_TIMEOUT_MAX_MS}.`)
+  ),
+});
+export type AdapterEditFormInput = v.InferOutput<typeof adapterEditFormSchema>;
 
 export const setModeSchema = v.object({ mode: adapterModeSchema });
 

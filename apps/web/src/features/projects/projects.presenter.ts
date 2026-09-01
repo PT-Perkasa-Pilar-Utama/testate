@@ -1,20 +1,21 @@
 import { createSignal } from "solid-js";
-import type { Project } from "@testate/shared";
+import type { CreateProjectInput, Project } from "@testate/shared";
 
 import { createPaged } from "@/lib/async.ts";
 import type { Paged } from "@/lib/async.ts";
 import { projectsModel } from "./projects.model.ts";
 
+/**
+ * The form holds the two fields, validates them against `createProjectSchema`, and derives the
+ * slug from the name until the slug is edited directly (see the view); this holds only what the
+ * server can answer, such as a slug already taken.
+ */
 export type ProjectsPresenter = Paged<Project> & {
   creating: () => boolean;
-  name: () => string;
-  slug: () => string;
   error: () => string | null;
   openCreate: () => void;
   closeCreate: () => void;
-  setName: (value: string) => void;
-  setSlug: (value: string) => void;
-  create: () => Promise<void>;
+  submit: (input: CreateProjectInput) => Promise<void>;
 };
 
 /** Lowercase, digits, and single dashes: the same rule as `slugSchema`. */
@@ -29,37 +30,21 @@ export function slugify(name: string): string {
 export function createProjectsPresenter(): ProjectsPresenter {
   const projects = createPaged((cursor) => projectsModel.page(cursor));
   const [creating, setCreating] = createSignal(false);
-  const [name, setName] = createSignal("");
-  const [slug, setSlug] = createSignal("");
-  const [slugTouched, setSlugTouched] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   return {
     ...projects,
     creating,
-    name,
-    slug,
     error,
     openCreate: () => setCreating(true),
     closeCreate: () => {
       setCreating(false);
       setError(null);
     },
-    setName: (value) => {
-      setName(value);
-      if (!slugTouched()) setSlug(slugify(value));
-    },
-    setSlug: (value) => {
-      setSlugTouched(true);
-      setSlug(value);
-    },
-    create: async () => {
+    submit: async (input) => {
       setError(null);
       try {
-        await projectsModel.create({ name: name().trim(), slug: slug() });
+        await projectsModel.create({ slug: input.slug, name: input.name.trim() });
         setCreating(false);
-        setName("");
-        setSlug("");
-        setSlugTouched(false);
         projects.refresh();
       } catch (cause: unknown) {
         setError(cause instanceof Error ? cause.message : "could not create the project");

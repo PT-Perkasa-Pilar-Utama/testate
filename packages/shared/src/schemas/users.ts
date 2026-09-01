@@ -4,7 +4,15 @@ import { roleSchema } from "../enums.ts";
 import { PASSWORD_MIN_LENGTH } from "./auth.ts";
 import { idSchema, timestampSchema } from "./common.ts";
 
-export const usernameSchema = v.pipe(v.string(), v.regex(/^[a-z0-9._-]{3,64}$/));
+// The messages are the ones a person reads, on the users forms and in the API's 400 alike (see
+// `loginSchema` in auth.ts for the same convention).
+export const usernameSchema = v.pipe(
+  v.string(),
+  v.regex(
+    /^[a-z0-9._-]{3,64}$/,
+    "Lowercase letters, numbers, dots, underscores or hyphens, 3 to 64 characters."
+  )
+);
 
 export const userSchema = v.object({
   id: idSchema,
@@ -22,10 +30,22 @@ export type User = v.InferOutput<typeof userSchema>;
 
 export const createUserSchema = v.object({
   username: usernameSchema,
-  display_name: v.pipe(v.string(), v.minLength(1), v.maxLength(120)),
+  display_name: v.pipe(
+    v.string(),
+    v.minLength(1, "Enter a display name."),
+    v.maxLength(120, "A display name is at most 120 characters.")
+  ),
   role: roleSchema,
-  temporary_password: v.pipe(v.string(), v.minLength(PASSWORD_MIN_LENGTH), v.maxLength(1024)),
+  temporary_password: v.pipe(
+    v.string(),
+    v.minLength(
+      PASSWORD_MIN_LENGTH,
+      `A temporary password needs at least ${PASSWORD_MIN_LENGTH} characters.`
+    ),
+    v.maxLength(1024, "That password is too long to be one of ours.")
+  ),
 });
+export type CreateUserInput = v.InferOutput<typeof createUserSchema>;
 
 export const updateUserSchema = v.object({
   display_name: v.optional(v.pipe(v.string(), v.minLength(1), v.maxLength(120))),
@@ -33,5 +53,13 @@ export const updateUserSchema = v.object({
 });
 
 export const resetPasswordSchema = v.object({
-  temporary_password: v.pipe(v.string(), v.minLength(PASSWORD_MIN_LENGTH), v.maxLength(1024)),
+  temporary_password: v.pipe(
+    v.string(),
+    v.minLength(
+      PASSWORD_MIN_LENGTH,
+      `A temporary password needs at least ${PASSWORD_MIN_LENGTH} characters.`
+    ),
+    v.maxLength(1024, "That password is too long to be one of ours.")
+  ),
 });
+export type ResetPasswordInput = v.InferOutput<typeof resetPasswordSchema>;

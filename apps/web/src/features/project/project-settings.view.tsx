@@ -1,17 +1,20 @@
+import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import FormErrors from "@/components/form-errors.tsx";
-import { createFormGuard } from "@/lib/form.ts";
 import { formatWhen } from "@/lib/format.ts";
-import { For, Show } from "solid-js";
+import { For, Show, createEffect } from "solid-js";
+import * as v from "valibot";
+import { projectDraftSchema } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
+import FieldError from "@/components/field-error.tsx";
 import Input from "@/components/input.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import type { DeletionAffected } from "../projects/projects.model.ts";
+import { toProjectDraft } from "./project.presenter.ts";
 import type { ProjectPresenter } from "./project.presenter.ts";
 
 /** What the delete takes with it, in the order a reader cares about; zeroes stay out of the way. */
@@ -46,55 +49,75 @@ export function AffectedList(props: { affected: DeletionAffected }): JSX.Element
 }
 
 export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element {
-  const guard = createFormGuard();
+  const form = createForm({ schema: projectDraftSchema });
+
+  createEffect(
+    () => props.presenter.editing(),
+    (open) => {
+      if (open)
+        reset(form, { initialInput: toProjectDraft(props.presenter.overview.value().project) });
+    }
+  );
+
   return (
     <Dialog
       open={props.presenter.editing()}
       onClose={() => props.presenter.closeEdit()}
       title="Edit project"
     >
-      <form
-        class="grid gap-4"
-        ref={guard.ref}
-        novalidate
-        onSubmit={(event) => {
-          if (!guard.accepts(event)) return;
-          void props.presenter.save();
-        }}
-      >
-        <FormErrors errors={guard.errors()} />
-        <label class="grid gap-1.5 text-base">
-          <span>Name</span>
-          <Input
-            required
-            maxlength="120"
-            value={props.presenter.draft().name}
-            onInput={(event) => props.presenter.setDraft({ name: event.currentTarget.value })}
-          />
-        </label>
-        <label class="grid gap-1.5 text-base">
-          <span>Description</span>
-          <Input
-            maxlength="2000"
-            value={props.presenter.draft().description}
-            onInput={(event) =>
-              props.presenter.setDraft({ description: event.currentTarget.value })
-            }
-          />
-        </label>
+      <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.save(input)}>
+        <Field of={form} path={["name"]}>
+          {(field) => (
+            <label class="grid gap-1.5 text-base">
+              <span>Name</span>
+              <Input
+                {...field.props}
+                required
+                maxlength="120"
+                value={field.input}
+                variant={field.errors ? "error" : "default"}
+                aria-invalid={field.errors ? "true" : undefined}
+              />
+              <FieldError message={field.errors?.[0]} />
+            </label>
+          )}
+        </Field>
+        <Field of={form} path={["description"]}>
+          {(field) => (
+            <label class="grid gap-1.5 text-base">
+              <span>Description</span>
+              <Input
+                {...field.props}
+                maxlength="2000"
+                value={field.input}
+                variant={field.errors ? "error" : "default"}
+                aria-invalid={field.errors ? "true" : undefined}
+              />
+              <FieldError message={field.errors?.[0]} />
+            </label>
+          )}
+        </Field>
         <Show when={hasRole("admin")}>
-          <label class="grid gap-1.5 text-base">
-            <span>Snapshot quota in GiB (empty = instance default)</span>
-            <Input
-              type="number"
-              min="0"
-              step="0.5"
-              value={props.presenter.draft().quota_gib}
-              onInput={(event) =>
-                props.presenter.setDraft({ quota_gib: event.currentTarget.value })
-              }
-            />
-          </label>
+          <Field of={form} path={["quota_gib"]}>
+            {(field) => (
+              <label class="grid gap-1.5 text-base">
+                <span>Snapshot quota in GiB (empty = instance default)</span>
+                <Input
+                  {...field.props}
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={field.input}
+                  variant={field.errors ? "error" : "default"}
+                  aria-invalid={field.errors ? "true" : undefined}
+                />
+                <FieldError message={field.errors?.[0]} />
+              </label>
+            )}
+          </Field>
+        </Show>
+        <Show when={props.presenter.editError()}>
+          {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>
         <div class="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={() => props.presenter.closeEdit()}>
@@ -104,7 +127,7 @@ export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element 
             Save
           </Button>
         </div>
-      </form>
+      </Form>
     </Dialog>
   );
 }
@@ -117,27 +140,39 @@ const ACTION_VARIANT = {
 } as const;
 
 export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string }): JSX.Element {
-  const guard2 = createFormGuard();
+  // Local, not in `@testate/shared`: the one rule here is "matches this project's slug", a value
+  // only known at render time, so the shape has nothing to state ahead of it worth sharing.
+  const form = createForm({
+    schema: v.object({
+      confirm_slug: v.pipe(
+        v.string(),
+        v.check((value) => value === props.slug, "Type the project's slug exactly to confirm.")
+      ),
+    }),
+  });
+
+  createEffect(
+    () => props.presenter.plan(),
+    (plan) => {
+      if (plan !== null) reset(form);
+    }
+  );
+
   return (
-    <Show when={props.presenter.plan()}>
-      {(plan) => (
-        <Dialog
-          open
-          onClose={() => props.presenter.closeDelete()}
-          title={`Delete ${props.slug}`}
-          description="This cannot be undone. Read what goes with the project, then type its slug."
-          size="lg"
-        >
-          <form
+    <Dialog
+      open={props.presenter.plan() !== null}
+      onClose={() => props.presenter.closeDelete()}
+      title={`Delete ${props.slug}`}
+      description="This cannot be undone. Read what goes with the project, then type its slug."
+      size="lg"
+    >
+      <Show when={props.presenter.plan()}>
+        {(plan) => (
+          <Form
+            of={form}
             class="grid gap-4"
-            ref={guard2.ref}
-            novalidate
-            onSubmit={(event) => {
-              if (!guard2.accepts(event)) return;
-              void props.presenter.confirmDelete();
-            }}
+            onSubmit={(input) => props.presenter.confirmDelete(input.confirm_slug)}
           >
-            <FormErrors errors={guard2.errors()} />
             <Banner variant="alert">
               Every writable database below returns to its init state. That restore is not stashed:
               anything the databases hold now, and every state that could bring it back, is gone.
@@ -171,16 +206,26 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
                 </For>
               </tbody>
             </Table>
-            <label class="grid gap-1.5 text-base">
-              <span>Type the slug to confirm</span>
-              <Input
-                required
-                autocomplete="off"
-                placeholder={props.slug}
-                value={props.presenter.confirmSlug()}
-                onInput={(event) => props.presenter.setConfirmSlug(event.currentTarget.value)}
-              />
-            </label>
+            <Field of={form} path={["confirm_slug"]}>
+              {(field) => (
+                <label class="grid gap-1.5 text-base">
+                  <span>Type the slug to confirm</span>
+                  <Input
+                    {...field.props}
+                    required
+                    autocomplete="off"
+                    placeholder={props.slug}
+                    value={field.input}
+                    variant={field.errors ? "error" : "default"}
+                    aria-invalid={field.errors ? "true" : undefined}
+                  />
+                  <FieldError message={field.errors?.[0]} />
+                </label>
+              )}
+            </Field>
+            <Show when={props.presenter.deleteError()}>
+              {(message) => <Banner variant="error">{message()}</Banner>}
+            </Show>
             <div class="flex justify-end gap-2">
               <Button type="button" variant="ghost" onClick={() => props.presenter.closeDelete()}>
                 Cancel
@@ -188,14 +233,14 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
               <Button
                 type="submit"
                 variant="destructive"
-                disabled={props.presenter.confirmSlug() !== props.slug}
+                disabled={getInput(form, { path: ["confirm_slug"] }) !== props.slug}
               >
                 Return to init and delete
               </Button>
             </div>
-          </form>
-        </Dialog>
-      )}
-    </Show>
+          </Form>
+        )}
+      </Show>
+    </Dialog>
   );
 }

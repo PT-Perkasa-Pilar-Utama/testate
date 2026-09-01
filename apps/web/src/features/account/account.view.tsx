@@ -1,14 +1,16 @@
+import { Field, Form, createForm, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import FormErrors from "@/components/form-errors.tsx";
-import { createFormGuard } from "@/lib/form.ts";
 import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
+import { PASSWORD_MIN_LENGTH, changePasswordSchema } from "@testate/shared";
+import type { ChangePasswordInput } from "@testate/shared";
 import type { Session } from "./account.model.ts";
 
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
+import FieldError from "@/components/field-error.tsx";
 import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import LayerCard from "@/components/layer-card.tsx";
@@ -18,43 +20,56 @@ import { createAccountPresenter } from "./account.presenter.ts";
 import type { AccountPresenter } from "./account.presenter.ts";
 
 function PasswordCard(props: { presenter: AccountPresenter }): JSX.Element {
-  const guard = createFormGuard();
+  const form = createForm({ schema: changePasswordSchema });
+  // A named function, not an inline async arrow: the linter reads any async arrow function
+  // passed straight to a component prop as a tracked scope, which Solid's reactivity can only
+  // follow synchronously.
+  async function submit(input: ChangePasswordInput): Promise<void> {
+    const changed = await props.presenter.changePassword(input);
+    if (changed) reset(form);
+  }
   return (
     <LayerCard class="grid gap-4 px-5 py-4">
       <div class="grid gap-1">
         <h3 class="text-base font-semibold text-heading">Change password</h3>
         <p class="text-sm text-muted">This signs you out of every other session.</p>
       </div>
-      <form
-        ref={guard.ref}
-        novalidate
-        class="grid gap-3 sm:grid-cols-2"
-        onSubmit={(event) => {
-          if (!guard.accepts(event)) return;
-          void props.presenter.changePassword();
-        }}
-      >
-        <FormErrors errors={guard.errors()} />
-        <label class="grid gap-1.5 text-base">
-          <span>Current password</span>
-          <Input
-            type="password"
-            required
-            autocomplete="current-password"
-            value={props.presenter.password.current()}
-            onInput={(event) => props.presenter.password.setCurrent(event.currentTarget.value)}
-          />
-        </label>
-        <label class="grid gap-1.5 text-base">
-          <span>New password (12+ characters)</span>
-          <Input
-            type="password"
-            required
-            autocomplete="new-password"
-            value={props.presenter.password.next()}
-            onInput={(event) => props.presenter.password.setNext(event.currentTarget.value)}
-          />
-        </label>
+      <Form of={form} class="grid gap-3 sm:grid-cols-2" onSubmit={(input) => submit(input)}>
+        <Field of={form} path={["current"]}>
+          {(field) => (
+            <label class="grid gap-1.5 text-base">
+              <span>Current password</span>
+              <Input
+                {...field.props}
+                type="password"
+                required
+                autocomplete="current-password"
+                value={field.input}
+                variant={field.errors ? "error" : "default"}
+                aria-invalid={field.errors ? "true" : undefined}
+              />
+              <FieldError message={field.errors?.[0]} />
+            </label>
+          )}
+        </Field>
+        <Field of={form} path={["next"]}>
+          {(field) => (
+            <label class="grid gap-1.5 text-base">
+              <span>New password ({PASSWORD_MIN_LENGTH}+ characters)</span>
+              <Input
+                {...field.props}
+                type="password"
+                required
+                autocomplete="new-password"
+                value={field.input}
+                variant={field.errors ? "error" : "default"}
+                aria-invalid={field.errors ? "true" : undefined}
+              />
+              <FieldError message={field.errors?.[0]} />
+            </label>
+          )}
+        </Field>
+        {/* A refused current password is the server's answer, not a schema failure. */}
         <Show when={props.presenter.password.error()}>
           {(message) => (
             <div class="sm:col-span-2">
@@ -70,7 +85,7 @@ function PasswordCard(props: { presenter: AccountPresenter }): JSX.Element {
             {props.presenter.password.busy() ? "Saving..." : "Save password"}
           </Button>
         </div>
-      </form>
+      </Form>
     </LayerCard>
   );
 }

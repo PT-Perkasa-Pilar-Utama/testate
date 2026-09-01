@@ -1,32 +1,31 @@
+import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import FormErrors from "@/components/form-errors.tsx";
-import { createFormGuard } from "@/lib/form.ts";
-import { Show } from "solid-js";
+import { Show, createEffect } from "solid-js";
+import { storeMigrationFormSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
+import FieldError from "@/components/field-error.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import Switch from "@/components/switch.tsx";
-import type { S3Draft, SettingsPresenter } from "./settings.presenter.ts";
+import type { SettingsPresenter } from "./settings.presenter.ts";
 
 const DRIVER_OPTIONS = [
   { value: "local", label: "local disk" },
   { value: "s3", label: "S3-compatible bucket" },
 ] as const;
-const FIELDS: { key: keyof S3Draft; label: string; type: "text" | "password" }[] = [
-  { key: "bucket", label: "Bucket", type: "text" },
-  { key: "prefix", label: "Prefix", type: "text" },
-  { key: "region", label: "Region (optional)", type: "text" },
-  { key: "endpoint", label: "Endpoint (optional)", type: "text" },
-  { key: "access_key_id", label: "Access key id", type: "password" },
-  { key: "secret_access_key", label: "Secret access key", type: "password" },
-];
 
 /** Move every snapshot to another store as a job (stories 118, 119). */
 export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Element {
-  const guard = createFormGuard();
+  const form = createForm({ schema: storeMigrationFormSchema });
+  createEffect(
+    () => props.presenter.migrating(),
+    (open) => {
+      if (open) reset(form, { initialInput: props.presenter.migrateDefaults() });
+    }
+  );
   return (
     <Dialog
       open={props.presenter.migrating()}
@@ -34,47 +33,136 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
       title="Migrate store"
       description="Every snapshot copies to the new store before the switch; nothing is lost if the job fails."
     >
-      <form
-        ref={guard.ref}
-        novalidate
-        class="grid gap-4"
-        onSubmit={(event) => {
-          if (!guard.accepts(event)) return;
-          void props.presenter.migrate();
-        }}
-      >
-        <FormErrors errors={guard.errors()} />
-        <label class="grid gap-1.5 text-sm">
-          <span>Target</span>
-          <Select
-            options={DRIVER_OPTIONS}
-            value={props.presenter.targetDriver()}
-            onChange={(driver) => props.presenter.setTargetDriver(driver)}
-          />
-        </label>
-        <Show when={props.presenter.targetDriver() === "s3"}>
+      <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.migrate(input)}>
+        <Field of={form} path={["driver"]}>
+          {(field) => (
+            <label class="grid gap-1.5 text-sm">
+              <span>Target</span>
+              <Select
+                options={DRIVER_OPTIONS}
+                value={field.input ?? "s3"}
+                onChange={(driver) => field.onInput(driver)}
+              />
+            </label>
+          )}
+        </Field>
+        {/* Reads the field through `getInput`, not a `Show` nested in the driver Field's own
+            render callback - that pattern is the stale-narrowed-value trap the skill warns about. */}
+        <Show when={getInput(form, { path: ["driver"] }) === "s3"}>
           <div class="grid gap-3 sm:grid-cols-2">
-            {FIELDS.map((field) => (
-              <label class="grid gap-1.5 text-sm">
-                <span>{field.label}</span>
-                <Input
-                  type={field.type}
-                  autocomplete="off"
-                  required={field.key === "bucket" || field.type === "password"}
-                  value={String(props.presenter.s3()[field.key])}
-                  onInput={(event) =>
-                    props.presenter.setS3({ [field.key]: event.currentTarget.value })
-                  }
-                />
-              </label>
-            ))}
+            <Field of={form} path={["bucket"]}>
+              {(field) => (
+                <label class="grid gap-1.5 text-sm">
+                  <span>Bucket</span>
+                  <Input
+                    {...field.props}
+                    type="text"
+                    required
+                    autocomplete="off"
+                    value={field.input}
+                    variant={field.errors ? "error" : "default"}
+                    aria-invalid={field.errors ? "true" : undefined}
+                  />
+                  <FieldError message={field.errors?.[0]} />
+                </label>
+              )}
+            </Field>
+            <Field of={form} path={["prefix"]}>
+              {(field) => (
+                <label class="grid gap-1.5 text-sm">
+                  <span>Prefix</span>
+                  <Input
+                    {...field.props}
+                    type="text"
+                    autocomplete="off"
+                    value={field.input}
+                    variant={field.errors ? "error" : "default"}
+                    aria-invalid={field.errors ? "true" : undefined}
+                  />
+                  <FieldError message={field.errors?.[0]} />
+                </label>
+              )}
+            </Field>
+            <Field of={form} path={["region"]}>
+              {(field) => (
+                <label class="grid gap-1.5 text-sm">
+                  <span>Region (optional)</span>
+                  <Input
+                    {...field.props}
+                    type="text"
+                    autocomplete="off"
+                    value={field.input}
+                    variant={field.errors ? "error" : "default"}
+                    aria-invalid={field.errors ? "true" : undefined}
+                  />
+                  <FieldError message={field.errors?.[0]} />
+                </label>
+              )}
+            </Field>
+            <Field of={form} path={["endpoint"]}>
+              {(field) => (
+                <label class="grid gap-1.5 text-sm">
+                  <span>Endpoint (optional)</span>
+                  <Input
+                    {...field.props}
+                    type="text"
+                    autocomplete="off"
+                    value={field.input}
+                    variant={field.errors ? "error" : "default"}
+                    aria-invalid={field.errors ? "true" : undefined}
+                  />
+                  <FieldError message={field.errors?.[0]} />
+                </label>
+              )}
+            </Field>
+            <Field of={form} path={["access_key_id"]}>
+              {(field) => (
+                <label class="grid gap-1.5 text-sm">
+                  <span>Access key id</span>
+                  <Input
+                    {...field.props}
+                    type="password"
+                    required
+                    autocomplete="off"
+                    value={field.input}
+                    variant={field.errors ? "error" : "default"}
+                    aria-invalid={field.errors ? "true" : undefined}
+                  />
+                  <FieldError message={field.errors?.[0]} />
+                </label>
+              )}
+            </Field>
+            <Field of={form} path={["secret_access_key"]}>
+              {(field) => (
+                <label class="grid gap-1.5 text-sm">
+                  <span>Secret access key</span>
+                  <Input
+                    {...field.props}
+                    type="password"
+                    required
+                    autocomplete="off"
+                    value={field.input}
+                    variant={field.errors ? "error" : "default"}
+                    aria-invalid={field.errors ? "true" : undefined}
+                  />
+                  <FieldError message={field.errors?.[0]} />
+                </label>
+              )}
+            </Field>
           </div>
-          <Switch
-            label="Virtual-hosted style (off for MinIO)"
-            checked={props.presenter.s3().virtual_hosted}
-            onChange={(value) => props.presenter.setS3({ virtual_hosted: value })}
-          />
+          <Field of={form} path={["virtual_hosted"]}>
+            {(field) => (
+              <Switch
+                label="Virtual-hosted style (off for MinIO)"
+                checked={field.input ?? true}
+                onChange={(value) => field.onInput(value)}
+              />
+            )}
+          </Field>
           <Banner variant="secondary">Keys are sealed at rest and never shown again.</Banner>
+        </Show>
+        <Show when={props.presenter.migrateError()}>
+          {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>
         <div class="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={() => props.presenter.closeMigrate()}>
@@ -84,7 +172,7 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
             Start migration
           </Button>
         </div>
-      </form>
+      </Form>
     </Dialog>
   );
 }

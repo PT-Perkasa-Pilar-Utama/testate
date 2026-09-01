@@ -74,6 +74,10 @@ export default defineConfig({
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
     viewport: { width: 1440, height: 1000 },
+    // Playwright emulates a light preference by default. Once the SPA honours
+    // `prefers-color-scheme` that would flip all of it to light, and the README screenshots with
+    // it. The suite and the shots are the dark theme; a light-theme story would say so itself.
+    colorScheme: "dark",
   },
   webServer: [
     {

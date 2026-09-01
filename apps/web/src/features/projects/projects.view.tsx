@@ -1,14 +1,15 @@
+import { Field, Form, createForm, reset, setInput } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import FormErrors from "@/components/form-errors.tsx";
-import { createFormGuard } from "@/lib/form.ts";
 import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
-import { For, Loading, Show } from "solid-js";
+import { For, Loading, Show, createEffect, createSignal } from "solid-js";
+import { createProjectSchema } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import EmptyState from "@/components/empty-state.tsx";
+import FieldError from "@/components/field-error.tsx";
 import Icon from "@/components/icon.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Dialog from "@/components/dialog.tsx";
@@ -17,11 +18,25 @@ import { Cell, Head, Row, Table, TableFooter } from "@/components/table.tsx";
 import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { headBadge } from "./projects.format.ts";
-import { createProjectsPresenter } from "./projects.presenter.ts";
+import { createProjectsPresenter, slugify } from "./projects.presenter.ts";
 import type { ProjectsPresenter } from "./projects.presenter.ts";
 
 function CreateDialog(props: { presenter: ProjectsPresenter }): JSX.Element {
-  const guard = createFormGuard();
+  const form = createForm({ schema: createProjectSchema });
+  // Tracks a direct edit to the slug field itself, as opposed to the auto-derive below, so typing
+  // a name never clobbers a slug the person already chose.
+  const [slugTouched, setSlugTouched] = createSignal(false);
+
+  createEffect(
+    () => props.presenter.creating(),
+    (open) => {
+      if (open) {
+        reset(form);
+        setSlugTouched(false);
+      }
+    }
+  );
+
   return (
     <Dialog
       open={props.presenter.creating()}
@@ -29,33 +44,46 @@ function CreateDialog(props: { presenter: ProjectsPresenter }): JSX.Element {
       title="New project"
       description="A project groups adapters and the states taken across them."
     >
-      <form
-        ref={guard.ref}
-        novalidate
-        class="grid gap-4"
-        onSubmit={(event) => {
-          if (!guard.accepts(event)) return;
-          void props.presenter.create();
-        }}
-      >
-        <FormErrors errors={guard.errors()} />
-        <label class="grid gap-1.5 text-sm">
-          <span>Name</span>
-          <Input
-            required
-            value={props.presenter.name()}
-            onInput={(event) => props.presenter.setName(event.currentTarget.value)}
-          />
-        </label>
-        <label class="grid gap-1.5 text-sm">
-          <span>Slug</span>
-          <Input
-            required
-            pattern="[a-z0-9]+(-[a-z0-9]+)*"
-            value={props.presenter.slug()}
-            onInput={(event) => props.presenter.setSlug(event.currentTarget.value)}
-          />
-        </label>
+      <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.submit(input)}>
+        <Field of={form} path={["name"]}>
+          {(field) => (
+            <label class="grid gap-1.5 text-sm">
+              <span>Name</span>
+              <Input
+                {...field.props}
+                required
+                value={field.input}
+                variant={field.errors ? "error" : "default"}
+                aria-invalid={field.errors ? "true" : undefined}
+                onInput={(event) => {
+                  field.props.onInput(event);
+                  if (!slugTouched())
+                    setInput(form, { path: ["slug"], input: slugify(event.currentTarget.value) });
+                }}
+              />
+              <FieldError message={field.errors?.[0]} />
+            </label>
+          )}
+        </Field>
+        <Field of={form} path={["slug"]}>
+          {(field) => (
+            <label class="grid gap-1.5 text-sm">
+              <span>Slug</span>
+              <Input
+                {...field.props}
+                required
+                value={field.input}
+                variant={field.errors ? "error" : "default"}
+                aria-invalid={field.errors ? "true" : undefined}
+                onInput={(event) => {
+                  setSlugTouched(true);
+                  field.props.onInput(event);
+                }}
+              />
+              <FieldError message={field.errors?.[0]} />
+            </label>
+          )}
+        </Field>
         <Show when={props.presenter.error()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>
@@ -67,7 +95,7 @@ function CreateDialog(props: { presenter: ProjectsPresenter }): JSX.Element {
             Create
           </Button>
         </div>
-      </form>
+      </Form>
     </Dialog>
   );
 }
