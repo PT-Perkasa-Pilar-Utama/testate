@@ -9,8 +9,14 @@ import { defineConfig } from "@playwright/test";
  * signs in each role once (storage state per role under `.e2e/`).
  */
 export const E2E_DIR = fileURLToPath(new URL(".e2e", import.meta.url));
-export const API_PORT = 7378;
-export const WEB_PORT = 7379;
+/**
+ * Not the dev server's 7378/7379. The suite spawns an API and a Vite of its own, and Playwright
+ * refuses to start when the port is taken, so running `bun run e2e` beside `bun run dev` used to
+ * mean stopping the dev server first. Worse before that: a suite that reached the dev instance
+ * instead ran its stories against a developer's own data and locked the admin account out of it.
+ */
+export const API_PORT = 7478;
+export const WEB_PORT = 7479;
 export const ADMIN_PASSWORD = "admin-password-1234";
 
 /**
@@ -107,6 +113,7 @@ export default defineConfig({
       url: `http://localhost:${WEB_PORT}/`,
       reuseExistingServer: false,
       timeout: 60_000,
+      env: { WEB_PORT: String(WEB_PORT), API_PORT: String(API_PORT) },
     },
   ],
 });

@@ -7,6 +7,7 @@ import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import FieldError from "@/components/field-error.tsx";
 import Icon from "@/components/icon.tsx";
+import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import LayerCard from "@/components/layer-card.tsx";
 import { createPasswordPresenter } from "./auth.presenter.ts";
@@ -28,7 +29,7 @@ export default function ChangePasswordView(): JSX.Element {
           <Field of={form} path={["current"]}>
             {(field) => (
               <label class="grid content-start gap-1.5 text-base">
-                <span>Current password</span>
+                <FieldLabel required={true}>Current password</FieldLabel>
                 <Input
                   {...field.props}
                   type="password"
@@ -46,7 +47,7 @@ export default function ChangePasswordView(): JSX.Element {
           <Field of={form} path={["next"]}>
             {(field) => (
               <label class="grid content-start gap-1.5 text-base">
-                <span>New password</span>
+                <FieldLabel required={true}>New password</FieldLabel>
                 <Input
                   {...field.props}
                   type="password"

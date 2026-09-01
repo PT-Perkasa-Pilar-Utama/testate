@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import type { JsonObject, Project, ProjectDraft } from "@testate/shared";
+import type { JsonObject, Project, ProjectDefaults, ProjectDraft } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
@@ -7,6 +7,7 @@ import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { navigate, search } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
+import { QUOTA_STEPS, quotaIndex } from "../projects/projects.presenter.ts";
 import { projectsModel } from "../projects/projects.model.ts";
 import type { DeletionPlan, Overview } from "../projects/projects.model.ts";
 
@@ -39,6 +40,10 @@ export type ProjectPresenter = {
   tab: () => ProjectTab;
   setTab: (tab: ProjectTab) => void;
   editing: () => boolean;
+  /** The quota slider's step, seeded from the project each time the dialog opens. */
+  quotaIndex: () => number;
+  setQuotaIndex: (index: number) => void;
+  defaults: Refreshable<ProjectDefaults>;
   editError: () => string | null;
   openEdit: () => void;
   closeEdit: () => void;
@@ -50,8 +55,6 @@ export type ProjectPresenter = {
   confirmDelete: (confirmSlug: string) => Promise<void>;
 };
 
-const GIB = 1024 * 1024 * 1024;
-
 /** The current project, as the edit form's initial values. */
 /**
  * The edit form's shape before the project loads. `EditDialog` is rendered outside the `<Loading>`
@@ -60,22 +63,22 @@ const GIB = 1024 * 1024 * 1024;
  * production bundle spun on that at one request per round trip. The dialog only opens from inside
  * the boundary, so its effect resets to the real project before anyone sees these blanks.
  */
-export const PROJECT_BLANK: ProjectDraft = { name: "", description: "", quota_gib: "" };
+export const PROJECT_BLANK: ProjectDraft = { name: "", description: "" };
 
 export function toProjectDraft(project: Project): ProjectDraft {
-  return {
-    name: project.name,
-    description: project.description ?? "",
-    quota_gib: project.quota_bytes === null ? "" : String(project.quota_bytes / GIB),
-  };
+  return { name: project.name, description: project.description ?? "" };
 }
 
 /** The edit body: qa sends name and description; only an admin's draft carries the quota. */
-export function toUpdateBody(draft: ProjectDraft, admin: boolean): JsonObject {
+/** `quota` is the slider's step, and only an admin's dialog shows it, so only theirs sends it. */
+export function toUpdateBody(
+  draft: ProjectDraft,
+  quota: number | null,
+  admin: boolean
+): JsonObject {
   const body: JsonObject = { name: draft.name.trim() };
   body["description"] = draft.description.trim() === "" ? null : draft.description.trim();
-  if (admin)
-    body["quota_bytes"] = draft.quota_gib === "" ? null : Math.round(Number(draft.quota_gib) * GIB);
+  if (admin) body["quota_bytes"] = quota;
   return body;
 }
 
@@ -94,6 +97,8 @@ export function createProjectPresenter(slug: () => string): ProjectPresenter {
   const setTab = (next: ProjectTab): void =>
     navigate(`/projects/${encodeURIComponent(slug())}?tab=${next}`);
   const [editing, setEditing] = createSignal(false);
+  const [quota, setQuota] = createSignal(0);
+  const defaults = createRefreshable(() => projectsModel.defaults());
   const [editError, setEditError] = createSignal<string | null>(null);
   const [plan, setPlan] = createSignal<DeletionPlan | null>(null);
   const [deleteError, setDeleteError] = createSignal<string | null>(null);
@@ -103,13 +108,19 @@ export function createProjectPresenter(slug: () => string): ProjectPresenter {
     setTab,
     editing,
     editError,
-    openEdit: () => setEditing(true),
+    quotaIndex: quota,
+    setQuotaIndex: setQuota,
+    defaults,
+    openEdit: () => {
+      setQuota(quotaIndex(overview.value().project.quota_bytes));
+      setEditing(true);
+    },
     closeEdit: () => {
       setEditing(false);
       setEditError(null);
     },
     save: async (draft) => {
-      const staticBody = toUpdateBody(draft, hasRole("admin"));
+      const staticBody = toUpdateBody(draft, QUOTA_STEPS[quota()] ?? null, hasRole("admin"));
       const staticSlug = slug();
       setEditError(null);
       try {

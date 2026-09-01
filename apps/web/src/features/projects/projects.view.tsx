@@ -1,16 +1,19 @@
-import { Field, Form, createForm, reset, setInput } from "@formisch/solid";
+import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import { formatWhen } from "@/lib/format.ts";
-import { For, Loading, Show, createEffect, createSignal } from "solid-js";
-import { createProjectSchema } from "@testate/shared";
+import { formatBytes } from "../states/states.format.ts";
+import { For, Loading, Show, createEffect } from "solid-js";
+import { createProjectSchema, projectSlug } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import EmptyState from "@/components/empty-state.tsx";
 import FieldError from "@/components/field-error.tsx";
+import FieldLabel from "@/components/field-label.tsx";
+import Slider from "@/components/slider.tsx";
 import Icon from "@/components/icon.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Dialog from "@/components/dialog.tsx";
@@ -25,26 +28,56 @@ import {
   TableFooter,
   TableSearch,
   TableToolbar,
+  Truncated,
 } from "@/components/table.tsx";
 import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { headBadge } from "./projects.format.ts";
-import { createProjectsPresenter, slugify } from "./projects.presenter.ts";
+import { QUOTA_STEPS, createProjectsPresenter } from "./projects.presenter.ts";
 import type { ProjectsPresenter } from "./projects.presenter.ts";
 
+/** The size a step means, with the instance default named rather than left as "default". */
+/** Formisch needs a shape to reset to; a missing `initialInput` leaves the fields undefined. */
+const BLANK_PROJECT = { name: "", description: "" } as const;
+
+function quotaLabels(inherited: number): string[] {
+  return QUOTA_STEPS.map((step) => {
+    if (step === null) return `Instance default (${formatBytes(inherited)})`;
+    return step === 0 ? "No limit" : formatBytes(step);
+  });
+}
+
+/** The quota control, the same one the edit dialog uses, so the two cannot drift apart. */
+export function QuotaSlider(props: {
+  inherited: number;
+  index: number;
+  onIndex: (index: number) => void;
+}): JSX.Element {
+  return (
+    <div class="grid gap-1.5 text-sm">
+      <span class="flex items-center gap-1.5">
+        Snapshot quota
+        <span class="text-xs font-normal text-muted">optional</span>
+      </span>
+      <Slider
+        label="Snapshot quota"
+        steps={quotaLabels(props.inherited)}
+        ends={["Default", "No limit"]}
+        index={props.index}
+        onIndex={(index) => props.onIndex(index)}
+      />
+    </div>
+  );
+}
+
 function CreateDialog(props: { presenter: ProjectsPresenter }): JSX.Element {
-  const form = createForm({ schema: createProjectSchema });
-  // Tracks a direct edit to the slug field itself, as opposed to the auto-derive below, so typing
-  // a name never clobbers a slug the person already chose.
-  const [slugTouched, setSlugTouched] = createSignal(false);
+  const form = createForm({ schema: createProjectSchema, initialInput: BLANK_PROJECT });
+  const name = (): string => getInput(form, { path: ["name"] }) ?? "";
 
   createEffect(
     () => props.presenter.creating(),
     (open) => {
-      if (open) {
-        onceSettled(() => reset(form));
-        setSlugTouched(false);
-      }
+      if (open) onceSettled(() => reset(form, { initialInput: BLANK_PROJECT }));
     }
   );
 
@@ -59,42 +92,57 @@ function CreateDialog(props: { presenter: ProjectsPresenter }): JSX.Element {
         <Field of={form} path={["name"]}>
           {(field) => (
             <label class="grid gap-1.5 text-sm">
-              <span>Name</span>
+              <FieldLabel required>Name</FieldLabel>
               <Input
                 {...field.props}
                 required
                 value={field.input}
                 variant={field.errors ? "error" : "default"}
                 aria-invalid={field.errors ? "true" : undefined}
-                onInput={(event) => {
-                  field.props.onInput(event);
-                  if (!slugTouched())
-                    setInput(form, { path: ["slug"], input: slugify(event.currentTarget.value) });
-                }}
               />
               <FieldError message={field.errors?.[0]} />
             </label>
           )}
         </Field>
-        <Field of={form} path={["slug"]}>
+        <Field of={form} path={["description"]}>
           {(field) => (
             <label class="grid gap-1.5 text-sm">
-              <span>Slug</span>
+              <FieldLabel required={false}>Description</FieldLabel>
               <Input
                 {...field.props}
-                required
+                maxlength="2000"
                 value={field.input}
                 variant={field.errors ? "error" : "default"}
                 aria-invalid={field.errors ? "true" : undefined}
-                onInput={(event) => {
-                  setSlugTouched(true);
-                  field.props.onInput(event);
-                }}
               />
+              <span class="text-xs text-muted">One line about what this project covers.</span>
               <FieldError message={field.errors?.[0]} />
             </label>
           )}
         </Field>
+        {/* Read-only, and a preview rather than the answer: the API adds `-2` if the slug is taken,
+            and only it knows what is taken. */}
+        <label class="grid gap-1.5 text-sm">
+          <span>URL</span>
+          <Input
+            readonly
+            tabindex="-1"
+            aria-label="URL"
+            value={`/projects/${projectSlug(name())}`}
+          />
+          <span class="text-xs text-muted">
+            Taken from the name. A number is added if another project already has it.
+          </span>
+        </label>
+        <Show when={hasRole("admin")}>
+          <Loading fallback={<p class="text-sm text-muted">Reading the instance default...</p>}>
+            <QuotaSlider
+              inherited={props.presenter.defaults.value().quota_bytes}
+              index={props.presenter.quotaIndex()}
+              onIndex={(index) => props.presenter.setQuotaIndex(index)}
+            />
+          </Loading>
+        </Show>
         <Show when={props.presenter.error()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>
@@ -189,6 +237,15 @@ export default function ProjectsView(): JSX.Element {
                             {project.name}
                           </a>
                           <code class="text-xs text-muted">{project.slug}</code>
+                          {/* The description was collected in the edit dialog and shown nowhere.
+                              It belongs where you are choosing between projects. */}
+                          <Show when={project.description}>
+                            {(text) => (
+                              <Truncated class="max-w-[28rem] text-xs text-muted">
+                                {text()}
+                              </Truncated>
+                            )}
+                          </Show>
                         </div>
                       </Cell>
                       <Cell>

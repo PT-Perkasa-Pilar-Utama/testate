@@ -9,6 +9,7 @@ import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
+import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import InputArea from "@/components/input-area.tsx";
 import Select from "@/components/select.tsx";
@@ -32,11 +33,12 @@ function Fields(props: {
     <For each={props.fields}>
       {(field) => (
         <label class="grid content-start gap-1.5 text-base">
-          <span>
+          <FieldLabel required={field.required === true}>
             {field.label}
             {props.hint === undefined ? "" : ` ${props.hint}`}
-          </span>
+          </FieldLabel>
           <Input
+            required={field.required === true}
             type={field.type === "boolean" ? "text" : field.type}
             autocomplete={field.type === "password" ? "new-password" : "off"}
             placeholder={field.placeholder ?? ""}
@@ -83,7 +85,7 @@ export default function EditDialog(props: {
         <Field of={form} path={["name"]}>
           {(field) => (
             <label class="grid content-start gap-1.5 text-base">
-              <span>Name</span>
+              <FieldLabel required={true}>Name</FieldLabel>
               <Input
                 {...field.props}
                 required
@@ -100,9 +102,9 @@ export default function EditDialog(props: {
           <Field of={form} path={["excluded_tables"]}>
             {(field) => (
               <label class="grid content-start gap-1.5 text-base">
-                <span>
+                <FieldLabel required={false}>
                   Excluded tables (comma separated; migration tables are excluded by default)
-                </span>
+                </FieldLabel>
                 <InputArea
                   {...field.props}
                   rows="2"
@@ -118,7 +120,9 @@ export default function EditDialog(props: {
             <Field of={form} path={["schemas"]}>
               {(field) => (
                 <label class="grid content-start gap-1.5 text-base">
-                  <span>Schemas (comma separated; empty = every non-system schema)</span>
+                  <FieldLabel required={false}>
+                    Schemas (comma separated; empty = every non-system schema)
+                  </FieldLabel>
                   <Input
                     {...field.props}
                     value={field.input}
@@ -147,7 +151,7 @@ export default function EditDialog(props: {
             <Field of={form} path={["lock_timeout_ms"]}>
               {(field) => (
                 <label class="grid content-start gap-1.5 text-base">
-                  <span>Lock timeout (ms)</span>
+                  <FieldLabel required={false}>Lock timeout (ms)</FieldLabel>
                   <Input
                     {...field.props}
                     type="number"

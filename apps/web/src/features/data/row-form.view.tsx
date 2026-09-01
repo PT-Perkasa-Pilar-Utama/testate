@@ -8,6 +8,7 @@ import Banner from "@/components/banner.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
+import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import { FIELD_MODES, FUNCTION_OPTIONS, MAX_COPIES, cellsOf } from "./editing.presenter.ts";
@@ -191,7 +192,7 @@ export default function RowForm(props: {
             <div class="flex flex-wrap items-center justify-end gap-2">
               <Show when={open().kind === "insert"}>
                 <label class="flex items-center gap-2 text-base">
-                  <span>Copies</span>
+                  <FieldLabel required={false}>Copies</FieldLabel>
                   <Input
                     size="sm"
                     type="number"

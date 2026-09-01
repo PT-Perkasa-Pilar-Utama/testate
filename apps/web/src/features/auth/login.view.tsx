@@ -8,6 +8,7 @@ import Button from "@/components/button.tsx";
 import CompanyFooter from "@/components/company-footer.tsx";
 import FieldError from "@/components/field-error.tsx";
 import Icon from "@/components/icon.tsx";
+import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import LayerCard from "@/components/layer-card.tsx";
 import Logo from "@/components/logo.tsx";
@@ -36,9 +37,10 @@ export default function LoginView(props: { next: string }): JSX.Element {
           <Field of={form} path={["username"]}>
             {(field) => (
               <label class="grid content-start gap-1.5 text-base">
-                <span>Username</span>
+                <FieldLabel required>Username</FieldLabel>
                 <Input
                   {...field.props}
+                  required
                   type="text"
                   autocomplete="username"
                   autofocus
@@ -53,9 +55,10 @@ export default function LoginView(props: { next: string }): JSX.Element {
           <Field of={form} path={["password"]}>
             {(field) => (
               <label class="grid content-start gap-1.5 text-base">
-                <span>Password</span>
+                <FieldLabel required>Password</FieldLabel>
                 <Input
                   {...field.props}
+                  required
                   type="password"
                   autocomplete="current-password"
                   value={field.input}

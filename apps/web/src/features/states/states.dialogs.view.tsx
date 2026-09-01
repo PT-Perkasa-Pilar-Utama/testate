@@ -10,6 +10,7 @@ import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
+import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import InputArea from "@/components/input-area.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
@@ -25,7 +26,7 @@ function DraftFields(props: { form: FormStore<typeof stateDraftSchema> }): JSX.E
       <Field of={props.form} path={["name"]}>
         {(field) => (
           <label class="grid content-start gap-1.5 text-base">
-            <span>Name</span>
+            <FieldLabel required={true}>Name</FieldLabel>
             <Input
               {...field.props}
               type="text"
@@ -43,7 +44,7 @@ function DraftFields(props: { form: FormStore<typeof stateDraftSchema> }): JSX.E
       <Field of={props.form} path={["notes"]}>
         {(field) => (
           <label class="grid content-start gap-1.5 text-base">
-            <span>Notes</span>
+            <FieldLabel required={false}>Notes</FieldLabel>
             <InputArea
               {...field.props}
               rows="3"
@@ -59,7 +60,7 @@ function DraftFields(props: { form: FormStore<typeof stateDraftSchema> }): JSX.E
       <Field of={props.form} path={["tags"]}>
         {(field) => (
           <label class="grid content-start gap-1.5 text-base">
-            <span>Tags (comma separated)</span>
+            <FieldLabel required={false}>Tags (comma separated)</FieldLabel>
             <Input
               {...field.props}
               type="text"

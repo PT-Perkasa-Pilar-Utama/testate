@@ -58,6 +58,7 @@
       "name": "@testate/shared",
       "version": "1.1.0-alpha",
       "dependencies": {
+        "cizgile": "0.1.1",
         "valibot": "1.4.2",
       },
     },
@@ -456,6 +457,8 @@
     "bun-types": ["bun-types@1.4.0", "", { "dependencies": { "@types/node": "*" } }, "sha512-iIKw23BspnQQYd3prITOBxeUsxBHnwzX6YJfGMuNOZzeNcMmVqzIIVGRm1l69ogaPQmb4wB6BN8mA5bE9YuC5Q=="],
 
     "caniuse-lite": ["caniuse-lite@1.0.30001810", "", {}, "sha512-TITQPUkaz+aVk5GL6NhOdwk1aEaNTSDPsGFWrTuhKGtjTF70jL/Oht2W4c6rXUe5fu7Ie19VIahAXHIIiWWNeg=="],
+
+    "cizgile": ["cizgile@0.1.1", "", {}, "sha512-PxzLSY8aEMsxJ1KZq4PBn0RBR0dY0l4bg9jAuqovRnEVFdFIxZjH2iLvqY7Jn1jRqPlXE6Inpix3xd71fomsUA=="],
 
     "concat-stream": ["concat-stream@2.0.0", "", { "dependencies": { "buffer-from": "^1.0.0", "inherits": "^2.0.3", "readable-stream": "^3.0.2", "typedarray": "^0.0.6" } }, "sha512-MWufYdFw53ccGjCA+Ol7XJYpAlW6/prSMzuPOTRnJGcGzuhLn4Scrz7qf6o8bROZ514ltazcIFJZevcfbo0x7A=="],
 

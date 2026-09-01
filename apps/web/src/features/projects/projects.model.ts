@@ -1,6 +1,12 @@
 import * as v from "valibot";
-import type { JsonObject, Project } from "@testate/shared";
-import { idSchema, jobSchema, projectSchema, quotaSchema } from "@testate/shared";
+import type { JsonObject, Project, ProjectDefaults } from "@testate/shared";
+import {
+  idSchema,
+  jobSchema,
+  projectDefaultsSchema,
+  projectSchema,
+  quotaSchema,
+} from "@testate/shared";
 
 import { apiClient } from "@/lib/api-client.ts";
 import type { Page } from "@/lib/async.ts";
@@ -61,8 +67,10 @@ export const projectsModel = {
   /** One request for the project, its quota and the "why" behind an unknown HEAD, not three. */
   overview: (slug: string): Promise<Overview> =>
     apiClient.get(path(slug), { schema: overviewSchema }),
-  create: (body: { slug: string; name: string }): Promise<Project> =>
+  create: (body: JsonObject): Promise<Project> =>
     apiClient.post("/projects", { schema: projectSchema, body }),
+  defaults: (): Promise<ProjectDefaults> =>
+    apiClient.get("/projects/defaults", { schema: projectDefaultsSchema }),
   update: (slug: string, body: JsonObject): Promise<Project> =>
     apiClient.patch(path(slug), { schema: projectSchema, body }),
   deletionPlan: (slug: string): Promise<DeletionPlan> =>

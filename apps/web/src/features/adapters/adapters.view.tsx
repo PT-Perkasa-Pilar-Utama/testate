@@ -11,6 +11,7 @@ import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
+import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import {
@@ -38,7 +39,7 @@ function FieldInput(props: {
   const key = (): string => `${props.prefix}.${props.field.key}`;
   return (
     <label class="grid content-start gap-1.5 text-base">
-      <span>{props.field.label}</span>
+      <FieldLabel required={props.field.required === true}>{props.field.label}</FieldLabel>
       <Input
         type={props.field.type === "boolean" ? "text" : props.field.type}
         required={props.field.required === true}
@@ -112,7 +113,7 @@ function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Element {
           <Field of={form} path={["name"]}>
             {(field) => (
               <label class="grid content-start gap-1.5 text-base">
-                <span>Name</span>
+                <FieldLabel required={true}>Name</FieldLabel>
                 <Input
                   {...field.props}
                   required

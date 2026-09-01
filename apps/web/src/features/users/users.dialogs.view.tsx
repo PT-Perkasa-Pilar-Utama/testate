@@ -8,6 +8,7 @@ import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
+import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import { ROLE_OPTIONS } from "./users.presenter.ts";
@@ -34,7 +35,7 @@ export function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element 
         <Field of={form} path={["username"]}>
           {(field) => (
             <label class="grid content-start gap-1.5 text-base">
-              <span>Username</span>
+              <FieldLabel required={true}>Username</FieldLabel>
               <Input
                 {...field.props}
                 required
@@ -50,7 +51,7 @@ export function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element 
         <Field of={form} path={["display_name"]}>
           {(field) => (
             <label class="grid content-start gap-1.5 text-base">
-              <span>Display name</span>
+              <FieldLabel required={true}>Display name</FieldLabel>
               <Input
                 {...field.props}
                 required
@@ -78,7 +79,7 @@ export function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element 
         <Field of={form} path={["temporary_password"]}>
           {(field) => (
             <label class="grid content-start gap-1.5 text-base">
-              <span>Temporary password</span>
+              <FieldLabel required={true}>Temporary password</FieldLabel>
               <Input
                 {...field.props}
                 type="password"
@@ -141,7 +142,7 @@ export function EditDialog(props: { presenter: UsersPresenter }): JSX.Element {
         <Field of={form} path={["display_name"]}>
           {(field) => (
             <label class="grid content-start gap-1.5 text-base">
-              <span>Display name</span>
+              <FieldLabel required={true}>Display name</FieldLabel>
               <Input
                 {...field.props}
                 required
@@ -203,7 +204,7 @@ export function ResetDialog(props: { presenter: UsersPresenter }): JSX.Element {
         <Field of={form} path={["temporary_password"]}>
           {(field) => (
             <label class="grid content-start gap-1.5 text-base">
-              <span>Temporary password (12+ characters)</span>
+              <FieldLabel required={true}>Temporary password (12+ characters)</FieldLabel>
               <Input
                 {...field.props}
                 type="password"

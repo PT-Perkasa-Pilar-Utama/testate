@@ -1,7 +1,7 @@
 import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import { formatWhen } from "@/lib/format.ts";
-import { For, Show, createEffect } from "solid-js";
+import { For, Loading, Show, createEffect } from "solid-js";
 import * as v from "valibot";
 import { projectDraftSchema } from "@testate/shared";
 
@@ -11,10 +11,12 @@ import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
+import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import type { DeletionAffected } from "../projects/projects.model.ts";
+import { QuotaSlider } from "../projects/projects.view.tsx";
 import { PROJECT_BLANK, toProjectDraft } from "./project.presenter.ts";
 import type { ProjectPresenter } from "./project.presenter.ts";
 
@@ -73,7 +75,7 @@ export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element 
         <Field of={form} path={["name"]}>
           {(field) => (
             <label class="grid content-start gap-1.5 text-base">
-              <span>Name</span>
+              <FieldLabel required={true}>Name</FieldLabel>
               <Input
                 {...field.props}
                 required
@@ -89,7 +91,7 @@ export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element 
         <Field of={form} path={["description"]}>
           {(field) => (
             <label class="grid content-start gap-1.5 text-base">
-              <span>Description</span>
+              <FieldLabel required={false}>Description</FieldLabel>
               <Input
                 {...field.props}
                 maxlength="2000"
@@ -102,23 +104,13 @@ export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element 
           )}
         </Field>
         <Show when={hasRole("admin")}>
-          <Field of={form} path={["quota_gib"]}>
-            {(field) => (
-              <label class="grid content-start gap-1.5 text-base">
-                <span>Snapshot quota in GiB (empty = instance default)</span>
-                <Input
-                  {...field.props}
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  value={field.input}
-                  variant={field.errors ? "error" : "default"}
-                  aria-invalid={field.errors ? "true" : undefined}
-                />
-                <FieldError message={field.errors?.[0]} />
-              </label>
-            )}
-          </Field>
+          <Loading fallback={<p class="text-sm text-muted">Reading the instance default...</p>}>
+            <QuotaSlider
+              inherited={props.presenter.defaults.value().quota_bytes}
+              index={props.presenter.quotaIndex()}
+              onIndex={(index) => props.presenter.setQuotaIndex(index)}
+            />
+          </Loading>
         </Show>
         <Show when={props.presenter.editError()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
@@ -213,7 +205,7 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
             <Field of={form} path={["confirm_slug"]}>
               {(field) => (
                 <label class="grid content-start gap-1.5 text-base">
-                  <span>Type the slug to confirm</span>
+                  <FieldLabel required={true}>Type the slug to confirm</FieldLabel>
                   <Input
                     {...field.props}
                     required

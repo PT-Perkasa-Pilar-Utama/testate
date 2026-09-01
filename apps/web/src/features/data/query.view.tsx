@@ -7,6 +7,7 @@ import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import EmptyState from "@/components/empty-state.tsx";
 import Icon from "@/components/icon.tsx";
+import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import InputArea from "@/components/input-area.tsx";
 import Select from "@/components/select.tsx";
@@ -37,7 +38,7 @@ function MongoForm(props: { presenter: QueryPresenter }): JSX.Element {
         when={draft().op === "find"}
         fallback={
           <label class="grid content-start gap-1.5 text-base">
-            <span>Pipeline (JSON array)</span>
+            <FieldLabel required={false}>Pipeline (JSON array)</FieldLabel>
             <InputArea
               rows={8}
               class="bg-sunken! font-mono"
@@ -48,7 +49,7 @@ function MongoForm(props: { presenter: QueryPresenter }): JSX.Element {
         }
       >
         <label class="grid content-start gap-1.5 text-base">
-          <span>Filter (JSON)</span>
+          <FieldLabel required={false}>Filter (JSON)</FieldLabel>
           <InputArea
             rows={4}
             class="bg-sunken! font-mono"
@@ -58,7 +59,7 @@ function MongoForm(props: { presenter: QueryPresenter }): JSX.Element {
         </label>
         <div class="grid gap-3 sm:grid-cols-2">
           <label class="grid content-start gap-1.5 text-base">
-            <span>Projection (JSON, optional)</span>
+            <FieldLabel required={false}>Projection (JSON)</FieldLabel>
             <Input
               class="font-mono"
               value={draft().projection}
@@ -68,7 +69,7 @@ function MongoForm(props: { presenter: QueryPresenter }): JSX.Element {
             />
           </label>
           <label class="grid content-start gap-1.5 text-base">
-            <span>Sort (JSON, optional)</span>
+            <FieldLabel required={false}>Sort (JSON)</FieldLabel>
             <Input
               class="font-mono"
               value={draft().sort}
@@ -97,7 +98,7 @@ function RowCapField(props: { presenter: QueryPresenter }): JSX.Element {
   return (
     <div class="grid gap-0.5">
       <label class="flex items-center gap-2 text-xs text-muted">
-        <span>Row cap</span>
+        <FieldLabel required={false}>Row cap</FieldLabel>
         <Input
           size="sm"
           class="w-20!"

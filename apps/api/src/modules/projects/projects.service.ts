@@ -1,4 +1,7 @@
-import type { Actor, Head, Job, Project, Quota, Settings } from "@testate/shared";
+import type * as v from "valibot";
+import type { Actor, Head, Job, Project, ProjectDefaults, Quota, Settings } from "@testate/shared";
+import { freeSlug, projectSlug } from "@testate/shared";
+import type { createProjectSchema } from "@testate/shared";
 
 import type { RequestMeta } from "../../lib/http/auth.ts";
 import { conflict, forbidden, notFound } from "../../lib/http/index.ts";
@@ -31,7 +34,11 @@ export type ProjectOverview = {
   banner: { kind: "head_unknown"; message: string } | null;
 };
 
-export type CreateProjectInput = { slug: string; name: string; description?: string };
+/**
+ * The wire shape, not a second copy of it: the create body and what the service takes are the same
+ * thing, and the two drifting apart is how `quota_bytes` reached the API and stopped at this line.
+ */
+export type CreateProjectInput = v.InferOutput<typeof createProjectSchema>;
 
 export type PlanAdapter = {
   adapter_id: string;
@@ -62,6 +69,7 @@ export type ProjectsService = {
   list(scope: string[] | null, query: Omit<ProjectsListQuery, "ids">): Promise<Project[]>;
   total(scope: string[] | null, query: Omit<ProjectsListQuery, "ids">): Promise<number>;
   create(actor: Actor, input: CreateProjectInput, meta: RequestMeta): Promise<Project>;
+  defaults(): Promise<ProjectDefaults>;
   get(actor: Actor, slug: string): Promise<ProjectOverview>;
   update(actor: Actor, slug: string, patch: ProjectPatch, meta: RequestMeta): Promise<Project>;
   head(slug: string): Promise<Head>;
@@ -156,14 +164,23 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
     async list(scope, query) {
       return repo.list({ ...query, ids: scope });
     },
+    async defaults() {
+      return { quota_bytes: (await deps.settings.get()).quota.default_bytes };
+    },
     async create(actor, input, meta) {
-      if (repo.bySlug(input.slug) !== null) throw conflict("slug is taken", { slug: input.slug });
+      // No await between reading what is taken and writing the row: SQLite is synchronous, so the
+      // slug this finds is still free when the insert lands. An await here would open the race.
+      const slug =
+        input.slug ?? freeSlug(projectSlug(input.name), (free) => repo.bySlug(free) !== null);
+      // A caller that names its own slug gets that slug or a refusal, never a numbered neighbour.
+      if (input.slug !== undefined && repo.bySlug(slug) !== null)
+        throw conflict("slug is taken", { slug });
       const project = repo.insert({
         id: Bun.randomUUIDv7(),
-        slug: input.slug,
+        slug,
         name: input.name,
         description: input.description ?? null,
-        quota_bytes: null,
+        quota_bytes: input.quota_bytes ?? null,
         created_by: actor.id,
         created_at: nowIso(),
       });

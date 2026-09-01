@@ -13,6 +13,7 @@ import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import FieldError from "@/components/field-error.tsx";
 import Icon from "@/components/icon.tsx";
+import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import LayerCard from "@/components/layer-card.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
@@ -39,7 +40,7 @@ function PasswordCard(props: { presenter: AccountPresenter }): JSX.Element {
         <Field of={form} path={["current"]}>
           {(field) => (
             <label class="grid content-start gap-1.5 text-base">
-              <span>Current password</span>
+              <FieldLabel required={true}>Current password</FieldLabel>
               <Input
                 {...field.props}
                 type="password"
@@ -56,7 +57,9 @@ function PasswordCard(props: { presenter: AccountPresenter }): JSX.Element {
         <Field of={form} path={["next"]}>
           {(field) => (
             <label class="grid content-start gap-1.5 text-base">
-              <span>New password ({PASSWORD_MIN_LENGTH}+ characters)</span>
+              <FieldLabel required={true}>
+                New password ({PASSWORD_MIN_LENGTH}+ characters)
+              </FieldLabel>
               <Input
                 {...field.props}
                 type="password"

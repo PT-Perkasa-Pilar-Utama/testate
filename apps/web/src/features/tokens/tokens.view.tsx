@@ -14,6 +14,7 @@ import ConfirmDialog from "@/components/confirm-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Dialog from "@/components/dialog.tsx";
+import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import {
@@ -68,7 +69,7 @@ function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
         <Field of={form} path={["name"]}>
           {(field) => (
             <label class="grid content-start gap-1.5 text-base">
-              <span>Name</span>
+              <FieldLabel required={true}>Name</FieldLabel>
               <Input
                 {...field.props}
                 required
@@ -112,11 +113,11 @@ function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
         <Field of={form} path={["expires_on"]}>
           {(field) => (
             <label class="grid content-start gap-1.5 text-base">
-              <span>
+              <FieldLabel required={false}>
                 {getInput(form, { path: ["kind"] }) === "agent"
                   ? "Expires on (default 90 days, at most 365)"
-                  : "Expires on (optional)"}
-              </span>
+                  : "Expires on"}
+              </FieldLabel>
               <Input
                 {...field.props}
                 type="date"

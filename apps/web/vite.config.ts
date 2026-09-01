@@ -21,11 +21,14 @@ export default defineConfig(({ command }) => ({
   // step with the others, so there is no second place to forget.
   define: { "import.meta.env.VITE_TESTATE_VERSION": JSON.stringify(version) },
   server: {
-    port: 7379,
+    // The e2e suite runs its own pair on 7479/7478 so it never fights `bun run dev`, and
+    // `strictPort` makes a clash say so instead of quietly moving to the next free port.
+    port: Number(process.env["WEB_PORT"] ?? 7379),
+    strictPort: true,
     // No keep-alive: Bun closes idle sockets and the proxy would answer the next request with a 502.
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:7378",
+        target: `http://127.0.0.1:${process.env["API_PORT"] ?? 7378}`,
         agent: new Agent({ keepAlive: false }),
         configure: (proxy) => {
           proxy.on("error", (error, req) => {

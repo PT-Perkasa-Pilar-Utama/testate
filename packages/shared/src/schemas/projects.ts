@@ -27,23 +27,41 @@ export type Project = v.InferOutput<typeof projectSchema>;
 // The messages are the ones a person reads, on the "New project" form and in the API's 400 alike
 // (this schema parses the create request body too), so they are written here once.
 export const createProjectSchema = v.object({
+  /**
+   * Omit it and the API derives one from the name, adding `-2`, `-3` until it is free. Send one and
+   * you get exactly that slug or a 409: a script that names its own projects keeps working, and the
+   * dialog, which cannot know what is taken, leaves the decision to the server.
+   */
   // ponytail: mirrors slugSchema's pattern (common.ts) rather than piping it, so this field can
   // carry its own message. Keep the two patterns in sync; upgrade path is giving slugSchema itself
   // a message once every caller of it wants one.
-  slug: v.pipe(
-    v.string(),
-    v.regex(/^[a-z0-9-]{2,64}$/, "A slug is 2 to 64 characters: lowercase letters, digits, dashes.")
+  slug: v.optional(
+    v.pipe(
+      v.string(),
+      v.regex(
+        /^[a-z0-9-]{2,64}$/,
+        "A slug is 2 to 64 characters: lowercase letters, digits, dashes."
+      )
+    )
   ),
   name: v.pipe(
     v.string(),
     v.minLength(1, "Enter a project name."),
     v.maxLength(120, "A project name is at most 120 characters.")
   ),
+  /** Null or absent inherits the instance default; 0 is no quota at all. */
+  quota_bytes: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0)))),
   description: v.optional(
     v.pipe(v.string(), v.maxLength(2000, "A description is at most 2000 characters."))
   ),
 });
 export type CreateProjectInput = v.InferOutput<typeof createProjectSchema>;
+
+/** What a project inherits when it names no quota of its own; `/projects/defaults` serves it. */
+export const projectDefaultsSchema = v.object({
+  quota_bytes: v.pipe(v.number(), v.integer(), v.minValue(0)),
+});
+export type ProjectDefaults = v.InferOutput<typeof projectDefaultsSchema>;
 
 export const updateProjectSchema = v.object({
   name: v.optional(v.pipe(v.string(), v.minLength(1), v.maxLength(120))),
@@ -51,11 +69,10 @@ export const updateProjectSchema = v.object({
   quota_bytes: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0)))),
 });
 
-// The "Edit project" dialog's own shape, not the PATCH body: it edits the quota as a GiB string
-// ("empty" reading as the instance default), while `updateProjectSchema` above is the wire body,
-// in bytes, that every field of a PATCH may omit. `toUpdateBody` in the project presenter turns one
-// into the other - reusing `updateProjectSchema` directly here would bind the quota input to a
-// field that must already be an integer byte count.
+// The "Edit project" dialog's own shape, not the PATCH body: every field of a PATCH may be omitted,
+// which is not what a form means. The quota is not here at all any more: it is a slider over a
+// ladder of sizes, the same control the create dialog uses, and it lives beside the form rather
+// than inside it. `toUpdateBody` in the project presenter turns one into the other.
 export const projectDraftSchema = v.object({
   name: v.pipe(
     v.string(),
@@ -63,13 +80,6 @@ export const projectDraftSchema = v.object({
     v.maxLength(120, "A project name is at most 120 characters.")
   ),
   description: v.pipe(v.string(), v.maxLength(2000, "A description is at most 2000 characters.")),
-  quota_gib: v.pipe(
-    v.string(),
-    v.regex(
-      /^$|^\d+(\.\d+)?$/,
-      "Enter a non-negative number of GiB, or leave it empty for the instance default."
-    )
-  ),
 });
 export type ProjectDraft = v.InferOutput<typeof projectDraftSchema>;
 

@@ -66,16 +66,14 @@ test.describe("admin gap stories", () => {
     await page.goto("/projects");
     await settle(page);
     await page.getByRole("button", { name: "New project" }).click();
+    // No slug field any more: the API derives it from the name, so `Gone abc` becomes `gone-abc`.
     await page.locator("dialog[open]").getByLabel("Name").fill(`Gone ${STAMP}`);
-    await page.locator("dialog[open]").getByLabel("Slug").fill(`gone-${STAMP}`);
     await page.getByRole("button", { name: "Create" }).click();
     await page.getByRole("link", { name: `Gone ${STAMP}` }).click();
     await settle(page);
     await page.getByRole("button", { name: "Edit" }).click();
-    await page
-      .locator("dialog[open]")
-      .getByLabel(/Snapshot quota in GiB/)
-      .fill("1");
+    // The quota is a ladder now: step 1 is 1 GiB, step 0 leaves the project on the instance default.
+    await page.locator("dialog[open]").getByLabel("Snapshot quota").fill("1");
     await page.getByRole("button", { name: "Save" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
     // The quota chip (project.view.tsx QuotaChip) reports bytes on a meter, not a percentage;
@@ -183,7 +181,8 @@ test.describe("admin gap stories", () => {
     await dialog.getByRole("combobox", { name: "Target" }).selectOption("s3");
     await dialog.getByLabel("Bucket", { exact: true }).fill("exports");
     await dialog.getByLabel("Prefix", { exact: true }).fill(`store-${STAMP}/`);
-    await dialog.getByLabel("Endpoint (optional)", { exact: true }).fill("http://127.0.0.1:9010");
+    // The label says "Endpoint"; whether it is optional is a marker beside it, not part of its name.
+    await dialog.getByLabel("Endpoint", { exact: true }).fill("http://127.0.0.1:9010");
     await dialog.getByLabel("Access key id", { exact: true }).fill("testate");
     await dialog.getByLabel("Secret access key", { exact: true }).fill("testate-minio");
     await dialog.getByRole("switch", { name: /Virtual-hosted/ }).click();

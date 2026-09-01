@@ -12,6 +12,7 @@ import type { JobsService } from "../jobs/jobs.service.ts";
 import type { CreateProjectInput, ProjectsService } from "./projects.service.ts";
 
 export type ProjectsHandlers = {
+  defaults: Handler;
   list: Handler;
   create: Handler;
   get: Handler;
@@ -57,8 +58,10 @@ export function toListQuery(
 
 /** Drops undefined optional fields so the inputs match exactOptionalPropertyTypes. */
 function toCreateInput(parsed: v.InferOutput<typeof createProjectSchema>): CreateProjectInput {
-  const input: CreateProjectInput = { slug: parsed.slug, name: parsed.name };
+  const input: CreateProjectInput = { name: parsed.name };
+  if (parsed.slug !== undefined) input.slug = parsed.slug;
   if (parsed.description !== undefined) input.description = parsed.description;
+  if (parsed.quota_bytes !== undefined) input.quota_bytes = parsed.quota_bytes;
   return input;
 }
 
@@ -86,6 +89,8 @@ export function createProjectsHandlers(
       const total = await service.total(c.get("projectScope"), query);
       return okPage(c, rows, next, query.limit, total);
     },
+    /** The quota a project inherits, for the dialog that offers to override it. */
+    defaults: async (c) => ok(c, await service.defaults()),
     create: async (c) => {
       const input = toCreateInput(await parseBody(c, createProjectSchema));
       return ok(c, await service.create(currentActor(c), input, meta(c)), 201);

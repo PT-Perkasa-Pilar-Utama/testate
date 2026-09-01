@@ -25,9 +25,11 @@ function stubDeps(calls: Calls, refuse: string | null): SeedDeps {
     },
     projects: {
       create: async (_actor, input) => {
-        calls.projects.push(input.slug);
+        // `String`, not a fallback: the seed names its own slugs, and an absent one has to show up
+        // in the assertion below rather than be papered over here.
+        calls.projects.push(String(input.slug));
         // SAFETY: the seed uses only the slug of the created project.
-        return { slug: input.slug, id: "p1" } as Project;
+        return { slug: String(input.slug), id: "p1" } as Project;
       },
     },
     adapters: {

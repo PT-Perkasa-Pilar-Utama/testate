@@ -1,6 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { For, Show } from "solid-js";
 
+import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
@@ -120,7 +121,7 @@ function ReuseFields(props: { presenter: WizardPresenter }): JSX.Element {
         </span>
       </label>
       <label class="grid content-start gap-1.5 text-base">
-        <span>Save this mapping as</span>
+        <FieldLabel required={false}>Save this mapping as</FieldLabel>
         <Input
           maxlength="80"
           value={props.presenter.draft().name}
@@ -162,7 +163,7 @@ export default function MappingStep(props: { presenter: WizardPresenter }): JSX.
       <ModePicker presenter={props.presenter} />
       <Show when={props.presenter.draft().mode === "upsert"}>
         <label class="grid content-start gap-1.5 text-base">
-          <span>Key columns</span>
+          <FieldLabel required={false}>Key columns</FieldLabel>
           <Input
             placeholder="e.g. email, account_id"
             value={props.presenter.draft().key_columns}

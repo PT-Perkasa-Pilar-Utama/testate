@@ -28,7 +28,8 @@ test.describe("qa stories", () => {
     await page.getByRole("button", { name: "New project" }).click();
     const dialog = page.locator("dialog[open]");
     await dialog.getByLabel("Name").fill(`E2E ${STAMP}`);
-    await dialog.getByLabel("Slug").fill(`e2e-${STAMP}`);
+    // The URL preview says what the name will become; the API is what decides it.
+    await expect(dialog.getByLabel("URL")).toHaveValue(`/projects/e2e-${STAMP}`);
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
     await page.getByRole("link", { name: `E2E ${STAMP}` }).click();

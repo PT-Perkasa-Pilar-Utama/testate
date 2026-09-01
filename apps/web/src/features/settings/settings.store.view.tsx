@@ -8,6 +8,7 @@ import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
+import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import Switch from "@/components/switch.tsx";
@@ -60,7 +61,7 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
             <Field of={form} path={["bucket"]}>
               {(field) => (
                 <label class="grid gap-1.5 text-sm">
-                  <span>Bucket</span>
+                  <FieldLabel required={true}>Bucket</FieldLabel>
                   <Input
                     {...field.props}
                     type="text"
@@ -77,7 +78,7 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
             <Field of={form} path={["prefix"]}>
               {(field) => (
                 <label class="grid gap-1.5 text-sm">
-                  <span>Prefix</span>
+                  <FieldLabel required={false}>Prefix</FieldLabel>
                   <Input
                     {...field.props}
                     type="text"
@@ -93,7 +94,7 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
             <Field of={form} path={["region"]}>
               {(field) => (
                 <label class="grid gap-1.5 text-sm">
-                  <span>Region (optional)</span>
+                  <FieldLabel required={false}>Region</FieldLabel>
                   <Input
                     {...field.props}
                     type="text"
@@ -109,7 +110,7 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
             <Field of={form} path={["endpoint"]}>
               {(field) => (
                 <label class="grid gap-1.5 text-sm">
-                  <span>Endpoint (optional)</span>
+                  <FieldLabel required={false}>Endpoint</FieldLabel>
                   <Input
                     {...field.props}
                     type="text"
@@ -125,7 +126,7 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
             <Field of={form} path={["access_key_id"]}>
               {(field) => (
                 <label class="grid gap-1.5 text-sm">
-                  <span>Access key id</span>
+                  <FieldLabel required={true}>Access key id</FieldLabel>
                   <Input
                     {...field.props}
                     type="password"
@@ -142,7 +143,7 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
             <Field of={form} path={["secret_access_key"]}>
               {(field) => (
                 <label class="grid gap-1.5 text-sm">
-                  <span>Secret access key</span>
+                  <FieldLabel required={true}>Secret access key</FieldLabel>
                   <Input
                     {...field.props}
                     type="password"

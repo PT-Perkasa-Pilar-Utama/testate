@@ -81,6 +81,27 @@ describe("projects", () => {
     });
   });
 
+  it("names the slug itself when the caller does not, and counts up when it is taken", async () => {
+    const { projects, qa } = await setup();
+    const first = await projects.create(qa, { name: "Café München" }, TEST_META);
+    const second = await projects.create(qa, { name: "Cafe Munchen" }, TEST_META);
+    // Same slug from two different names, and the second gets a number rather than a refusal.
+    expect(first.slug).toBe("cafe-munchen");
+    expect(second.slug).toBe("cafe-munchen-2");
+    // A name in a script with no transliteration still lands somewhere legal.
+    expect((await projects.create(qa, { name: "テスト" }, TEST_META)).slug).toBe("project");
+    // `defaults` is a route under /projects, so a project may not answer to it.
+    expect((await projects.create(qa, { name: "Defaults" }, TEST_META)).slug).toBe("defaults-2");
+  });
+
+  it("takes the quota given at creation, and inherits when none is", async () => {
+    const { projects, qa } = await setup();
+    const pinned = await projects.create(qa, { name: "Pinned", quota_bytes: 5 }, TEST_META);
+    const inherits = await projects.create(qa, { name: "Inherits" }, TEST_META);
+    expect(pinned.quota_bytes).toBe(5);
+    expect(inherits.quota_bytes).toBeNull();
+  });
+
   it("creates a project with HEAD none and refuses a duplicate slug", async () => {
     const { projects, qa } = await setup();
     const project = await projects.create(qa, { slug: "shop", name: "Shop" }, TEST_META);

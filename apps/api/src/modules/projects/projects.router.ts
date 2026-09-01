@@ -1,5 +1,11 @@
 import { Hono } from "hono";
-import { headSchema, jobSchema, projectSchema, quotaSchema } from "@testate/shared";
+import {
+  headSchema,
+  jobSchema,
+  projectDefaultsSchema,
+  projectSchema,
+  quotaSchema,
+} from "@testate/shared";
 import * as v from "valibot";
 
 import { requireRole } from "../../lib/http/auth.ts";
@@ -19,6 +25,13 @@ export function createProjectsRouter(h: ProjectsHandlers): Hono {
     requireRole("qa"),
     describe("projects", "Create a project", projectSchema, 201),
     h.create
+  );
+  // Before `/:slug`, and `defaults` is reserved in `freeSlug`, so no project can answer here.
+  router.get(
+    "/projects/defaults",
+    requireRole("qa"),
+    describe("projects", "What a new project inherits", projectDefaultsSchema),
+    h.defaults
   );
   router.get(
     "/projects/:slug",

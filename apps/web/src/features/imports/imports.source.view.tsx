@@ -2,6 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { For, Loading, Show, createSignal } from "solid-js";
 
 import Button from "@/components/button.tsx";
+import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import Tabs from "@/components/tabs.tsx";
@@ -33,7 +34,7 @@ function StoragePicker(props: { presenter: WizardPresenter }): JSX.Element {
         </Loading>
       </label>
       <label class="grid gap-1.5 text-sm">
-        <span>Path</span>
+        <FieldLabel required={false}>Path</FieldLabel>
         <Input
           placeholder="imports/customers.csv"
           value={path()}
@@ -64,7 +65,7 @@ export default function SourceStep(props: { presenter: WizardPresenter }): JSX.E
         <Tabs items={SOURCES} value={mode()} onChange={(next) => setMode(next)} label="Source" />
         <Show when={mode() === "upload"}>
           <label class="grid gap-1.5 text-sm">
-            <span>CSV or XLSX file</span>
+            <FieldLabel required={false}>CSV or XLSX file</FieldLabel>
             <input type="file" accept=".csv,.xlsx,text/csv" onChange={onFile} />
           </label>
         </Show>

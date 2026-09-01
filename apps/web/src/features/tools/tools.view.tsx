@@ -5,6 +5,7 @@ import { For, Show } from "solid-js";
 import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
 import type { IconName } from "@/components/icon.tsx";
+import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import LayerCard from "@/components/layer-card.tsx";
 import Select from "@/components/select.tsx";
@@ -65,7 +66,7 @@ function HashCard(props: { presenter: ToolsPresenter }): JSX.Element {
           />
         </label>
         <label class="grid content-start gap-1.5 text-base">
-          <span>Value</span>
+          <FieldLabel required={true}>Value</FieldLabel>
           <Input
             required
             value={props.presenter.value()}
@@ -73,7 +74,7 @@ function HashCard(props: { presenter: ToolsPresenter }): JSX.Element {
           />
         </label>
         <label class="grid content-start gap-1.5 text-base">
-          <span>Secret or seed (optional)</span>
+          <FieldLabel required={false}>Secret or seed</FieldLabel>
           <Input
             type="password"
             autocomplete="off"
@@ -103,7 +104,7 @@ function RandomCard(props: { presenter: ToolsPresenter }): JSX.Element {
       <CardTitle icon="zap">Random bytes</CardTitle>
       <div class="grid gap-3">
         <label class="grid content-start gap-1.5 text-base">
-          <span>Bytes (8 to 1024)</span>
+          <FieldLabel required={false}>Bytes (8 to 1024)</FieldLabel>
           <Input
             type="number"
             min="8"
