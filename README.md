@@ -1,4 +1,4 @@
-![Testate: git for your test database. Testers, CI pipelines and AI agents drive Testate, which runs on the same test server as the system under test and snapshots or restores its databases](docs/assets/hero.svg)
+![Testate: git for your test database. A field of rows takes a state, a test run turns a third of them amber, a checkout sweeps across and every row returns; beside it the states timeline with HEAD lit](docs/assets/hero.svg)
 
 **Git for your test database. Snapshot it, break it, put it back in seconds.**
 
