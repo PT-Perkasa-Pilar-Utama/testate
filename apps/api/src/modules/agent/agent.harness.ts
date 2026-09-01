@@ -12,8 +12,10 @@ import { createPoliciesRepository } from "../data/data.policies.ts";
 import { createDataRepository } from "../data/data.repository.ts";
 import { createDataService } from "../data/data.service.ts";
 import { createDiffsService } from "../diffs/diffs.service.ts";
+import type { DiffsService } from "../diffs/diffs.service.ts";
 import { createProjectsService } from "../projects/projects.service.ts";
 import { createStatesService } from "../states/states.service.ts";
+import type { StatesService } from "../states/states.service.ts";
 import { createStorageService } from "../storage/storage.service.ts";
 import type { AgentContext, AgentRuntime } from "./agent.service.ts";
 import { createAgentTools } from "./agent.tools.ts";
@@ -26,6 +28,9 @@ export type Harness = {
   ctx: AgentContext;
   /** An agent token with the tester role (23 §23.6). */
   tester: AgentContext;
+  /** The services behind get_state and diff_summary, so a spec can create what they read. */
+  diffs: DiffsService;
+  states: StatesService;
 };
 
 export async function createHarness(): Promise<Harness> {
@@ -123,6 +128,11 @@ export async function createHarness(): Promise<Harness> {
     adapterId: adapter.id,
     ctx: { actor, scope: null, meta: TEST_META },
     tester,
+    // The services behind two of the tools, so a spec can set up the thing the tool reads. An
+    // agent token cannot create a diff or a state itself, and a tool with nothing to read is a
+    // tool nobody can test.
+    diffs,
+    states,
   };
 }
 
