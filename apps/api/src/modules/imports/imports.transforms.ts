@@ -1,11 +1,10 @@
-import type { JsonValue } from "@testate/shared";
+import type { JsonValue, Transform } from "@testate/shared";
 import { jsonValueSchema } from "@testate/shared";
-import type { transformSchema } from "@testate/shared";
 import * as v from "valibot";
 
 import { createToolsService } from "../tools/tools.service.ts";
 
-export type Transform = v.InferOutput<typeof transformSchema>;
+export type { Transform };
 
 const tools = createToolsService();
 

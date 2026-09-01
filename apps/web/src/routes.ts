@@ -9,6 +9,7 @@ export const ROUTE_NAMES = [
   "adapter",
   "table",
   "query",
+  "imports",
   "policies",
   "files",
   "jobs",
@@ -30,6 +31,9 @@ export const ROUTES: readonly RouteDef<RouteName>[] = [
   { name: "adapter", pattern: "/projects/:slug/adapters/:id", role: "viewer" },
   { name: "table", pattern: "/projects/:slug/adapters/:id/tables/:table", role: "viewer" },
   { name: "query", pattern: "/projects/:slug/adapters/:id/query", role: "viewer" },
+  // An import mapping belongs to an adapter (import_mappings.adapter_id), so the screen does too;
+  // it used to be a project tab that opened by asking which database (docs/PROJECT_REWORK.md).
+  { name: "imports", pattern: "/projects/:slug/adapters/:id/imports", role: "qa" },
   // Masking rules are admin work (docs/UI_REWORK.md). The engine stays load-bearing for the grid,
   // imports, diffs and the agent surface; only the screen moves out of a tester's way.
   { name: "policies", pattern: "/projects/:slug/adapters/:id/policies", role: "admin" },

@@ -66,6 +66,9 @@ export const transformSchema = v.variant("kind", [
   }),
 ]);
 
+/** One step of a column's read. The SPA builds these from the shorter question it asks. */
+export type Transform = v.InferOutput<typeof transformSchema>;
+
 export const importModeSchema = v.picklist(["append", "upsert", "replace"]);
 
 export const mappingColumnSchema = v.object({

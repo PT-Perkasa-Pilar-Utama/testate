@@ -8,6 +8,7 @@ import AdapterView from "@/features/adapter/adapter.view.tsx";
 import GridView from "@/features/data/grid.view.tsx";
 import PoliciesView from "@/features/data/policies.view.tsx";
 import QueryView from "@/features/data/query.view.tsx";
+import AdapterImportsView from "@/features/imports/imports.adapter.view.tsx";
 import StorageView from "@/features/storage/storage.view.tsx";
 import StoresView from "@/features/storage/stores.view.tsx";
 import AccountView from "@/features/account/account.view.tsx";
@@ -80,6 +81,9 @@ function Page(props: { match: RouteMatch | null }): JSX.Element {
       </Match>
       <Match when={name() === "query"}>
         <QueryView slug={param("slug")} id={param("id")} />
+      </Match>
+      <Match when={name() === "imports"}>
+        <AdapterImportsView slug={param("slug")} id={param("id")} />
       </Match>
       <Match when={name() === "policies"}>
         <PoliciesView slug={param("slug")} id={param("id")} />

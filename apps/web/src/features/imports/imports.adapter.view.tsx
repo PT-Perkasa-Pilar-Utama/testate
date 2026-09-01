@@ -1,0 +1,228 @@
+import type { JSX } from "@solidjs/web";
+import { Errored, For, Loading, Show, createSignal } from "solid-js";
+
+import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
+import Banner from "@/components/banner.tsx";
+import Button from "@/components/button.tsx";
+import FieldLabel from "@/components/field-label.tsx";
+import Icon from "@/components/icon.tsx";
+import Input from "@/components/input.tsx";
+import Select from "@/components/select.tsx";
+import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { search } from "@/lib/router.ts";
+import { hasRole } from "@/lib/session.ts";
+import { MODE_OPTIONS, blockedReason, reportSummary, tableKey } from "./imports.helpers.ts";
+import { reportCounts } from "./imports.helpers.ts";
+import ColumnPanel from "./imports.mapping.panel.tsx";
+import { createImportPresenter } from "./imports.adapter.presenter.ts";
+import type { ImportPresenter } from "./imports.adapter.presenter.ts";
+
+/** Drop a file, or name one that already sits in a file store. */
+function SourceRow(props: { presenter: ImportPresenter }): JSX.Element {
+  const [storeId, setStoreId] = createSignal("");
+  const [path, setPath] = createSignal("");
+  return (
+    <div class="grid gap-3">
+      <label class="grid content-start gap-1.5 text-base">
+        <FieldLabel required={true}>File</FieldLabel>
+        <input
+          type="file"
+          accept=".csv,.xlsx,.xls"
+          class="text-base file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-fill file:px-3 file:py-1.5 file:text-body"
+          // Not cleared after the pick: the control is the only thing on screen that says which
+          // file is loaded, and an emptied one says "No file chosen" over a loaded preview.
+          onChange={(event) => {
+            const file = event.currentTarget.files?.[0];
+            if (file !== undefined) void props.presenter.upload(file);
+          }}
+        />
+      </label>
+      <Show when={props.presenter.storages.value().length > 0}>
+        <details class="text-sm text-muted">
+          <summary class="cursor-pointer">Or take one from a file store</summary>
+          <div class="mt-2 grid gap-3 sm:grid-cols-[1fr_2fr_auto] sm:items-end">
+            <label class="grid gap-1.5">
+              <span>File store</span>
+              <Select
+                options={[
+                  { value: "", label: "choose a store" },
+                  ...props.presenter.storages.value().map((s) => ({ value: s.id, label: s.name })),
+                ]}
+                value={storeId()}
+                onChange={(id) => setStoreId(id)}
+              />
+            </label>
+            <label class="grid gap-1.5">
+              <span>Path</span>
+              <Input
+                placeholder="imports/customers.csv"
+                value={path()}
+                onInput={(event) => setPath(event.currentTarget.value)}
+              />
+            </label>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={storeId() === "" || path().trim() === "" || props.presenter.busy()}
+              onClick={() => void props.presenter.useStorage(storeId(), path().trim())}
+            >
+              Load
+            </Button>
+          </div>
+        </details>
+      </Show>
+    </div>
+  );
+}
+
+/** Where the rows came from when nobody picked a file. */
+function RejectedNote(): JSX.Element {
+  return (
+    <Banner variant="default">
+      The rows an earlier run rejected are the source. Fix how a column is read below, then import.
+    </Banner>
+  );
+}
+
+/** The first rows of the file, so a date like 03/04/2026 can be recognised before it is read wrong. */
+function PreviewRows(props: { presenter: ImportPresenter }): JSX.Element {
+  const rows = (): unknown[][] => props.presenter.preview()?.rows.slice(0, 5) ?? [];
+  return (
+    <Show when={props.presenter.preview()}>
+      {(preview) => (
+        <div class="grid gap-2">
+          <span class="text-sm text-muted">The first rows of the file.</span>
+          <Table>
+            <thead>
+              <tr>
+                <For each={preview().columns}>{(column) => <Head>{column}</Head>}</For>
+              </tr>
+            </thead>
+            <tbody>
+              <For each={rows()}>
+                {(row) => (
+                  <Row>
+                    <For each={preview().columns}>
+                      {(_column, index) => <Cell>{String(row[index()] ?? "")}</Cell>}
+                    </For>
+                  </Row>
+                )}
+              </For>
+            </tbody>
+          </Table>
+        </div>
+      )}
+    </Show>
+  );
+}
+
+/**
+ * One import, on one screen.
+ *
+ * The adapter is in the URL, so the database question is already answered; what is left is the
+ * file, the table, what happens to the rows, and a column panel that stays shut while every column
+ * matched. The four-step wizard this replaces asked a data engineer's questions of a tester
+ * (docs/PROJECT_REWORK.md).
+ */
+export default function AdapterImportsView(props: { slug: string; id: string }): JSX.Element {
+  const rejected = new URLSearchParams(search()).get("rejected") ?? undefined;
+  const presenter = createImportPresenter(
+    () => props.slug,
+    () => props.id,
+    () => undefined,
+    rejected
+  );
+  const tables = (): { value: string; label: string }[] => [
+    { value: "", label: "choose a table" },
+    ...presenter.schema
+      .value()
+      .map((table) => ({ value: tableKey(table), label: tableKey(table) })),
+  ];
+  const blocked = (): string | null =>
+    blockedReason({ ...presenter.draft(), name: "", columns: [] }, presenter.preview() !== null);
+  return (
+    <section class="grid gap-4">
+      <AdapterCrumb slug={props.slug} id={props.id} />
+      <Errored fallback={(error) => <Banner variant="error">{String(error())}</Banner>}>
+        <Loading fallback={<p class="text-muted">Loading...</p>}>
+          {/* Read so the refreshable runs: it is the call that loads a rejected-rows preview. */}
+          {presenter.rejected.value()}
+          <Show
+            when={hasRole("qa")}
+            fallback={<Banner variant="default">Importing needs the Tester role.</Banner>}
+          >
+            <div class="grid gap-4 rounded-lg p-4 ring ring-line">
+              <Show when={rejected === undefined} fallback={<RejectedNote />}>
+                <SourceRow presenter={presenter} />
+              </Show>
+              <Show when={presenter.preview()}>
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <label class="grid content-start gap-1.5 text-base">
+                    <FieldLabel required={true}>Table</FieldLabel>
+                    <Select
+                      options={tables()}
+                      value={presenter.draft().table}
+                      onChange={(table) => presenter.setTable(table)}
+                    />
+                  </label>
+                  <label class="grid content-start gap-1.5 text-base">
+                    <span>What happens</span>
+                    <Select
+                      options={MODE_OPTIONS.map((mode) => ({
+                        value: mode.value,
+                        label: mode.label,
+                      }))}
+                      value={presenter.draft().mode}
+                      onChange={(mode) => presenter.setDraft({ mode })}
+                    />
+                  </label>
+                </div>
+                <p class="text-sm text-muted">
+                  {MODE_OPTIONS.find((mode) => mode.value === presenter.draft().mode)?.description}
+                </p>
+                <Show when={presenter.draft().table !== ""}>
+                  <ColumnPanel presenter={presenter} />
+                </Show>
+                <PreviewRows presenter={presenter} />
+              </Show>
+              <Show when={presenter.error()}>
+                {(message) => <Banner variant="error">{message()}</Banner>}
+              </Show>
+              <Show when={presenter.report()}>
+                {(report) => (
+                  <Banner variant={report().failed > 0 ? "alert" : "default"}>
+                    {reportSummary(reportCounts(report()), report().dry_run)}
+                  </Banner>
+                )}
+              </Show>
+              <div class="flex flex-wrap items-center justify-end gap-2">
+                <Show when={blocked()}>
+                  {(reason) => <span class="text-sm text-muted">{reason()}</span>}
+                </Show>
+                <Show when={presenter.report()?.dry_run === true}>
+                  <Button
+                    variant="primary"
+                    disabled={presenter.busy()}
+                    onClick={() => void presenter.commit()}
+                  >
+                    Import anyway
+                  </Button>
+                </Show>
+                <Show when={presenter.report()?.dry_run !== true}>
+                  <Button
+                    variant="primary"
+                    disabled={blocked() !== null || presenter.busy()}
+                    onClick={() => void presenter.start()}
+                  >
+                    <Icon name="upload" class="h-3.5 w-3.5" />
+                    Import
+                  </Button>
+                </Show>
+              </div>
+            </div>
+          </Show>
+        </Loading>
+      </Errored>
+    </section>
+  );
+}

@@ -39,6 +39,8 @@ export const columnSchemaSchema = v.object({
   policy: columnPolicyRefSchema,
 });
 
+export type ColumnSchema = v.InferOutput<typeof columnSchemaSchema>;
+
 export const foreignKeyOutSchema = v.object({
   columns: v.array(v.string()),
   ref: tableRefSchema,

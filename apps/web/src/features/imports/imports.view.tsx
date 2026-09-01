@@ -18,13 +18,12 @@ import {
   Truncated,
 } from "@/components/table.tsx";
 import { IMPORT_MODE_OPTIONS } from "@/lib/labels.ts";
+import { href } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { modeLabel } from "./imports.helpers.ts";
 import { countsLabel, createImportsPresenter } from "./imports.presenter.ts";
 import type { ImportModeFilter } from "./imports.presenter.ts";
 import ReportPanel from "./imports.report.view.tsx";
-import { createWizardPresenter } from "./imports.wizard.presenter.ts";
-import WizardDialog from "./imports.wizard.view.tsx";
 
 const LINK = buttonClass("ghost", "sm");
 const MODE_FILTER_OPTIONS: { value: ImportModeFilter; label: string }[] = [
@@ -34,10 +33,6 @@ const MODE_FILTER_OPTIONS: { value: ImportModeFilter; label: string }[] = [
 
 export default function ImportsView(props: { slug: string }): JSX.Element {
   const presenter = createImportsPresenter(() => props.slug);
-  const wizard = createWizardPresenter(
-    () => props.slug,
-    () => presenter.refresh()
-  );
   return (
     <div class="grid gap-3">
       <div class="flex flex-wrap items-center justify-end gap-2">
@@ -51,11 +46,6 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
           active={presenter.activeFilters()}
           onToggle={() => presenter.toggleFilters()}
         />
-        <Show when={hasRole("qa")}>
-          <Button variant="primary" onClick={() => wizard.start()}>
-            New import
-          </Button>
-        </Show>
       </div>
       <FilterPanel open={presenter.filtersOpen()}>
         <FilterField label="What happens">
@@ -132,14 +122,17 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
                           <a class={LINK} href={presenter.rejectedUrl(run.id)}>
                             Rejected rows
                           </a>
+                          {/* The rejected rows go back through the adapter's own import screen,
+                              which is where every import starts now. */}
                           <Show when={hasRole("qa")}>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => wizard.start({ kind: "rejected", run_id: run.id })}
+                            <a
+                              class={LINK}
+                              href={href(
+                                `/projects/${props.slug}/adapters/${run.adapter_id}/imports?rejected=${run.id}`
+                              )}
                             >
                               Re-import rejected
-                            </Button>
+                            </a>
                           </Show>
                         </Show>
                       </div>
@@ -162,7 +155,6 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
           </Dialog>
         )}
       </Show>
-      <WizardDialog presenter={wizard} rejectedUrl={(runId) => presenter.rejectedUrl(runId)} />
     </div>
   );
 }
