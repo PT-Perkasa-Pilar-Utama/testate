@@ -14,7 +14,6 @@ import { ORG } from "@/lib/report.ts";
 export default function CompanyFooter(props: { class?: string }): JSX.Element {
   return (
     <footer class={["grid justify-items-center gap-2 text-center text-xs", props.class]}>
-      <p class="text-muted">Your databases, your network. Nothing leaves it.</p>
       <p class="text-muted">
         <a class="underline hover:text-body" href={ORG.site} target="_blank" rel="noreferrer">
           {ORG.name}
