@@ -11,6 +11,7 @@ import InputArea from "@/components/input-area.tsx";
 import LayerCard from "@/components/layer-card.tsx";
 import Switch from "@/components/switch.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { STORE_DRIVER_LABEL } from "@/lib/labels.ts";
 import HealthCard from "./settings.health.view.tsx";
 import { SECTIONS, createSettingsPresenter } from "./settings.presenter.ts";
 import type { SettingRow, SettingsPresenter } from "./settings.presenter.ts";
@@ -147,7 +148,7 @@ function StoreCard(props: { presenter: SettingsPresenter }): JSX.Element {
   return (
     <LayerCard class="flex flex-wrap items-center gap-3 px-5 py-4">
       <span class="text-base">Snapshot store</span>
-      <Badge variant="outline">{store().driver}</Badge>
+      <Badge variant="outline">{STORE_DRIVER_LABEL[store().driver]}</Badge>
       <Show
         when={store().locked_by_env}
         fallback={

@@ -103,12 +103,12 @@ test.describe("state stories", () => {
     await expect(page.locator("dialog[open]")).toHaveCount(0);
     await page.getByRole("tab", { name: "History" }).click();
     const history = page.locator("tr", { hasText: "seeded-baseline" }).first();
-    // The list reports the outcome in a person's words: a succeeded job reads "restored".
-    await expect(history.getByText("restored", { exact: true }).first()).toBeVisible({
+    // The list reports the job's own status word, capitalized: a succeeded checkout reads "Succeeded".
+    await expect(history.getByText("Succeeded", { exact: true }).first()).toBeVisible({
       timeout: 90_000,
     });
     // And every database it touched says so by name, which is the whole point of story 84.
-    await expect(history.getByText(/^\S.*: restored$/).first()).toBeVisible();
+    await expect(history.getByText(/^\S.*: Restored$/).first()).toBeVisible();
     await page.getByRole("tab", { name: "States" }).click();
     await page.getByRole("switch", { name: "Show stashes" }).click();
     await expect(stateRow(page, "stash").first()).toBeVisible();
@@ -285,10 +285,10 @@ test.describe("state stories", () => {
     await expect(page.locator("dialog[open]")).toHaveCount(0);
     await page.getByRole("tab", { name: "History" }).click();
     const history = page.locator("tr", { hasText: name }).first();
-    await expect(history.getByText("restored", { exact: true }).first()).toBeVisible({
+    await expect(history.getByText("Succeeded", { exact: true }).first()).toBeVisible({
       timeout: 90_000,
     });
-    await expect(history.getByText(`${postgres.name}: restored`)).toBeVisible();
+    await expect(history.getByText(`${postgres.name}: Restored`)).toBeVisible();
     // Untouched adapters are not checkout rows: the preflight said so, the history stays honest.
     await expect(history).not.toContainText("shop-mongo");
     await page.getByRole("tab", { name: "States" }).click();

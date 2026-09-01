@@ -36,20 +36,6 @@ export function canCancel(job: Job): boolean {
   return cancelable(job.status, job.cancel_requested);
 }
 
-/** What a person calls each job kind; `job.kind` itself is the code's word for it. */
-export const JOB_KIND_LABEL = {
-  snapshot: "Snapshot",
-  checkout: "Checkout",
-  import: "Import",
-  diff: "Comparison",
-  state_delete: "Delete state",
-  adapter_delete: "Delete adapter",
-  project_delete: "Delete project",
-  archive_import: "Import archive",
-  storage_migration: "Storage migration",
-  backup: "Backup",
-} as const;
-
 /** The keys the jobs push; anything else on the object is for the log, not for a person. */
 const progressSchema = v.object({
   phase: v.optional(v.string()),

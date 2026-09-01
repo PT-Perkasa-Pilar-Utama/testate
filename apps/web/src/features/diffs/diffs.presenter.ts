@@ -4,6 +4,7 @@ import type { Diff, DiffRow, JsonObject, State } from "@testate/shared";
 import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
+import { DIFF_STATUS_LABEL } from "@/lib/labels.ts";
 import { createTableView } from "@/lib/table.ts";
 import type { TableView } from "@/lib/table.ts";
 import type { Refreshable } from "@/lib/async.ts";
@@ -131,7 +132,13 @@ export function createDiffsPresenter(slug: () => string): DiffsPresenter {
       changed: { number: (diff) => changedRows(diff) },
       expires_at: { text: (diff) => diff.expires_at },
     },
-    fields: (diff) => [diff.base.name, targetLabel(diff.target), diff.status],
+    // The stored value and the word on screen both match, or a search fails whichever is typed.
+    fields: (diff) => [
+      diff.base.name,
+      targetLabel(diff.target),
+      diff.status,
+      DIFF_STATUS_LABEL[diff.status],
+    ],
   });
   const states = createRefreshable(() => statesModel.list(slug(), false));
   const [creating, setCreating] = createSignal(false);

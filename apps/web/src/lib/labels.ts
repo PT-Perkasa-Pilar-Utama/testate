@@ -16,11 +16,15 @@ import type {
   AdapterKind,
   AdapterMode,
   AuditRow,
+  Checkout,
+  Diff,
   DiffRow,
   Engine,
+  Entry,
   HeadStatus,
   JobKind,
   JobStatus,
+  RestoreStrategy,
   Role,
   StateKind,
   StateStatus,
@@ -48,6 +52,13 @@ type ImportMode = v.InferOutput<typeof importModeSchema>;
 type RestoreMode = v.InferOutput<typeof restoreModeSchema>;
 // diffRowSchema has no standalone type for its op field; DiffRow already carries it.
 type DiffOp = DiffRow["op"];
+// diffSchema has no standalone type for its status field either; Diff already carries it.
+type DiffStatus = Diff["status"];
+// checkoutSchema has no standalone type for its purpose field; Checkout already carries it.
+type CheckoutPurpose = Checkout["purpose"];
+type EntryKind = Entry["kind"];
+type EmptyMode = RestoreStrategy["emptyMode"];
+type ForeignKeyHandling = RestoreStrategy["foreignKeyHandling"];
 // The store driver picklist is inline in the settings schema, not a named export, so the union
 // comes from the migrate-store form input type rather than a second hand-typed list.
 type StoreDriver = StoreMigrationFormInput["driver"];
@@ -77,6 +88,11 @@ export const ADAPTER_KIND_LABEL = {
   database: "Database",
   storage: "Storage",
 } as const satisfies Record<AdapterKind, string>;
+
+export const ENTRY_KIND_LABEL = {
+  file: "File",
+  directory: "Folder",
+} as const satisfies Record<EntryKind, string>;
 
 export const ENGINE_LABEL = {
   postgres: "PostgreSQL",
@@ -165,6 +181,13 @@ export const CHECKOUT_RESULT_LABEL = {
   counters_failed: "Counters failed",
 } as const satisfies Record<CheckoutResult, string>;
 
+// Lowercase on purpose: this reads inline in a sentence ("checked out · Running · by Jane"),
+// not on its own in a badge like the maps above it.
+export const CHECKOUT_PURPOSE_LABEL = {
+  checkout: "checked out",
+  return_to_init: "returned to the starting point",
+} as const satisfies Record<CheckoutPurpose, string>;
+
 export const AUDIT_OUTCOME_LABEL = {
   succeeded: "Succeeded",
   failed: "Failed",
@@ -222,6 +245,12 @@ export const DIFF_OP_LABEL = {
   changed: "Changed",
 } as const satisfies Record<DiffOp, string>;
 
+export const DIFF_STATUS_LABEL = {
+  running: "Running",
+  ready: "Ready",
+  failed: "Failed",
+} as const satisfies Record<DiffStatus, string>;
+
 // Filter-operator symbols, not words: the grid toolbar's operator select is a fixed w-24 box next
 // to the column and value fields, and "=" / "≠" / "≤" read faster there than "equals" / "not equals".
 export const FILTER_OP_LABEL = {
@@ -237,10 +266,16 @@ export const FILTER_OP_LABEL = {
   notnull: "not null",
 } as const satisfies Record<FilterOp, string>;
 
+/** The short form a badge wants; the dropdown below says what each one actually is. */
 export const STORE_DRIVER_LABEL = {
-  local: "local disk",
-  s3: "S3-compatible bucket",
+  local: "Local disk",
+  s3: "S3",
 } as const satisfies Record<StoreDriver, string>;
+
+export const STORE_DRIVER_OPTIONS = [
+  { value: "local", label: "Local disk" },
+  { value: "s3", label: "S3-compatible bucket" },
+] as const satisfies readonly { value: StoreDriver; label: string }[];
 
 // "fast" is unused today (see the ponytail note where the edit dialog builds its options), but
 // the label map covers the full picklist so the entry is ready the day that option ships.
@@ -248,3 +283,24 @@ export const RESTORE_MODE_LABEL = {
   atomic: "atomic (one transaction)",
   fast: "fast",
 } as const satisfies Record<RestoreMode, string>;
+
+export const EMPTY_MODE_LABEL = {
+  truncate: "truncate",
+  delete: "delete",
+  "delete-many": "delete in batches",
+} as const satisfies Record<EmptyMode, string>;
+
+export const FK_HANDLING_LABEL = {
+  "session-disable": "FKs disabled for the session",
+  "dependency-order": "FKs restored in dependency order",
+  "not-applicable": "no FKs",
+} as const satisfies Record<ForeignKeyHandling, string>;
+
+// `engine` on a preflight, checkout, or state-detail row is plain text in the shared schema, not
+// the `Engine` picklist, so a value the map does not carry passes through unchanged.
+export function engineLabel(engine: string): string {
+  return engine in ENGINE_LABEL
+    ? // SAFETY: the `in` check above proved `engine` names one of ENGINE_LABEL's own properties.
+      ENGINE_LABEL[engine as Engine]
+    : engine;
+}

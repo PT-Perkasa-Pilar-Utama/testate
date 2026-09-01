@@ -2,6 +2,7 @@ import { createSignal } from "solid-js";
 import type { Preflight, SchemaDrift, State } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
+import { EMPTY_MODE_LABEL, FK_HANDLING_LABEL } from "@/lib/labels.ts";
 import { showToast } from "@/lib/toast.ts";
 import { followJob } from "@/lib/sse.ts";
 import { checkoutsModel } from "./checkouts.model.ts";
@@ -52,11 +53,11 @@ export function canCheckout(preflight: Preflight, force: boolean): boolean {
   return force || driftedAdapters(preflight).length === 0;
 }
 
-/** "truncate · session-disable FKs · atomic" (stories 82, 84). */
+/** "truncate · FKs disabled for the session · atomic" (stories 82, 84). */
 export function strategyLine(adapter: PreflightAdapter): string {
   return [
-    adapter.strategy.emptyMode,
-    `${adapter.strategy.foreignKeyHandling} FKs`,
+    EMPTY_MODE_LABEL[adapter.strategy.emptyMode],
+    FK_HANDLING_LABEL[adapter.strategy.foreignKeyHandling],
     adapter.atomic ? "atomic" : "not atomic",
   ].join(" · ");
 }

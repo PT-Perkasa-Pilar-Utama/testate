@@ -6,6 +6,7 @@ import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
 import { Cell, EmptyRow, Head, Row, Table } from "@/components/table.tsx";
 import { formatWhen } from "@/lib/format.ts";
+import { ENTRY_KIND_LABEL } from "@/lib/labels.ts";
 import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { formatBytes } from "../states/states.format.ts";
@@ -126,7 +127,7 @@ export function FilesView(props: { entries: Entry[] }): JSX.Element {
             {(entry) => (
               <Row>
                 <Cell>{entry.name}</Cell>
-                <Cell>{entry.kind}</Cell>
+                <Cell>{ENTRY_KIND_LABEL[entry.kind]}</Cell>
                 <Cell numeric>
                   {entry.size_bytes === null ? "" : formatBytes(entry.size_bytes)}
                 </Cell>

@@ -96,9 +96,9 @@ describe("states feature", () => {
   });
 
   test("the strategy line names empty mode, FK handling, and atomicity (stories 82, 84)", () => {
-    expect(strategyLine(ADAPTER)).toBe("truncate · session-disable FKs · atomic");
+    expect(strategyLine(ADAPTER)).toBe("truncate · FKs disabled for the session · atomic");
     expect(strategyLine({ ...ADAPTER, atomic: false })).toBe(
-      "truncate · session-disable FKs · not atomic"
+      "truncate · FKs disabled for the session · not atomic"
     );
   });
 

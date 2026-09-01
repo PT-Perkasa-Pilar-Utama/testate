@@ -19,16 +19,10 @@ import {
   TableSearch,
   TableToolbar,
 } from "@/components/table.tsx";
+import { CHECKOUT_PURPOSE_LABEL, CHECKOUT_RESULT_LABEL, JOB_STATUS_LABEL } from "@/lib/labels.ts";
 import { hasRole } from "@/lib/session.ts";
 import { subscribeJob } from "@/lib/sse.ts";
-import {
-  CountersDialog,
-  DetailDialog,
-  PURPOSE_LABEL,
-  RESULT_LABEL,
-  RESULT_VARIANT,
-  STATUS_LABEL,
-} from "./checkouts.dialogs.view.tsx";
+import { CountersDialog, DetailDialog, RESULT_VARIANT } from "./checkouts.dialogs.view.tsx";
 import {
   blockedAdapters,
   createCheckoutsPresenter,
@@ -67,7 +61,7 @@ function Outcome(props: { checkout: Checkout }): JSX.Element {
   return (
     <div class="grid gap-1">
       <Badge variant={STATUS_VARIANT[props.checkout.status]}>
-        {STATUS_LABEL[props.checkout.status]}
+        {JOB_STATUS_LABEL[props.checkout.status]}
       </Badge>
       <Show when={outcomeLine(props.checkout) !== ""}>
         <p class="text-muted text-xs">{outcomeLine(props.checkout)}</p>
@@ -170,7 +164,9 @@ export default function CheckoutsView(props: {
                   <Cell>
                     <div class="grid gap-0.5">
                       <span class="text-heading font-medium">{checkout.state.name}</span>
-                      <span class="text-muted text-xs">{PURPOSE_LABEL[checkout.purpose]}</span>
+                      <span class="text-muted text-xs">
+                        {CHECKOUT_PURPOSE_LABEL[checkout.purpose]}
+                      </span>
                     </div>
                   </Cell>
                   <Cell>
@@ -181,7 +177,7 @@ export default function CheckoutsView(props: {
                       <For each={checkout.adapters}>
                         {(adapter) => (
                           <Badge variant={RESULT_VARIANT[adapter.result]}>
-                            {adapter.name}: {RESULT_LABEL[adapter.result]}
+                            {adapter.name}: {CHECKOUT_RESULT_LABEL[adapter.result]}
                           </Badge>
                         )}
                       </For>

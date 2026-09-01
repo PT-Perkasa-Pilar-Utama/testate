@@ -3,6 +3,7 @@ import PageHeader from "@/components/page-header.tsx";
 import { For, Loading, Show } from "solid-js";
 
 import { formatWhen } from "@/lib/format.ts";
+import { ROLE_LABEL } from "@/lib/labels.ts";
 import type { User } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
@@ -124,7 +125,7 @@ export default function UsersView(): JSX.Element {
                       <Show when={ROLE_META[user.role].icon}>
                         {(icon) => <Icon name={icon()} class="h-3 w-3" />}
                       </Show>
-                      {user.role}
+                      {ROLE_LABEL[user.role]}
                     </Badge>
                   </Cell>
                   <Cell>

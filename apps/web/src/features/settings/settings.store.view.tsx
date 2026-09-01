@@ -12,14 +12,9 @@ import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import Switch from "@/components/switch.tsx";
-import { STORE_DRIVER_LABEL } from "@/lib/labels.ts";
+import { STORE_DRIVER_OPTIONS } from "@/lib/labels.ts";
 import { MIGRATE_BLANK } from "./settings.presenter.ts";
 import type { SettingsPresenter } from "./settings.presenter.ts";
-
-const DRIVER_OPTIONS = [
-  { value: "local", label: STORE_DRIVER_LABEL.local },
-  { value: "s3", label: STORE_DRIVER_LABEL.s3 },
-] as const;
 
 /** Move every snapshot to another store as a job (stories 118, 119). */
 export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Element {
@@ -48,7 +43,7 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
             <label class="grid gap-1.5 text-sm">
               <span>Target</span>
               <Select
-                options={DRIVER_OPTIONS}
+                options={STORE_DRIVER_OPTIONS}
                 value={field.input ?? "s3"}
                 onChange={(driver) => field.onInput(driver)}
               />

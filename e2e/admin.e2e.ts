@@ -191,7 +191,8 @@ test.describe("admin gap stories", () => {
     await expect(page.getByText("Store migration succeeded").first()).toBeVisible({
       timeout: 120_000,
     });
-    await expect(page.locator("main").getByText("s3", { exact: true })).toBeVisible();
+    // The store card names the driver in words now; "S3" is the badge, not the stored "s3".
+    await expect(page.locator("main").getByText("S3", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Migrate store" }).click();
     await page
       .locator("dialog[open]")

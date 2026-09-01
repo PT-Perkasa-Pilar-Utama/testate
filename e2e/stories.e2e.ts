@@ -245,7 +245,7 @@ test.describe("admin stories", () => {
     await page.getByRole("button", { name: "Create" }).click();
     const row = page.locator("tr", { hasText: `edit-${STAMP}` });
     await expect(row).toBeVisible();
-    await expect(row).toContainText("viewer");
+    await expect(row).toContainText("Guest");
 
     await row.getByRole("button", { name: "Edit" }).click();
     const edit = page.locator("dialog[open]");
@@ -257,7 +257,7 @@ test.describe("admin stories", () => {
     await edit.getByRole("button", { name: "Save" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
     await expect(row).toContainText("After");
-    await expect(row).toContainText("qa");
+    await expect(row).toContainText("Tester");
     expect(issues).toStrictEqual([]);
   });
 

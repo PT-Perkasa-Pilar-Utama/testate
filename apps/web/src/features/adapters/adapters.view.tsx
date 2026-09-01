@@ -2,7 +2,7 @@ import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import { For, Loading, Show, createEffect } from "solid-js";
 import type { AdapterCreateFormInput, Engine } from "@testate/shared";
-import { ENGINES, adapterCreateFormSchema } from "@testate/shared";
+import { adapterCreateFormSchema } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import { statusReason } from "@/lib/api-error.ts";
@@ -24,19 +24,16 @@ import {
   TableSearch,
   TableToolbar,
 } from "@/components/table.tsx";
-import { ADAPTER_MODE_OPTIONS, ENGINE_LABEL } from "@/lib/labels.ts";
+import {
+  ADAPTER_MODE_LABEL,
+  ADAPTER_MODE_OPTIONS,
+  ADAPTER_STATUS_LABEL,
+  ENGINE_LABEL,
+  TIER_LABEL,
+} from "@/lib/labels.ts";
 import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
-import { ENGINE_FORMS, STATUS_VARIANT } from "./adapters.fields.ts";
-
-/**
- * The engine, and what kind of thing it is. The name alone does not say whether you are connecting
- * a database or a place files live, and that is the first thing the rest of the form depends on.
- */
-const ENGINE_OPTIONS = ENGINES.map((value) => ({
-  value,
-  label: `${ENGINE_LABEL[value]} · ${ENGINE_FORMS[value].label}`,
-}));
+import { ENGINE_FORMS, ENGINE_OPTIONS, STATUS_VARIANT } from "./adapters.fields.ts";
 import type { Field as EngineField } from "./adapters.fields.ts";
 import { createAdaptersPresenter, describeOutcome, outcomeWarnings } from "./adapters.presenter.ts";
 import type { AdaptersPresenter } from "./adapters.presenter.ts";
@@ -266,15 +263,15 @@ export default function AdaptersView(props: { slug: string }): JSX.Element {
                       </a>
                     </Cell>
                     <Cell>
-                      {adapter.engine}
+                      {ENGINE_LABEL[adapter.engine]}
                       {adapter.engine_version === null ? "" : ` ${adapter.engine_version}`}
                     </Cell>
                     <Cell>
-                      <Badge variant="outline">{adapter.tier}</Badge>
+                      <Badge variant="outline">{TIER_LABEL[adapter.tier]}</Badge>
                     </Cell>
                     <Cell>
                       <Badge variant={adapter.mode === "read_only" ? "info" : "secondary"}>
-                        {adapter.mode}
+                        {ADAPTER_MODE_LABEL[adapter.mode]}
                       </Badge>
                     </Cell>
                     <Cell>
@@ -289,7 +286,9 @@ export default function AdaptersView(props: { slug: string }): JSX.Element {
                     </Cell>
                     <Cell>
                       <div class="grid gap-0.5">
-                        <Badge variant={STATUS_VARIANT[adapter.status]}>{adapter.status}</Badge>
+                        <Badge variant={STATUS_VARIANT[adapter.status]}>
+                          {ADAPTER_STATUS_LABEL[adapter.status]}
+                        </Badge>
                         <Show when={adapter.status !== "ok"}>
                           <span class="text-xs text-muted">
                             {statusReason(adapter.status_message) ?? "No reason recorded."}

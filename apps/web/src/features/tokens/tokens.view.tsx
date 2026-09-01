@@ -17,7 +17,7 @@ import Dialog from "@/components/dialog.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
-import { ROLE_OPTIONS, TOKEN_KIND_OPTIONS } from "@/lib/labels.ts";
+import { ROLE_LABEL, ROLE_OPTIONS, TOKEN_KIND_LABEL, TOKEN_KIND_OPTIONS } from "@/lib/labels.ts";
 import {
   Cell,
   EmptyRow,
@@ -210,10 +210,10 @@ export default function TokensView(): JSX.Element {
                       </Cell>
                       <Cell>
                         <Badge variant={token.kind === "agent" ? "info" : "outline"}>
-                          {token.kind}
+                          {TOKEN_KIND_LABEL[token.kind]}
                         </Badge>
                       </Cell>
-                      <Cell>{token.role}</Cell>
+                      <Cell>{ROLE_LABEL[token.role]}</Cell>
                       <Cell>
                         <code>{token.prefix}</code>
                       </Cell>

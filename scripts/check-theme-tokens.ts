@@ -108,7 +108,9 @@ for (const file of await sourceFiles()) {
   }
 
   // 2. Any other string: a word that takes a colour is a class wherever it appears, and a string
-  //    where two words already resolve is a class list (the `as const` variant maps).
+  //    that is a class list but for one word is a class list with a typo in it (the `as const`
+  //    variant maps). "All but one" rather than "two of them": a sentence like "FKs disabled for
+  //    the session" has two words a stylesheet happens to know, and the rest is English.
   for (const match of text.matchAll(ANY_STRING)) {
     const words = (match[1] ?? "").split(/\s+/);
     const resolved = words.filter((w) => {
@@ -119,7 +121,8 @@ for (const file of await sourceFiles()) {
       const klass = normalise(word);
       if (klass === null || emitted(klass)) continue;
       const tail = klass.slice(klass.lastIndexOf(":") + 1).replace(/^!/, "");
-      if (COLOUR_WORD.test(tail) || resolved >= 2) record(klass, file);
+      const listy = resolved >= 2 && resolved >= words.length - 1;
+      if (COLOUR_WORD.test(tail) || listy) record(klass, file);
     }
   }
 }

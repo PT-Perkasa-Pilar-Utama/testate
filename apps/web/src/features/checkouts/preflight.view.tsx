@@ -7,6 +7,7 @@ import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Switch from "@/components/switch.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { engineLabel } from "@/lib/labels.ts";
 import { driftSummary, strategyLine } from "./preflight.presenter.ts";
 import type { PreflightAdapter, PreflightPresenter } from "./preflight.presenter.ts";
 
@@ -20,7 +21,7 @@ function AdapterRow(props: { adapter: PreflightAdapter; force: boolean }): JSX.E
   return (
     <Row>
       <Cell>
-        {props.adapter.name} <span class="text-muted">({props.adapter.engine})</span>
+        {props.adapter.name} <span class="text-muted">({engineLabel(props.adapter.engine)})</span>
       </Cell>
       <Cell>
         <Show when={!props.adapter.included}>

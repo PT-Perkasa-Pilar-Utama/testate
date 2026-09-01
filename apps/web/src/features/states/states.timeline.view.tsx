@@ -5,14 +5,8 @@ import type { State } from "@testate/shared";
 import Badge from "@/components/badge.tsx";
 import Icon from "@/components/icon.tsx";
 import { formatWhen } from "@/lib/format.ts";
+import { STATE_KIND_LABEL, STATE_STATUS_LABEL } from "@/lib/labels.ts";
 import { adapterSummary, formatBytes } from "./states.format.ts";
-
-export const KIND_LABEL = {
-  init: "starting point",
-  manual: "state",
-  stash: "stash",
-  diff: "comparison",
-} as const;
 
 /**
  * The dot on the rail. HEAD is filled and cyan, the way the current commit reads on a graph;
@@ -34,7 +28,7 @@ function Dot(props: { head: boolean }): JSX.Element {
 function Meta(props: { state: State }): JSX.Element {
   return (
     <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-      <span>{KIND_LABEL[props.state.kind]}</span>
+      <span>{STATE_KIND_LABEL[props.state.kind]}</span>
       <span aria-hidden="true">·</span>
       <span>{adapterSummary(props.state.adapters)}</span>
       <Show when={props.state.size_bytes > 0}>
@@ -83,7 +77,7 @@ function TimelineRow(props: TimelineRowProps): JSX.Element {
             </Show>
             <Show when={props.state.status !== "ready"}>
               <Badge variant={props.state.status === "failed" ? "error" : "warning"}>
-                {props.state.status}
+                {STATE_STATUS_LABEL[props.state.status]}
               </Badge>
             </Show>
             {/* Tags are how a person finds one state among fifty; the table that came before

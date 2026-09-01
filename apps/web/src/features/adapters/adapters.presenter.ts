@@ -4,6 +4,12 @@ import type { Adapter, AdapterCreateFormInput } from "@testate/shared";
 import { humanMessage } from "@/lib/api-error.ts";
 import { showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
+import {
+  ADAPTER_MODE_LABEL,
+  ADAPTER_STATUS_LABEL,
+  ENGINE_LABEL,
+  TIER_LABEL,
+} from "@/lib/labels.ts";
 import { createTableView } from "@/lib/table.ts";
 import type { TableView } from "@/lib/table.ts";
 import type { Refreshable } from "@/lib/async.ts";
@@ -61,7 +67,19 @@ export function createAdaptersPresenter(slug: () => string): AdaptersPresenter {
       mode: { text: (adapter) => adapter.mode },
       status: { text: (adapter) => adapter.status },
     },
-    fields: (adapter) => [adapter.name, adapter.engine, adapter.tier, adapter.mode, adapter.status],
+    // Both the stored value and the word on screen: the table says "PostgreSQL" and the row holds
+    // "postgres", and a search that knew only one of them fails whichever the person types.
+    fields: (adapter) => [
+      adapter.name,
+      adapter.engine,
+      ENGINE_LABEL[adapter.engine],
+      adapter.tier,
+      TIER_LABEL[adapter.tier],
+      adapter.mode,
+      ADAPTER_MODE_LABEL[adapter.mode],
+      adapter.status,
+      ADAPTER_STATUS_LABEL[adapter.status],
+    ],
   });
   const [creating, setCreating] = createSignal(false);
   const [values, setValues] = createSignal<Values>({});

@@ -14,6 +14,7 @@ import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { engineLabel } from "@/lib/labels.ts";
 import { hasRole } from "@/lib/session.ts";
 import type { DeletionAffected } from "../projects/projects.model.ts";
 import { QuotaSlider } from "../projects/projects.view.tsx";
@@ -135,6 +136,31 @@ const ACTION_VARIANT = {
   none: "outline",
 } as const;
 
+type DeletionAction = keyof typeof ACTION_VARIANT;
+
+const ACTION_LABEL = {
+  restore: "Restore",
+  force: "Restore (forced)",
+  skip: "Skip",
+  none: "No action",
+} as const satisfies Record<DeletionAction, string>;
+
+// `reason` is optional plain text in the schema, not a picklist, so a value the map does not
+// carry passes through unchanged.
+const REASON_LABEL = {
+  read_only: "read only",
+  unreachable: "unreachable",
+  no_init_state: "no starting point",
+  removed: "removed",
+} as const;
+
+function reasonLabel(reason: string): string {
+  return reason in REASON_LABEL
+    ? // SAFETY: the `in` check above proved `reason` names one of REASON_LABEL's own properties.
+      REASON_LABEL[reason as keyof typeof REASON_LABEL]
+    : reason;
+}
+
 export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string }): JSX.Element {
   // Local, not in `@testate/shared`: the one rule here is "matches this project's slug", a value
   // only known at render time, so the shape has nothing to state ahead of it worth sharing.
@@ -189,12 +215,12 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
                   {(adapter) => (
                     <Row>
                       <Cell>{adapter.name}</Cell>
-                      <Cell>{adapter.engine}</Cell>
+                      <Cell>{engineLabel(adapter.engine)}</Cell>
                       <Cell>
                         <Badge variant={ACTION_VARIANT[adapter.action]}>
                           {adapter.reason === undefined
-                            ? adapter.action
-                            : `${adapter.action} (${adapter.reason})`}
+                            ? ACTION_LABEL[adapter.action]
+                            : `${ACTION_LABEL[adapter.action]} (${reasonLabel(adapter.reason)})`}
                         </Badge>
                       </Cell>
                     </Row>

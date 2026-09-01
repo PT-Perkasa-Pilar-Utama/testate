@@ -17,6 +17,7 @@ import {
   TableSearch,
   TableToolbar,
 } from "@/components/table.tsx";
+import { DIFF_STATUS_LABEL } from "@/lib/labels.ts";
 import { hasRole } from "@/lib/session.ts";
 import { DetailDialog } from "./diffs.detail.view.tsx";
 import { CreateDialog, RowsDialog } from "./diffs.dialogs.view.tsx";
@@ -55,7 +56,9 @@ function DiffRow(props: { presenter: DiffsPresenter; diff: Diff }): JSX.Element 
         <CompareCell diff={props.diff} />
       </Cell>
       <Cell>
-        <Badge variant={STATUS_VARIANT[props.diff.status]}>{props.diff.status}</Badge>
+        <Badge variant={STATUS_VARIANT[props.diff.status]}>
+          {DIFF_STATUS_LABEL[props.diff.status]}
+        </Badge>
       </Cell>
       <Cell
         numeric

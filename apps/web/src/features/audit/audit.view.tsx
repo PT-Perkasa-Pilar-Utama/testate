@@ -133,7 +133,7 @@ export default function AuditView(): JSX.Element {
                       <Badge
                         variant={row.outcome === null ? "secondary" : OUTCOME_VARIANT[row.outcome]}
                       >
-                        {row.outcome ?? "n/a"}
+                        {row.outcome === null ? "n/a" : AUDIT_OUTCOME_LABEL[row.outcome]}
                       </Badge>
                     </Cell>
                   </Row>

@@ -14,6 +14,7 @@ import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import InputArea from "@/components/input-area.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { engineLabel } from "@/lib/labels.ts";
 import { consistencyLabel, formatBytes, sortLabel } from "./states.format.ts";
 import type { StatesPresenter } from "./states.presenter.ts";
 
@@ -136,7 +137,8 @@ export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
                         }}
                       />
                       <span>
-                        {adapter.name} <span class="text-muted">({adapter.engine})</span>
+                        {adapter.name}{" "}
+                        <span class="text-muted">({engineLabel(adapter.engine)})</span>
                       </span>
                     </label>
                   )}
@@ -240,7 +242,7 @@ export function DetailDialog(props: { presenter: StatesPresenter }): JSX.Element
                   <h3 class="font-medium">
                     {adapter.adapter_name}{" "}
                     <span class="text-muted">
-                      {adapter.engine} {adapter.engine_version} ·{" "}
+                      {engineLabel(adapter.engine)} {adapter.engine_version} ·{" "}
                       {consistencyLabel(adapter.consistency)} · {adapter.row_count} rows ·{" "}
                       {formatBytes(adapter.byte_count)}
                     </span>

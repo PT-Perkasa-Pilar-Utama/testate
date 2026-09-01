@@ -5,7 +5,7 @@ import type { StateTreeNode } from "@testate/shared";
 import Badge from "@/components/badge.tsx";
 import Icon from "@/components/icon.tsx";
 import { formatWhen } from "@/lib/format.ts";
-import { KIND_LABEL } from "./states.timeline.view.tsx";
+import { STATE_KIND_LABEL } from "@/lib/labels.ts";
 import { formatBytes } from "./states.format.ts";
 
 /**
@@ -29,7 +29,7 @@ function Node(props: { node: StateTreeNode }): JSX.Element {
           <div class="flex flex-wrap items-center gap-2">
             <span class="font-medium text-heading">{props.node.name}</span>
             <Badge variant={props.node.kind === "init" ? "primary" : "outline"}>
-              {KIND_LABEL[props.node.kind]}
+              {STATE_KIND_LABEL[props.node.kind]}
             </Badge>
             <Show when={props.node.is_head}>
               <Badge variant="success">HEAD</Badge>

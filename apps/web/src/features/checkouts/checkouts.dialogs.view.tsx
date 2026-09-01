@@ -6,6 +6,14 @@ import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import {
+  CHECKOUT_PURPOSE_LABEL,
+  CHECKOUT_RESULT_LABEL,
+  EMPTY_MODE_LABEL,
+  FK_HANDLING_LABEL,
+  JOB_STATUS_LABEL,
+  engineLabel,
+} from "@/lib/labels.ts";
 import { hasRole } from "@/lib/session.ts";
 import {
   blockingSessions,
@@ -24,31 +32,6 @@ export const RESULT_VARIANT = {
   counters_failed: "warning",
 } as const;
 
-// Words a person uses, not the code's underscores. Shared with checkouts.view.tsx, which imports
-// from here rather than the other way round: this file never imports from the row view.
-export const RESULT_LABEL = {
-  pending: "pending",
-  restored: "restored",
-  skipped: "skipped",
-  rolled_back: "rolled back",
-  unknown: "unknown",
-  counters_failed: "counters failed",
-} as const;
-
-export const STATUS_LABEL = {
-  running: "restoring",
-  succeeded: "restored",
-  partial: "partially restored",
-  failed: "failed",
-  cancelled: "cancelled",
-  interrupted: "interrupted",
-} as const;
-
-export const PURPOSE_LABEL = {
-  checkout: "checked out",
-  return_to_init: "returned to the starting point",
-} as const;
-
 /** Per-adapter outcome of one checkout: result, strategy, rows, timing, and what was left out (story 80). */
 export function DetailDialog(props: { presenter: CheckoutsPresenter }): JSX.Element {
   const checkout = (): ReturnType<CheckoutsPresenter["detail"]> => props.presenter.detail();
@@ -56,7 +39,7 @@ export function DetailDialog(props: { presenter: CheckoutsPresenter }): JSX.Elem
   const describe = (): string => {
     const loaded = checkout();
     if (loaded === null) return "";
-    return `${PURPOSE_LABEL[loaded.purpose]} · ${STATUS_LABEL[loaded.status]} · by ${loaded.actor.label}`;
+    return `${CHECKOUT_PURPOSE_LABEL[loaded.purpose]} · ${JOB_STATUS_LABEL[loaded.status]} · by ${loaded.actor.label}`;
   };
   return (
     <Dialog
@@ -85,11 +68,12 @@ export function DetailDialog(props: { presenter: CheckoutsPresenter }): JSX.Elem
                   {(adapter) => (
                     <Row>
                       <Cell>
-                        {adapter.name} <span class="text-muted">({adapter.engine})</span>
+                        {adapter.name}{" "}
+                        <span class="text-muted">({engineLabel(adapter.engine)})</span>
                       </Cell>
                       <Cell>
                         <Badge variant={RESULT_VARIANT[adapter.result]}>
-                          {RESULT_LABEL[adapter.result]}
+                          {CHECKOUT_RESULT_LABEL[adapter.result]}
                         </Badge>
                         <Show when={skippedSummary(adapter) !== ""}>
                           <p class="text-muted text-sm">{skippedSummary(adapter)}</p>
@@ -110,7 +94,7 @@ export function DetailDialog(props: { presenter: CheckoutsPresenter }): JSX.Elem
                       <Cell>
                         {adapter.strategy === null
                           ? "-"
-                          : `${adapter.strategy.emptyMode} · ${adapter.strategy.foreignKeyHandling} FKs`}
+                          : `${EMPTY_MODE_LABEL[adapter.strategy.emptyMode]} · ${FK_HANDLING_LABEL[adapter.strategy.foreignKeyHandling]}`}
                       </Cell>
                       <Cell>{adapter.rows ?? "-"}</Cell>
                       <Cell>

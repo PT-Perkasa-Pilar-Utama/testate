@@ -4,6 +4,7 @@ import type { ImportReport, ImportRun } from "@testate/shared";
 
 import { attempt } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
+import { IMPORT_MODE_LABEL } from "@/lib/labels.ts";
 import { createTableView } from "@/lib/table.ts";
 import type { TableView } from "@/lib/table.ts";
 import type { Refreshable } from "@/lib/async.ts";
@@ -45,7 +46,8 @@ export function createImportsPresenter(slug: () => string): ImportsPresenter {
       actor: { text: (run) => run.actor.label },
       created_at: { text: (run) => run.created_at },
     },
-    fields: (run) => [run.id, run.mode, run.actor.label],
+    // The stored value and the word on screen both match, or a search fails whichever is typed.
+    fields: (run) => [run.id, run.mode, IMPORT_MODE_LABEL[run.mode], run.actor.label],
   });
   const [report, setReport] = createSignal<ImportReport | null>(null);
   return {

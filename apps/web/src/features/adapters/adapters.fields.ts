@@ -1,4 +1,7 @@
 import type { AdapterKind, Engine, JsonObject } from "@testate/shared";
+import { ENGINES } from "@testate/shared";
+
+import { ENGINE_LABEL } from "@/lib/labels.ts";
 
 export type FieldType = "text" | "number" | "password" | "url" | "boolean";
 
@@ -85,6 +88,15 @@ export const ENGINE_FORMS = {
     secrets: [{ key: "password", label: "Password", type: "password", required: true }],
   },
 } as const satisfies Record<Engine, EngineForm>;
+
+/**
+ * The engine, and what kind of thing it is. The name alone does not say whether you are connecting
+ * a database or a place files live, and that is the first thing the rest of the form depends on.
+ */
+export const ENGINE_OPTIONS = ENGINES.map((value) => ({
+  value,
+  label: `${ENGINE_LABEL[value]} · ${ENGINE_FORMS[value].label}`,
+}));
 
 export type Values = Record<string, string>;
 

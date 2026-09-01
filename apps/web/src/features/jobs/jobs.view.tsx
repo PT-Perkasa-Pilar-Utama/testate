@@ -20,9 +20,9 @@ import {
   TableSearch,
   TableToolbar,
 } from "@/components/table.tsx";
+import { JOB_KIND_LABEL, JOB_STATUS_LABEL } from "@/lib/labels.ts";
 import { hasRole } from "@/lib/session.ts";
 import {
-  JOB_KIND_LABEL,
   cancelable,
   createJobsPresenter,
   createLiveJob,
@@ -78,7 +78,7 @@ function JobRow(props: { presenter: JobsPresenter; job: Job }): JSX.Element {
     <Row>
       <Cell>{JOB_KIND_LABEL[props.job.kind]}</Cell>
       <Cell>
-        <Badge variant={STATUS_VARIANT[live.status()]}>{live.status()}</Badge>
+        <Badge variant={STATUS_VARIANT[live.status()]}>{JOB_STATUS_LABEL[live.status()]}</Badge>
       </Cell>
       <Cell>
         <Show
