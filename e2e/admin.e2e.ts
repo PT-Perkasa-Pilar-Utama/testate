@@ -8,12 +8,12 @@ import { statePath } from "./lib/roles.ts";
 const STAMP = Date.now().toString(36);
 
 /**
- * The PolicyDialog names its exact target ("Policy for public.users.email", policies.view.tsx),
+ * The mask dialog names its exact target ("Mask for public.users.email", policies.view.tsx),
  * so read that back instead of guessing a table from row order. The column never holds a dot; the
  * table might (schema.table), so the split takes the last dot.
  */
 function parsePolicyDialogTitle(title: string | null) {
-  const match = /^Policy for (.+)\.([^.]+)$/.exec(title ?? "");
+  const match = /^Mask for (.+)\.([^.]+)$/.exec(title ?? "");
   const table = match?.[1];
   const column = match?.[2];
   if (table === undefined || column === undefined) {
@@ -107,7 +107,7 @@ test.describe("admin gap stories", () => {
     const issues: Issue[] = [];
     watch(page, issues);
     const postgres = await demoAdapter({ engine: "postgres" });
-    const path = `/projects/demo/adapters/${postgres.id}/policies`;
+    const path = `/projects/demo/adapters/${postgres.id}/masks`;
     await page.goto(path);
     await settle(page);
     const row = page.locator("tr", { hasText: "email" }).first();

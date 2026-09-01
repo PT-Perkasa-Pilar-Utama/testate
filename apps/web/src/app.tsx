@@ -85,7 +85,7 @@ function Page(props: { match: RouteMatch | null }): JSX.Element {
       <Match when={name() === "imports"}>
         <AdapterImportsView slug={param("slug")} id={param("id")} />
       </Match>
-      <Match when={name() === "policies"}>
+      <Match when={name() === "masks" || name() === "policies"}>
         <PoliciesView slug={param("slug")} id={param("id")} />
       </Match>
       <Match when={name() === "files"}>

@@ -17,7 +17,6 @@ import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import Banner from "@/components/banner.tsx";
 import { hasRole } from "@/lib/session.ts";
 import {
-  FUNCTION_CHOICES,
   MASK_CHOICES,
   NONE,
   createPoliciesPresenter,
@@ -47,23 +46,11 @@ function PolicyDialog(props: { presenter: PoliciesPresenter }): JSX.Element {
     <Dialog
       open={props.presenter.draft() !== null}
       onClose={() => props.presenter.close()}
-      title={`Policy for ${props.presenter.draft()?.table ?? ""}.${props.presenter.draft()?.column ?? ""}`}
+      title={`Mask for ${props.presenter.draft()?.table ?? ""}.${props.presenter.draft()?.column ?? ""}`}
       size="lg"
-      description="A required function is applied to every form, grid, and import write; a mask hides the column from viewers and agents."
+      description="A masked column reaches Guests and agents as *** and Testers and Administrators as the real value. It applies to the grid, diffs, exports, fixtures and MCP alike."
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.save(input)}>
-        <Field of={form} path={["fn"]}>
-          {(field) => (
-            <label class="grid content-start gap-1.5 text-base">
-              <span>Required function</span>
-              <Select
-                options={FUNCTION_CHOICES}
-                value={field.input ?? NONE}
-                onChange={(fn) => field.onInput(fn)}
-              />
-            </label>
-          )}
-        </Field>
         <Field of={form} path={["mask"]}>
           {(field) => (
             <label class="grid content-start gap-1.5 text-base">
@@ -115,9 +102,6 @@ function PolicyCell(props: {
         <Show when={props.policy} fallback={<span class="text-muted">none</span>}>
           {(policy) => (
             <>
-              <Show when={policy().required_function}>
-                {(fn) => <Badge variant="info">fn {fn().name}</Badge>}
-              </Show>
               <Show when={policy().mask}>
                 {(mask) => <Badge variant="warning">mask {mask()}</Badge>}
               </Show>
@@ -168,7 +152,15 @@ function PolicyCell(props: {
   );
 }
 
-/** Column policies per table (06 §6.12): required function, mask, display column, admin lock. */
+/**
+ * Column masks per table (06 §6.12, 24 §24.4).
+ *
+ * The screen used to do two unrelated things. A mask decides who sees a real value and applies
+ * everywhere one could leave the database. A required function decides what a value passes through
+ * on the way in, and it covers forms, grid edits and import mappings but not raw SQL, which spec
+ * 24 admits out loud. One screen doing both taught neither. The enforcement of required functions
+ * stays in the API; only the screen stopped offering them (docs/PROJECT_REWORK.md).
+ */
 export default function PoliciesView(props: { slug: string; id: string }): JSX.Element {
   const presenter = createPoliciesPresenter(
     () => props.slug,
@@ -183,20 +175,21 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
       <div class="grid gap-1.5">
         <h2 class="flex items-center gap-2 text-lg font-semibold">
           <Icon name="shield" class="h-4 w-4 text-muted" />
-          <AdapterCrumb slug={props.slug} id={props.id} /> / column policies
+          <AdapterCrumb slug={props.slug} id={props.id} /> / column masks
         </h2>
         <p class="max-w-prose text-sm text-muted">
-          Admin work. A required function or a mask set here applies everywhere a value could leave
-          this database: the grid, imports, diffs, fixtures, and the AI agent. There is no unmask.
+          Admin work. A mask set here applies everywhere a value could leave this database: the
+          grid, diffs, exports, fixtures and the AI agent. Guests and agents see ***; Testers and
+          Administrators see the real value. There is no unmask.
         </p>
       </div>
       <Loading fallback={<p class="text-muted">Loading schema...</p>}>
         <For
           each={presenter.schema.value().tables}
           fallback={
-            <EmptyState icon="table" title="No tables to police yet">
-              Connect a database with tables on it, then come back to set required functions and
-              masks per column.
+            <EmptyState icon="table" title="No tables to mask yet">
+              Connect a database with tables on it, then come back to hide a column from Guests and
+              agents.
             </EmptyState>
           }
         >
@@ -205,7 +198,7 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
               <h3 class="flex items-center gap-2 font-medium">
                 <code>{qualifiedName(table)}</code>
                 <Show when={policyCount(qualifiedName(table)) > 0}>
-                  <Badge variant="info">{policyCount(qualifiedName(table))} policed</Badge>
+                  <Badge variant="info">{policyCount(qualifiedName(table))} masked</Badge>
                 </Show>
               </h3>
               <Table>
@@ -213,7 +206,7 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
                   <tr>
                     <Head>Column</Head>
                     <Head>Type</Head>
-                    <Head>Policy</Head>
+                    <Head>Mask</Head>
                   </tr>
                 </thead>
                 <tbody>
