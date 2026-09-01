@@ -6,6 +6,7 @@ export const ROUTE_NAMES = [
   "login",
   "projects",
   "project",
+  "diff",
   "adapter",
   "table",
   "query",
@@ -29,6 +30,8 @@ export const ROUTES: readonly RouteDef<RouteName>[] = [
   { name: "login", pattern: "/login", role: null },
   { name: "projects", pattern: "/projects", role: "viewer" },
   { name: "project", pattern: "/projects/:slug", role: "viewer" },
+  // A comparison is wide and has two of everything, which a dialog over a list cannot hold.
+  { name: "diff", pattern: "/projects/:slug/diffs/:id", role: "viewer" },
   { name: "adapter", pattern: "/projects/:slug/adapters/:id", role: "viewer" },
   { name: "table", pattern: "/projects/:slug/adapters/:id/tables/:table", role: "viewer" },
   { name: "query", pattern: "/projects/:slug/adapters/:id/query", role: "viewer" },

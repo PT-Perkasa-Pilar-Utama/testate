@@ -65,8 +65,8 @@ sidebar                    project page                adapter page
 | 5 | States: tree by default, rows link, select to compare | done | 7cd7882 |
 | 6 | Each state row carries what it produced | done | 85cd883 |
 | 7 | Policies becomes Column masks | done | cd78ea9 |
-| 8 | ERD: a List / Diagram toggle on the adapter page | done | pending |
-| 9 | Diff full page: split panes, changed cells, value diff | pending | |
+| 8 | ERD: a List / Diagram toggle on the adapter page | done | 162020e |
+| 9 | Diff full page: split panes, changed cells, value diff | done | pending |
 
 ### 1. Storage its own menu
 

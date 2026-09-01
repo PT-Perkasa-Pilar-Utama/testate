@@ -90,8 +90,8 @@ test.describe("README screens", () => {
     await shoot("/projects/demo", "states", "States");
     // One shot, not three: checkouts, diffs and imports share the Activity tab now.
     await shoot("/projects/demo", "activity", "Activity");
-    await page.getByRole("button", { name: "Details" }).first().click();
-    await expect(page.locator("dialog[open]")).toHaveCount(1);
+    await page.getByRole("link", { name: "Details" }).first().click();
+    await settle(page);
     await fit(page);
     await page.screenshot({ path: join(SHOTS, "diffs.png") });
 

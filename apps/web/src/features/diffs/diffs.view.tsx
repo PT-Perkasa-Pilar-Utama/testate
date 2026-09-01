@@ -4,14 +4,13 @@ import { For, Loading, Show } from "solid-js";
 import type { Diff } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
-import Button from "@/components/button.tsx";
+import Button, { buttonClass } from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
 import { Menu, MenuItem, MenuLink } from "@/components/menu.tsx";
 import { Cell, EmptyRow, Head, Row, SortColumn, Table, TableSearch } from "@/components/table.tsx";
 import { DIFF_STATUS_LABEL } from "@/lib/labels.ts";
+import { href } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
-import { DetailDialog } from "./diffs.detail.view.tsx";
-import { RowsDialog } from "./diffs.dialogs.view.tsx";
 import {
   changedRows,
   createDiffsPresenter,
@@ -46,7 +45,7 @@ function CompareCell(props: { diff: Diff }): JSX.Element {
 }
 
 /** Details is the reason to be on this screen; export and delete are the row's overflow. */
-function DiffRow(props: { presenter: DiffsPresenter; diff: Diff }): JSX.Element {
+function DiffRow(props: { presenter: DiffsPresenter; diff: Diff; slug: string }): JSX.Element {
   const totals = () => diffTotals(props.diff);
   const hasMenu = (): boolean => props.diff.status === "ready" || hasRole("qa");
   return (
@@ -68,15 +67,23 @@ function DiffRow(props: { presenter: DiffsPresenter; diff: Diff }): JSX.Element 
       <Cell>{formatWhen(props.diff.expires_at)}</Cell>
       <Cell pinned>
         <div class="flex items-center justify-end gap-1">
-          <Button
-            size="sm"
-            variant="primary"
-            disabled={props.diff.status !== "ready"}
-            title={detailBlockedReason(props.diff)}
-            onClick={() => void props.presenter.openDetail(props.diff)}
+          {/* A page, not a dialog: a comparison is wide and has two of everything
+              (docs/PROJECT_REWORK.md). */}
+          <Show
+            when={props.diff.status === "ready"}
+            fallback={
+              <Button size="sm" variant="primary" disabled title={detailBlockedReason(props.diff)}>
+                Details
+              </Button>
+            }
           >
-            Details
-          </Button>
+            <a
+              class={buttonClass("primary", "sm")}
+              href={href(`/projects/${props.slug}/diffs/${props.diff.id}`)}
+            >
+              Details
+            </a>
+          </Show>
           <Show when={hasMenu()}>
             <Menu label={`More actions for ${props.diff.base.name} comparison`}>
               <Show when={props.diff.status === "ready"}>
@@ -145,14 +152,12 @@ export default function DiffsView(props: { slug: string }): JSX.Element {
               }
             >
               <For each={presenter.table.rows()}>
-                {(diff) => <DiffRow presenter={presenter} diff={diff} />}
+                {(diff) => <DiffRow presenter={presenter} diff={diff} slug={props.slug} />}
               </For>
             </Show>
           </tbody>
         </Table>
       </Loading>
-      <DetailDialog presenter={presenter} />
-      <RowsDialog presenter={presenter} />
     </div>
   );
 }

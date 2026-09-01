@@ -166,18 +166,19 @@ test.describe("state stories", () => {
     await page.getByRole("tab", { name: "Activity" }).click();
     const row = page.locator("tr", { hasText: "live database" }).first();
     await expect(row.getByText("ready")).toBeVisible({ timeout: 90_000 });
-    await row.getByRole("button", { name: "Details" }).click();
-    const detail = page.locator("dialog[open]");
-    await expect(detail.getByText(/primary-key|row-hash/).first()).toBeVisible();
-    const customers = detail.locator("tr", { hasText: table.replace(/^public\./, "") }).first();
-    await expect(customers.getByRole("cell").nth(2)).toHaveText(/^[1-9]\d*$/);
-    await customers.getByRole("button", { name: "Rows" }).click();
-    const rows = page.locator("dialog[open]").last();
-    await expect(rows.getByText("added").first()).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(page.locator("dialog[open]")).toHaveCount(1);
-    await page.keyboard.press("Escape");
-    await expect(page.locator("dialog[open]")).toHaveCount(0);
+    // Details is a page of its own now: a rail of tables on the left, both sides of every row on
+    // the right, and a changed cell opens the value in full.
+    await row.getByRole("link", { name: "Details" }).click();
+    await expect(page).toHaveURL(/\/projects\/demo\/diffs\//);
+    const short = table.replace(/^public\./, "");
+    await page
+      .getByRole("button", { name: new RegExp(short) })
+      .first()
+      .click();
+    await expect(page.getByRole("table")).toBeVisible();
+    await expect(page.getByText("A tinted cell changed")).toBeVisible();
+    await page.getByRole("link", { name: "Back to activity" }).click();
+    await settle(page);
     // Export and delete moved into the row's overflow; Details is the only control still out front.
     const menu = await rowMenu(row);
     const csv = await menu.getByRole("link", { name: "Export CSV" }).getAttribute("href");

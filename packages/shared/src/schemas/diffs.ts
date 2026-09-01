@@ -20,6 +20,8 @@ export const diffTableSchema = v.object({
   schema_changed: v.nullable(v.array(v.string())),
 });
 
+export type DiffTable = v.InferOutput<typeof diffTableSchema>;
+
 export const diffSchema = v.object({
   id: idSchema,
   status: v.picklist(["running", "ready", "failed"]),

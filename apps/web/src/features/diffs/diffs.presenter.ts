@@ -11,12 +11,9 @@ import type { Refreshable } from "@/lib/async.ts";
 import { followJob } from "@/lib/sse.ts";
 import { statesModel } from "../states/states.model.ts";
 import { diffsModel } from "./diffs.model.ts";
-import type { DiffRowsPage } from "./diffs.model.ts";
 
 export const LIVE = "live";
 export type DiffDraft = { base_state_id: string; target: string };
-export type RowsTarget = { diff: Diff; adapter_id: string; adapter_name: string; table: string };
-
 export type DiffSort = "base" | "status" | "changed" | "expires_at";
 
 export type DiffsPresenter = Refreshable<Diff[]> & {
@@ -25,13 +22,8 @@ export type DiffsPresenter = Refreshable<Diff[]> & {
   creating: () => boolean;
   draft: () => DiffDraft;
   error: () => string | null;
-  detail: () => Diff | null;
-  rows: () => { target: RowsTarget; page: DiffRowsPage; op: DiffRow["op"] | "" } | null;
   openCreate: () => void;
-  openDetail: (diff: Diff) => Promise<void>;
-  openRows: (target: RowsTarget, op?: DiffRow["op"] | "") => Promise<void>;
   close: () => void;
-  closeRows: () => void;
   setDraft: (patch: Partial<DiffDraft>) => void;
   create: () => Promise<void>;
   remove: (diff: Diff) => Promise<void>;
@@ -144,9 +136,6 @@ export function createDiffsPresenter(slug: () => string): DiffsPresenter {
   const [creating, setCreating] = createSignal(false);
   const [draft, setDraftSignal] = createSignal<DiffDraft>({ base_state_id: "", target: LIVE });
   const [error, setError] = createSignal<string | null>(null);
-  const [detail, setDetail] = createSignal<Diff | null>(null);
-  const [rows, setRows] =
-    createSignal<DiffsPresenter["rows"] extends () => infer T ? T : never>(null);
   return {
     ...diffs,
     table,
@@ -154,38 +143,15 @@ export function createDiffsPresenter(slug: () => string): DiffsPresenter {
     creating,
     draft,
     error,
-    detail,
-    rows,
     openCreate: () => {
       setDraftSignal({ base_state_id: "", target: LIVE });
       setError(null);
       setCreating(true);
     },
-    openDetail: (diff) => {
-      const staticSlug = slug();
-      return attempt(async () => {
-        setDetail(await diffsModel.get(staticSlug, diff.id));
-      });
-    },
-    openRows: (target, op = "") => {
-      const staticSlug = slug();
-      return attempt(async () => {
-        const query = { adapter_id: target.adapter_id, table: target.table };
-        const page = await diffsModel.rows(
-          staticSlug,
-          target.diff.id,
-          op === "" ? query : { ...query, op }
-        );
-        setRows({ target, page, op });
-      });
-    },
     close: () => {
       setCreating(false);
-      setDetail(null);
-      setRows(null);
       setError(null);
     },
-    closeRows: () => setRows(null),
     setDraft: (patch) => setDraftSignal((current) => ({ ...current, ...patch })),
     create: async () => {
       const staticSlug = slug();

@@ -9,6 +9,7 @@ import GridView from "@/features/data/grid.view.tsx";
 import PoliciesView from "@/features/data/policies.view.tsx";
 import QueryView from "@/features/data/query.view.tsx";
 import AdapterImportsView from "@/features/imports/imports.adapter.view.tsx";
+import DiffView from "@/features/diff/diff.view.tsx";
 import StorageView from "@/features/storage/storage.view.tsx";
 import StoresView from "@/features/storage/stores.view.tsx";
 import AccountView from "@/features/account/account.view.tsx";
@@ -63,6 +64,9 @@ function Page(props: { match: RouteMatch | null }): JSX.Element {
       </Match>
       <Match when={name() === "project"}>
         <ProjectView slug={param("slug")} />
+      </Match>
+      <Match when={name() === "diff"}>
+        <DiffView slug={param("slug")} id={param("id")} />
       </Match>
       <Match when={name() === "adapter"}>
         <AdapterView slug={param("slug")} id={param("id")} />
