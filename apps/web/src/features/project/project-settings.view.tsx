@@ -1,7 +1,7 @@
 import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import { formatWhen } from "@/lib/format.ts";
-import { For, Show, createEffect } from "solid-js";
+import { For, Show, createEffect, untrack } from "solid-js";
 import * as v from "valibot";
 import { projectDraftSchema } from "@testate/shared";
 
@@ -49,13 +49,16 @@ export function AffectedList(props: { affected: DeletionAffected }): JSX.Element
 }
 
 export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element {
-  const form = createForm({ schema: projectDraftSchema });
+  const form = createForm({
+    schema: projectDraftSchema,
+    initialInput: untrack(() => toProjectDraft(props.presenter.overview.value().project)),
+  });
 
   createEffect(
-    () => props.presenter.editing(),
-    (open) => {
-      if (open)
-        reset(form, { initialInput: toProjectDraft(props.presenter.overview.value().project) });
+    () =>
+      props.presenter.editing() ? toProjectDraft(props.presenter.overview.value().project) : null,
+    (draft) => {
+      if (draft !== null) reset(form, { initialInput: draft });
     }
   );
 

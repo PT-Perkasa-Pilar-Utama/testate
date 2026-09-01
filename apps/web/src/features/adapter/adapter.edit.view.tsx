@@ -1,6 +1,6 @@
 import { Field, Form, createForm, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import { For, Show, createEffect } from "solid-js";
+import { For, Show, createEffect, untrack } from "solid-js";
 import type { Adapter } from "@testate/shared";
 import { adapterEditFormSchema } from "@testate/shared";
 
@@ -56,14 +56,17 @@ export default function EditDialog(props: {
   adapter: Adapter;
 }): JSX.Element {
   const engineForm = (): EngineForm => ENGINE_FORMS[props.adapter.engine];
-  const form = createForm({ schema: adapterEditFormSchema });
+  const form = createForm({
+    schema: adapterEditFormSchema,
+    initialInput: untrack(() => draftFrom(props.adapter)),
+  });
 
   // The dialog stays mounted (design-system rule); prefill from the record being edited each time
   // it opens rather than showing whatever the previous open left behind.
   createEffect(
-    () => props.presenter.editing(),
-    (opening) => {
-      if (opening) reset(form, { initialInput: draftFrom(props.adapter) });
+    () => (props.presenter.editing() ? draftFrom(props.adapter) : null),
+    (draft) => {
+      if (draft !== null) reset(form, { initialInput: draft });
     }
   );
 

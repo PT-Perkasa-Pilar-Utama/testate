@@ -52,6 +52,20 @@ export const updateUserSchema = v.object({
   role: v.optional(roleSchema),
 });
 
+/**
+ * What the edit dialog carries. `updateUserSchema` is the wire shape, where either field may be
+ * left out; the form always shows both, so both are stated here and neither is optional.
+ */
+export const editUserFormSchema = v.object({
+  display_name: v.pipe(
+    v.string(),
+    v.minLength(1, "A display name cannot be empty."),
+    v.maxLength(120, "A display name is at most 120 characters.")
+  ),
+  role: roleSchema,
+});
+export type EditUserInput = v.InferOutput<typeof editUserFormSchema>;
+
 export const resetPasswordSchema = v.object({
   temporary_password: v.pipe(
     v.string(),

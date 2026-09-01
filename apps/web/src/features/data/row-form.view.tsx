@@ -1,6 +1,6 @@
 import { Field, FieldArray, Form, createForm, getInput, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import { For, Show, createEffect, createSignal } from "solid-js";
+import { For, Show, createEffect, createSignal, untrack } from "solid-js";
 import type { TableSchema } from "@testate/shared";
 import { rowFormSchema } from "@testate/shared";
 
@@ -9,7 +9,7 @@ import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
-import { FIELD_MODES, FUNCTION_OPTIONS, MAX_COPIES } from "./editing.presenter.ts";
+import { FIELD_MODES, FUNCTION_OPTIONS, MAX_COPIES, cellsOf } from "./editing.presenter.ts";
 import type { EditingPresenter } from "./editing.presenter.ts";
 
 const MODE_OPTIONS = FIELD_MODES.map((mode) => ({ value: mode, label: mode }));
@@ -120,17 +120,27 @@ export default function RowForm(props: {
 }): JSX.Element {
   const [copies, setCopies] = createSignal("1");
   const [more, setMore] = createSignal(false);
-  const form = createForm({ schema: rowFormSchema });
+  // Seeded at creation, not only on open: a field store per array item is built from the initial
+  // input, and an array that starts empty stays empty however often it is reset afterwards. The
+  // table's columns are known here, and their number never changes while this form is mounted.
+  const form = createForm({
+    schema: rowFormSchema,
+    // Read once, deliberately: `grid.view.tsx` keys this component on the table, so a different
+    // table gets a different form rather than this one growing new cells.
+    initialInput: untrack(() => ({ cells: cellsOf(props.table, null) })),
+  });
   const columns = (): TableSchema["columns"] =>
     props.table.columns.filter((column) => !column.generated);
   const foreignKey = (name: string): boolean =>
     props.table.foreign_keys_out.some((fk) => fk.columns.includes(name));
   // The dialog's own state decides the values, so the form is seeded when it opens rather than
   // when it mounts: an insert starts on the table's defaults, an edit on the row being edited.
+  // Everything reactive is read in the compute; the effect only writes. Reading the presenter
+  // inside the effect callback is a read outside any tracking scope, which Solid 2 refuses.
   createEffect(
-    () => props.presenter.form(),
-    (open) => {
-      if (open !== null) reset(form, { initialInput: { cells: props.presenter.initialCells() } });
+    () => (props.presenter.form() === null ? null : props.presenter.initialCells()),
+    (cells) => {
+      if (cells !== null) reset(form, { initialInput: { cells } });
     }
   );
   return (

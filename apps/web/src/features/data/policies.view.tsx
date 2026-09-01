@@ -25,7 +25,13 @@ import {
 import type { PoliciesPresenter } from "./policies.presenter.ts";
 
 function PolicyDialog(props: { presenter: PoliciesPresenter }): JSX.Element {
-  const form = createForm({ schema: policyFormSchema });
+  // Seeded, not merely reset on open. A field with no initial input starts `undefined`, and
+  // `display` is a boolean the schema requires: the form then fails validation on submit with no
+  // message anywhere, because a Switch has nowhere to show one.
+  const form = createForm({
+    schema: policyFormSchema,
+    initialInput: { fn: NONE, mask: NONE, display: false },
+  });
   createEffect(
     () => props.presenter.draft(),
     (draft) => {

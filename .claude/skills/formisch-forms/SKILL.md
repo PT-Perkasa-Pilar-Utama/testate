@@ -107,6 +107,40 @@ still serve the forms that have not moved.
   `input[required]` to get a dialog submitted. Strip it and the crawler submits every dialog empty,
   Formisch refuses, and the successful-submit path quietly stops being covered. `<Form>` sets
   `novalidate`, so the browser never shows a bubble for it.
+- **Always give `createForm` an `initialInput`.** A field with none starts `undefined`, and the
+  schema then refuses it on submit. For a string that is visible and fine: the message lands under
+  the input. For anything else it is invisible and the form simply does nothing when you press the
+  button, because a select, a switch and an array have nowhere to put a message. An array is worse
+  still: its item stores are built from the initial input, so an array that starts empty has no
+  fields at all and no later `reset` gives it any.
+
+  ```tsx
+  const form = createForm({
+    schema: policyFormSchema,
+    initialInput: { fn: NONE, mask: NONE, display: false },
+  });
+  ```
+
+  When the values depend on a prop, read it with `untrack` and make sure the component is rebuilt
+  when that prop changes (`grid.view.tsx` keys the row form on its table with `<For>`, because
+  `<Show>` keeps the mounted component when one table replaces another).
+- **Everything reactive belongs in an effect's compute, never its callback.** Solid 2's
+  `createEffect(compute, effect)` only tracks the first function, so
+  `(open) => { if (open) reset(form, { initialInput: fromProps() }) }` reads `fromProps` outside any
+  tracking scope. Compute the value, then write it:
+
+  ```tsx
+  createEffect(
+    () => (props.presenter.editing() ? draftFrom(props.record) : null),
+    (draft) => {
+      if (draft !== null) reset(form, { initialInput: draft });
+    }
+  );
+  ```
+
+  The callback must also return a cleanup function or nothing at all: a concise body like
+  `() => props.presenter.invalidate()` returns whatever that call returns, and Solid 2 refuses it
+  as an invalid cleanup value, which takes the whole screen into the error boundary.
 - **Dialogs stay mounted, so a form does not reset itself.** The design system forbids conditionally
   rendering a dialog (it kills the open and close animation), so `<Dialog open={...}>` and the
   `createForm` inside it live for as long as the screen does. A reopened dialog therefore shows the

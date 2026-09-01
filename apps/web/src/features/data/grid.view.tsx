@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
-import type { JsonObject } from "@testate/shared";
+import type { JsonObject, TableSchema } from "@testate/shared";
 import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
@@ -117,6 +117,11 @@ export default function GridView(props: { slug: string; id: string; table: strin
     () => props.id,
     () => props.table
   );
+  /** The open table as a one-item list, so `<For>` can key the row form on it. */
+  const openTable = (): TableSchema[] => {
+    const found = presenter.table();
+    return found === null ? [] : [found];
+  };
   return (
     <section class="grid gap-4">
       <div class="flex flex-wrap items-center justify-between gap-2">
@@ -202,9 +207,15 @@ export default function GridView(props: { slug: string; id: string; table: strin
           </tbody>
         </Table>
         <Pager presenter={presenter} />
-        <Show when={presenter.table()}>
-          {(table) => <RowForm presenter={presenter.editing} table={table()} />}
-        </Show>
+        {/*
+          Keyed on the table, not merely shown when there is one. Moving to another table in the
+          same adapter swaps one schema object for another without passing through null, so a
+          <Show> would keep the mounted form and its first table's columns. <For> is keyed by
+          identity in Solid 2, so the form is rebuilt for the table it is actually editing.
+        */}
+        <For each={openTable()}>
+          {(table) => <RowForm presenter={presenter.editing} table={table} />}
+        </For>
         <FixtureDialog presenter={presenter.editing} />
       </Loading>
     </section>

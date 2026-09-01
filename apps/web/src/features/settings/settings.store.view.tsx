@@ -1,6 +1,6 @@
 import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import { Show, createEffect } from "solid-js";
+import { Show, createEffect, untrack } from "solid-js";
 import { storeMigrationFormSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
@@ -19,11 +19,16 @@ const DRIVER_OPTIONS = [
 
 /** Move every snapshot to another store as a job (stories 118, 119). */
 export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Element {
-  const form = createForm({ schema: storeMigrationFormSchema });
+  // `driver` and `virtual_hosted` are not strings, so they cannot start undefined: a select and
+  // a switch have nowhere to show the message that failure would produce.
+  const form = createForm({
+    schema: storeMigrationFormSchema,
+    initialInput: untrack(() => props.presenter.migrateDefaults()),
+  });
   createEffect(
-    () => props.presenter.migrating(),
-    (open) => {
-      if (open) reset(form, { initialInput: props.presenter.migrateDefaults() });
+    () => (props.presenter.migrating() ? props.presenter.migrateDefaults() : null),
+    (defaults) => {
+      if (defaults !== null) reset(form, { initialInput: defaults });
     }
   );
   return (

@@ -59,7 +59,11 @@ function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Element {
   // A test outcome describes one engine's connectivity; switching engines makes it stale.
   createEffect(
     () => engine(),
-    () => props.presenter.invalidateOutcome()
+    () => {
+      // A block, not a concise body: Solid 2 reads an effect's return value as its cleanup and
+      // refuses anything that is not a function, which took the whole screen into the boundary.
+      props.presenter.invalidateOutcome();
+    }
   );
 
   const readTest = (): AdapterCreateFormInput => {

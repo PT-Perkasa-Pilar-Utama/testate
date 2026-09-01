@@ -139,7 +139,12 @@ test.describe("signing in", () => {
     await page.goto("/login");
     await settle(page);
     await page.locator('form button[type="submit"]').click();
-    await expect(page.getByRole("status")).toContainText("Username");
+    // Each message sits under the control it belongs to, rather than in one list at the top that
+    // a person then has to match back to a box. Both fields are empty, so both say so.
+    await expect(page.getByRole("alert")).toHaveText([
+      "Enter your username.",
+      "Enter your password.",
+    ]);
     await expect(page.getByLabel("Username")).toHaveAttribute("aria-invalid", "true");
     await expect(page).toHaveURL(/\/login$/);
     expect(bubbles).toStrictEqual([]);

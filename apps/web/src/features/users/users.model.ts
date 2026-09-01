@@ -12,6 +12,8 @@ export const usersModel = {
     apiClient.page("/users", userSchema, cursor === undefined ? undefined : { cursor }),
   create: (body: JsonObject): Promise<User> =>
     apiClient.post("/users", { schema: userSchema, body }),
+  update: (id: string, body: JsonObject): Promise<User> =>
+    apiClient.patch(path(id), { schema: userSchema, body }),
   disable: (id: string): Promise<User> =>
     apiClient.post(`${path(id)}/disable`, { schema: userSchema }),
   enable: (id: string): Promise<User> =>

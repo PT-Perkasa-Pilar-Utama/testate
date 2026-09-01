@@ -89,7 +89,12 @@ function Actions(props: { presenter: StatesPresenter; submit: string }): JSX.Ele
 }
 
 export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
-  const form = createForm({ schema: stateDraftSchema });
+  // `adapter_ids` is an array, and an array with no initial input has no item stores: submit
+  // then fails validation with nothing on screen to say so.
+  const form = createForm({
+    schema: stateDraftSchema,
+    initialInput: { name: "", notes: "", tags: "", adapter_ids: [] },
+  });
   createEffect(
     () => props.presenter.taking(),
     (open) => {
@@ -148,7 +153,12 @@ export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
 }
 
 export function EditDialog(props: { presenter: StatesPresenter }): JSX.Element {
-  const form = createForm({ schema: stateDraftSchema });
+  // `adapter_ids` is an array, and an array with no initial input has no item stores: submit
+  // then fails validation with nothing on screen to say so.
+  const form = createForm({
+    schema: stateDraftSchema,
+    initialInput: { name: "", notes: "", tags: "", adapter_ids: [] },
+  });
   createEffect(
     () => props.presenter.editing(),
     (state) => {

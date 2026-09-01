@@ -72,6 +72,15 @@ that this repo treats as failures, and `<Field>` tripped two of them on every fo
 Both are latent bugs on Solid 1 too, where they are a lint warning and a leak rather than a
 diagnostic; Formisch's own `eslint-disable solid/reactivity` sits on the first one.
 
+The fourth is the one that mattered most, and it hid behind the other three. Solid 1's `batch`
+flushed on exit; Solid 2 batches to a microtask instead, and its own CHEATSHEET says "reads update
+only after flush". Formisch writes and then reads inside a single batch, `reset` above all, where
+`setInitialFieldInput` stores the new values and `walkFieldStore` immediately copies them into the
+live input. Calling `batch` straight through left that read one value behind, so
+`reset(form, { initialInput })` silently kept the old input and **every edit dialog prefilled with
+stale values while the tests still went green on the create paths**. The shim flushes on exit, the
+way Solid 1's did.
+
 **Why the `.jsx` builds and not the `.js` ones.** The compiled builds import from `solid-js/web`, a
 subpath Solid 2 removed (it is `@solidjs/web` now), and there is no shimming that. The `solid`
 export condition serves raw JSX instead, which the Solid vite plugin compiles itself and which

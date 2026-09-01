@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import type { CreateUserInput, ResetPasswordInput, User } from "@testate/shared";
+import type { CreateUserInput, EditUserInput, ResetPasswordInput, User } from "@testate/shared";
 import { ROLES } from "@testate/shared";
 
 import { attempt, showToast } from "@/lib/toast.ts";
@@ -16,6 +16,11 @@ export type UsersPresenter = Paged<User> & {
   openCreate: () => void;
   closeCreate: () => void;
   create: (input: CreateUserInput) => Promise<void>;
+  /** The account the edit dialog is changing, null when it is closed. */
+  editing: () => User | null;
+  openEdit: (user: User) => void;
+  closeEdit: () => void;
+  update: (input: EditUserInput) => Promise<void>;
   resetting: () => User | null;
   openReset: (user: User) => void;
   closeReset: () => void;
@@ -37,6 +42,7 @@ export function createUsersPresenter(): UsersPresenter {
   const users = createPaged((cursor) => usersModel.page(cursor));
   const [creating, setCreating] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  const [editing, setEditing] = createSignal<User | null>(null);
   const [resetting, setResetting] = createSignal<User | null>(null);
   const [removing, setRemoving] = createSignal<User | null>(null);
   return {
@@ -56,6 +62,29 @@ export function createUsersPresenter(): UsersPresenter {
         users.refresh();
       } catch (cause: unknown) {
         setError(messageOf(cause, "could not create the user"));
+      }
+    },
+    editing,
+    openEdit: (user) => {
+      setError(null);
+      setEditing(user);
+    },
+    closeEdit: () => {
+      setEditing(null);
+      setError(null);
+    },
+    update: async (input) => {
+      const staticUser = editing();
+      if (staticUser === null) return;
+      setError(null);
+      try {
+        await usersModel.update(staticUser.id, { ...input });
+        setEditing(null);
+        users.refresh();
+      } catch (cause: unknown) {
+        // The last enabled admin cannot be demoted, and the server is the only thing that knows
+        // whether this is the last one, so that refusal arrives here rather than from the schema.
+        setError(messageOf(cause, "could not update the user"));
       }
     },
     resetting,

@@ -1,22 +1,31 @@
 diff --git a/node_modules/@formisch/solid/.bun-tag-1bbd9491120cf952 b/.bun-tag-1bbd9491120cf952
 new file mode 100644
 index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/@formisch/solid/.bun-tag-ca5b0f871225aafe b/.bun-tag-ca5b0f871225aafe
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/dist/dev.jsx b/dist/dev.jsx
-index 072c789496528b582417203a6e8a61a6ce9701d8..d35827c99902b276a6927fda9da9cebd62568768 100644
+index 072c789496528b582417203a6e8a61a6ce9701d8..253a1b501013844cc429ea1a1deab954e83016f2 100644
 --- a/dist/dev.jsx
 +++ b/dist/dev.jsx
-@@ -1,6 +1,9 @@
+@@ -1,6 +1,15 @@
  // ../../packages/core/dist/index.solid.js
  import * as v from "valibot";
 -import { batch, createSignal as createSignal$1, createUniqueId as createId, untrack } from "solid-js";
-+import { createSignal as createSignal$1, createUniqueId as createId, untrack } from "solid-js";
-+// Solid 2 batches on a microtask by default and dropped `batch` ("Default microtask batching;
-+// flush() to apply now" — solid-js CHEATSHEET), so calling through is the whole behaviour.
-+const batch = (fn) => fn();
++import { createSignal as createSignal$1, createUniqueId as createId, untrack, flush } from "solid-js";
++// Solid 2 dropped `batch` and batches to a microtask instead, so a read after a write returns
++// the previous value ("Reads update only after flush" - solid-js CHEATSHEET). Formisch writes
++// and then reads inside one batch, `reset` above all, so calling through is not enough: Solid 1's
++// batch flushed on exit and this has to do the same, or a reset silently keeps the old input.
++const batch = (fn) => {
++  const result = fn();
++  flush();
++  return result;
++};
  var framework = "solid";
  // @__NO_SIDE_EFFECTS__
  function createSignal(initialValue) {
-@@ -781,7 +784,7 @@ function createForm(config) {
+@@ -781,7 +790,7 @@ function createForm(config) {
  }
  
  // src/primitives/useField/useField.ts
@@ -25,7 +34,7 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..d35827c99902b276a6927fda9da9cebd
  
  // src/utils/unwrap/unwrap.ts
  function unwrap(value) {
-@@ -794,6 +797,7 @@ function unwrap(value) {
+@@ -794,6 +803,7 @@ function unwrap(value) {
  // src/primitives/useField/useField.ts
  // @__NO_SIDE_EFFECTS__
  function useField(form, config) {
@@ -33,7 +42,7 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..d35827c99902b276a6927fda9da9cebd
    const getPath = createMemo2(() => unwrap(config).path);
    const getInternalFormStore = createMemo2(() => unwrap(form)[INTERNAL]);
    const getInternalFieldStore = createMemo2(
-@@ -846,14 +850,19 @@ function useField(form, config) {
+@@ -846,14 +856,19 @@ function useField(form, config) {
        get name() {
          return getInternalFieldStore().name;
        },
@@ -56,7 +65,7 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..d35827c99902b276a6927fda9da9cebd
            const elements = internalFieldStore.elements.filter(
              (el) => el !== element
            );
-@@ -863,7 +872,7 @@ function useField(form, config) {
+@@ -863,7 +878,7 @@ function useField(form, config) {
              internalFieldStore.initialElements = internalFieldStore.initialElements.filter((el) => el !== element);
            }
            internalFieldStore.elements = elements;
@@ -65,7 +74,7 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..d35827c99902b276a6927fda9da9cebd
        },
        onFocus() {
          setFieldBool(getInternalFieldStore(), "isTouched", true);
-@@ -968,7 +977,19 @@ function FieldArray(props) {
+@@ -968,7 +983,19 @@ function FieldArray(props) {
  }
  
  // src/components/Form/Form.tsx
@@ -87,21 +96,27 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..d35827c99902b276a6927fda9da9cebd
  function Form(props) {
    const [, other] = splitProps(props, ["of", "onSubmit"]);
 diff --git a/dist/index.jsx b/dist/index.jsx
-index 072c789496528b582417203a6e8a61a6ce9701d8..d35827c99902b276a6927fda9da9cebd62568768 100644
+index 072c789496528b582417203a6e8a61a6ce9701d8..253a1b501013844cc429ea1a1deab954e83016f2 100644
 --- a/dist/index.jsx
 +++ b/dist/index.jsx
-@@ -1,6 +1,9 @@
+@@ -1,6 +1,15 @@
  // ../../packages/core/dist/index.solid.js
  import * as v from "valibot";
 -import { batch, createSignal as createSignal$1, createUniqueId as createId, untrack } from "solid-js";
-+import { createSignal as createSignal$1, createUniqueId as createId, untrack } from "solid-js";
-+// Solid 2 batches on a microtask by default and dropped `batch` ("Default microtask batching;
-+// flush() to apply now" — solid-js CHEATSHEET), so calling through is the whole behaviour.
-+const batch = (fn) => fn();
++import { createSignal as createSignal$1, createUniqueId as createId, untrack, flush } from "solid-js";
++// Solid 2 dropped `batch` and batches to a microtask instead, so a read after a write returns
++// the previous value ("Reads update only after flush" - solid-js CHEATSHEET). Formisch writes
++// and then reads inside one batch, `reset` above all, so calling through is not enough: Solid 1's
++// batch flushed on exit and this has to do the same, or a reset silently keeps the old input.
++const batch = (fn) => {
++  const result = fn();
++  flush();
++  return result;
++};
  var framework = "solid";
  // @__NO_SIDE_EFFECTS__
  function createSignal(initialValue) {
-@@ -781,7 +784,7 @@ function createForm(config) {
+@@ -781,7 +790,7 @@ function createForm(config) {
  }
  
  // src/primitives/useField/useField.ts
@@ -110,7 +125,7 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..d35827c99902b276a6927fda9da9cebd
  
  // src/utils/unwrap/unwrap.ts
  function unwrap(value) {
-@@ -794,6 +797,7 @@ function unwrap(value) {
+@@ -794,6 +803,7 @@ function unwrap(value) {
  // src/primitives/useField/useField.ts
  // @__NO_SIDE_EFFECTS__
  function useField(form, config) {
@@ -118,7 +133,7 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..d35827c99902b276a6927fda9da9cebd
    const getPath = createMemo2(() => unwrap(config).path);
    const getInternalFormStore = createMemo2(() => unwrap(form)[INTERNAL]);
    const getInternalFieldStore = createMemo2(
-@@ -846,14 +850,19 @@ function useField(form, config) {
+@@ -846,14 +856,19 @@ function useField(form, config) {
        get name() {
          return getInternalFieldStore().name;
        },
@@ -141,7 +156,7 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..d35827c99902b276a6927fda9da9cebd
            const elements = internalFieldStore.elements.filter(
              (el) => el !== element
            );
-@@ -863,7 +872,7 @@ function useField(form, config) {
+@@ -863,7 +878,7 @@ function useField(form, config) {
              internalFieldStore.initialElements = internalFieldStore.initialElements.filter((el) => el !== element);
            }
            internalFieldStore.elements = elements;
@@ -150,7 +165,7 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..d35827c99902b276a6927fda9da9cebd
        },
        onFocus() {
          setFieldBool(getInternalFieldStore(), "isTouched", true);
-@@ -968,7 +977,19 @@ function FieldArray(props) {
+@@ -968,7 +983,19 @@ function FieldArray(props) {
  }
  
  // src/components/Form/Form.tsx
