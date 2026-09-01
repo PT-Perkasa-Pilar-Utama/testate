@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { Show, children, createSignal } from "solid-js";
+import { Show, children, createSignal, createUniqueId } from "solid-js";
 
 import { buttonClass } from "./button.tsx";
 import Icon from "./icon.tsx";
@@ -46,26 +46,36 @@ export function Menu(props: {
   panelClass?: string;
   children: JSX.Element;
 }): JSX.Element {
+  const id = createUniqueId();
   const [panel, setPanel] = createSignal<HTMLDivElement>();
   const [button, setButton] = createSignal<HTMLButtonElement>();
   // See page-header.tsx: a JSX prop read inside `when` is read outside a tracking scope.
   const trigger = children(() => props.trigger);
-  const open = (): void => {
-    const box = panel();
-    const anchor = button();
-    if (box === undefined || anchor === undefined) return;
-    box.showPopover();
-    place(anchor, box, props.place ?? "below-right");
+  // Positioned one frame in, not here: `beforetoggle` fires before the panel is shown, so it has
+  // no size to measure yet. A rAF callback runs after the browser finishes opening it and before
+  // it paints, which is the last moment a wrong position is still invisible.
+  const onOpening = (event: ToggleEvent): void => {
+    if (event.newState !== "open") return;
+    requestAnimationFrame(() => {
+      const box = panel();
+      const anchor = button();
+      if (box === undefined || anchor === undefined) return;
+      place(anchor, box, props.place ?? "below-right");
+    });
   };
   return (
     <>
+      {/* `popovertarget`, not an `onClick` that calls `showPopover`. The attribute is what tells
+          the browser this button owns that panel, and without it a click on an open menu was two
+          things at once: light dismiss closed it on pointerdown, then the handler opened it again,
+          so the menu could never be clicked shut. */}
       <button
         ref={setButton}
         type="button"
+        popovertarget={id}
         class={trigger() === undefined ? [buttonClass("ghost", "sm"), "cursor-pointer"] : "w-full"}
         aria-haspopup="menu"
         aria-label={props.label ?? "More actions"}
-        onClick={() => open()}
       >
         <Show when={trigger()} fallback={<Icon name="ellipsis" />}>
           {trigger()}
@@ -77,7 +87,9 @@ export function Menu(props: {
           click on the very button meant to open it. The grid lives one level in. */}
       <div
         ref={setPanel}
+        id={id}
         popover="auto"
+        onBeforeToggle={onOpening}
         class={[
           "fixed inset-auto m-0 rounded-lg bg-surface p-1 text-left shadow-lg ring ring-line",
           props.panelClass ?? "w-44",

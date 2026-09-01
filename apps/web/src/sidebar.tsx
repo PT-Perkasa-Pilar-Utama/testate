@@ -29,6 +29,7 @@ const NAV: readonly {
   icon: IconName;
   sections?: readonly { label: string; id: string }[];
 }[] = [
+  { label: "Home", path: "/", role: "viewer", icon: "house" },
   { label: "Projects", path: "/projects", role: "viewer", icon: "folder" },
   { label: "Jobs", path: "/jobs", role: "viewer", icon: "activity" },
   { label: "Tools", path: "/tools", role: "viewer", icon: "wrench" },
@@ -81,26 +82,34 @@ function toggleSidebar(): void {
 }
 
 /**
- * The rail's handle, at the foot of the rail and pointing the way it will move.
+ * The rail's handle, on the header row, at the end the rail moves towards.
  *
- * It sat at the top beside the logo, where it competed with the thing it is not: the name of the
- * app. Down here it is the last thing in the column and the only control on that edge, and the
- * chevron says which way it goes without anyone having to read a tooltip.
+ * Folded, the rail is eight units wide and the header row holds one thing. It holds the mark until
+ * you reach for it, and the chevron under the pointer or the focus ring: the name of the app is
+ * worth the slot while nobody is asking to move the rail, and the whole slot is the button either
+ * way, so a tap and a screen reader find it without hovering anything.
  */
 function SidebarToggle(): JSX.Element {
+  const label = (): string => (collapsed() ? "Expand the sidebar" : "Collapse the sidebar");
   return (
     <button
       type="button"
       class={[
-        "flex h-8 items-center rounded-md text-muted hover:bg-hover hover:text-body",
-        collapsed() ? "w-8 justify-center" : "w-full justify-end px-2",
+        "group flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-body",
+        { "ml-auto": !collapsed() },
       ]}
       aria-expanded={collapsed() ? "false" : "true"}
-      aria-label={collapsed() ? "Expand the sidebar" : "Collapse the sidebar"}
-      title={collapsed() ? "Expand the sidebar" : "Collapse the sidebar"}
+      aria-label={label()}
+      title={label()}
       onClick={() => toggleSidebar()}
     >
-      <Icon name={collapsed() ? "chevron-right" : "chevron-left"} class="h-4 w-4" />
+      <Show when={collapsed()} fallback={<Icon name="chevron-left" class="h-4 w-4" />}>
+        <Logo class="h-5 w-5 text-accent group-focus-visible:hidden group-hover:hidden" />
+        <Icon
+          name="chevron-right"
+          class="hidden h-4 w-4 group-focus-visible:block group-hover:block"
+        />
+      </Show>
     </button>
   );
 }
@@ -204,10 +213,11 @@ export default function Sidebar(props: { current: string | undefined }): JSX.Ele
       ]}
     >
       <div class={["mb-6 flex h-8 items-center", collapsed() ? "justify-center" : "gap-2 px-2"]}>
-        <Logo class="h-5 w-5 text-accent" />
         <Show when={!collapsed()}>
+          <Logo class="h-5 w-5 text-accent" />
           <span class="text-base font-semibold text-heading">Testate</span>
         </Show>
+        <SidebarToggle />
       </div>
       {/*
         The nav stays visible when the rail is collapsed. It used to be `hidden`, so folding the
@@ -251,8 +261,7 @@ export default function Sidebar(props: { current: string | undefined }): JSX.Ele
           )}
         </For>
       </nav>
-      <div class="mt-auto grid gap-1">
-        <SidebarToggle />
+      <div class="mt-auto">
         <Show when={actor()}>
           {(current) => (
             <Identity
