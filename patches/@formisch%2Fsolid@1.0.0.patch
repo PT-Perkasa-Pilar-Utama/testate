@@ -1,5 +1,8 @@
+diff --git a/node_modules/@formisch/solid/.bun-tag-1bbd9491120cf952 b/.bun-tag-1bbd9491120cf952
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/dist/dev.jsx b/dist/dev.jsx
-index 072c789496528b582417203a6e8a61a6ce9701d8..5398120b7a9c6521d33f47870ae65ee287ffff35 100644
+index 072c789496528b582417203a6e8a61a6ce9701d8..d35827c99902b276a6927fda9da9cebd62568768 100644
 --- a/dist/dev.jsx
 +++ b/dist/dev.jsx
 @@ -1,6 +1,9 @@
@@ -13,7 +16,56 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..5398120b7a9c6521d33f47870ae65ee2
  var framework = "solid";
  // @__NO_SIDE_EFFECTS__
  function createSignal(initialValue) {
-@@ -968,7 +971,19 @@ function FieldArray(props) {
+@@ -781,7 +784,7 @@ function createForm(config) {
+ }
+ 
+ // src/primitives/useField/useField.ts
+-import { createMemo as createMemo2, onCleanup } from "solid-js";
++import { createMemo as createMemo2, getOwner, onCleanup, runWithOwner } from "solid-js";
+ 
+ // src/utils/unwrap/unwrap.ts
+ function unwrap(value) {
+@@ -794,6 +797,7 @@ function unwrap(value) {
+ // src/primitives/useField/useField.ts
+ // @__NO_SIDE_EFFECTS__
+ function useField(form, config) {
++  const fieldOwner = getOwner();
+   const getPath = createMemo2(() => unwrap(config).path);
+   const getInternalFormStore = createMemo2(() => unwrap(form)[INTERNAL]);
+   const getInternalFieldStore = createMemo2(
+@@ -846,14 +850,19 @@ function useField(form, config) {
+       get name() {
+         return getInternalFieldStore().name;
+       },
+-      // eslint-disable-next-line solid/reactivity
+-      autofocus: !!getInternalFieldStore().errors.value,
++      // A getter, not a snapshot. Read eagerly this was a reactive value read outside any tracking
++      // scope, which Solid 2 reports as STRICT_READ_UNTRACKED, and it never updated anyway.
++      get autofocus() {
++        return !!getInternalFieldStore().errors.value;
++      },
+       ref: (element) => {
+         const internalFieldStore = getInternalFieldStore();
+         if (!internalFieldStore.elements.includes(element)) {
+           internalFieldStore.elements.push(element);
+         }
+-        onCleanup(() => {
++        // Solid 2 runs a ref callback outside the owner, so onCleanup here would have none and
++        // would never run (NO_OWNER_CLEANUP). `fieldOwner` is the component's, captured above.
++        runWithOwner(fieldOwner, () => onCleanup(() => {
+           const elements = internalFieldStore.elements.filter(
+             (el) => el !== element
+           );
+@@ -863,7 +872,7 @@ function useField(form, config) {
+             internalFieldStore.initialElements = internalFieldStore.initialElements.filter((el) => el !== element);
+           }
+           internalFieldStore.elements = elements;
+-        });
++        }));
+       },
+       onFocus() {
+         setFieldBool(getInternalFieldStore(), "isTouched", true);
+@@ -968,7 +977,19 @@ function FieldArray(props) {
  }
  
  // src/components/Form/Form.tsx
@@ -35,7 +87,7 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..5398120b7a9c6521d33f47870ae65ee2
  function Form(props) {
    const [, other] = splitProps(props, ["of", "onSubmit"]);
 diff --git a/dist/index.jsx b/dist/index.jsx
-index 072c789496528b582417203a6e8a61a6ce9701d8..5398120b7a9c6521d33f47870ae65ee287ffff35 100644
+index 072c789496528b582417203a6e8a61a6ce9701d8..d35827c99902b276a6927fda9da9cebd62568768 100644
 --- a/dist/index.jsx
 +++ b/dist/index.jsx
 @@ -1,6 +1,9 @@
@@ -49,7 +101,56 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..5398120b7a9c6521d33f47870ae65ee2
  var framework = "solid";
  // @__NO_SIDE_EFFECTS__
  function createSignal(initialValue) {
-@@ -968,7 +971,19 @@ function FieldArray(props) {
+@@ -781,7 +784,7 @@ function createForm(config) {
+ }
+ 
+ // src/primitives/useField/useField.ts
+-import { createMemo as createMemo2, onCleanup } from "solid-js";
++import { createMemo as createMemo2, getOwner, onCleanup, runWithOwner } from "solid-js";
+ 
+ // src/utils/unwrap/unwrap.ts
+ function unwrap(value) {
+@@ -794,6 +797,7 @@ function unwrap(value) {
+ // src/primitives/useField/useField.ts
+ // @__NO_SIDE_EFFECTS__
+ function useField(form, config) {
++  const fieldOwner = getOwner();
+   const getPath = createMemo2(() => unwrap(config).path);
+   const getInternalFormStore = createMemo2(() => unwrap(form)[INTERNAL]);
+   const getInternalFieldStore = createMemo2(
+@@ -846,14 +850,19 @@ function useField(form, config) {
+       get name() {
+         return getInternalFieldStore().name;
+       },
+-      // eslint-disable-next-line solid/reactivity
+-      autofocus: !!getInternalFieldStore().errors.value,
++      // A getter, not a snapshot. Read eagerly this was a reactive value read outside any tracking
++      // scope, which Solid 2 reports as STRICT_READ_UNTRACKED, and it never updated anyway.
++      get autofocus() {
++        return !!getInternalFieldStore().errors.value;
++      },
+       ref: (element) => {
+         const internalFieldStore = getInternalFieldStore();
+         if (!internalFieldStore.elements.includes(element)) {
+           internalFieldStore.elements.push(element);
+         }
+-        onCleanup(() => {
++        // Solid 2 runs a ref callback outside the owner, so onCleanup here would have none and
++        // would never run (NO_OWNER_CLEANUP). `fieldOwner` is the component's, captured above.
++        runWithOwner(fieldOwner, () => onCleanup(() => {
+           const elements = internalFieldStore.elements.filter(
+             (el) => el !== element
+           );
+@@ -863,7 +872,7 @@ function useField(form, config) {
+             internalFieldStore.initialElements = internalFieldStore.initialElements.filter((el) => el !== element);
+           }
+           internalFieldStore.elements = elements;
+-        });
++        }));
+       },
+       onFocus() {
+         setFieldBool(getInternalFieldStore(), "isTouched", true);
+@@ -968,7 +977,19 @@ function FieldArray(props) {
  }
  
  // src/components/Form/Form.tsx

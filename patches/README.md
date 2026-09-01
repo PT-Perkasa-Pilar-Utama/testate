@@ -59,6 +59,19 @@ rest onto the native `form`, so the shim preserves getters rather than copying v
 spread would freeze. `batch` is a straight call-through: Solid 2's own CHEATSHEET replaces it with
 "default microtask batching; `flush()` to apply now".
 
+Two more, found by the browser suite rather than by reading. Solid 2 ships reactivity diagnostics
+that this repo treats as failures, and `<Field>` tripped two of them on every form:
+
+- `props.autofocus` read `errors.value` eagerly, so it was a reactive read outside any tracking
+  scope (`STRICT_READ_UNTRACKED`) and a snapshot that never updated. It is a getter now, which is
+  also what the surrounding properties already were.
+- The `ref` callback registered `onCleanup`, and Solid 2 runs a ref outside the owner, so that
+  cleanup would never have run (`NO_OWNER_CLEANUP`): a field's element was never removed from its
+  store on unmount. `useField` captures the owner and the registration runs inside it.
+
+Both are latent bugs on Solid 1 too, where they are a lint warning and a leak rather than a
+diagnostic; Formisch's own `eslint-disable solid/reactivity` sits on the first one.
+
 **Why the `.jsx` builds and not the `.js` ones.** The compiled builds import from `solid-js/web`, a
 subpath Solid 2 removed (it is `@solidjs/web` now), and there is no shimming that. The `solid`
 export condition serves raw JSX instead, which the Solid vite plugin compiles itself and which
