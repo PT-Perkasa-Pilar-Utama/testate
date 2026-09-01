@@ -88,8 +88,8 @@ There is nothing to check first.
    presenter: the form holds them now.
 6. The presenter keeps `error`, `busy` and a `submit(input)` that takes the parsed output.
 
-`lib/form.ts` and `components/form-errors.tsx` go when the last form leaves them. Until then they
-still serve the forms that have not moved.
+`components/form-errors.tsx` is gone with the last form that used it, and `lib/form.ts` now holds
+one thing: `onceSettled`, the reason a reset runs just outside the effect that triggered it.
 
 ## Traps
 
@@ -149,10 +149,20 @@ still serve the forms that have not moved.
 
   ```tsx
   import { reset } from "@formisch/solid";
-  createEffect(() => props.presenter.editing(), (record) => {
-    if (record !== null) reset(form, { initialInput: toDraft(record) });
-  });
+  import { onceSettled } from "@/lib/form.ts";
+
+  createEffect(
+    () => (props.presenter.editing() ? toDraft(props.record) : null),
+    (draft) => {
+      if (draft !== null) onceSettled(() => reset(form, { initialInput: draft }));
+    }
+  );
   ```
+
+  **`reset` must not be called from inside the effect itself.** It writes the new initial input and
+  reads it straight back, and Solid 2 only makes a write visible on a flush; inside an effect
+  callback a flush is a no-op it warns about. `onceSettled` puts the call just outside. Skip it and
+  the dialog prefills with its seed instead of the record, while every create path still passes.
 
 ## Before you finish
 

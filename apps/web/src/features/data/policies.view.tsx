@@ -6,6 +6,7 @@ import type { ColumnPolicy } from "@testate/shared";
 import { policyFormSchema } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
+import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import EmptyState from "@/components/empty-state.tsx";
@@ -36,7 +37,9 @@ function PolicyDialog(props: { presenter: PoliciesPresenter }): JSX.Element {
     () => props.presenter.draft(),
     (draft) => {
       if (draft !== null) {
-        reset(form, { initialInput: { fn: draft.fn, mask: draft.mask, display: draft.display } });
+        onceSettled(() =>
+          reset(form, { initialInput: { fn: draft.fn, mask: draft.mask, display: draft.display } })
+        );
       }
     }
   );

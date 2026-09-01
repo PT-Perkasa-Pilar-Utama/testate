@@ -1,6 +1,7 @@
 import { Field, Form, createForm, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
+import { onceSettled } from "@/lib/form.ts";
 import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
 import { PASSWORD_MIN_LENGTH, changePasswordSchema } from "@testate/shared";
@@ -26,7 +27,7 @@ function PasswordCard(props: { presenter: AccountPresenter }): JSX.Element {
   // follow synchronously.
   async function submit(input: ChangePasswordInput): Promise<void> {
     const changed = await props.presenter.changePassword(input);
-    if (changed) reset(form);
+    if (changed) onceSettled(() => reset(form));
   }
   return (
     <LayerCard class="grid gap-4 px-5 py-4">

@@ -1,6 +1,7 @@
 import { Field, Form, createForm, getInput, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
+import { onceSettled } from "@/lib/form.ts";
 import { For, Loading, Show, createEffect } from "solid-js";
 import type { ApiToken } from "@testate/shared";
 import { tokenDraftSchema } from "@testate/shared";
@@ -42,7 +43,7 @@ function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element {
   createEffect(
     () => props.presenter.creating(),
     (creating) => {
-      if (creating) reset(form, { initialInput: EMPTY_DRAFT });
+      if (creating) onceSettled(() => reset(form, { initialInput: EMPTY_DRAFT }));
     }
   );
   return (

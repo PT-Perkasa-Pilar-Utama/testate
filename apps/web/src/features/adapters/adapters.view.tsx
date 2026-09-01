@@ -5,6 +5,7 @@ import type { AdapterCreateFormInput, Engine } from "@testate/shared";
 import { adapterCreateFormSchema } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
+import { onceSettled } from "@/lib/form.ts";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
@@ -53,7 +54,7 @@ function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Element {
   createEffect(
     () => props.presenter.creating(),
     (opening) => {
-      if (opening) reset(form);
+      if (opening) onceSettled(() => reset(form));
     }
   );
   // A test outcome describes one engine's connectivity; switching engines makes it stale.

@@ -4,6 +4,7 @@ import { Show, createEffect } from "solid-js";
 import { createUserSchema, editUserFormSchema, resetPasswordSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
+import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
@@ -19,7 +20,7 @@ export function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element 
   createEffect(
     () => props.presenter.creating(),
     (open) => {
-      if (open) reset(form);
+      if (open) onceSettled(() => reset(form));
     }
   );
   return (
@@ -123,7 +124,9 @@ export function EditDialog(props: { presenter: UsersPresenter }): JSX.Element {
     () => props.presenter.editing(),
     (user) => {
       if (user !== null) {
-        reset(form, { initialInput: { display_name: user.display_name, role: user.role } });
+        onceSettled(() =>
+          reset(form, { initialInput: { display_name: user.display_name, role: user.role } })
+        );
       }
     }
   );
@@ -186,7 +189,7 @@ export function ResetDialog(props: { presenter: UsersPresenter }): JSX.Element {
   createEffect(
     () => props.presenter.resetting() !== null,
     (open) => {
-      if (open) reset(form);
+      if (open) onceSettled(() => reset(form));
     }
   );
   return (

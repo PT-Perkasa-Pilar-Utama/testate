@@ -4,6 +4,7 @@ import { Show, createEffect, untrack } from "solid-js";
 import { storeMigrationFormSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
+import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
@@ -28,7 +29,7 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
   createEffect(
     () => (props.presenter.migrating() ? props.presenter.migrateDefaults() : null),
     (defaults) => {
-      if (defaults !== null) reset(form, { initialInput: defaults });
+      if (defaults !== null) onceSettled(() => reset(form, { initialInput: defaults }));
     }
   );
   return (

@@ -6,6 +6,7 @@ import { deleteStateFormSchema, stateDraftSchema } from "@testate/shared";
 import type { StateDraftInput } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
+import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
@@ -98,7 +99,7 @@ export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
   createEffect(
     () => props.presenter.taking(),
     (open) => {
-      if (open) reset(form, { initialInput: EMPTY_DRAFT });
+      if (open) onceSettled(() => reset(form, { initialInput: EMPTY_DRAFT }));
     }
   );
   return (
@@ -163,14 +164,16 @@ export function EditDialog(props: { presenter: StatesPresenter }): JSX.Element {
     () => props.presenter.editing(),
     (state) => {
       if (state !== null) {
-        reset(form, {
-          initialInput: {
-            name: state.name,
-            notes: state.notes ?? "",
-            tags: state.tags.join(", "),
-            adapter_ids: [],
-          },
-        });
+        onceSettled(() =>
+          reset(form, {
+            initialInput: {
+              name: state.name,
+              notes: state.notes ?? "",
+              tags: state.tags.join(", "),
+              adapter_ids: [],
+            },
+          })
+        );
       }
     }
   );

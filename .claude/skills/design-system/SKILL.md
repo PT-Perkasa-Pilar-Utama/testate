@@ -96,7 +96,7 @@ at 6px (controls), `lg` at 8px (cards), `xl` at 12px. Those are the two radii Gi
 
 ## Components
 
-Twenty-three files under `apps/web/src/components/`. Reuse before you write.
+Twenty-two files under `apps/web/src/components/`. Reuse before you write.
 
 | File | Exports |
 | --- | --- |
@@ -107,7 +107,6 @@ Twenty-three files under `apps/web/src/components/`. Reuse before you write.
 | `dialog.tsx` | `Dialog` |
 | `empty-state.tsx` | `EmptyState` — the icon, line, and one action a screen with nothing on it shows |
 | `field-error.tsx` | `FieldError` — one field's own message, under the field (see the `formisch-forms` skill) |
-| `form-errors.tsx` | `FormErrors` — the old whole-form banner; only forms not yet on Formisch still use it |
 | `input.tsx` / `input-area.tsx` | `Input`, `InputArea` |
 | `kbd.tsx` | `Kbd` |
 | `layer-card.tsx` | `LayerCard` |

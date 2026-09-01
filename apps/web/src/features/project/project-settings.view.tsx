@@ -6,6 +6,7 @@ import * as v from "valibot";
 import { projectDraftSchema } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
+import { onceSettled } from "@/lib/form.ts";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
@@ -58,7 +59,7 @@ export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element 
     () =>
       props.presenter.editing() ? toProjectDraft(props.presenter.overview.value().project) : null,
     (draft) => {
-      if (draft !== null) reset(form, { initialInput: draft });
+      if (draft !== null) onceSettled(() => reset(form, { initialInput: draft }));
     }
   );
 
@@ -157,7 +158,7 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
   createEffect(
     () => props.presenter.plan(),
     (plan) => {
-      if (plan !== null) reset(form);
+      if (plan !== null) onceSettled(() => reset(form));
     }
   );
 

@@ -5,6 +5,7 @@ import type { Adapter } from "@testate/shared";
 import { adapterEditFormSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
+import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
@@ -66,7 +67,7 @@ export default function EditDialog(props: {
   createEffect(
     () => (props.presenter.editing() ? draftFrom(props.adapter) : null),
     (draft) => {
-      if (draft !== null) reset(form, { initialInput: draft });
+      if (draft !== null) onceSettled(() => reset(form, { initialInput: draft }));
     }
   );
 

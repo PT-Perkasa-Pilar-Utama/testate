@@ -1,6 +1,7 @@
 import { Field, Form, createForm, reset, setInput } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
+import { onceSettled } from "@/lib/form.ts";
 import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show, createEffect, createSignal } from "solid-js";
 import { createProjectSchema } from "@testate/shared";
@@ -31,7 +32,7 @@ function CreateDialog(props: { presenter: ProjectsPresenter }): JSX.Element {
     () => props.presenter.creating(),
     (open) => {
       if (open) {
-        reset(form);
+        onceSettled(() => reset(form));
         setSlugTouched(false);
       }
     }

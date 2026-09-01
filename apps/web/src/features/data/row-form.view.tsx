@@ -5,6 +5,7 @@ import type { TableSchema } from "@testate/shared";
 import { rowFormSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
+import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
 import Input from "@/components/input.tsx";
@@ -140,7 +141,7 @@ export default function RowForm(props: {
   createEffect(
     () => (props.presenter.form() === null ? null : props.presenter.initialCells()),
     (cells) => {
-      if (cells !== null) reset(form, { initialInput: { cells } });
+      if (cells !== null) onceSettled(() => reset(form, { initialInput: { cells } }));
     }
   );
   return (
