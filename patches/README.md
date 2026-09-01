@@ -40,3 +40,37 @@ briefly shipped here and reverted.
 `solidjs/solid#3140`. Drop this patch when a release carries the fix. On any `@solidjs/signals`
 upgrade `bun install` will fail to apply it, which is the signal to check whether it is still needed
 rather than to force it through.
+
+## `@formisch/solid@1.0.0`
+
+Two functions restored to `dist/index.jsx` and `dist/dev.jsx`, the raw-JSX builds that Formisch
+serves through its `solid` export condition:
+
+```js
+const batch = (fn) => fn();          // Solid 2 batches on a microtask and dropped `batch`
+function splitProps(props, keys) {   // Solid 2 dropped it; getters keep the rest reactive
+```
+
+**What it fixes.** Formisch declares `"solid-js": ">=1.6 <2"`, and the reason is exactly two
+imports. Its Solid adapter asks for `batch` and `splitProps`, which Solid 2 removed; every other
+API it uses (`createSignal`, `createMemo`, `createUniqueId`, `untrack`, `onCleanup`) Solid 2 still
+exports. `splitProps` appears once, in `<Form>`, stripping `of` and `onSubmit` before spreading the
+rest onto the native `form`, so the shim preserves getters rather than copying values or the
+spread would freeze. `batch` is a straight call-through: Solid 2's own CHEATSHEET replaces it with
+"default microtask batching; `flush()` to apply now".
+
+**Why the `.jsx` builds and not the `.js` ones.** The compiled builds import from `solid-js/web`, a
+subpath Solid 2 removed (it is `@solidjs/web` now), and there is no shimming that. The `solid`
+export condition serves raw JSX instead, which the Solid vite plugin compiles itself and which
+imports only from `solid-js`. `apps/web/vite.config.ts` therefore keeps Formisch out of dependency
+pre-bundling, or esbuild resolves the `import` condition and pulls the wrong build. Both the dev
+server and the production build take the patched JSX; the built bundle contains no reference to
+`solid-js/web`, which is the check worth repeating after any upgrade.
+
+**Evidence.** The sign-in form runs on it: fields validate against the shared valibot schema, the
+messages appear under their own controls, typing clears them, `fill()` drives it the way the
+browser suite does, and a rejected password comes back as a banner rather than a field error.
+
+**Ceiling and upgrade path.** Drop this patch when Formisch ships a Solid 2 build; the peer range
+is the thing to watch. `bun install` failing to apply it after an upgrade is the signal to check
+whether the two shims are still needed rather than to force it through.

@@ -1,59 +1,72 @@
+import { Field, Form, createForm } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import { Show } from "solid-js";
+import { loginSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
-import FormErrors from "@/components/form-errors.tsx";
+import FieldError from "@/components/field-error.tsx";
 import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import LayerCard from "@/components/layer-card.tsx";
-import { createFormGuard } from "@/lib/form.ts";
+import Logo from "@/components/logo.tsx";
 import { createLoginPresenter } from "./auth.presenter.ts";
 
+/**
+ * The sign-in form, and the reference for every other form in the app: one valibot schema from
+ * `@testate/shared` drives the fields, their messages and the submitted values, so nothing about
+ * the shape is written twice. See the `formisch-forms` skill.
+ */
 export default function LoginView(props: { next: string }): JSX.Element {
   const presenter = createLoginPresenter(() => props.next);
-  const guard = createFormGuard();
+  const form = createForm({ schema: loginSchema });
   return (
-    // GitHub's sign-in: the mark above a narrow card, nothing else on the page.
-    <section class="mx-auto grid w-full max-w-[340px] gap-6 pt-16">
+    // GitHub's sign-in: the mark above a narrow card, nothing else on the page. The page centres
+    // this, so there is no padding here pushing it off the middle.
+    <section class="grid w-full max-w-[340px] gap-6">
       <div class="grid justify-items-center gap-2 text-center">
+        <Logo class="h-12 w-12 text-accent" label="Testate" />
         <span class="text-2xl font-semibold text-heading">Testate</span>
         <p class="text-muted">Git for your test database</p>
       </div>
       <LayerCard class="grid gap-4 px-6 py-5">
         <h1 class="text-base font-semibold text-heading">Sign in</h1>
-        <form
-          class="grid gap-4"
-          ref={guard.ref}
-          novalidate
-          onSubmit={(event) => {
-            if (!guard.accepts(event)) return;
-            void presenter.submit();
-          }}
-        >
-          <FormErrors errors={guard.errors()} />
-          <label class="grid gap-1.5 text-base">
-            <span>Username</span>
-            <Input
-              name="username"
-              autocomplete="username"
-              autofocus
-              required
-              value={presenter.username()}
-              onInput={(event) => presenter.setUsername(event.currentTarget.value)}
-            />
-          </label>
-          <label class="grid gap-1.5 text-base">
-            <span>Password</span>
-            <Input
-              name="password"
-              type="password"
-              autocomplete="current-password"
-              required
-              value={presenter.password()}
-              onInput={(event) => presenter.setPassword(event.currentTarget.value)}
-            />
-          </label>
+        <Form of={form} class="grid gap-4" onSubmit={(input) => presenter.submit(input)}>
+          <Field of={form} path={["username"]}>
+            {(field) => (
+              <label class="grid gap-1.5 text-base">
+                <span>Username</span>
+                <Input
+                  {...field.props}
+                  type="text"
+                  autocomplete="username"
+                  autofocus
+                  value={field.input}
+                  variant={field.errors ? "error" : "default"}
+                  aria-invalid={field.errors ? "true" : undefined}
+                />
+                <FieldError message={field.errors?.[0]} />
+              </label>
+            )}
+          </Field>
+          <Field of={form} path={["password"]}>
+            {(field) => (
+              <label class="grid gap-1.5 text-base">
+                <span>Password</span>
+                <Input
+                  {...field.props}
+                  type="password"
+                  autocomplete="current-password"
+                  value={field.input}
+                  variant={field.errors ? "error" : "default"}
+                  aria-invalid={field.errors ? "true" : undefined}
+                />
+                <FieldError message={field.errors?.[0]} />
+              </label>
+            )}
+          </Field>
+          {/* What the server said, which is never a field's fault: a wrong password, a locked
+              account, an address over its guess budget. */}
           <Show when={presenter.error()}>
             {(message) => <Banner variant="error">{message()}</Banner>}
           </Show>
@@ -63,7 +76,7 @@ export default function LoginView(props: { next: string }): JSX.Element {
             </Show>
             {presenter.busy() ? "Signing in..." : "Sign in"}
           </Button>
-        </form>
+        </Form>
       </LayerCard>
       <p class="text-center text-xs text-muted">Your databases, your network. Nothing leaves it.</p>
     </section>

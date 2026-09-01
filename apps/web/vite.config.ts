@@ -11,6 +11,11 @@ export default defineConfig(({ command }) => ({
   base: command === "build" ? "/__TESTATE_BASE__/" : "/",
   plugins: [solidPlugin(), tailwindcss()],
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
+  // Formisch ships two builds. Its `solid` export condition serves raw JSX that imports only from
+  // `solid-js`; the default one is pre-compiled against `solid-js/web`, a package that does not
+  // exist under Solid 2. Excluding it from pre-bundling keeps esbuild from resolving the wrong one
+  // and leaves the JSX for the Solid plugin to compile (patches/README.md says why it is patched).
+  optimizeDeps: { exclude: ["@formisch/solid", "@formisch/core"] },
   server: {
     port: 7379,
     // No keep-alive: Bun closes idle sockets and the proxy would answer the next request with a 502.

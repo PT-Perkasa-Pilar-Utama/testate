@@ -50,6 +50,7 @@
     "typescript": "7.0.2"
   },
   "patchedDependencies": {
-    "@solidjs/signals@2.0.0-rc.4": "patches/@solidjs%2Fsignals@2.0.0-rc.4.patch"
+    "@solidjs/signals@2.0.0-rc.4": "patches/@solidjs%2Fsignals@2.0.0-rc.4.patch",
+    "@formisch/solid@1.0.0": "patches/@formisch%2Fsolid@1.0.0.patch"
   }
 }

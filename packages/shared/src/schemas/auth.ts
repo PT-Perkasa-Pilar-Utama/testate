@@ -5,9 +5,19 @@ import { actorSchema, idSchema, timestampSchema } from "./common.ts";
 
 export const PASSWORD_MIN_LENGTH = 12;
 
+// The messages are the ones a person reads, on the sign-in form and in the API's 400 alike, so
+// they are written here once rather than left as valibot's "Invalid length: Expected >=1".
 export const loginSchema = v.object({
-  username: v.pipe(v.string(), v.minLength(1), v.maxLength(64)),
-  password: v.pipe(v.string(), v.minLength(1), v.maxLength(1024)),
+  username: v.pipe(
+    v.string(),
+    v.minLength(1, "Enter your username."),
+    v.maxLength(64, "A username is at most 64 characters.")
+  ),
+  password: v.pipe(
+    v.string(),
+    v.minLength(1, "Enter your password."),
+    v.maxLength(1024, "That password is too long to be one of ours.")
+  ),
 });
 export type LoginInput = v.InferOutput<typeof loginSchema>;
 

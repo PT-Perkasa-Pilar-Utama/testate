@@ -1,0 +1,72 @@
+diff --git a/dist/dev.jsx b/dist/dev.jsx
+index 072c789496528b582417203a6e8a61a6ce9701d8..5398120b7a9c6521d33f47870ae65ee287ffff35 100644
+--- a/dist/dev.jsx
++++ b/dist/dev.jsx
+@@ -1,6 +1,9 @@
+ // ../../packages/core/dist/index.solid.js
+ import * as v from "valibot";
+-import { batch, createSignal as createSignal$1, createUniqueId as createId, untrack } from "solid-js";
++import { createSignal as createSignal$1, createUniqueId as createId, untrack } from "solid-js";
++// Solid 2 batches on a microtask by default and dropped `batch` ("Default microtask batching;
++// flush() to apply now" — solid-js CHEATSHEET), so calling through is the whole behaviour.
++const batch = (fn) => fn();
+ var framework = "solid";
+ // @__NO_SIDE_EFFECTS__
+ function createSignal(initialValue) {
+@@ -968,7 +971,19 @@ function FieldArray(props) {
+ }
+ 
+ // src/components/Form/Form.tsx
+-import { splitProps } from "solid-js";
++// Solid 2 dropped splitProps. This is the only place Formisch uses it, and the shim keeps the
++// remaining keys as getters so the props it spreads onto <form> stay reactive.
++// ponytail: copies the keys present at call time. Formisch calls it once with a static prop set,
++// so nothing is missed; a caller adding props later would need Object.keys on every read.
++function splitProps(props, keys) {
++  const taken = new Set(keys.flat());
++  const rest = {};
++  for (const key of Object.keys(props)) {
++    if (taken.has(key)) continue;
++    Object.defineProperty(rest, key, { get: () => props[key], enumerable: true });
++  }
++  return [props, rest];
++}
+ // @__NO_SIDE_EFFECTS__
+ function Form(props) {
+   const [, other] = splitProps(props, ["of", "onSubmit"]);
+diff --git a/dist/index.jsx b/dist/index.jsx
+index 072c789496528b582417203a6e8a61a6ce9701d8..5398120b7a9c6521d33f47870ae65ee287ffff35 100644
+--- a/dist/index.jsx
++++ b/dist/index.jsx
+@@ -1,6 +1,9 @@
+ // ../../packages/core/dist/index.solid.js
+ import * as v from "valibot";
+-import { batch, createSignal as createSignal$1, createUniqueId as createId, untrack } from "solid-js";
++import { createSignal as createSignal$1, createUniqueId as createId, untrack } from "solid-js";
++// Solid 2 batches on a microtask by default and dropped `batch` ("Default microtask batching;
++// flush() to apply now" — solid-js CHEATSHEET), so calling through is the whole behaviour.
++const batch = (fn) => fn();
+ var framework = "solid";
+ // @__NO_SIDE_EFFECTS__
+ function createSignal(initialValue) {
+@@ -968,7 +971,19 @@ function FieldArray(props) {
+ }
+ 
+ // src/components/Form/Form.tsx
+-import { splitProps } from "solid-js";
++// Solid 2 dropped splitProps. This is the only place Formisch uses it, and the shim keeps the
++// remaining keys as getters so the props it spreads onto <form> stay reactive.
++// ponytail: copies the keys present at call time. Formisch calls it once with a static prop set,
++// so nothing is missed; a caller adding props later would need Object.keys on every read.
++function splitProps(props, keys) {
++  const taken = new Set(keys.flat());
++  const rest = {};
++  for (const key of Object.keys(props)) {
++    if (taken.has(key)) continue;
++    Object.defineProperty(rest, key, { get: () => props[key], enumerable: true });
++  }
++  return [props, rest];
++}
+ // @__NO_SIDE_EFFECTS__
+ function Form(props) {
+   const [, other] = splitProps(props, ["of", "onSubmit"]);

@@ -41,6 +41,7 @@
       "name": "@testate/web",
       "version": "1.1.0-alpha",
       "dependencies": {
+        "@formisch/solid": "1.0.0",
         "@solidjs/web": "2.0.0-rc.4",
         "@testate/shared": "workspace:*",
         "solid-js": "2.0.0-rc.4",
@@ -62,6 +63,7 @@
     },
   },
   "patchedDependencies": {
+    "@formisch/solid@1.0.0": "patches/@formisch%2Fsolid@1.0.0.patch",
     "@solidjs/signals@2.0.0-rc.4": "patches/@solidjs%2Fsignals@2.0.0-rc.4.patch",
   },
   "packages": {
@@ -122,6 +124,8 @@
     "@eslint/object-schema": ["@eslint/object-schema@3.0.5", "", {}, "sha512-vqTaUEgxzm+YDSdElad6PiRoX4t8VGDjCtt05zn4nU810UIx/uNEV7/lZJ6KwFThKZOzOxzXy48da+No7HZaMw=="],
 
     "@eslint/plugin-kit": ["@eslint/plugin-kit@0.7.2", "", { "dependencies": { "@eslint/core": "^1.2.1", "levn": "^0.4.1" } }, "sha512-+CNAzxglkrpNf/kKywqQfk74QjtceuOE7Qm+AF8miRvPF/wmmK5+OJOgVh3AVTT3RP2mH3+FOaxlE5v72owk0A=="],
+
+    "@formisch/solid": ["@formisch/solid@1.0.0", "", { "peerDependencies": { "solid-js": ">=1.6 <2", "typescript": ">=5 <8", "valibot": ">=1.4.1 <2" }, "optionalPeers": ["typescript"] }, "sha512-J5RF48YCM6SNYVkt+CJ0+5MHPC38wi3zgBM5hOpwnWFU5Q/gtdjb+vO63uJKWLAU7XQlnZVDo7rBzf8bVsvvcA=="],
 
     "@hono/standard-validator": ["@hono/standard-validator@0.2.0", "", { "peerDependencies": { "@standard-schema/spec": "1.0.0", "hono": ">=3.9.0" } }, "sha512-pFq0UVAnjzXcDAgqFpDeVL3MOUPrlIh/kPqBDvbCYoThVhhS+Vf37VcdsakdOFFGiqoiYVxp3LifXFhGhp/rgQ=="],
 

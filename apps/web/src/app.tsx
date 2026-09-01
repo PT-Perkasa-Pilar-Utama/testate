@@ -16,6 +16,7 @@ import AccountView from "@/features/account/account.view.tsx";
 import AuditView from "@/features/audit/audit.view.tsx";
 import { signOut } from "@/features/auth/auth.presenter.ts";
 import ChangePasswordView from "@/features/auth/change-password.view.tsx";
+import Logo from "@/components/logo.tsx";
 import LoginView from "@/features/auth/login.view.tsx";
 import JobsView from "@/features/jobs/jobs.view.tsx";
 import ProjectView from "@/features/project/project.view.tsx";
@@ -171,6 +172,7 @@ function Sidebar(props: { current: string | undefined }): JSX.Element {
           <Icon name="panel-left" />
         </button>
         <Show when={!collapsed()}>
+          <Logo class="h-5 w-5 text-accent" />
           <span class="text-base font-semibold text-heading">Testate</span>
         </Show>
       </div>
@@ -233,38 +235,59 @@ function Sidebar(props: { current: string | undefined }): JSX.Element {
 export default function App(): JSX.Element {
   const match = createMatcher(ROUTES);
   const access = (): Access => accessFor(match());
+  /**
+   * Signing in and the forced password change are the whole page. Neither has a project to
+   * navigate, so the sidebar beside them was an empty rail with a collapse button, and `main`'s
+   * padding pushed the card off the middle of the screen.
+   */
+  const signedOut = (): boolean =>
+    sessionReady() &&
+    (session()?.must_change_password === true ||
+      access() === "login" ||
+      (match()?.name === "login" && actor() === null));
   return (
-    <div class="flex min-h-full">
-      <Sidebar current={match()?.path} />
-      <main class="flex-1 px-8 py-6">
-        <Errored
-          fallback={(error, reset) => (
-            <div class="grid gap-3">
-              <Banner variant="error">{String(error())}</Banner>
-              <div>
-                <Button onClick={reset}>Retry</Button>
+    <Show when={!signedOut()} fallback={<AuthScreen next={location()} />}>
+      <div class="flex min-h-full">
+        <Sidebar current={match()?.path} />
+        <main class="flex-1 px-8 py-6">
+          <Errored
+            fallback={(error, reset) => (
+              <div class="grid gap-3">
+                <Banner variant="error">{String(error())}</Banner>
+                <div>
+                  <Button onClick={reset}>Retry</Button>
+                </div>
               </div>
-            </div>
-          )}
-        >
-          <Show when={sessionReady()} fallback={<p class="text-muted">Loading...</p>}>
-            <Switch fallback={<Page match={match()} />}>
-              <Match when={session()?.must_change_password === true}>
-                <ChangePasswordView />
-              </Match>
-              <Match when={access() === "login"}>
-                <LoginView next={location()} />
-              </Match>
-              <Match when={access() === "forbidden"}>
-                <Banner variant="error">Your role cannot open this page.</Banner>
-              </Match>
-              <Match when={access() === "not-found"}>
-                <Banner variant="alert">No page at {location()}.</Banner>
-              </Match>
-            </Switch>
-          </Show>
-        </Errored>
-      </main>
+            )}
+          >
+            <Show when={sessionReady()} fallback={<p class="text-muted">Loading...</p>}>
+              <Switch fallback={<Page match={match()} />}>
+                <Match when={access() === "forbidden"}>
+                  <Banner variant="error">Your role cannot open this page.</Banner>
+                </Match>
+                <Match when={access() === "not-found"}>
+                  <Banner variant="alert">No page at {location()}.</Banner>
+                </Match>
+              </Switch>
+            </Show>
+          </Errored>
+        </main>
+        <Toaster />
+      </div>
+    </Show>
+  );
+}
+
+/** The signed-out page: one card, centred on both axes, and nothing else on screen. */
+function AuthScreen(props: { next: string }): JSX.Element {
+  return (
+    <div class="grid min-h-screen place-items-center px-4 py-10">
+      <Show
+        when={session()?.must_change_password === true}
+        fallback={<LoginView next={props.next} />}
+      >
+        <ChangePasswordView />
+      </Show>
       <Toaster />
     </div>
   );
