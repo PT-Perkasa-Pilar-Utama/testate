@@ -2,7 +2,7 @@
   "name": "testate",
   "version": "1.1.0-alpha",
   "private": true,
-  "description": "Git for your test database. Reset the database, not the developer.",
+  "description": "Git for your test database. Snapshot it, break it, put it back in seconds.",
   "license": "MIT",
   "author": "PT. Perkasa Pilar Utama",
   "repository": {
