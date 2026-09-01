@@ -83,6 +83,7 @@ The first admin comes from environment variables. On first login Testate forces 
 3. As an admin, I want to create users with a role and a temporary password that must change on first login, so that QA and viewers get their own accounts without email delivery.
 4. As an admin, I want to disable and delete users, so that leavers lose access the same day.
 5. As an admin, I want to reset a user's password to a temporary one that must change on next login, so that a locked-out tester gets back in without me knowing their password.
+151. As an admin, I want to change a user's display name and role, so that a promotion does not mean deleting the account and handing out a new password.
 6. As any user, I want to change my own password, so that I own my credential.
 7. As any user, I want Testate to lock my account for fifteen minutes after five failed logins, so that password guessing is slow.
 8. As any user, I want my session to end after twelve idle hours and after seven days in any case, so that a forgotten browser tab is not a permanent door.

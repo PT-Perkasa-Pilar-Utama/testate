@@ -15,9 +15,11 @@ left; `grep -rn "ponytail:" apps packages e2e scripts`).
 homepage at <https://pt-perkasa-pilar-utama.github.io/testate/> served from `docs/`, and the head of
 engineering's green light. **Beta is the next phase and a lot is expected to change.**
 
-E2E: 135 Playwright tests, ~4 min, coverage **144/144 stories covered**. `NON_UI` in
+E2E: 136 Playwright tests, ~4 min, coverage **145/145 stories covered**. `NON_UI` in
 `e2e/lib/stories.ts` is empty: what no screen shows, an API or boot test covers. The count fell
-from 150 because the UI rework cut the features six stories described; see `docs/UI_REWORK.md`.
+from 150 to 144 because the UI rework cut the features six stories described
+(`docs/UI_REWORK.md`), then rose to 145 with story 151: `PATCH /users/:id` had existed, tested and
+guarded against demoting the last admin, with no screen ever calling it.
 
 The version is `1.1.0-alpha`. The API listens on **7378** and the dev web server on **7379**;
 3000 and 5173 were abandoned because they collide with every other project on the machine. The
@@ -179,6 +181,21 @@ b9131cd test(e2e): cover the contract and agent stories over the API
 - **The three README limits are the product boundary, not bugs.** Databases restore one after
   another, Testate only touches what you add, microservices are untested. Two are architectural.
 
+
+### Forms are Formisch now (2026-09-01)
+
+Every form in the SPA is a Formisch form driven by a valibot schema from `@testate/shared`, with
+per-field messages under their own controls. `.claude/skills/formisch-forms/SKILL.md` is the
+reference and carries the traps; read it before touching a form.
+
+Formisch needs `patches/@formisch%2Fsolid@1.0.0.patch` to run on Solid 2 at all, and that patch is
+four repairs, not one. The one worth knowing: Solid 1's `batch` flushed on exit and Solid 2 batches
+to a microtask, so Formisch's write-then-read inside `reset` returned stale values and every edit
+dialog prefilled with its seed while every create path passed. `patches/README.md` has the rest.
+
+The SPA also has a light theme now, three states (system, light, dark) with the control in the
+sidebar. `bun run check:contrast` is a gate step that holds both palettes to WCAG AA and fails on a
+token the light block forgot.
 
 ### The UI rework (2026-08-31 to 2026-09-01)
 

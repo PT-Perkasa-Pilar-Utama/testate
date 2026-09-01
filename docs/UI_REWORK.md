@@ -97,7 +97,7 @@ tab cannot be shared as a link.
 | 2. Navigation | done | project opens on States; `?tab=` survives a reload; health folded into Settings |
 | 3. Export gap | done | 2,502 of 2,502 rows exported against a live Postgres, where the old path gave 500 |
 | 4. Components | done | 67 icons, `EmptyState`, and every screen on the new tokens; `bun run check:classes` gates it |
-| 5. E2E | done | the suite is green again, 144/144 stories, and the specs read the screens as they are |
+| 5. E2E | done | the suite is green again, 145/145 stories, and the specs read the screens as they are |
 
 The one deviation from the decisions above is the Tools page, kept rather than cut; the row says why.
 

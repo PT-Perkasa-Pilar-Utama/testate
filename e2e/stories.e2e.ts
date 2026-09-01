@@ -216,6 +216,38 @@ test.describe("admin stories", () => {
     expect(issues).toStrictEqual([]);
   });
 
+  test("@story-151 changes a user's display name and role", async ({ page }) => {
+    const issues: Issue[] = [];
+    watch(page, issues);
+    await page.goto("/users");
+    await settle(page);
+    await page.getByRole("button", { name: "New user" }).click();
+    const create = page.locator("dialog[open]");
+    await create.getByLabel("Username").fill(`edit-${STAMP}`);
+    await create.getByLabel("Display name").fill("Before");
+    await create
+      .getByLabel(/password/i)
+      .first()
+      .fill("edit-temporary-1234");
+    await page.getByRole("button", { name: "Create" }).click();
+    const row = page.locator("tr", { hasText: `edit-${STAMP}` });
+    await expect(row).toBeVisible();
+    await expect(row).toContainText("viewer");
+
+    await row.getByRole("button", { name: "Edit" }).click();
+    const edit = page.locator("dialog[open]");
+    // The dialog carries the row it was opened on, which is the half of this that used to be
+    // impossible: the API took the change and nothing on any screen sent it one.
+    await expect(edit.getByLabel("Display name")).toHaveValue("Before");
+    await edit.getByLabel("Display name").fill("After");
+    await edit.getByLabel("Role").selectOption("qa");
+    await edit.getByRole("button", { name: "Save" }).click();
+    await expect(page.locator("dialog[open]")).toHaveCount(0);
+    await expect(row).toContainText("After");
+    await expect(row).toContainText("qa");
+    expect(issues).toStrictEqual([]);
+  });
+
   test("@story-112 revokes a token and the list shows it revoked", async ({ page }) => {
     const issues: Issue[] = [];
     watch(page, issues);
