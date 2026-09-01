@@ -252,6 +252,7 @@ export default function Sidebar(props: { current: string | undefined }): JSX.Ele
         </For>
       </nav>
       <div class="mt-auto grid gap-1">
+        <SidebarToggle />
         <Show when={actor()}>
           {(current) => (
             <Identity
@@ -262,7 +263,6 @@ export default function Sidebar(props: { current: string | undefined }): JSX.Ele
             />
           )}
         </Show>
-        <SidebarToggle />
       </div>
     </aside>
   );

@@ -1,12 +1,13 @@
 import { describe, expect, test } from "bun:test";
 
-import { queryOf } from "./audit.model.ts";
+import { PAGE_SIZE, queryOf } from "./audit.model.ts";
 
 const EMPTY = { q: "", action: "", actor: "", outcome: "", from: "", to: "" };
 
 describe("queryOf", () => {
   test("sends nothing for a field the person left blank", () => {
     expect(queryOf(EMPTY, undefined)).toStrictEqual({
+      limit: PAGE_SIZE,
       q: undefined,
       action: undefined,
       actor: undefined,
@@ -22,6 +23,7 @@ describe("queryOf", () => {
     // shares `createdRangeConditions` with every other list now, and appending here as well would
     // build a bound no row can be under.
     expect(queryOf({ ...EMPTY, from: "2026-08-28", to: "2026-08-30" }, "c1")).toStrictEqual({
+      limit: PAGE_SIZE,
       q: undefined,
       action: undefined,
       actor: undefined,

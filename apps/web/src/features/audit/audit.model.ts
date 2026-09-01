@@ -17,8 +17,12 @@ export type AuditFilter = {
 };
 
 /** Only the fields the person filled in; an empty box is not a filter. */
+/** A screenful. The API's own default is 50, which is two screens of scrolling before the buttons. */
+export const PAGE_SIZE = 20;
+
 export function queryOf(filter: AuditFilter, cursor: string | undefined): Query {
   return {
+    limit: PAGE_SIZE,
     q: filter.q === "" ? undefined : filter.q,
     action: filter.action === "" ? undefined : filter.action,
     actor: filter.actor === "" ? undefined : filter.actor,

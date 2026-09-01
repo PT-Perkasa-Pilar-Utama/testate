@@ -1,26 +1,19 @@
 import type { JSX } from "@solidjs/web";
+import type { AuditRow } from "@testate/shared";
 import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show, createSignal } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
+import Dialog from "@/components/dialog.tsx";
 import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
 import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import { AUDIT_OUTCOME_LABEL } from "@/lib/labels.ts";
 import { activeFilterCount } from "@/lib/table.ts";
-import {
-  Cell,
-  EmptyRow,
-  Head,
-  Row,
-  Table,
-  TableFooter,
-  TableSearch,
-  Truncated,
-} from "@/components/table.tsx";
+import { Cell, EmptyRow, Head, Row, Table, TableFooter, TableSearch } from "@/components/table.tsx";
 import { OUTCOMES, createAuditPresenter } from "./audit.presenter.ts";
 import type { AuditPresenter } from "./audit.presenter.ts";
 
@@ -104,9 +97,58 @@ function Filters(props: { presenter: AuditPresenter }): JSX.Element {
   );
 }
 
+/**
+ * What one row touched. `target_id` is the row in the database and `target_label` is what a person
+ * called it, and an audit trail needs both: the name to recognise it, the id to go and find it when
+ * the name has since changed or the thing is gone.
+ */
+function TargetDialog(props: { row: AuditRow | null; onClose: () => void }): JSX.Element {
+  // Read once, on open: `reset` tears the dialog down rather than changing it, and holding the
+  // accessor would read a null row on the way out.
+  const row = (): AuditRow | null => props.row;
+  return (
+    <Dialog
+      open={row() !== null}
+      onClose={() => props.onClose()}
+      title="Target"
+      description={`What ${row()?.action ?? "this"} acted on.`}
+    >
+      <dl class="grid gap-3 text-sm">
+        <div class="grid gap-1">
+          <dt class="text-xs text-muted">Kind</dt>
+          <dd>{row()?.target_type}</dd>
+        </div>
+        <div class="grid gap-1">
+          <dt class="text-xs text-muted">Name at the time</dt>
+          <dd>
+            <Show
+              when={row()?.target_label}
+              fallback={
+                <span class="text-muted">
+                  Not recorded. This row predates the column that keeps it.
+                </span>
+              }
+            >
+              {(label) => <span class="font-medium text-heading">{label()}</span>}
+            </Show>
+          </dd>
+        </div>
+        <div class="grid gap-1">
+          <dt class="text-xs text-muted">Id</dt>
+          <dd>
+            <code class="text-xs break-all">{row()?.target_id}</code>
+          </dd>
+        </div>
+      </dl>
+    </Dialog>
+  );
+}
+
 export default function AuditView(): JSX.Element {
   const presenter = createAuditPresenter();
   const [open, setOpen] = createSignal(false);
+  /** The row whose target is being read, null when the dialog is shut. */
+  const [looking, setLooking] = createSignal<AuditRow | null>(null);
   return (
     <section class="grid gap-6">
       <PageHeader
@@ -181,20 +223,16 @@ export default function AuditView(): JSX.Element {
                     <Cell class="whitespace-nowrap">
                       {/* What kind of thing, and the thing itself only when you ask. A uuid down
                           every row answers "which record" and never "which thing", and it was the
-                          widest column on the screen to say it. The name it had at the time and
-                          the id are both one click away, for the times you do want them. */}
-                      <details class="inline-block">
-                        <summary class="inline-flex cursor-pointer list-none items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted ring ring-hairline hover:bg-hover">
-                          {row.target_type}
-                          <Icon name="chevron-down" class="h-3 w-3" />
-                        </summary>
-                        <div class="mt-1 grid gap-0.5">
-                          <Show when={row.target_label}>
-                            {(label) => <Truncated class="max-w-[16rem]">{label()}</Truncated>}
-                          </Show>
-                          <code class="text-xs text-muted">{row.target_id}</code>
-                        </div>
-                      </details>
+                          widest column on the screen to say it. Opening it in a dialog rather than
+                          in place keeps every other row where it was while you read one. */}
+                      <button
+                        type="button"
+                        class="inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted ring ring-hairline hover:bg-hover hover:text-body"
+                        onClick={() => setLooking(row)}
+                      >
+                        {row.target_type}
+                        <Icon name="external-link" class="h-3 w-3" />
+                      </button>
                     </Cell>
                     <Cell class="whitespace-nowrap tabular-nums">{formatWhen(row.created_at)}</Cell>
                     <Cell>
@@ -237,6 +275,7 @@ export default function AuditView(): JSX.Element {
           </Button>
         </TableFooter>
       </Loading>
+      <TargetDialog row={looking()} onClose={() => setLooking(null)} />
     </section>
   );
 }
