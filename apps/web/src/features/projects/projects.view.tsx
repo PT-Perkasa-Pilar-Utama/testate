@@ -19,7 +19,6 @@ import {
   Table,
   TableFooter,
   TableSearch,
-  Truncated,
 } from "@/components/table.tsx";
 import { activeFilterCount } from "@/lib/table.ts";
 import { href, navigate } from "@/lib/router.ts";
@@ -149,22 +148,24 @@ export default function ProjectsView(): JSX.Element {
                               {project.name}
                             </span>
                           </a>
-                          {/* A slug is one unbroken word, no spaces, so it never wraps, only pushes. */}
-                          <code
-                            class="block max-w-[28rem] truncate text-xs text-muted"
-                            title={project.slug}
-                          >
-                            {project.slug}
-                          </code>
-                          {/* The description was collected in the edit dialog and shown nowhere.
-                              It belongs where you are choosing between projects. */}
-                          <Show when={project.description}>
-                            {(text) => (
-                              <Truncated class="max-w-[28rem] text-xs text-muted">
-                                {text()}
-                              </Truncated>
-                            )}
-                          </Show>
+                          {/* One line under the name, not two. The slug never wraps (one word, no
+                              spaces) and the description is a sentence, so stacking them gave a
+                              two-word project a three-line row. */}
+                          <span class="flex max-w-[28rem] items-baseline gap-1.5 text-xs text-muted">
+                            <code class="shrink-0" title={project.slug}>
+                              {project.slug}
+                            </code>
+                            <Show when={project.description}>
+                              {(text) => (
+                                <>
+                                  <span aria-hidden="true">·</span>
+                                  <span class="min-w-0 truncate" title={text()}>
+                                    {text()}
+                                  </span>
+                                </>
+                              )}
+                            </Show>
+                          </span>
                         </div>
                       </Cell>
                       <Cell>

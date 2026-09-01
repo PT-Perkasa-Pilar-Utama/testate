@@ -99,17 +99,16 @@ export default function HealthCard(props: { presenter: SettingsPresenter }): JSX
       </div>
       <Loading fallback={<p class="text-muted">Checking...</p>}>
         <div class="grid gap-1">
-          <div class="flex flex-wrap items-center gap-2">
-            <Badge variant={STATUS_BADGE[props.presenter.health.value().status]}>
-              {props.presenter.health.value().status}
-            </Badge>
-          </div>
           <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
             <span>{props.presenter.health.value().env}</span>
             <span aria-hidden="true">·</span>
             <span>v{props.presenter.health.value().version}</span>
             <span aria-hidden="true">·</span>
             <span>up {formatUptime(props.presenter.health.value().uptime_s)}</span>
+            <span aria-hidden="true">·</span>
+            <Badge variant={STATUS_BADGE[props.presenter.health.value().status]}>
+              {props.presenter.health.value().status}
+            </Badge>
           </div>
         </div>
         <dl class="grid gap-3 border-t border-hairline pt-3">
@@ -123,7 +122,7 @@ export default function HealthCard(props: { presenter: SettingsPresenter }): JSX
                 <dd class="flex shrink-0 items-center gap-2 text-base text-muted">
                   <Show when={check.detail(props.presenter.health.value().checks) !== ""}>
                     <span class="tabular-nums">
-                      {"\u00b7"} {check.detail(props.presenter.health.value().checks)}
+                      {check.detail(props.presenter.health.value().checks)} {"\u00b7"}
                     </span>
                   </Show>
                   <span

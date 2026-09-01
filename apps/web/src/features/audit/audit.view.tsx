@@ -134,11 +134,10 @@ export default function AuditView(): JSX.Element {
         <Table>
           <thead>
             <tr>
-              <Head>When</Head>
               <Head>Actor</Head>
               <Head>Action</Head>
               <Head>Target</Head>
-              <Head>Project</Head>
+              <Head>When</Head>
               <Head>Outcome</Head>
             </tr>
           </thead>
@@ -159,7 +158,6 @@ export default function AuditView(): JSX.Element {
               <For each={presenter.rows()}>
                 {(row) => (
                   <Row>
-                    <Cell class="whitespace-nowrap tabular-nums">{formatWhen(row.created_at)}</Cell>
                     <Cell class="whitespace-nowrap">
                       <span class="inline-flex items-center gap-1.5">
                         <Icon
@@ -181,24 +179,24 @@ export default function AuditView(): JSX.Element {
                       </code>
                     </Cell>
                     <Cell class="whitespace-nowrap">
-                      {/* The name it had when this happened, with the id behind the tooltip. The
-                          column used to print the uuid, which answers "which row" and never
-                          "which thing". Rows written before the label existed have none, and fall
-                          back to the id rather than showing an empty cell. */}
-                      <span
-                        class="block max-w-[20rem] truncate"
-                        title={`${row.target_type} ${row.target_id}`}
-                      >
-                        <span class="text-xs text-muted">{row.target_type}</span>{" "}
-                        {row.target_label ?? row.target_id}
-                      </span>
+                      {/* What kind of thing, and the thing itself only when you ask. A uuid down
+                          every row answers "which record" and never "which thing", and it was the
+                          widest column on the screen to say it. The name it had at the time and
+                          the id are both one click away, for the times you do want them. */}
+                      <details class="inline-block">
+                        <summary class="inline-flex cursor-pointer list-none items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted ring ring-hairline hover:bg-hover">
+                          {row.target_type}
+                          <Icon name="chevron-down" class="h-3 w-3" />
+                        </summary>
+                        <div class="mt-1 grid gap-0.5">
+                          <Show when={row.target_label}>
+                            {(label) => <Truncated class="max-w-[16rem]">{label()}</Truncated>}
+                          </Show>
+                          <code class="text-xs text-muted">{row.target_id}</code>
+                        </div>
+                      </details>
                     </Cell>
-                    <Cell>
-                      {/* A slug is 2-64 chars with no spaces, the same shape as the username that
-                          broke the users table. Narrower than a stacked name/slug/description
-                          block gets (28rem elsewhere): here it's the only thing in the column. */}
-                      <Truncated class="max-w-[12rem]">{row.project?.slug ?? ""}</Truncated>
-                    </Cell>
+                    <Cell class="whitespace-nowrap tabular-nums">{formatWhen(row.created_at)}</Cell>
                     <Cell>
                       <Badge
                         variant={row.outcome === null ? "secondary" : OUTCOME_VARIANT[row.outcome]}

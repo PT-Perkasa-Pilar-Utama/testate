@@ -19,14 +19,18 @@ export default function PageHeader(props: {
   const actions = children(() => props.actions);
   return (
     <div class="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-4">
-      <div class="grid gap-1.5">
+      {/* `min-w-0 flex-1` so a long description wraps inside its own column. Without it the title
+          block refuses to shrink under its text, the actions have nowhere to sit, and they wrap to
+          a row of their own: the tokens screen put its search and its New button on the second
+          line while every shorter description kept them in the header. */}
+      <div class="grid min-w-0 flex-1 gap-1.5">
         <h2 class="text-xl font-semibold text-heading">{props.title}</h2>
         <Show when={props.description}>
           <p class="text-muted">{props.description}</p>
         </Show>
       </div>
       <Show when={actions()}>
-        <div class="flex flex-wrap items-center gap-2">{actions()}</div>
+        <div class="flex shrink-0 flex-wrap items-center gap-2">{actions()}</div>
       </Show>
     </div>
   );

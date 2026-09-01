@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { For, Show, createEffect, createSignal } from "solid-js";
+import { For, Show, createSignal } from "solid-js";
 import type { Actor, Role } from "@testate/shared";
 
 import Icon from "@/components/icon.tsx";
@@ -61,6 +61,39 @@ function storedCollapsed(): boolean {
     // Private windows and blocked site data throw on access rather than return null.
     return false;
   }
+}
+
+/**
+ * One sidebar per app, and its button now lives outside it, so the state lives beside them both
+ * rather than inside the rail it hides. Written through here rather than from an effect: a
+ * module-level effect has no owner to clean it up.
+ */
+const [collapsed, setCollapsed] = createSignal(storedCollapsed());
+
+function toggleSidebar(): void {
+  const next = !collapsed();
+  setCollapsed(next);
+  try {
+    window.localStorage.setItem(SIDEBAR_KEY, next ? "1" : "0");
+  } catch {
+    // Nothing to do: the sidebar still works, it just forgets between visits.
+  }
+}
+
+/** The rail's own handle, rendered by the shell beside it rather than inside it. */
+export function SidebarToggle(): JSX.Element {
+  return (
+    <button
+      type="button"
+      class="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted hover:bg-hover hover:text-body"
+      aria-expanded={collapsed() ? "false" : "true"}
+      aria-label={collapsed() ? "Expand the sidebar" : "Collapse the sidebar"}
+      title={collapsed() ? "Expand the sidebar" : "Collapse the sidebar"}
+      onClick={() => toggleSidebar()}
+    >
+      <Icon name="panel-left" />
+    </button>
+  );
 }
 
 const THEME_FACE = {
@@ -150,17 +183,6 @@ function Identity(props: {
 }
 
 export default function Sidebar(props: { current: string | undefined }): JSX.Element {
-  const [collapsed, setCollapsed] = createSignal(storedCollapsed());
-  createEffect(
-    () => collapsed(),
-    (on) => {
-      try {
-        window.localStorage.setItem(SIDEBAR_KEY, on ? "1" : "0");
-      } catch {
-        // Nothing to do: the sidebar still works, it just forgets between visits.
-      }
-    }
-  );
   const onNav = (event: MouseEvent, path: string): void => {
     event.preventDefault();
     navigate(path);
@@ -172,19 +194,9 @@ export default function Sidebar(props: { current: string | undefined }): JSX.Ele
         collapsed() ? "w-12 items-center px-2" : "w-60 px-3",
       ]}
     >
-      <div class={["mb-6 flex items-center", collapsed() ? "justify-center" : "gap-2 px-2"]}>
-        <button
-          type="button"
-          class="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted hover:bg-hover hover:text-body"
-          aria-expanded={collapsed() ? "false" : "true"}
-          aria-label={collapsed() ? "Expand the sidebar" : "Collapse the sidebar"}
-          title={collapsed() ? "Expand the sidebar" : "Collapse the sidebar"}
-          onClick={() => setCollapsed((on) => !on)}
-        >
-          <Icon name="panel-left" />
-        </button>
+      <div class={["mb-6 flex h-8 items-center", collapsed() ? "justify-center" : "gap-2 px-2"]}>
+        <Logo class="h-5 w-5 text-accent" />
         <Show when={!collapsed()}>
-          <Logo class="h-5 w-5 text-accent" />
           <span class="text-base font-semibold text-heading">Testate</span>
         </Show>
       </div>
