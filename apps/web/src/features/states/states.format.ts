@@ -44,3 +44,13 @@ export function adapterSummary(adapters: readonly StateAdapter[]): string {
   if (names.length <= 2) return names.join(", ");
   return `${names[0]}, ${names[1]} +${names.length - 2}`;
 }
+
+/** "restored twice, in 1 diff": what this state produced, and nothing when it produced nothing. */
+export function eventsLabel(state: { checkout_count: number; diff_count: number }): string {
+  const parts: string[] = [];
+  if (state.checkout_count === 1) parts.push("restored once");
+  if (state.checkout_count > 1) parts.push(`restored ${state.checkout_count} times`);
+  if (state.diff_count === 1) parts.push("in 1 diff");
+  if (state.diff_count > 1) parts.push(`in ${state.diff_count} diffs`);
+  return parts.join(", ");
+}

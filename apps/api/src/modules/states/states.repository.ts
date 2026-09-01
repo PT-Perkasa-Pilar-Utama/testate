@@ -1,9 +1,17 @@
-import type { Actor, State, StateDetail, StateKind, StateStatus } from "@testate/shared";
+import type {
+  Actor,
+  State,
+  StateDetail,
+  StateKind,
+  StateListItem,
+  StateStatus,
+} from "@testate/shared";
 import * as v from "valibot";
 import { createdRangeConditions } from "../../lib/db/date-range.ts";
 import { keysetCondition } from "../../lib/db/keyset.ts";
 
 import type { MetadataDb } from "../../lib/db/index.ts";
+import { eventsOf } from "./states.events.ts";
 import { createManifestStore } from "./states.manifests.ts";
 import type { ManifestStore } from "./states.manifests.ts";
 import {
@@ -60,7 +68,7 @@ export type NewState = {
 export type StateRows = {
   insert(state: NewState): void;
   /** `diff` states never list (08 §8); stashes only on request. */
-  list(projectId: string, filter: StatesFilter): State[];
+  list(projectId: string, filter: StatesFilter): StateListItem[];
   byIdOrName(projectId: string, idOrName: string): State | null;
   /** The state a job created; a replayed `Idempotency-Key` answers with it (09 §9.3). */
   byJobId(projectId: string, jobId: string): State | null;
@@ -153,8 +161,17 @@ function createStateRows(db: MetadataDb): StateRows {
           )
           .all(...found.flatMap((item) => item.params), filter.limit)
       );
-      const adapters = adaptersOf(rows.map((row) => row.id));
-      return rows.map((row) => toState(row, adapters.get(row.id) ?? []));
+      const ids = rows.map((row) => row.id);
+      const adapters = adaptersOf(ids);
+      const events = eventsOf(db, ids);
+      return rows.map((row) => {
+        const counted = events.get(row.id) ?? { checkouts: 0, diffs: 0 };
+        return {
+          ...toState(row, adapters.get(row.id) ?? []),
+          checkout_count: counted.checkouts,
+          diff_count: counted.diffs,
+        };
+      });
     },
     byIdOrName(projectId, idOrName) {
       const row = oneRow(projectId, idOrName);

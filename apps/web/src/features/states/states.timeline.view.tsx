@@ -1,13 +1,13 @@
 import type { JSX } from "@solidjs/web";
 import { For, Show } from "solid-js";
-import type { State } from "@testate/shared";
+import type { StateListItem } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Icon from "@/components/icon.tsx";
 import { Truncated } from "@/components/table.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { STATE_KIND_LABEL, STATE_STATUS_LABEL } from "@/lib/labels.ts";
-import { adapterSummary, formatBytes } from "./states.format.ts";
+import { adapterSummary, eventsLabel, formatBytes } from "./states.format.ts";
 
 /**
  * The dot on the rail. HEAD is filled and cyan, the way the current commit reads on a graph;
@@ -26,7 +26,7 @@ function Dot(props: { head: boolean }): JSX.Element {
 }
 
 /** Everything true about a state that is not its name, on one quiet line. */
-function Meta(props: { state: State }): JSX.Element {
+function Meta(props: { state: StateListItem }): JSX.Element {
   return (
     <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
       <span>{STATE_KIND_LABEL[props.state.kind]}</span>
@@ -42,12 +42,18 @@ function Meta(props: { state: State }): JSX.Element {
       <Truncated class="max-w-[10rem]">{props.state.actor.label}</Truncated>
       <span aria-hidden="true">·</span>
       <span class="whitespace-nowrap tabular-nums">{formatWhen(props.state.created_at)}</span>
+      {/* What this state produced. A checkout and a diff are events that reference a state, so the
+          state is where the count belongs (docs/PROJECT_REWORK.md). */}
+      <Show when={eventsLabel(props.state) !== ""}>
+        <span aria-hidden="true">·</span>
+        <span class="whitespace-nowrap">{eventsLabel(props.state)}</span>
+      </Show>
     </div>
   );
 }
 
 export type TimelineRowProps = {
-  state: State;
+  state: StateListItem;
   head: boolean;
   headUnknown?: boolean | undefined;
   /** The row's own controls, so this file never learns what a checkout is. */
@@ -123,12 +129,12 @@ function TimelineRow(props: TimelineRowProps): JSX.Element {
 }
 
 export type TimelineProps = {
-  states: readonly State[];
+  states: readonly StateListItem[];
   /** The state the databases are on right now; null when the project has never been restored. */
   headStateId: string | null;
   /** A failed restore leaves HEAD unknown; the badge says so rather than claiming the state. */
   headUnknown?: boolean;
-  actionsFor: (state: State) => JSX.Element;
+  actionsFor: (state: StateListItem) => JSX.Element;
   empty: JSX.Element;
   /** Ticking picks a state to compare; absent means the column is not there at all. */
   onPick?: ((id: string) => void) | undefined;

@@ -5,6 +5,7 @@ import type {
   Job,
   Project,
   State,
+  StateListItem,
   StateDetail,
   StateTreeNode,
   UpdateStateInput,
@@ -24,7 +25,7 @@ import type { ImportArchiveInput } from "./states.archives.ts";
 import type { StatePatch, StatesFilter, StatesRepository } from "./states.repository.ts";
 
 export type StatesService = {
-  list(slug: string, filter: StatesFilter): Promise<State[]>;
+  list(slug: string, filter: StatesFilter): Promise<StateListItem[]>;
   tree(slug: string, includeStash: boolean): Promise<StateTreeNode[]>;
   snapshot(
     actor: Actor,

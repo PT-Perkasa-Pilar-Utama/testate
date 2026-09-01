@@ -3,7 +3,7 @@ import { archiveManifestSchema, stateSchema, stateTreeNodeSchema } from "@testat
 import * as v from "valibot";
 
 import { TEST_META } from "../../../test/accounts.ts";
-import { PG, createSettled } from "../../../test/adapters.ts";
+import { PG, PROJECT_ID, createSettled } from "../../../test/adapters.ts";
 import { expectContract } from "../../../test/contract.ts";
 import {
   LIST,
@@ -138,5 +138,42 @@ describe("states", () => {
     await expect(h.states.get("shop", changed)).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect((await h.states.get("shop", shared)).status).toBe("ready");
     expect(h.harness.states.latestInit(adapter.id)).not.toBeNull();
+  });
+
+  it("a state carries what it produced: restores and the diffs on either side of it", async () => {
+    const h = await createStatesHarness();
+    const adapter = await createSettled(h.harness, PG);
+    const initId = initIdOf(h.harness, adapter.id);
+    const { state } = await h.states.snapshot(
+      h.harness.qa,
+      "shop",
+      { name: "as-base", adapter_ids: [adapter.id] },
+      TEST_META
+    );
+    const at = "2026-09-02T00:00:00.000Z";
+    h.harness.db
+      .query(
+        `INSERT INTO checkouts (id, project_id, state_id, job_id, status, created_at)
+         VALUES (?, ?, ?, ?, 'succeeded', ?)`
+      )
+      .run("01a05e00-0000-7000-8000-00000000c001", PROJECT_ID, state.id, "j1", at);
+    // One diff names a state as its base and the other names a different state as its target.
+    // Counting either column alone gets one of the two wrong, which is why the query unions both.
+    const diff = h.harness.db.query(
+      `INSERT INTO diffs (id, project_id, base_state_id, target_state_id, job_id, expires_at, created_at)
+       VALUES (?, ?, ?, ?, 'j3', ?, ?)`
+    );
+    diff.run("01a05e00-0000-7000-8000-00000000d001", PROJECT_ID, state.id, null, at, at);
+    diff.run("01a05e00-0000-7000-8000-00000000d002", PROJECT_ID, "elsewhere", initId, at, at);
+
+    const listed = await h.states.list("shop", {
+      limit: 20,
+      sort: "created_at",
+      order: "desc",
+      includeStash: false,
+    });
+    const counts = new Map(listed.map((row) => [row.name, row]));
+    expect(counts.get("as-base")).toMatchObject({ checkout_count: 1, diff_count: 1 });
+    expect(counts.get("init")).toMatchObject({ checkout_count: 0, diff_count: 1 });
   });
 });

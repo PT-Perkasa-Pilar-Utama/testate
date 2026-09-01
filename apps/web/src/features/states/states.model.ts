@@ -1,6 +1,19 @@
 import * as v from "valibot";
-import type { Job, JsonObject, State, StateDetail, StateTreeNode } from "@testate/shared";
-import { jobSchema, stateDetailSchema, stateSchema, stateTreeNodeSchema } from "@testate/shared";
+import type {
+  Job,
+  JsonObject,
+  State,
+  StateListItem,
+  StateDetail,
+  StateTreeNode,
+} from "@testate/shared";
+import {
+  jobSchema,
+  stateDetailSchema,
+  stateListItemSchema,
+  stateSchema,
+  stateTreeNodeSchema,
+} from "@testate/shared";
 
 import { apiClient } from "@/lib/api-client.ts";
 import type { Page } from "@/lib/async.ts";
@@ -16,13 +29,13 @@ function pageQuery(includeStash: boolean, cursor: string | undefined): Query {
 }
 
 export const statesModel = {
-  list: (slug: string, includeStash: boolean): Promise<State[]> =>
+  list: (slug: string, includeStash: boolean): Promise<StateListItem[]> =>
     apiClient.get(base(slug), {
-      schema: v.array(stateSchema),
+      schema: v.array(stateListItemSchema),
       query: { include_stash: includeStash ? "true" : "false" },
     }),
-  page: (slug: string, includeStash: boolean, cursor?: string): Promise<Page<State>> =>
-    apiClient.page(base(slug), stateSchema, pageQuery(includeStash, cursor)),
+  page: (slug: string, includeStash: boolean, cursor?: string): Promise<Page<StateListItem>> =>
+    apiClient.page(base(slug), stateListItemSchema, pageQuery(includeStash, cursor)),
   tree: (slug: string): Promise<StateTreeNode[]> =>
     apiClient.get(`${base(slug)}/tree`, { schema: v.array(stateTreeNodeSchema) }),
   get: (slug: string, id: string): Promise<StateDetail> =>

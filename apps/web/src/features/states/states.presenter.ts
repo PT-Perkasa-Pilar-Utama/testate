@@ -3,6 +3,7 @@ import type {
   Adapter,
   JsonObject,
   State,
+  StateListItem,
   StateDetail,
   StateDraftInput,
   StateTreeNode,
@@ -20,7 +21,7 @@ import { statesModel } from "./states.model.ts";
 
 export type StatesView = "list" | "tree";
 
-export type StatesPresenter = Paged<State> & {
+export type StatesPresenter = Paged<StateListItem> & {
   tree: Refreshable<StateTreeNode[]>;
   databases: Refreshable<Adapter[]>;
   view: () => StatesView;

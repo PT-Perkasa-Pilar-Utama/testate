@@ -58,6 +58,20 @@ export const stateSchema = v.object({
 });
 export type State = v.InferOutput<typeof stateSchema>;
 
+/**
+ * A state in the list, with what it produced.
+ *
+ * The hierarchy as data rather than as navigation: a checkout and a diff are events that reference
+ * a state, so the state can say how many of each it has (docs/PROJECT_REWORK.md). Two grouped
+ * counts folded into the same response, not a second round trip.
+ */
+export const stateListItemSchema = v.object({
+  ...stateSchema.entries,
+  checkout_count: v.number(),
+  diff_count: v.number(),
+});
+export type StateListItem = v.InferOutput<typeof stateListItemSchema>;
+
 export const stateDetailSchema = v.object({
   ...stateSchema.entries,
   adapters: v.array(

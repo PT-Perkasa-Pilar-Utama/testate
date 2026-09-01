@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+
+import { eventsLabel } from "./states.format.ts";
+
 import type { Preflight, State, StateAdapter } from "@testate/shared";
 
 import {
@@ -163,5 +166,15 @@ describe("states feature", () => {
     expect(adapterSummary(named("shop-postgres"))).toBe("shop-postgres");
     expect(adapterSummary(named("shop-postgres", "shop-mysql"))).toBe("shop-postgres, shop-mysql");
     expect(adapterSummary(named("a", "b", "c", "d"))).toBe("a, b +2");
+  });
+});
+
+describe("what a state produced", () => {
+  test("says it once, in words, and says nothing when it produced nothing", () => {
+    expect(eventsLabel({ checkout_count: 0, diff_count: 0 })).toBe("");
+    expect(eventsLabel({ checkout_count: 1, diff_count: 0 })).toBe("restored once");
+    expect(eventsLabel({ checkout_count: 3, diff_count: 0 })).toBe("restored 3 times");
+    expect(eventsLabel({ checkout_count: 0, diff_count: 1 })).toBe("in 1 diff");
+    expect(eventsLabel({ checkout_count: 2, diff_count: 4 })).toBe("restored 2 times, in 4 diffs");
   });
 });

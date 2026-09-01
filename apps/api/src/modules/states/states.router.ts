@@ -3,6 +3,7 @@ import {
   archiveManifestSchema,
   jobSchema,
   stateDetailSchema,
+  stateListItemSchema,
   stateSchema,
   stateTreeNodeSchema,
 } from "@testate/shared";
@@ -19,7 +20,7 @@ export function createStatesRouter(h: StatesHandlers): Hono {
   router.get(
     P,
     requireRole("viewer"),
-    describe("states", "List states", v.array(stateSchema)),
+    describe("states", "List states", v.array(stateListItemSchema)),
     h.list
   );
   router.get(
