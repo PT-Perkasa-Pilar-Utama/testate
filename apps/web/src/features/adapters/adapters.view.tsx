@@ -252,7 +252,8 @@ export default function AdaptersView(props: { slug: string }): JSX.Element {
                   <Row>
                     <Cell>
                       <a
-                        class="text-info-fg hover:underline"
+                        class="block max-w-[18rem] truncate text-info-fg hover:underline"
+                        title={adapter.name}
                         href={href(path(adapter.id))}
                         onClick={(event) => {
                           event.preventDefault();
@@ -284,7 +285,7 @@ export default function AdaptersView(props: { slug: string }): JSX.Element {
                         </code>
                       </Show>
                     </Cell>
-                    <Cell>
+                    <Cell wrap>
                       <div class="grid gap-0.5">
                         <Badge variant={STATUS_VARIANT[adapter.status]}>
                           {ADAPTER_STATUS_LABEL[adapter.status]}

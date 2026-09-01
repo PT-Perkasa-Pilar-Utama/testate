@@ -18,6 +18,7 @@ import {
   TableFooter,
   TableSearch,
   TableToolbar,
+  Truncated,
 } from "@/components/table.tsx";
 import { CHECKOUT_PURPOSE_LABEL, CHECKOUT_RESULT_LABEL, JOB_STATUS_LABEL } from "@/lib/labels.ts";
 import { hasRole } from "@/lib/session.ts";
@@ -163,13 +164,15 @@ export default function CheckoutsView(props: {
                   <Follow checkout={checkout} onDone={() => presenter.refresh()} />
                   <Cell>
                     <div class="grid gap-0.5">
-                      <span class="text-heading font-medium">{checkout.state.name}</span>
+                      <Truncated class="max-w-[18rem] font-medium text-heading">
+                        {checkout.state.name}
+                      </Truncated>
                       <span class="text-muted text-xs">
                         {CHECKOUT_PURPOSE_LABEL[checkout.purpose]}
                       </span>
                     </div>
                   </Cell>
-                  <Cell>
+                  <Cell wrap>
                     <Outcome checkout={checkout} />
                   </Cell>
                   <Cell>
@@ -177,13 +180,18 @@ export default function CheckoutsView(props: {
                       <For each={checkout.adapters}>
                         {(adapter) => (
                           <Badge variant={RESULT_VARIANT[adapter.result]}>
-                            {adapter.name}: {CHECKOUT_RESULT_LABEL[adapter.result]}
+                            <span class="block max-w-[8rem] truncate" title={adapter.name}>
+                              {adapter.name}
+                            </span>
+                            <span class="shrink-0">: {CHECKOUT_RESULT_LABEL[adapter.result]}</span>
                           </Badge>
                         )}
                       </For>
                     </span>
                   </Cell>
-                  <Cell class="whitespace-nowrap">{checkout.actor.label}</Cell>
+                  <Cell class="whitespace-nowrap">
+                    <Truncated class="max-w-[10rem]">{checkout.actor.label}</Truncated>
+                  </Cell>
                   <Cell class="whitespace-nowrap">{formatWhen(checkout.created_at)}</Cell>
                   <Cell pinned>
                     <div class="flex flex-wrap justify-end gap-1">

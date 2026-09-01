@@ -14,6 +14,7 @@ import {
   Table,
   TableSearch,
   TableToolbar,
+  Truncated,
 } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { modeLabel } from "./imports.helpers.ts";
@@ -93,7 +94,11 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
                       </Badge>
                     </Cell>
                     <Cell>{countsLabel(run)}</Cell>
-                    <Cell>{run.actor.label}</Cell>
+                    <Cell>
+                      {/* Same actor.label as jobs and audit: bounded for a username, unbounded
+                          for a token's own name. */}
+                      <Truncated class="max-w-[12rem]">{run.actor.label}</Truncated>
+                    </Cell>
                     <Cell>{formatWhen(run.created_at)}</Cell>
                     <Cell pinned>
                       <div class="flex flex-wrap justify-end gap-1">

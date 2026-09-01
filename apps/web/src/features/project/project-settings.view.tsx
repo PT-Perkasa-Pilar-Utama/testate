@@ -13,7 +13,7 @@ import Dialog from "@/components/dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, Truncated } from "@/components/table.tsx";
 import { engineLabel } from "@/lib/labels.ts";
 import { hasRole } from "@/lib/session.ts";
 import type { DeletionAffected } from "../projects/projects.model.ts";
@@ -214,7 +214,12 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
                 <For each={plan().adapters}>
                   {(adapter) => (
                     <Row>
-                      <Cell>{adapter.name}</Cell>
+                      {/* This dialog is 32rem wide and the adapter name is free text up to 80
+                          characters, so it gets the narrowest cap here, leaving room for the
+                          engine and action columns beside it. */}
+                      <Cell>
+                        <Truncated class="max-w-[10rem]">{adapter.name}</Truncated>
+                      </Cell>
                       <Cell>{engineLabel(adapter.engine)}</Cell>
                       <Cell>
                         <Badge variant={ACTION_VARIANT[adapter.action]}>

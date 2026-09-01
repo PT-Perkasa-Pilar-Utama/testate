@@ -44,8 +44,14 @@ export default function Dialog(props: DialogProps): JSX.Element {
     >
       <div class="flex flex-col gap-4 p-6">
         <div class="flex items-start justify-between gap-4">
-          <div class="flex flex-col gap-1">
-            <h2 class="text-lg font-semibold text-heading">{props.title}</h2>
+          {/* `min-w-0` or the title cannot truncate: a flex item refuses to shrink under its own
+              content, so the header would grow instead of the text clipping. */}
+          <div class="flex min-w-0 flex-col gap-1">
+            {/* Titles are built from what a person named a thing: `Delete ${slug}`, `Revoke ${name}`.
+                A 64-character username stretched the header off the dialog. */}
+            <h2 class="truncate text-lg font-semibold text-heading" title={props.title}>
+              {props.title}
+            </h2>
             <Show when={props.description}>
               <p class="text-base text-muted">{props.description}</p>
             </Show>

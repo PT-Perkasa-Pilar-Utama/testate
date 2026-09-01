@@ -4,6 +4,7 @@ import type { State } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Icon from "@/components/icon.tsx";
+import { Truncated } from "@/components/table.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { STATE_KIND_LABEL, STATE_STATUS_LABEL } from "@/lib/labels.ts";
 import { adapterSummary, formatBytes } from "./states.format.ts";
@@ -30,13 +31,15 @@ function Meta(props: { state: State }): JSX.Element {
     <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
       <span>{STATE_KIND_LABEL[props.state.kind]}</span>
       <span aria-hidden="true">·</span>
-      <span>{adapterSummary(props.state.adapters)}</span>
+      {/* Both truncate: the adapter list already caps itself at two names plus a count, but
+          either of those two names, or the actor's own name, is still free text with no ceiling. */}
+      <Truncated class="max-w-[12rem]">{adapterSummary(props.state.adapters)}</Truncated>
       <Show when={props.state.size_bytes > 0}>
         <span aria-hidden="true">·</span>
         <span class="tabular-nums">{formatBytes(props.state.size_bytes)}</span>
       </Show>
       <span aria-hidden="true">·</span>
-      <span>{props.state.actor.label}</span>
+      <Truncated class="max-w-[10rem]">{props.state.actor.label}</Truncated>
       <span aria-hidden="true">·</span>
       <span class="whitespace-nowrap tabular-nums">{formatWhen(props.state.created_at)}</span>
     </div>
@@ -65,7 +68,7 @@ function TimelineRow(props: TimelineRowProps): JSX.Element {
       <div class="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div class="grid min-w-0 gap-1">
           <div class="flex flex-wrap items-center gap-2">
-            <span class="font-medium text-heading">{props.state.name}</span>
+            <Truncated class="max-w-[20rem] font-medium text-heading">{props.state.name}</Truncated>
             <Show when={props.head}>
               <Badge variant="primary">HEAD</Badge>
             </Show>
@@ -82,7 +85,15 @@ function TimelineRow(props: TimelineRowProps): JSX.Element {
             </Show>
             {/* Tags are how a person finds one state among fifty; the table that came before
                 showed them and the timeline must not quietly drop them. */}
-            <For each={props.state.tags}>{(tag) => <Badge variant="info">{tag}</Badge>}</For>
+            <For each={props.state.tags}>
+              {(tag) => (
+                <Badge variant="info">
+                  <span class="block max-w-[8rem] truncate" title={tag}>
+                    {tag}
+                  </span>
+                </Badge>
+              )}
+            </For>
           </div>
           <Meta state={props.state} />
         </div>

@@ -19,6 +19,7 @@ import {
   TableFooter,
   TableSearch,
   TableToolbar,
+  Truncated,
 } from "@/components/table.tsx";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL } from "@/lib/labels.ts";
 import { hasRole } from "@/lib/session.ts";
@@ -89,15 +90,26 @@ function JobRow(props: { presenter: JobsPresenter; job: Job }): JSX.Element {
         </Show>
       </Cell>
       <Cell class="max-w-64">
+        {/* error.message is a free-text failure string with no cap; the cell keeps its own
+            16rem max-width, the span only needs to turn that into an ellipsis instead of an
+            overflow. The code stays in the tooltip since it's the detail the message itself
+            doesn't repeat. */}
         <Show when={props.job.error}>
           {(error) => (
-            <span class="text-xs text-danger-fg" title={error().code}>
+            <span
+              class="block truncate text-xs text-danger-fg"
+              title={`${error().message} (${error().code})`}
+            >
               {error().message}
             </span>
           )}
         </Show>
       </Cell>
-      <Cell class="whitespace-nowrap">{props.job.actor.label}</Cell>
+      <Cell class="whitespace-nowrap">
+        {/* Same actor.label as the audit log: a username caps at 64, but a token's own name has
+            no cap. */}
+        <Truncated class="max-w-[12rem]">{props.job.actor.label}</Truncated>
+      </Cell>
       <Cell class="whitespace-nowrap">{formatWhen(props.job.created_at)}</Cell>
       <Cell pinned>
         <Show when={showCancel()}>

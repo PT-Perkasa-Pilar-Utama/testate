@@ -116,7 +116,9 @@ export default function UsersView(): JSX.Element {
             <For each={presenter.table.rows()}>
               {(user) => (
                 <Row>
-                  <Cell class="font-semibold">{user.username}</Cell>
+                  <Cell class="font-semibold">
+                    <Truncated>{user.username}</Truncated>
+                  </Cell>
                   <Cell>
                     <Truncated>{user.display_name}</Truncated>
                   </Cell>

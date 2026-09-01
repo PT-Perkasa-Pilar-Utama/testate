@@ -13,7 +13,7 @@ import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import InputArea from "@/components/input-area.tsx";
-import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, Truncated } from "@/components/table.tsx";
 import { engineLabel } from "@/lib/labels.ts";
 import { consistencyLabel, formatBytes, sortLabel } from "./states.format.ts";
 import type { StatesPresenter } from "./states.presenter.ts";
@@ -120,7 +120,7 @@ export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
               <Loading fallback={<p class="text-muted">Listing adapters...</p>}>
                 <For each={props.presenter.databases.value()}>
                   {(adapter) => (
-                    <label class="flex items-center gap-2">
+                    <label class="flex min-w-0 items-center gap-2">
                       <input
                         type="checkbox"
                         checked={
@@ -136,9 +136,13 @@ export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
                           );
                         }}
                       />
-                      <span>
-                        {adapter.name}{" "}
-                        <span class="text-muted">({engineLabel(adapter.engine)})</span>
+                      {/* The dialog is only 24rem wide; an adapter name with no ceiling needs to
+                          give way before the "(engine)" suffix does. */}
+                      <span class="flex min-w-0 items-center gap-1">
+                        <span class="min-w-0 truncate" title={adapter.name}>
+                          {adapter.name}
+                        </span>
+                        <span class="shrink-0 text-muted">({engineLabel(adapter.engine)})</span>
                       </span>
                     </label>
                   )}
@@ -240,7 +244,12 @@ export function DetailDialog(props: { presenter: StatesPresenter }): JSX.Element
               {(adapter) => (
                 <section class="grid gap-2">
                   <h3 class="font-medium">
-                    {adapter.adapter_name}{" "}
+                    <span
+                      class="inline-block max-w-[24rem] truncate align-bottom"
+                      title={adapter.adapter_name}
+                    >
+                      {adapter.adapter_name}
+                    </span>{" "}
                     <span class="text-muted">
                       {engineLabel(adapter.engine)} {adapter.engine_version} ·{" "}
                       {consistencyLabel(adapter.consistency)} · {adapter.row_count} rows ·{" "}
@@ -266,7 +275,11 @@ export function DetailDialog(props: { presenter: StatesPresenter }): JSX.Element
                         {(table) => (
                           <Row>
                             <Cell>
-                              {table.schema === null ? table.name : `${table.schema}.${table.name}`}
+                              <Truncated class="max-w-[20rem]">
+                                {table.schema === null
+                                  ? table.name
+                                  : `${table.schema}.${table.name}`}
+                              </Truncated>
                             </Cell>
                             <Cell>{table.rows}</Cell>
                             <Cell>{formatBytes(table.bytes)}</Cell>

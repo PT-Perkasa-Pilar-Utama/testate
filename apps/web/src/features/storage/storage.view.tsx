@@ -88,6 +88,9 @@ function PathBar(props: { presenter: StoragePresenter; slug: string; id: string 
 function EntryRow(props: { presenter: StoragePresenter; entry: Entry }): JSX.Element {
   return (
     <Row>
+      {/* A file or folder name has no length cap; a storage path can be far longer than the
+          63-character username that broke the users table. 20rem, the widest bound in this
+          batch, because Name is this screen's one and only descriptive column. */}
       <Cell>
         <Show
           when={props.entry.kind === "directory"}
@@ -98,7 +101,9 @@ function EntryRow(props: { presenter: StoragePresenter; entry: Entry }): JSX.Ele
               onClick={() => void props.presenter.openPreview(props.entry)}
             >
               <Icon name="file-text" class="h-4 w-4 shrink-0 text-muted" />
-              {props.entry.name}
+              <span class="max-w-[20rem] truncate" title={props.entry.name}>
+                {props.entry.name}
+              </span>
             </button>
           }
         >
@@ -108,7 +113,9 @@ function EntryRow(props: { presenter: StoragePresenter; entry: Entry }): JSX.Ele
             onClick={() => props.presenter.open(props.entry.path)}
           >
             <Icon name="folder" class="h-4 w-4 shrink-0 text-muted" />
-            {props.entry.name}
+            <span class="max-w-[20rem] truncate" title={props.entry.name}>
+              {props.entry.name}
+            </span>
           </button>
         </Show>
       </Cell>

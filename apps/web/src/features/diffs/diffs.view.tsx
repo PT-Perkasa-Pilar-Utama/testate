@@ -32,16 +32,24 @@ import type { DiffsPresenter } from "./diffs.presenter.ts";
 
 const STATUS_VARIANT = { running: "info", ready: "success", failed: "error" } as const;
 
-/** Base and target on one line, the way a compare view names the two sides of a diff. */
+/**
+ * Base and target on one line, the way a compare view names the two sides of a diff. A state name
+ * caps at 80 characters with no restriction on spaces, so each side gets its own bound: 12rem is
+ * the same width `projects.view.tsx` gives a state name in the "at_state" badge, for the same cap.
+ */
 function CompareCell(props: { diff: Diff }): JSX.Element {
   return (
     <span class="inline-flex items-center gap-1.5">
       <Icon name="git-compare" class="h-3.5 w-3.5 shrink-0 text-muted" aria-hidden="true" />
-      <span class="font-medium text-heading">{props.diff.base.name}</span>
+      <span class="max-w-[12rem] truncate font-medium text-heading" title={props.diff.base.name}>
+        {props.diff.base.name}
+      </span>
       <span class="text-muted" aria-hidden="true">
         →
       </span>
-      <span>{targetLabel(props.diff.target)}</span>
+      <span class="max-w-[12rem] truncate" title={targetLabel(props.diff.target)}>
+        {targetLabel(props.diff.target)}
+      </span>
     </span>
   );
 }

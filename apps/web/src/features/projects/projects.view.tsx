@@ -222,7 +222,7 @@ export default function ProjectsView(): JSX.Element {
                       <Cell>
                         <div class="grid gap-0.5">
                           <a
-                            class="inline-flex w-fit items-center gap-1.5 font-semibold text-link hover:underline"
+                            class="inline-flex w-fit max-w-[28rem] items-center gap-1.5 font-semibold text-link hover:underline"
                             href={href(`/projects/${project.slug}`)}
                             onClick={(event) => {
                               event.preventDefault();
@@ -230,9 +230,17 @@ export default function ProjectsView(): JSX.Element {
                             }}
                           >
                             <Icon name="folder" class="h-4 w-4 shrink-0 text-muted" />
-                            {project.name}
+                            <span class="min-w-0 truncate" title={project.name}>
+                              {project.name}
+                            </span>
                           </a>
-                          <code class="text-xs text-muted">{project.slug}</code>
+                          {/* A slug is one unbroken word, no spaces, so it never wraps, only pushes. */}
+                          <code
+                            class="block max-w-[28rem] truncate text-xs text-muted"
+                            title={project.slug}
+                          >
+                            {project.slug}
+                          </code>
                           {/* The description was collected in the edit dialog and shown nowhere.
                               It belongs where you are choosing between projects. */}
                           <Show when={project.description}>
@@ -245,7 +253,14 @@ export default function ProjectsView(): JSX.Element {
                         </div>
                       </Cell>
                       <Cell>
-                        <Badge variant={badge().tone}>{badge().label}</Badge>
+                        {/* Every other status badge here comes from a fixed short label, but
+                            "at_state" puts the state's own name in the pill, and a state name
+                            is free text up to 80 characters. */}
+                        <Badge variant={badge().tone}>
+                          <span class="max-w-[12rem] truncate" title={badge().label}>
+                            {badge().label}
+                          </span>
+                        </Badge>
                       </Cell>
                       <Cell>
                         <Show

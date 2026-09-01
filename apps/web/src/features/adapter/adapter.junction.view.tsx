@@ -4,7 +4,7 @@ import type { Adapter, Entry, Introspection } from "@testate/shared";
 
 import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
-import { Cell, EmptyRow, Head, Row, Table } from "@/components/table.tsx";
+import { Cell, EmptyRow, Head, Row, Table, Truncated } from "@/components/table.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { ENTRY_KIND_LABEL } from "@/lib/labels.ts";
 import { href, navigate } from "@/lib/router.ts";
@@ -87,12 +87,16 @@ export function TablesView(props: { schema: Introspection; base: string }): JSX.
                     href={href(tablePath(qualified(table)))}
                     onClick={(event) => open(event, qualified(table))}
                   >
-                    <code>{qualified(table)}</code>
+                    <code class="block max-w-[20rem] truncate" title={qualified(table)}>
+                      {qualified(table)}
+                    </code>
                   </a>
                 </Cell>
                 <Cell numeric>{table.row_estimate}</Cell>
                 <Cell numeric>{table.columns.length}</Cell>
-                <Cell>{table.primary_key?.join(", ") ?? "none"}</Cell>
+                <Cell>
+                  <Truncated>{table.primary_key?.join(", ") ?? "none"}</Truncated>
+                </Cell>
               </Row>
             )}
           </For>
@@ -126,7 +130,9 @@ export function FilesView(props: { entries: Entry[] }): JSX.Element {
           <For each={props.entries}>
             {(entry) => (
               <Row>
-                <Cell>{entry.name}</Cell>
+                <Cell>
+                  <Truncated class="max-w-[24rem]">{entry.name}</Truncated>
+                </Cell>
                 <Cell>{ENTRY_KIND_LABEL[entry.kind]}</Cell>
                 <Cell numeric>
                   {entry.size_bytes === null ? "" : formatBytes(entry.size_bytes)}

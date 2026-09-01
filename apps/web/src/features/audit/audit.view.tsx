@@ -18,6 +18,7 @@ import {
   EmptyRow,
   TableFooter,
   TableToolbar,
+  Truncated,
 } from "@/components/table.tsx";
 import { OUTCOMES, createAuditPresenter } from "./audit.presenter.ts";
 import type { AuditPresenter } from "./audit.presenter.ts";
@@ -113,19 +114,42 @@ export default function AuditView(): JSX.Element {
                     <Cell class="whitespace-nowrap tabular-nums">{formatWhen(row.created_at)}</Cell>
                     <Cell class="whitespace-nowrap">
                       <span class="inline-flex items-center gap-1.5">
-                        <Icon name={ACTOR_ICON[row.actor.kind]} class="h-3.5 w-3.5 text-muted" />
-                        {row.actor.label}
+                        <Icon
+                          name={ACTOR_ICON[row.actor.kind]}
+                          class="h-3.5 w-3.5 shrink-0 text-muted"
+                        />
+                        {/* actor.label is a username (<=64) for a user row but a token's own name
+                            for a token row, and token names carry no length cap. */}
+                        <span class="max-w-[12rem] truncate" title={row.actor.label}>
+                          {row.actor.label}
+                        </span>
                       </span>
                     </Cell>
                     <Cell>
-                      <code>{row.action}</code>
+                      {/* action is an internal event name with no defined cap ("module.verb"),
+                          unlike the enum-backed columns beside it. */}
+                      <code class="block max-w-[18rem] truncate" title={row.action}>
+                        {row.action}
+                      </code>
                     </Cell>
                     <Cell class="whitespace-nowrap">
-                      <code class="text-xs text-muted">
+                      {/* target_type is one of a short, fixed set of internal type names; the
+                          risk is target_id, which is usually a UUID (36 chars) but is sometimes a
+                          raw username or another table's primary key with no cap of its own. 20rem
+                          fits "<type> <uuid>" without truncating the common case. */}
+                      <code
+                        class="block max-w-[20rem] truncate text-xs text-muted"
+                        title={`${row.target_type} ${row.target_id}`}
+                      >
                         {row.target_type} {row.target_id}
                       </code>
                     </Cell>
-                    <Cell>{row.project?.slug ?? ""}</Cell>
+                    <Cell>
+                      {/* A slug is 2-64 chars with no spaces, the same shape as the username that
+                          broke the users table. Narrower than a stacked name/slug/description
+                          block gets (28rem elsewhere): here it's the only thing in the column. */}
+                      <Truncated class="max-w-[12rem]">{row.project?.slug ?? ""}</Truncated>
+                    </Cell>
                     <Cell>
                       <Badge
                         variant={row.outcome === null ? "secondary" : OUTCOME_VARIANT[row.outcome]}

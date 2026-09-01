@@ -10,7 +10,7 @@ import { Menu, MenuItem } from "@/components/menu.tsx";
 import Select from "@/components/select.tsx";
 import { Cell, EmptyRow, Head, Row, Table, TableToolbar } from "@/components/table.tsx";
 import FixtureDialog from "./fixture.view.tsx";
-import { NUMERIC_TYPE, PAGE_SIZES, createGridPresenter } from "./grid.presenter.ts";
+import { NUMERIC_TYPE, PAGE_SIZES, cellText, createGridPresenter } from "./grid.presenter.ts";
 import { ExportLinks, FilterBar, WriteControls } from "./grid-toolbar.view.tsx";
 import type { GridPresenter } from "./grid.presenter.ts";
 import { FkCell, ForeignKeys } from "./grid-cells.view.tsx";
@@ -191,11 +191,20 @@ export default function GridView(props: { slug: string; id: string; table: strin
                     <For each={presenter.page.value().columns}>
                       {(column) => (
                         <Cell numeric={NUMERIC_TYPE.test(column.type)}>
-                          <FkCell
-                            presenter={presenter}
-                            column={column.name}
-                            value={row[column.name]}
-                          />
+                          {/* A cell holds whatever the table holds: a one-word flag or a page of
+                              JSON. FkCell renders a link for a foreign key, so the truncation
+                              wraps it from outside rather than editing what it returns; 18rem is
+                              this table's own default width for an unbounded string. */}
+                          <span
+                            class="block max-w-[18rem] truncate"
+                            title={cellText(row[column.name])}
+                          >
+                            <FkCell
+                              presenter={presenter}
+                              column={column.name}
+                              value={row[column.name]}
+                            />
+                          </span>
                         </Cell>
                       )}
                     </For>
