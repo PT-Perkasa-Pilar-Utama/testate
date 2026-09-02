@@ -2,10 +2,11 @@ import { Field, Form, createForm, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
 import { onceSettled } from "@/lib/form.ts";
-import { formatWhen } from "@/lib/format.ts";
+import { ROLE_LABEL } from "@/lib/labels.ts";
+import { formatAddress, formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
 import { PASSWORD_MIN_LENGTH, changePasswordSchema } from "@testate/shared";
-import type { ChangePasswordInput } from "@testate/shared";
+import type { ChangePasswordInput, Role } from "@testate/shared";
 import type { Session } from "./account.model.ts";
 
 import Badge from "@/components/badge.tsx";
@@ -110,7 +111,7 @@ function SessionRow(props: { presenter: AccountPresenter; session: Session }): J
         </span>
       </Cell>
       <Cell class="whitespace-nowrap">{formatWhen(props.session.last_seen_at)}</Cell>
-      <Cell>{props.session.ip ?? ""}</Cell>
+      <Cell>{formatAddress(props.session.ip ?? "")}</Cell>
       <Cell class="max-w-xs truncate">{props.session.user_agent ?? ""}</Cell>
       <Cell pinned>
         <Show when={!props.session.current}>
@@ -128,13 +129,18 @@ function SessionRow(props: { presenter: AccountPresenter; session: Session }): J
   );
 }
 
+/** "Administrator" rather than the role key beside the name; a Guest is not told they are a "viewer". */
+function roleLabel(role: Role | undefined): string {
+  return role === undefined ? "" : ROLE_LABEL[role];
+}
+
 export default function AccountView(): JSX.Element {
   const presenter = createAccountPresenter();
   return (
     <section class="grid gap-6">
       <PageHeader
         title="Account"
-        description={`Signed in as ${actor()?.label ?? ""} (${actor()?.role ?? ""}).`}
+        description={`Signed in as ${actor()?.label ?? ""}, ${roleLabel(actor()?.role)}.`}
       />
       <PasswordCard presenter={presenter} />
       <LayerCard class="grid gap-3 px-5 py-4">

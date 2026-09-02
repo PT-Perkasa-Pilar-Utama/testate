@@ -42,3 +42,11 @@ export function counted(count: number, plural: string): string {
   if (plural.endsWith("s")) return `1 ${plural.slice(0, -1)}`;
   return `1 ${plural}`;
 }
+
+/**
+ * An address as a person reads it. Bun reports an IPv4 peer of a dual-stack socket as the mapped
+ * form `::ffff:127.0.0.1`, and the sessions table printed that prefix on every row.
+ */
+export function formatAddress(ip: string): string {
+  return ip.replace(/^::ffff:/i, "");
+}

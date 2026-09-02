@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { counted, formatWhen, toDateInput } from "./format.ts";
+import { counted, formatAddress, formatWhen, toDateInput } from "./format.ts";
 
 describe("when something happened", () => {
   test("day, month, year, and the clock down to the second", () => {
@@ -32,5 +32,13 @@ describe("counted", () => {
     expect(counted(2, "file stores")).toBe("2 file stores");
     expect(counted(1, "entries")).toBe("1 entry");
     expect(counted(0, "entries")).toBe("0 entries");
+  });
+});
+
+describe("formatAddress", () => {
+  test("drops the IPv4-mapped prefix and leaves every other address alone", () => {
+    expect(formatAddress("::ffff:127.0.0.1")).toBe("127.0.0.1");
+    expect(formatAddress("::1")).toBe("::1");
+    expect(formatAddress("10.0.0.7")).toBe("10.0.0.7");
   });
 });
