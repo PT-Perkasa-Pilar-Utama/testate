@@ -40,7 +40,7 @@ One `@theme` name generates every utility family for that colour: `--color-surfa
 
 | Token | Value | For |
 | --- | --- | --- |
-| `accent` | `#7dd3c0` | what is active or focused: the focus ring, the active tab and nav entry, a link, HEAD's dot. Not a button fill |
+| `accent` | `#7dd3c0` | what is active or focused: the focus ring, the active tab and nav entry, a link, a ticked compare dot. As a fill, only the `accent` button: Take state, Check out, Insert row, the product's own verbs |
 | `accent-hover` | `#9ae3d3` | a link under the pointer |
 | `on-accent` | `#05070a` | text sitting on `accent`. White on teal fails AA; never use it |
 | `link` | `#7dd3c0` | link text |
@@ -107,7 +107,10 @@ Twenty-two files under `apps/web/src/components/`. Reuse before you write.
 | --- | --- |
 | `badge.tsx` | `Badge` — variants `primary`, `secondary`, `error`, `warning`, `success`, `info`, `outline` |
 | `banner.tsx` | `Banner` — variants `default`, `alert`, `error`, `secondary` |
-| `button.tsx` | `Button`, `buttonClass` — variants `primary` (ink, one per screen), `secondary`, `outline`, `ghost`, `danger` (red text on a line, for a row), `destructive` (solid red, for a confirm), `success` |
+| `button.tsx` | `Button`, `buttonClass` — variants `accent` (solid teal, the product's verbs only), `primary` (ink, one per screen), `secondary`, `outline`, `ghost`, `danger` (red text on a line, for a row), `destructive` (solid red, for a confirm), `success` |
+| `breadcrumbs.tsx` | `Breadcrumbs` — the path down to a screen, mono; `AdapterBreadcrumbs` in `features/adapter` fills in the project and adapter |
+| `line-grid.tsx` | `LineGrid`, `LineCell`, `Stat` — the homepage's card grid with one-pixel lines instead of gaps, and its mono stat |
+| `pending.tsx` | `Pending` — the one loading line, with the spinner |
 | `confirm-dialog.tsx` | `ConfirmDialog` |
 | `dialog.tsx` | `Dialog`, `DialogActions` — the button row every dialog ends with; sizes `base` (a question), `lg` (a form), `xl` (something to read) |
 | `empty-state.tsx` | `EmptyState` — the icon, line, and one action a screen with nothing on it shows |
@@ -182,6 +185,11 @@ These are the design language, not the old vendor's house style. They survive it
 - **A sticky element needs a border.** `sticky top-0 border-b border-line`, or content slides under
   it invisibly.
 - **Never nest a `LayerCard` in a `LayerCard`.** Put the heading outside the card.
+- **A screen under a project starts with `Breadcrumbs`.** The last crumb is the page and is not a
+  link. Never print the same string in the crumb and in the heading: a spec that looks for it by
+  text finds two.
+- **An empty card centres its one line.** Cards in a row stretch to the tallest; a line at the
+  top of a hollow reads as a card that failed to load.
 - **Never conditionally render a dialog.** Drive `<dialog>` from a signal; mounting it on demand
   kills the open and close animation.
 - **A collapsing panel keeps its content width** while it closes, or the text reflows mid-animation.

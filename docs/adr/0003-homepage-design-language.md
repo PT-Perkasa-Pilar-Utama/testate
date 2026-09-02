@@ -25,7 +25,7 @@ What changed, in `apps/web/src/styles/app.css` and the components:
 | --- | --- | --- |
 | Ground and surface | `#000000`, `#0d1117` | `#05070a`, `#0b1017`, with a soft teal glow painted once on the root |
 | Lines | grey at 25% and 15% | off-white at 16% and 8%, so they read the same on either ground |
-| Accent | GitHub cyan `#8dd6ff` | the mark's teal `#7dd3c0`; cyan stays as `info` |
+| Accent | GitHub cyan `#8dd6ff` | the mark's teal `#7dd3c0`; cyan stays as `info`. As a fill it is the `accent` button, reserved for the product's own verbs: Take state, Check out, Insert row |
 | The one solid button | cyan | ink on the ground (`bg-body text-inverse`), the homepage's call to action |
 | Destructive in a row | solid red | a quiet `danger` variant: red text on a line; the confirm dialog carries the solid red |
 | Table heads | 12px sentence case | mono, 11px, upper-case, spaced; the grid's column names keep their own case |
@@ -38,6 +38,23 @@ What changed, in `apps/web/src/styles/app.css` and the components:
 The light theme stays, as a mapping rather than a design: the homepage has none. The teal darkens
 to the mark's own dark teal (`docs/assets/logo-dark.svg`), washes lighten, lines turn grey.
 `scripts/check-contrast.ts` holds both palettes to the same floors and passes.
+
+## Amendment, 2026-09-02 (afternoon)
+
+The product owner judged the first pass surface-deep and asked for the homepage's language to
+run through the screens, not only the tokens. What that added:
+
+- The home screen is a bento on the homepage's line grid (`LineGrid`, `Stat`), with cards that
+  stretch to their row and centre an empty line rather than leaving a hollow.
+- Every screen under a project starts with a breadcrumb path in the mono label.
+- Take state is the one solid teal on the states screen; Check out is teal on every state but the
+  one the databases hold, where it is quiet and says so. That needed the API to know whether the
+  databases still hold HEAD: `head.dirty` (migration 0007), set by Testate's own writes, cleared by
+  a checkout or a snapshot, settled by a diff of HEAD against the live databases, which "Check for
+  changes" on the HEAD row runs. Outside writes stay invisible until that check runs, which the
+  screen says by never disabling the button.
+- Write mode is a strip under the grid toolbar. The diff page's rail names each database and
+  colours what moved. The activity tab colours only a failure. Every mutation ends in a toast.
 
 ## Consequences
 

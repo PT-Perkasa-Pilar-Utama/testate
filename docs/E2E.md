@@ -64,6 +64,10 @@ Put `@story-N` in the test title. `.e2e/coverage.md` lists each PRD story as `co
 both exception lists in `e2e/lib/stories.ts` are empty. Add an id back only when a story truly
 cannot be exercised.
 
+- A screen under a project carries a breadcrumb path. `getByText(slug, { exact: true })` on a
+  project page found two matches until the crumb switched to the project's name; when a crumb and
+  a heading say the same thing, scope the locator (`getByLabel("Breadcrumb")` or the heading role).
+
 ## Rules
 
 - Never wipe data in `playwright.config.ts`; it runs in every worker.

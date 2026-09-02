@@ -390,6 +390,29 @@ reads from `docs/index.html`'s palette. What a next agent needs:
   Playwright script that signs in and screenshots a fixed route list, dark and light. Never while
   a chain runs: they share that SQLite file.
 
+### The deeper pass, 2026-09-02 (late afternoon)
+
+The product owner called the first pass surface-deep: "I want all natively mimic the design on
+the web demo style." What changed, each its own commit:
+
+- **`head.dirty` in the API** (migration 0007, `feat(projects)`): whether the live databases are
+  known to have moved off HEAD. Set by the first write of a session and by a real import run,
+  cleared by `setHead` (a checkout or a snapshot), settled by a diff of HEAD against live in
+  `diffs.job.ts`. Tests in `diffs.test.ts` and `data.editing.test.ts`. The screen never disables
+  Check out: an outside write is invisible until "Check for changes" on the HEAD row runs, and the
+  button is the tester's way back after the suite ran. Quiet on HEAD, teal elsewhere.
+- **States:** the rail dot is the compare tick (`appearance-none`, same accessible name), HEAD's
+  dot is green, Take state is the one `accent` button.
+- **Home:** `LineGrid` and `Stat` in `components/line-grid.tsx`; the cards moved to
+  `home.cards.view.tsx`; rows stretch and empty cards centre their line.
+- **Breadcrumbs:** `components/breadcrumbs.tsx`; `AdapterBreadcrumbs` replaced `AdapterCrumb`.
+  The project crumb carries the name, not the slug, or a spec matching the slug text finds two.
+- **Grid write mode:** `WriteStrip` in `grid-toolbar.view.tsx`, the row's Edit carries the pencil.
+- **Diff rail** with icons and coloured counts, auto-selects the first table that moved. Activity
+  chips are plain unless a database failed. Twelve mutations gained a toast. Six dashes became
+  sentences. Twenty-one loading paragraphs became `Pending`. Eyebrows over every page header and
+  the two sidebar groups.
+
 ## 8b. Handed over deliberately, 2026-09-02
 
 Two items were stopped on purpose rather than finished. Both are written up here because whoever
