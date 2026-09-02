@@ -1,4 +1,4 @@
-# Handover: Testate build session, 2026-08-28 to 2026-09-02
+# Handover: Testate build session, 2026-08-28 to 2026-09-02 (redesigned 2026-09-02, see §8a)
 
 Read this first, then `CLAUDE.md`, then `docs/E2E.md`. Memory notes live in
 `~/.claude/projects/-Users-vexeee-Documents-project-testate/memory/` (auto-loaded via `MEMORY.md`).
@@ -361,6 +361,34 @@ the version in `org.opencontainers.image.version`.
 (`postgres/write.ts`); backup file naming in the content-addressed store; `readTable` snapshotting
 every table. Leave alone: FK `_display` join, S3 `q` in-page filter, MongoDB index exclusion,
 `authSource`, the ssh2 note, the in-house router, the diff row cache ceiling.
+
+## 8a. The redesign, 2026-09-02 (afternoon)
+
+The product owner replaced the GitHub direction with the homepage's own style (ADR 0003): "I
+really like the web demo style. The current UI style is really bad." Everything the SPA shows now
+reads from `docs/index.html`'s palette. What a next agent needs:
+
+- **Tokens changed values, never names.** `apps/web/src/styles/app.css`; the light theme is a
+  mapping, not a design, and `check:contrast` holds both. The design skill was rewritten to match.
+- **The component layer is the design.** `Button` gained `danger` (a quiet row-level delete);
+  `Dialog` gained `DialogActions` and three deliberate widths; `PageHeader` gained `eyebrow` and
+  exports `Eyebrow`; `Head` upper-cases unless `identifier`. No DOM, role or label changed, and the
+  browser suite passed unchanged (138 of 138 that run).
+- **Seven bugs came out of looking at every screen:** signing in from `/login` left the address
+  bar on `/login`; the home screen read the role untracked on every load; a succeeded job showed
+  its last progress fraction (67%) for good; a backup's phase read `tar` and a deletion's `gc`; a
+  footer said "1 file stores"; the sessions table printed `::ffff:127.0.0.1` and the role key; a
+  row's Details, Counters and Retry wrapped onto two lines. Each is its own commit.
+- **Left open on purpose.** The two Solid diagnostics on the dialog dismiss path (§8b) are still
+  filtered in `e2e/admin.e2e.ts`: the redesign touched dialog classes only, and the thirteen-site
+  handler change is the same job it was. The `followJob` leak listed under "owed" is done: the
+  other agent's `createJobFollower` in `lib/sse.ts` ties every stream to its owner.
+- **The homepage itself** (`docs/index.html`, `assets/site.js`) gained a placement animation, an
+  agent terminal, and lost every source of scroll-time repainting; the README banner is the same
+  placement drawing at 2:1, generated, and the generator is not in the tree.
+- **Iteration loop that worked:** an API on `.e2e/data` (port 7380) plus Vite on 7381, and a
+  Playwright script that signs in and screenshots a fixed route list, dark and light. Never while
+  a chain runs: they share that SQLite file.
 
 ## 8b. Handed over deliberately, 2026-09-02
 
