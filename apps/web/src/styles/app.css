@@ -196,12 +196,18 @@ body {
   color: var(--color-body);
 }
 
-/* The homepage's tight headings, everywhere a heading is. */
+/* The homepage's tight headings, everywhere a heading is; and the browser's own controls take the
+   accent, so a native checkbox in the states timeline is teal rather than the platform grey. */
 @layer base {
   h1,
   h2,
   h3 {
     letter-spacing: -0.02em;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--color-accent);
   }
 }
 
