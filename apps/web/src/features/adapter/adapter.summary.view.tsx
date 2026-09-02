@@ -42,7 +42,7 @@ function Facts(props: { adapter: Adapter }): JSX.Element {
 /**
  * Status in a real place instead of buried in a badge among six others. `ok` stays a quiet badge;
  * `error` and `disabled` also get a banner with the reason, because a disabled adapter with no
- * visible reason is the state that most confuses an operator (UI_REWORK.md).
+ * visible reason is the state that most confuses an operator (the rework of 2026-09-01).
  */
 export function StatusLine(props: { adapter: Adapter }): JSX.Element {
   const a = (): Adapter => props.adapter;

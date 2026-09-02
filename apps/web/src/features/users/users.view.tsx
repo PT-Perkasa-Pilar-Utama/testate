@@ -37,7 +37,7 @@ const ROLE_FILTER_OPTIONS = [{ value: "" as const, label: "All roles" }, ...ROLE
 
 /**
  * Accent (`info`) is reserved for admin: the role that can do this to every other account. `qa`
- * covers both the tester and the engineer (`docs/UI_REWORK.md`) and needs no emphasis; `viewer`
+ * covers both the tester and the engineer (the rework of 2026-09-01) and needs no emphasis; `viewer`
  * reads quietest because it can change nothing.
  */
 const ROLE_META = {

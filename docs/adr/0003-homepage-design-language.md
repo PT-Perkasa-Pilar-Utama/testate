@@ -1,12 +1,13 @@
 # ADR 0003: The homepage's design language, inside the app
 
 - **Date:** 2026-09-02
-- **Status:** Accepted. Supersedes the look decided in ADR 0002; keeps its structure.
+- **Status:** Accepted. Supersedes ADR 0002 (GitHub's design language, 2026-08-30), which is
+  removed; what still holds from it is restated below.
 - **Deciders:** Product owner (direction), Tech Lead (implementation)
 
 ## Context
 
-ADR 0002 restyled the SPA after GitHub. On 2026-09-02 the product owner, having seen the project
+The SPA was restyled after GitHub on 2026-08-30 (ADR 0002). On 2026-09-02 the product owner, having seen the project
 homepage (`docs/index.html`, the same language on the README banner), asked for the app to match
 it: "I really like the web demo style. The current UI style is really bad." The homepage is dark,
 near-black rather than black, with one raised surface, hairline borders, tight headings in Mona
@@ -14,14 +15,19 @@ Sans, mono upper-case labels, teal for what you can act on and the mark's green 
 
 ## Decision
 
-The app takes the homepage's palette and vocabulary and keeps ADR 0002's structure: the tokens
-stay in the `@theme` block under the same names, the three-token status rule stands, the
-component layer under `apps/web/src/components/` stays hand-rolled, and no DOM, role or label
-changed, so the browser suite selects exactly what it selected before.
+The app takes the homepage's palette and vocabulary and keeps the structure the GitHub pass
+built: the tokens stay in the Tailwind `@theme` block under the same names, one name generating
+every utility family; a status is three tokens (`danger`, `danger-tint`, `danger-fg`) because one
+name cannot be both a fill and a text colour; the component layer under
+`apps/web/src/components/` stays hand-rolled because no Solid 2 component library exists; content
+text stays 14px because the screens are tables; Mona Sans is served from the instance and never
+from a CDN because nothing leaves your network; motion stays at 80 ms and `prefers-reduced-motion`
+removes it. No DOM, role or label changed, so the browser suite selects exactly what it selected
+before.
 
 What changed, in `apps/web/src/styles/app.css` and the components:
 
-| Concern | ADR 0002 | Now |
+| Concern | The GitHub pass | Now |
 | --- | --- | --- |
 | Ground and surface | `#000000`, `#0d1117` | `#05070a`, `#0b1017`, with a soft teal glow painted once on the root |
 | Lines | grey at 25% and 15% | off-white at 16% and 8%, so they read the same on either ground |

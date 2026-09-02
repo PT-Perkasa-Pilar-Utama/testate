@@ -5,7 +5,7 @@ description: Testate's design tokens and UI rules. The homepage's design languag
 
 # Testate's design system
 
-The homepage's design language (ADR 0003, on ADR 0002's structure), in plain Tailwind 4. There is
+The homepage's design language (ADR 0003), in plain Tailwind 4. There is
 no component library. Every
 component is hand-rolled under `apps/web/src/components/`, and every colour comes from a token
 defined in `apps/web/src/styles/app.css`.
@@ -14,9 +14,7 @@ defined in `apps/web/src/styles/app.css`.
 whole component library nobody imported. Nothing replaced it. Tailwind 4 generates a utility for
 every custom property in an `@theme` block, which is all we ever used it for.
 
-Read `docs/design/github.md` for the specification and ADR 0002 for the four places that
-specification contradicts itself. Neither is restated here.
-
+Read ADR 0003 for why each token is what it is; it is not restated here.
 ## Tokens
 
 One `@theme` name generates every utility family for that colour: `--color-surface` is

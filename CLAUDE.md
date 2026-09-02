@@ -1,6 +1,6 @@
 # Testate
 
-Git for your test database. Bun 1.4 monorepo: `apps/api` (Hono), `apps/web` (SolidJS 2 RC), `packages/shared` (valibot contract). Read `docs/technical-specs/_index.md` before changing architecture; cite the spec section in the commit body.
+Git for your test database. Bun 1.4 monorepo: `apps/api` (Hono), `apps/web` (SolidJS 2 RC), `packages/shared` (valibot contract). Read `docs/technical-specs/_index.md` before changing architecture; cite the spec section in the commit body. `docs/OPEN_ITEMS.md` lists what is known and not done.
 
 ## Commands
 

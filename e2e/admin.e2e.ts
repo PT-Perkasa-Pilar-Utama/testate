@@ -136,7 +136,7 @@ test.describe("admin gap stories", () => {
     await row.getByRole("button", { name: "Lock" }).click();
     await expect(row.getByText("locked")).toBeVisible();
 
-    // The screen moved behind `admin` (docs/UI_REWORK.md: "keep the engine, hide the screen"), so
+    // The screen moved behind `admin` ("keep the engine, hide the screen"), so
     // qa gets the role banner, not the table — checking for a missing Remove button would now pass
     // whether or not locking still works. Hit the engine directly instead: the router lets qa
     // through the DELETE (data.router.ts requireRole("qa")); only the lock check in

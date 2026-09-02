@@ -38,7 +38,7 @@ export const ROUTES: readonly RouteDef<RouteName>[] = [
   // An import normalizer belongs to an adapter (normalizers.adapter_id), so the screen does too;
   // it used to be a project tab that opened by asking which database (docs/PROJECT_REWORK.md).
   { name: "imports", pattern: "/projects/:slug/adapters/:id/imports", role: "qa" },
-  // Masking rules are admin work (docs/UI_REWORK.md). The engine stays load-bearing for the grid,
+  // Masking rules are admin work. The engine stays load-bearing for the grid,
   // imports, diffs and the agent surface; only the screen moves out of a tester's way.
   { name: "masks", pattern: "/projects/:slug/adapters/:id/masks", role: "admin" },
   // The old name still resolves: it was in links and in the toolbar for a release.

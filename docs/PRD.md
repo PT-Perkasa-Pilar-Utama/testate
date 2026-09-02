@@ -425,7 +425,7 @@ Every mutable entity carries an id, created and updated timestamps. Every sealed
 
 | Tier | Engines | View | Download | State, checkout, diff | Extract fixture | Edit | Import |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Files | S3, SFTP, FTP | list, preview | yes | | | | |
+| Files | S3-compatible, SFTP, FTP | list, preview | yes | | | | |
 | Document | MongoDB | find, aggregate | | yes | document by id | | |
 | Tabular | Postgres, MySQL, MariaDB | grid, SQL | | yes | FK walk | forms, grid, write session | yes |
 

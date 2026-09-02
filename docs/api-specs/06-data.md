@@ -50,7 +50,7 @@ Masks: responses to `viewer` users and agent tokens apply column masks; `masked_
 
 **Output.** `200`, `Content-Type` `text/csv; charset=utf-8` or `application/json`, `Content-Disposition: attachment; filename="<table>.<format>"` (`public.orders` → `public-orders.csv`); a CSV header row followed by one line per row, or a single JSON array of row objects.
 
-**Errors.** `VALIDATION_ERROR` (unknown column, bad filter), `ADAPTER_UNREACHABLE`, `NOT_FOUND`. **Traceability.** `docs/UI_REWORK.md` phase 3.
+**Errors.** `VALIDATION_ERROR` (unknown column, bad filter), `ADAPTER_UNREACHABLE`, `NOT_FOUND`.
 
 ## 6.4 `GET .../tables/{table}/lookup` (Tabular)
 

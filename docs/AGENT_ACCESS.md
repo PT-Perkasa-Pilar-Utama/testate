@@ -65,7 +65,7 @@ With a sub-path: `https://example.internal/testate/api/v1/mcp`.
 | `run_readonly_query` | Run SQL or a MongoDB find, read mode, capped |
 | `extract_fixture` | Copy a row and its relations as SQL `INSERT`s or JSON to reproduce locally |
 | `list_states`, `get_state`, `diff_summary` | See what the QA team snapshotted and what changed |
-| `list_files`, `preview_file` | Browse S3, SFTP, or FTP text files |
+| `list_files`, `preview_file` | Browse text files on an S3-compatible store, SFTP, or FTP |
 
 Tester tokens get five more. A Guest token sees them in `tools/list` and gets `403 role` if it calls one, which is a clearer answer than a tool that is not there.
 

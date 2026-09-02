@@ -1,9 +1,8 @@
 @import "tailwindcss";
 
 /*
- * GitHub's design language, in plain Tailwind (ADR 0002). The values come from
- * docs/design/github.md; the four places that specification contradicts itself are resolved in the
- * ADR, not here.
+ * The homepage's design language, in plain Tailwind (ADR 0003). The values are the ones
+ * docs/index.html paints; the ADR records why each one is what it is.
  *
  * `@theme`, not `:root`: Tailwind 4 generates a utility for every token in this block, which is
  * what `@cloudflare/kumo` used to do for us. It no longer does. One name, one value, one utility

@@ -61,7 +61,7 @@ In scope: diff between two states or a state and live, per-table counts, row dri
 
 ### 1.2.10 `storage`
 
-In scope: browse, filter, stat, preview, download on S3, SFTP, FTP; host key trust on first use and blocking on change. Stories 90 to 94.
+In scope: browse, filter, stat, preview, download on any S3-compatible store, SFTP, FTP; host key trust on first use and blocking on change. Stories 90 to 94.
 
 ### 1.2.11 `jobs`
 
@@ -148,4 +148,4 @@ admin, retiring a system
 8. SolidJS 2.0 is a release candidate. Versions are pinned exactly and bumped on purpose.
 9. The engine floors are Postgres 13, MySQL 8.0, MariaDB 10.6, MongoDB 6.0. Below them the probe refuses.
 10. MariaDB over Bun's MySQL driver, ssh2 under Bun, OpenAPI generation from valibot, and the MCP transport for Hono are Sprint 0 spikes with fixed fallbacks (`../PRD.md` §7).
-11. Adapters belong to a tier that fixes what Testate can do with them: Files (S3, SFTP, FTP: view, download), Document (MongoDB: view, state, diff, extract), Tabular (Postgres, MySQL, MariaDB: view, state, diff, extract, edit, import). Tier is reported by the probe and enforced by every module.
+11. Adapters belong to a tier that fixes what Testate can do with them: Files (S3-compatible, SFTP, FTP: view, download), Document (MongoDB: view, state, diff, extract), Tabular (Postgres, MySQL, MariaDB: view, state, diff, extract, edit, import). Tier is reported by the probe and enforced by every module.

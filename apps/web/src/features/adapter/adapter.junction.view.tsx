@@ -36,7 +36,7 @@ export function JunctionToolbar(props: { adapter: Adapter; base: string }): JSX.
             Import a file
           </Button>
         </Show>
-        {/* UI_REWORK.md: masks stay load-bearing but the screen hides behind admin. */}
+        {/* Masks stay load-bearing for the grid, diffs and agents; only the screen hides behind admin. */}
         <Show when={a().tier === "tabular" && hasRole("admin")}>
           <Button size="sm" variant="secondary" onClick={() => navigate(`${props.base}/masks`)}>
             <Icon name="shield" class="h-3.5 w-3.5" />
