@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import { adapterScreens, apiContext, representativeAdapters, waitForJob } from "./lib/api.ts";
-import { countApi, over, settle } from "./lib/crawl.ts";
+import { countApi, over, settle, watch } from "./lib/crawl.ts";
+import type { Issue } from "./lib/crawl.ts";
 import { SCREENS, statePath } from "./lib/roles.ts";
 import { API_PORT } from "../playwright.config.ts";
 
@@ -82,13 +83,20 @@ test.describe("the production bundle", () => {
   test.use({ storageState: statePath("admin"), baseURL: `http://localhost:${API_PORT}` });
 
   test("asks each endpoint once per screen and then stops", async ({ page }) => {
+    // The API serves this page with its Content-Security-Policy; a blocked script or style is a
+    // console error, and this is the one project that would see it.
+    const issues: Issue[] = [];
+    watch(page, issues);
     const counts = countApi(page);
     const faults: string[] = [];
     for (const screen of SCREENS) faults.push(...(await faultsOn(page, counts, screen.path)));
     expect(faults).toStrictEqual([]);
+    expect(issues).toStrictEqual([]);
   });
 
   test("a screen behind an id settles too, including a file store's own tab", async ({ page }) => {
+    const issues: Issue[] = [];
+    watch(page, issues);
     const counts = countApi(page);
     const paths = await deepPaths();
     // A seed with no adapters, or none holding files, would make this pass by walking nothing.
@@ -98,5 +106,6 @@ test.describe("the production bundle", () => {
     const faults: string[] = [];
     for (const path of paths) faults.push(...(await faultsOn(page, counts, path)));
     expect(faults).toStrictEqual([]);
+    expect(issues).toStrictEqual([]);
   });
 });

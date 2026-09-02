@@ -28,7 +28,7 @@ import { bootStore, lazyJobs, opsDeps, resetHandler, storageDeps } from "./wirin
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import { openMetadataDb } from "./lib/db/index.ts";
 import { authenticate, requireReader } from "./lib/http/auth.ts";
-import { errorResponse, notFound } from "./lib/http/index.ts";
+import { errorResponse, installHardening, notFound } from "./lib/http/index.ts";
 import { createLogger } from "./lib/logger/index.ts";
 import { mountOpenApi } from "./lib/openapi.ts";
 import { createPasswordHasher } from "./lib/password/index.ts";
@@ -250,6 +250,11 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
 
   const app = new Hono();
   app.use("*", logger.middleware());
+  installHardening(app, {
+    hsts: config.TESTATE_TRUST_PROXY,
+    apiPrefix: prefix,
+    uploadBytes: config.TESTATE_MAX_UPLOAD_MB * 1024 * 1024,
+  });
   app.use("*", authenticate(auth));
   app.onError((cause, c) => errorResponse(c, cause, c.get("event"), config.TESTATE_LOG_STACKS));
   app.notFound((c) => errorResponse(c, notFound("route"), c.get("event"), false));
@@ -257,9 +262,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   const v1 = createV1(handlers);
   // The reference and the document it renders both ask for a session. Health does not: a liveness
   // probe has no credential and blocking it would break every deployment that has one.
-  const reader = requireReader(
-    config.TESTATE_BASE_PATH === "/" ? "/login" : `${config.TESTATE_BASE_PATH}/login`
-  );
+  const reader = requireReader(config.TESTATE_BASE_PATH);
   v1.use("/openapi.json", reader);
   v1.use("/docs", reader);
   mountOpenApi(v1, VERSION);

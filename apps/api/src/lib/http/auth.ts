@@ -130,7 +130,8 @@ export function requireUnscoped(): MiddlewareHandler {
  * A browser gets sent to the sign-in screen rather than a JSON refusal it cannot act on. A client
  * asking for JSON gets the refusal.
  */
-export function requireReader(loginPath: string): MiddlewareHandler {
+export function requireReader(basePath: string): MiddlewareHandler {
+  const loginPath = basePath === "/" ? "/login" : `${basePath}/login`;
   return async (c, next) => {
     const actor = c.get("actor");
     const wantsHtml = (c.req.header("accept") ?? "").includes("text/html");
