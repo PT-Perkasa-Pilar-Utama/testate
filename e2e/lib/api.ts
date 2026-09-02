@@ -220,3 +220,23 @@ export function blobCount(): number {
     entry.isFile()
   ).length;
 }
+
+/**
+ * Waits until a state of that name exists in the project, whatever its status. A screen opened
+ * in the gap between "init snapshot queued" and the job inserting its state row has no row to
+ * follow and never refreshes, so a spec that goes there straight from the toast has to wait here.
+ */
+export async function waitForState(
+  qa: APIRequestContext,
+  slug: string,
+  name: string
+): Promise<void> {
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    const page = await (await qa.get(`/api/v1/projects/${slug}/states`)).json();
+    const rows = Array.isArray(page.data) ? page.data : [];
+    if (rows.some((row: { name?: string }) => row.name === name)) return;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(`no state named ${name} in ${slug} after 60s`);
+}

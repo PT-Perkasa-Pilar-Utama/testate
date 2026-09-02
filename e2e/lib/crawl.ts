@@ -192,6 +192,13 @@ export async function crawl(page: Page, path: string, seed: number): Promise<Cli
   const total = Math.min(await interactive(page).count(), MAX_CLICKS);
   const clicks: Click[] = [];
   const at = (): string => page.url().replace(/^https?:\/\/[^/]+/, "");
+  // `CRAWL_LOG=1` prints one line per click with the seconds it cost, which is how a crawl that
+  // used to take a minute and now takes fifteen says where the time went.
+  const started = Date.now();
+  const log = (line: string): void => {
+    if (process.env["CRAWL_LOG"] === "1") process.stdout.write(`crawl ${path} ${line}\n`);
+  };
+  log(`${total} controls`);
   for (let index = 0; index < total; index += 1) {
     // Reload only when the last click left the screen or changed it: most clicks are cheap toggles.
     if (at() !== path) {
@@ -212,6 +219,7 @@ export async function crawl(page: Page, path: string, seed: number): Promise<Cli
     await settle(page);
     const result = await afterClick(page, path, seed * 100 + index);
     clicks.push({ label, ...result, landed: at() });
+    log(`#${index} "${label}" ${result.outcome} ${Math.round((Date.now() - started) / 1000)}s`);
   }
   return clicks;
 }
