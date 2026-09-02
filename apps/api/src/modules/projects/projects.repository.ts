@@ -18,6 +18,7 @@ const projectRecordSchema = v.object({
   head_state_name: v.nullable(v.string()),
   head_status: headStatusSchema,
   head_changed_at: v.nullable(v.string()),
+  head_dirty: v.number(),
   created_by: v.string(),
   created_at: v.string(),
   updated_at: v.string(),
@@ -63,7 +64,10 @@ export type ProjectsRepository = {
   insert(project: NewProject): Project;
   update(id: string, patch: ProjectPatch, at: string): void;
   /** HEAD moves on snapshot and checkout; `unknown` after a failed restore (05 §5.4). */
+  /** Moves HEAD; the databases now equal that state, so `dirty` clears with it. */
   setHead(id: string, stateId: string | null, status: HeadStatus, at: string): void;
+  /** Records whether the live databases are known to differ from HEAD. */
+  markHeadDirty(id: string, dirty: boolean, at: string): void;
   remove(id: string): void;
   usedBytes(projectId: string): number;
   instanceUsedBytes(): number;
@@ -108,6 +112,7 @@ function toProject(row: ProjectRecord): Project {
       state_id: row.head_state_id,
       state_name: row.head_state_name,
       changed_at: row.head_changed_at,
+      dirty: row.head_dirty === 1,
     },
     created_by: row.created_by,
     created_at: row.created_at,
@@ -216,8 +221,15 @@ export function createProjectsRepository(db: MetadataDb): ProjectsRepository {
     },
     setHead(id, stateId, status, at) {
       db.query(
-        "UPDATE projects SET head_state_id = ?, head_status = ?, head_changed_at = ?, updated_at = ? WHERE id = ?"
+        "UPDATE projects SET head_state_id = ?, head_status = ?, head_changed_at = ?, head_dirty = 0, updated_at = ? WHERE id = ?"
       ).run(stateId, status, at, at, id);
+    },
+    markHeadDirty(id, dirty, at) {
+      db.query("UPDATE projects SET head_dirty = ?, updated_at = ? WHERE id = ?").run(
+        dirty ? 1 : 0,
+        at,
+        id
+      );
     },
     remove(id) {
       db.query("DELETE FROM projects WHERE id = ?").run(id);

@@ -162,6 +162,21 @@ describe("diffs", () => {
     ).toEqual(["customers:0/0/0:key changed: primary-key to row-hash", "orders:0/0/0:null"]);
   });
 
+  it("a diff of HEAD against live settles whether the databases moved off it", async () => {
+    const h = await createHarness();
+    await settled(
+      h,
+      await h.diffs.create(h.harness.qa, "shop", "init", "live", undefined, TEST_META)
+    );
+    expect(h.harness.projectsRepo.bySlug("shop")?.head.dirty).toBe(false);
+    h.harness.databases.get("shop")?.set("public.orders", []);
+    await settled(
+      h,
+      await h.diffs.create(h.harness.qa, "shop", "init", "live", undefined, TEST_META)
+    );
+    expect(h.harness.projectsRepo.bySlug("shop")?.head.dirty).toBe(true);
+  });
+
   it("a live target takes a hidden diff state that never lists and dies with the diff", async () => {
     const h = await createHarness();
     h.harness.databases.get("shop")?.set("public.orders", []);

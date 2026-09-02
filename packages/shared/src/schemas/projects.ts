@@ -8,6 +8,12 @@ export const headSchema = v.object({
   state_id: v.nullable(idSchema),
   state_name: v.nullable(v.string()),
   changed_at: v.nullable(timestampSchema),
+  /**
+   * True once the live databases are known to differ from the state HEAD names: Testate wrote to
+   * them (a write session, an import), or a diff of HEAD against live found rows that moved. A
+   * checkout or a snapshot clears it. Outside writes are invisible until such a diff runs.
+   */
+  dirty: v.boolean(),
 });
 export type Head = v.InferOutput<typeof headSchema>;
 

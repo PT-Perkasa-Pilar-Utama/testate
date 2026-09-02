@@ -32,7 +32,7 @@ import type { SessionDeps } from "./data.sessions.ts";
 export type DataDeps = RestoreDeps & {
   repo: DataRepository;
   policies: PoliciesRepository;
-  projects: Pick<ProjectsRepository, "byId" | "setHead" | "usedBytes">;
+  projects: Pick<ProjectsRepository, "markHeadDirty" | "byId" | "setHead" | "usedBytes">;
   jobs: Pick<JobsService, "enqueue" | "wait">;
   settings: { get(): Promise<Settings> };
   audit: SessionDeps["audit"];

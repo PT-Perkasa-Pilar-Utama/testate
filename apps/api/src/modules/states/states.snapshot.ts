@@ -24,7 +24,10 @@ export type SnapshotDeps = {
   ring: KeyRing;
   adapters: AdaptersRepository;
   states: StatesRepository;
-  projects: Pick<ProjectsRepository, "setHead" | "byId" | "usedBytes" | "instanceUsedBytes">;
+  projects: Pick<
+    ProjectsRepository,
+    "setHead" | "markHeadDirty" | "byId" | "usedBytes" | "instanceUsedBytes"
+  >;
   audit: AuditService;
   now: () => Date;
   /** The instance defaults a project without a quota falls back to, and the instance ceiling. */

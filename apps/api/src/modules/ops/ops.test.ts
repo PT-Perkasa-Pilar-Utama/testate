@@ -86,9 +86,10 @@ describe("migrate", () => {
       "0004_write_sessions_by_token.sql",
       "0005_normalizers_per_table.sql",
       "0006_normalizers.sql",
+      "0007_head_dirty.sql",
     ]);
     expect(second.applied).toStrictEqual([]);
-    expect(second.skipped).toBe(6);
+    expect(second.skipped).toBe(7);
     const tables = db
       .query<{ name: string }, []>(
         "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"

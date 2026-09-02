@@ -32,7 +32,10 @@ export type RunnerDeps = ReturnToInitDeps & {
   policies: PoliciesRepository;
   dataDir: string;
   audit: AuditService;
-  projects: Pick<ProjectsRepository, "setHead" | "byId" | "usedBytes" | "instanceUsedBytes">;
+  projects: Pick<
+    ProjectsRepository,
+    "markHeadDirty" | "setHead" | "byId" | "usedBytes" | "instanceUsedBytes"
+  >;
   now: () => Date;
   /** Instance quota defaults and ceiling for snapshots; absent means project quotas only. */
   quota?: () => Promise<QuotaSettings>;

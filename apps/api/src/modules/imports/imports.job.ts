@@ -222,6 +222,8 @@ export function createImportRunner(deps: ImportJobDeps): JobRunner {
       );
       counts.duration_ms = Date.now() - startedAt;
       deps.imports.finishRun(payload.run_id, counts, rejectedPath, deps.now().toISOString());
+      // A real run wrote rows, so the databases no longer hold the state HEAD names.
+      if (!payload.dry_run) deps.projects.markHeadDirty(projectId, true, deps.now().toISOString());
       return {
         status: "succeeded",
         result: {

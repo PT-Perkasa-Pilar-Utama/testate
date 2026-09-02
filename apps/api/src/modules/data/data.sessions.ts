@@ -13,7 +13,7 @@ import type { DataRepository, WriteSessionRecord } from "./data.repository.ts";
 export type SessionDeps = {
   repo: DataRepository;
   states: Pick<StatesRepository, "insert" | "byIdOrName" | "latestInit">;
-  projects: Pick<ProjectsRepository, "byId">;
+  projects: Pick<ProjectsRepository, "byId" | "markHeadDirty">;
   jobs: Pick<JobsService, "enqueue" | "wait">;
   audit: AuditService;
   now: () => Date;
@@ -216,6 +216,8 @@ export function createWriteSessions(deps: SessionDeps): WriteSessions {
         });
       }
       deps.repo.recordWrite(session.id, nowIso(), stateId);
+      // The write that follows is the first thing to move the databases off HEAD.
+      deps.projects.markHeadDirty(adapter.project_id, true, nowIso());
       return stateId;
     },
   };

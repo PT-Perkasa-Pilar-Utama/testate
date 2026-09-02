@@ -129,6 +129,7 @@ describe("projects", () => {
       state_id: null,
       state_name: null,
       changed_at: null,
+      dirty: false,
     });
     expect(project.quota_bytes).toBeNull();
     expect(project.created_by).toBe(qa.id);

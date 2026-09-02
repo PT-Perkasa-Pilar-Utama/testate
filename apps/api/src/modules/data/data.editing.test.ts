@@ -44,6 +44,8 @@ describe("data editing", () => {
       ],
       TEST_META
     );
+    // The first write of a session is the moment the databases leave HEAD behind.
+    expect(h.harness.projectsRepo.bySlug("shop")?.head.dirty).toBe(true);
     expect(result.results.map((item) => item.kind)).toEqual(["insert", "update", "delete"]);
     expect(result.stash_state_id).not.toBeNull();
     const rows = customersOf(h.harness);

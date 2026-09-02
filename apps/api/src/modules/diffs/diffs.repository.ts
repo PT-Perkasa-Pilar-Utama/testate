@@ -36,6 +36,8 @@ export type DiffsRepository = {
   setLiveState(id: string, stateId: string): void;
   insertTable(diffId: string, table: DiffTableRow): void;
   finish(id: string, status: "ready" | "failed"): void;
+  /** Whether any compared table has a row added, removed or changed, or a schema change. */
+  hasChanges(id: string): boolean;
   /** The blob hashes the diff references plus its hidden state, for deletion (20 §20.1). */
   blobsOf(id: string): string[];
   liveStateOf(id: string): string | null;
@@ -193,6 +195,14 @@ export function createDiffsRepository(db: MetadataDb): DiffsRepository {
     },
     finish(id, status) {
       db.query("UPDATE diffs SET status = ? WHERE id = ?").run(status, id);
+    },
+    hasChanges(id) {
+      const row = db
+        .query(
+          "SELECT COUNT(*) AS n FROM diff_tables WHERE diff_id = ? AND (added > 0 OR removed > 0 OR changed > 0 OR schema_changed IS NOT NULL)"
+        )
+        .get(id);
+      return v.parse(v.object({ n: v.number() }), row).n > 0;
     },
     blobsOf(id) {
       const rows = db

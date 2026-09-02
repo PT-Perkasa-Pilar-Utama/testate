@@ -160,6 +160,20 @@ async function snapshotLive(
   return stateId;
 }
 
+function settleHead(
+  deps: DiffJobDeps,
+  projectId: string,
+  payload: v.InferOutput<typeof diffPayloadSchema>
+): void {
+  const head = deps.projects.byId(projectId)?.head;
+  if (head === undefined || head.state_id !== payload.base_state_id) return;
+  deps.projects.markHeadDirty(
+    projectId,
+    deps.diffs.hasChanges(payload.diff_id),
+    deps.now().toISOString()
+  );
+}
+
 /** The `diff` job (20 §20.1): hidden live snapshot when needed, then table by table per shared adapter. */
 export function createDiffRunner(deps: DiffJobDeps): JobRunner {
   return async ({ job, signal, progress }) => {
@@ -197,6 +211,9 @@ export function createDiffRunner(deps: DiffJobDeps): JobRunner {
         progress({ phase: "merge", done, total: payload.adapter_ids.length });
       }
       deps.diffs.finish(payload.diff_id, "ready");
+      // A diff of HEAD against the live databases is the one way an outside write can be seen, so
+      // it settles the question either way: rows moved, or the databases still hold the state.
+      if (payload.target_state_id === null) settleHead(deps, projectId, payload);
       return { status: "succeeded", result: { diff_id: payload.diff_id, adapters: done } };
     } catch (cause: unknown) {
       deps.diffs.finish(payload.diff_id, "failed");
