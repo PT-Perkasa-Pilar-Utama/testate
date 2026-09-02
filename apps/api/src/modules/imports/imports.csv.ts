@@ -1,5 +1,3 @@
-import type { JsonValue } from "@testate/shared";
-
 import { AppError } from "../../lib/http/index.ts";
 
 export type Delimiter = "," | ";" | "\t" | "|";
@@ -100,12 +98,4 @@ export function readCsv(
   return { columns, rows, delimiter, headerRow };
 }
 
-export function csvCell(value: JsonValue | undefined): string {
-  if (value === undefined || value === null) return "";
-  const text = String(value);
-  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
-
-export function csvLine(values: (JsonValue | undefined)[]): string {
-  return values.map(csvCell).join(",");
-}
+export { csvCell, csvLine } from "../../lib/csv.ts";

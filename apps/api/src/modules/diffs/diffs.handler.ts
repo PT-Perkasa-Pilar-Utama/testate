@@ -1,7 +1,7 @@
 import { createDiffSchema } from "@testate/shared";
-import type { JsonValue } from "@testate/shared";
 import * as v from "valibot";
 
+import { exportLine } from "../../lib/csv.ts";
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
 import { ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.ts";
 import type { Handler } from "../../lib/http/index.ts";
@@ -45,12 +45,6 @@ function toRowsQuery(parsed: v.InferOutput<typeof rowsQuery>): DiffRowsQuery {
   const cursor = firstQuery(parsed.cursor);
   if (cursor !== undefined) query.cursor = cursor;
   return query;
-}
-
-function csvCell(value: JsonValue | undefined): string {
-  if (value === undefined || value === null) return '""';
-  const text = v.is(v.string(), value) ? value : JSON.stringify(value);
-  return `"${text.replace(/"/g, '""')}"`;
 }
 
 export function createDiffsHandlers(
@@ -120,10 +114,10 @@ export function createDiffsHandlers(
           row.table,
           row.op,
           JSON.stringify(row.k),
-          ...columns.map((name) => csvCell(row.before?.[name])),
-          ...columns.map((name) => csvCell(row.after?.[name])),
+          ...columns.map((name) => row.before?.[name]),
+          ...columns.map((name) => row.after?.[name]),
         ];
-        lines.push(cells.map(csvCell).join(","));
+        lines.push(exportLine(cells));
       }
       c.header("Content-Disposition", `attachment; filename="diff-${param(c, "id")}.${format}"`);
       c.header(

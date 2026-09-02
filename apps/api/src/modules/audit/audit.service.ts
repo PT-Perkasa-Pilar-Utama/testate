@@ -1,5 +1,6 @@
 import type { Actor, AuditRow, JsonObject } from "@testate/shared";
 
+import { exportCell } from "../../lib/csv.ts";
 import type { RequestMeta } from "../../lib/http/auth.ts";
 import { ADAPTER_ID, AUDIT_ID, NOW, PROJECT_ID, QA_ACTOR } from "../../lib/mock/fixtures.ts";
 import type {
@@ -61,11 +62,6 @@ const CSV_COLUMNS = [
   "ip",
 ] as const;
 
-function csvCell(value: string | null): string {
-  if (value === null) return "";
-  return /[",\n\r]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
-}
-
 function csvLine(row: AuditRow): string {
   return [
     row.created_at,
@@ -78,7 +74,7 @@ function csvLine(row: AuditRow): string {
     row.outcome,
     row.ip,
   ]
-    .map(csvCell)
+    .map(exportCell)
     .join(",");
 }
 

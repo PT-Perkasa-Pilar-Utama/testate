@@ -1,8 +1,8 @@
 import type { JsonObject } from "@testate/shared";
 
-import { csvLine } from "../imports/imports.csv.ts";
+import { exportLine } from "../../lib/csv.ts";
 
-/** Rows leave one line at a time (06 §6.8): a CSV header then `csvLine` rows, or a JSON array. */
+/** Rows leave one line at a time (06 §6.8): a CSV header then formula-safe rows, or a JSON array. */
 export function exportStream(
   result: { columns: { name: string }[]; rows: JsonObject[] },
   format: "csv" | "json"
@@ -14,7 +14,7 @@ export function exportStream(
     pull(controller) {
       index += 1;
       if (index === 0) {
-        controller.enqueue(encoder.encode(format === "csv" ? `${csvLine(names)}\n` : "["));
+        controller.enqueue(encoder.encode(format === "csv" ? `${exportLine(names)}\n` : "["));
         return;
       }
       const row = result.rows[index - 1];
@@ -25,7 +25,7 @@ export function exportStream(
       }
       const line =
         format === "csv"
-          ? `${csvLine(names.map((name) => row[name]))}\n`
+          ? `${exportLine(names.map((name) => row[name]))}\n`
           : `${index === 1 ? "" : ","}${JSON.stringify(row)}`;
       controller.enqueue(encoder.encode(line));
     },
@@ -52,7 +52,7 @@ function rowLine(
   format: "csv" | "json",
   precededByARow: boolean
 ): string {
-  if (format === "csv") return `${csvLine(names.map((name) => row[name]))}\n`;
+  if (format === "csv") return `${exportLine(names.map((name) => row[name]))}\n`;
   return `${precededByARow ? "," : ""}${JSON.stringify(row)}`;
 }
 
@@ -78,7 +78,7 @@ export function pagedExportStream(
       if (!started) {
         started = true;
         names = page.columns.map((column) => column.name);
-        parts.push(format === "csv" ? `${csvLine(names)}\n` : "[");
+        parts.push(format === "csv" ? `${exportLine(names)}\n` : "[");
       }
       for (const row of page.rows) {
         parts.push(rowLine(row, names, format, wroteAny));
