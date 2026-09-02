@@ -379,6 +379,11 @@ reads from `docs/index.html`'s palette. What a next agent needs:
   its last progress fraction (67%) for good; a backup's phase read `tar` and a deletion's `gc`; a
   footer said "1 file stores"; the sessions table printed `::ffff:127.0.0.1` and the role key; a
   row's Details, Counters and Retry wrapped onto two lines. Each is its own commit.
+- **Left open on purpose, too:** the states list does not learn about a state created after it
+  loaded unless a row is already `creating` (`refreshWhileBusy` follows rows, not the project).
+  A screen opened in the gap between "init snapshot queued" and the job inserting its row sits
+  stale, which is why `adapter.e2e.ts` now waits through the API before it navigates. A project
+  job stream, or a refresh on focus, would close it.
 - **Left open on purpose.** The two Solid diagnostics on the dialog dismiss path (§8b) are still
   filtered in `e2e/admin.e2e.ts`: the redesign touched dialog classes only, and the thirteen-site
   handler change is the same job it was. The `followJob` leak listed under "owed" is done: the

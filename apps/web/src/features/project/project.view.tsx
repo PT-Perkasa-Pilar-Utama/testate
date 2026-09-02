@@ -117,6 +117,7 @@ export default function ProjectView(props: { slug: string }): JSX.Element {
             slug={props.slug}
             headStateId={presenter.overview.value().project.head.state_id}
             headUnknown={presenter.overview.value().project.head.status === "unknown"}
+            headDirty={presenter.overview.value().project.head.dirty}
             onChanged={() => presenter.overview.refresh()}
           />
         </Match>
