@@ -1,20 +1,14 @@
-![Testate: git for your test database. Your test server holds your app and its databases; Testate docks beside them as one container, takes snapshots and puts them back, and testers, developers, CI/CD, DevOps and AI agents come in through it](docs/assets/hero.svg)
+# Testate
+
+[![License: MIT](https://img.shields.io/github/license/PT-Perkasa-Pilar-Utama/testate)](./LICENSE) [![Release](https://img.shields.io/github/v/release/PT-Perkasa-Pilar-Utama/testate?include_prereleases)](https://github.com/PT-Perkasa-Pilar-Utama/testate/releases) [![Container](https://img.shields.io/badge/ghcr.io-testate-blue?logo=docker&logoColor=white)](https://github.com/PT-Perkasa-Pilar-Utama/testate/pkgs/container/testate) [![Bun](https://img.shields.io/badge/Bun-1.4-black?logo=bun)](https://bun.sh)
 
 **Git for your test database. Snapshot it, break it, put it back in seconds.**
 
-Testate is a self-hosted tool for QA teams. It takes data-only snapshots ("states") of the databases behind a system under test, restores them on demand, diffs them, imports fixtures, and lets an AI agent inspect them read-only. One Docker image, one volume, any sub-path.
+Self-hosted, one Docker image, one volume. Testate takes data-only snapshots of the databases behind a system under test, restores any of them on demand, diffs them, loads fixtures from a CSV or a spreadsheet, and lets an AI agent work on them over [MCP](#5-how-to-connect-an-ai-agent-to-a-project). PostgreSQL, MySQL, MariaDB and MongoDB, plus S3, SFTP and FTP for the files beside them. Nothing here is a stand-in: every engine in the table below is driven by a real connection, and the suite proves it against real servers.
 
-| Tier     | Engines                    | What you get                                          |
-| -------- | -------------------------- | ----------------------------------------------------- |
-| Tabular  | PostgreSQL, MySQL, MariaDB | view, snapshot, checkout, diff, extract, edit, import |
-| Document | MongoDB                    | view, snapshot, checkout, diff, extract               |
-| Files    | S3, SFTP, FTP              | view, download                                        |
+Reset the database before every test run from [CI](#6-how-to-integrate-into-a-cicd-pipeline), or from the screen below.
 
-Version 1.1.0-alpha. Every engine in the table is real, not a stand-in.
-
-## Quick start
-
-One container, no configuration file, to see what it does:
+![Every state of a project, newest first, with HEAD marked and Check out on each one](docs/assets/screens/states.png)
 
 ```sh
 docker run -d --name testate -p 7378:7378 -v testate-data:/data \
@@ -23,15 +17,30 @@ docker run -d --name testate -p 7378:7378 -v testate-data:/data \
   ghcr.io/pt-perkasa-pilar-utama/testate:1.1.0-alpha
 ```
 
-Open <http://localhost:7378> and sign in as `admin` with that password. Testate makes you change it on the first login.
+Open <http://localhost:7378>, sign in as `admin` with that password, and add a database under **Databases**. Where to point the host is the one thing that catches people out, so read [section 3](#3-connecting-to-a-database) first. Testate makes you change that password on the first login.
 
-From there: add a database under **Adapters**, take a snapshot under **States**, break something, then click **Check out** on that state to put it back. Where to point the host is the one thing that catches people out, so read [section 3](#3-connecting-to-a-database) before you add the adapter.
+That command is fine for a look. For anything you rely on, use Compose and an `.env` file: [how to install](#1-how-to-install).
 
-That command keeps everything in one Docker volume and is fine for a look. For anything you rely on, use Compose and an `.env` file: [How to install](#1-how-to-install).
+| Tier     | Engines                    | What you get                                           |
+| -------- | -------------------------- | ------------------------------------------------------ |
+| Tabular  | PostgreSQL, MySQL, MariaDB | view, snapshot, checkout, diff, extract, edit, import  |
+| Document | MongoDB                    | view, snapshot, checkout, diff, extract                |
+| Files    | S3, SFTP, FTP              | view, preview, download, insert, rename, delete, batch |
+
+Version 1.1.0-alpha.
+
+## Why Testate
+
+- **A reset takes seconds, not a migration run.** A state is the data only. Putting one back writes rows, so a suite that needs a known starting point gets one without rebuilding a schema.
+- **Every database in a project at once.** One snapshot covers all of them, and one checkout restores all of them, with a per-adapter result for each.
+- **Nothing is written by accident.** A file store is `read_only` until an admin opens it, and any adapter can be tightened to `read_only` by a tester and only loosened by an admin. Deleting a project or an adapter returns its databases to the state they joined with, first.
+- **You can see what a test run did.** Diff two states, or a state against the live database, down to the changed cell.
+- **Agents get a real seat.** An agent token reaches `/mcp` and nothing else, its role decides whether it may write, and column masks apply before it ever sees a value.
+- **Your data stays yours.** One container, one volume, no account, no telemetry. Secrets are sealed with a key you generate and hold.
 
 ## Contents
 
-- [Quick start](#quick-start)
+- [Why Testate](#why-testate)
 - [What you get](#what-you-get)
 - [1. How to install](#1-how-to-install)
 - [2. First-time setup](#2-first-time-setup)
@@ -51,51 +60,37 @@ That command keeps everything in one Docker volume and is fine for a look. For a
 
 ## What you get
 
-**Start with a project per system under test.** It owns the databases behind that system, the
-states you take of them, and everything you do to them.
+**A project per system under test.** It owns the databases behind that system, the states you take
+of them, and everything you do to them. A project opens on its states, with HEAD marked.
 
-![The projects list, each with its slug, where its HEAD points, and when it last changed](docs/assets/screens/projects.png)
+**Databases and file stores, side by side.** Each adapter reports its engine and version, what your
+login is allowed to do there, and whether the database is safe to reset. A file store sits in the
+same project and gets its own screen: browse, preview, upload, rename, make a folder, delete a
+batch.
 
-**Point it at the databases behind the system under test.** Each adapter reports its engine and
-version, what your login is allowed to do, and whether the database is safe to reset. Object storage
-sits in the same list.
+**Snapshot, and put it back.** A state is data only, taken across every database in the project at
+one moment, and it says who took it and what it cost. **Check out** restores one; the Activity tab
+lists every restore with its per-adapter result and a retry.
 
-![The adapters tab, listing every adapter in the project with its engine, tier, mode and status](docs/assets/screens/adapters.png)
+**See what a test run changed.** Diff two states, or a state against the live database, and open
+the comparison full width: the tables that moved on the left, both sides of every row on the right,
+and the changed cell highlighted the way a code review highlights a line.
 
-**Snapshot them.** A state is data only, taken across every database in the project at once, and it
-says who took it and what it cost. A project opens on this tab, a timeline with the current HEAD
-marked.
+**Read and edit the rows.** Filter, page by keyset, follow a foreign key, see the tables and their
+relations as a diagram, export a whole table as CSV or JSON with no row cap, or turn on write mode
+and edit a row with the types the column actually has.
 
-![The states tab, a timeline of snapshots with HEAD marked, kind, size and author](docs/assets/screens/states.png)
+**Run your own SQL.** A read-only console with saved queries and a history, so the check you run
+after every reset is one click away.
 
-**Put them back.** Click **Check out** on any state to restore it; the History tab lists every
-checkout with its per-adapter results and a retry action.
+**Load fixtures.** Upload a CSV or a spreadsheet, or take one straight from a file store, say how
+each column is read, check it, then import. The check is the guard: nothing is written until it
+comes back clean, and the rows a run refused come back as a file you can fix and send again.
 
-![The History tab, listing checkouts with per-adapter results and a retry action](docs/assets/screens/checkouts.png)
-
-**See what a test run changed.** Diff two states, or a state against the live database, and drill
-into the rows.
-
-![A diff opened, listing added, removed and changed rows per table across four databases](docs/assets/screens/diffs.png)
-
-**Read and edit the rows.** Filter, page by keyset, follow a foreign key, export a whole table as
-CSV or JSON with no row cap, or turn on write mode and edit a row with the types the column
-actually has.
-
-![The data grid for a table, with filters, write mode and typed columns](docs/assets/screens/grid.png)
-
-**Run your own SQL.** A read-only console with saved queries, so the check you run after every
-reset is one click away.
-
-![The query console, running a read-only SELECT with its result and a saved query](docs/assets/screens/query.png)
-
-**Load fixtures.** Upload a CSV or XLSX, map the columns, dry-run it, then import for real.
-
-![The imports tab, listing import runs with their counts](docs/assets/screens/imports.png)
-
-**Let an agent look.** Testate speaks MCP, so Claude or any agent can read schemas, page rows, run
-read-only queries, and read your snapshots. The token it uses reaches nothing but `/mcp`, and it
-cannot write.
+**Let an agent work.** Testate speaks MCP, so Claude or any agent can read schemas, page rows, run
+read-only queries and read your snapshots. Give the token the Tester role and it can also change
+rows in a sandbox, take a state, and put one back. The token reaches `/mcp` and nothing else, and
+column masks apply before it sees a value.
 
 ## 1. How to install
 
@@ -136,7 +131,7 @@ If the last admin forgets their password, nobody else can reset it from the dash
 
 ## 3. Connecting to a database
 
-Open a project, go to **Adapters**, and click **New adapter**. For a database engine (PostgreSQL, MySQL, MariaDB, MongoDB) the form asks for Host, Port, Database, User, and Password. Where you point "Host" depends on where the database actually runs.
+Open a project, go to **Databases**, and click **New adapter**. For a database engine (PostgreSQL, MySQL, MariaDB, MongoDB) the form asks for Host, Port, Database, User, and Password. Where you point "Host" depends on where the database actually runs.
 
 Testate connects out to the database from inside its own container. `127.0.0.1` or `localhost` in that form means the Testate container itself, never the machine it runs on. The default address deny list also blocks `127.0.0.0/8` and `::1/128` outright, so a loopback address will not connect even by accident.
 
@@ -182,9 +177,9 @@ Once an adapter is saved, `POST /api/v1/projects/{slug}/adapters/{id}/retest` re
 
 ## 5. How to connect an AI agent to a project
 
-Testate exposes a read-only MCP (Model Context Protocol) endpoint so an agent can inspect a project's databases without ever getting a write path.
+Testate exposes an MCP (Model Context Protocol) endpoint. What the agent may do there is the token's role, not the protocol's: a Guest token reads and nothing else, a Tester token also changes rows in a sandbox, takes a state, and puts one back.
 
-1. As an admin, open **Tokens** and create a token of kind **agent**. Choose a name, a project scope, and an expiry (default 90 days, maximum 365).
+1. As an admin, open **Tokens** and create a token of kind **agent**. Choose a name, a role (**Guest** to read, **Tester** to write), a project scope, and when it expires: in 90 days, on a date you pick up to a year out, or never.
 2. Copy the token: Testate shows it once. It reads `tst_` followed by 43 characters. Give the agent the endpoint and the token.
 
 Claude Code:
@@ -211,7 +206,11 @@ Any MCP client:
 }
 ```
 
-What the agent can reach: an agent token is accepted only on `/api/v1/mcp`; every other route answers `403`. On that endpoint it gets read-only tools: `list_projects`, `list_adapters`, `list_tables`, `describe_table`, `page_rows`, `get_row`, `run_readonly_query`, `extract_fixture`, `list_states`, `get_state`, `diff_summary`, `list_files`, `preview_file`. They are capped at 200 rows a page (1000 max), 1 MiB a result, 15 seconds a query. Column policies mask sensitive values before the agent ever sees them; there is no unmask option and no write tool. Every call is audited with the tool name, an argument hash, the project, the adapter, and the outcome.
+What the agent can reach: an agent token is accepted only on `/api/v1/mcp`; every other route answers `403`.
+
+Every agent reads: `help`, `list_projects`, `list_adapters`, `list_tables`, `describe_table`, `page_rows`, `get_row`, `run_readonly_query`, `extract_fixture`, `list_states`, `get_state`, `diff_summary`, `list_files`, `preview_file`. A **Tester** token gets seven more: `run_write_query`, `end_write_session`, `take_snapshot`, `checkout_state`, `get_job`, `upload_file`, `delete_file`. A Guest sees them in `tools/list` and is refused with `403 role` if it calls one, which is a clearer answer than a tool that is not there.
+
+The caps hold whatever the role: 200 rows a page (1000 max), 1 MiB a result, 15 seconds a query, a byte budget per token. `run_readonly_query` runs inside a read-only transaction for every role, so a read never becomes a write by accident, and writing takes the write tool and a write session. Column policies mask sensitive values before the agent sees them and there is no unmask. Every call is audited with the tool name, an argument hash, the project, the adapter, and the outcome.
 
 Full detail: [docs/AGENT_ACCESS.md](docs/AGENT_ACCESS.md).
 

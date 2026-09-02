@@ -87,7 +87,14 @@ test.describe("README screens", () => {
 
     await shoot("/projects", "projects");
     await shoot("/projects/demo", "adapters", "Databases");
-    await shoot("/projects/demo", "states", "States");
+    // The README leads with this one: many states, HEAD marked, the two this spec named at the
+    // top. The tree is the more git-shaped picture but it orders by lineage, so the states other
+    // specs leave behind (api-dedupe-b-mtjeb32u and friends) sit above anything readable.
+    await page.goto("/projects/demo");
+    await settle(page);
+    await openStatesList(page);
+    await fit(page);
+    await page.screenshot({ path: join(SHOTS, "states.png") });
     // One shot, not three: checkouts, diffs and imports share the Activity tab now.
     await shoot("/projects/demo", "activity", "Activity");
     await page.getByRole("link", { name: "Details" }).first().click();
