@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import type { Locator } from "@playwright/test";
 
 import { demoAdapter, firstTable } from "./lib/api.ts";
-import { rowMenu, settle, stateRow, watch } from "./lib/crawl.ts";
+import { openStatesList, rowMenu, settle, stateRow, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
@@ -31,7 +31,7 @@ test.describe("state stories", () => {
     const name = `e2e-state-${STAMP}`;
     await page.goto("/projects/demo");
     await settle(page);
-    await page.getByRole("tab", { name: "States" }).click();
+    await openStatesList(page);
     await page.getByRole("button", { name: "Take state" }).click();
     const take = page.locator("dialog[open]");
     await take.getByLabel("Name").fill(name);
@@ -92,7 +92,7 @@ test.describe("state stories", () => {
     watch(page, issues);
     await page.goto("/projects/demo");
     await settle(page);
-    await page.getByRole("tab", { name: "States" }).click();
+    await openStatesList(page);
     const row = stateRow(page, "seeded-baseline");
     await row.getByRole("button", { name: "Check out" }).click();
     const dialog = page.locator("dialog[open]");
@@ -109,7 +109,7 @@ test.describe("state stories", () => {
     });
     // And every database it touched says so by name, which is the whole point of story 84.
     await expect(history.getByText(/^\S.*: Restored$/).first()).toBeVisible();
-    await page.getByRole("tab", { name: "States" }).click();
+    await openStatesList(page);
     await page.getByRole("switch", { name: "Show stashes" }).click();
     await expect(stateRow(page, "stash").first()).toBeVisible();
     expect(issues).toStrictEqual([]);
@@ -189,71 +189,84 @@ test.describe("state stories", () => {
     await expect(page.locator("tr", { hasText: "live database" })).toHaveCount(0);
     expect(issues).toStrictEqual([]);
   });
-  test("@story-49 @story-52 @story-53 @story-54 @story-55 @story-56 @story-57 @story-58 @story-59 @story-60 @story-149 imports a CSV through the wizard, dry-runs, runs, and re-imports the rejected rows", async ({
+  test("@story-49 @story-52 @story-53 @story-55 @story-56 @story-57 @story-58 @story-59 @story-60 @story-149 checks a file before importing it, and re-imports what the run rejected", async ({
     page,
   }) => {
     test.setTimeout(180_000);
     const issues: Issue[] = [];
     watch(page, issues);
-    const csv = `email,balance,big\nimp-${STAMP}-1@x.io,1.5,1\nimp-${STAMP}-2@x.io,abc,2\n`;
+    const bad = `email,balance,big\nimp-${STAMP}-1@x.io,not-a-number,1\n`;
+    // The same address twice. Both rows are the right shape, so the check passes them; the column
+    // is UNIQUE, and a unique constraint is the real run's to find (PRD 56). That is how one press
+    // can end in "1 imported, 1 rejected" with a file the check called clean.
+    const good = `email,balance,big\nimp-${STAMP}-2@x.io,1.5,1\nimp-${STAMP}-2@x.io,2.5,2\n`;
     const postgres = await demoAdapter({ engine: "postgres" });
     const table = await firstTable(postgres.id);
+    // Importing belongs to the database it writes into, so it is that adapter's own screen now
+    // and no longer a wizard over the project (docs/PROJECT_REWORK.md).
+    await page.goto(`/projects/demo/adapters/${postgres.id}/imports`);
+    await settle(page);
+    const pick = async (name: string, body: string): Promise<void> => {
+      await page.locator('input[type="file"]').setInputFiles({
+        name,
+        mimeType: "text/csv",
+        buffer: Buffer.from(body),
+      });
+      await expect(page.getByRole("columnheader", { name: "email" })).toBeVisible();
+      await page.getByLabel(/^Table/).selectOption(table);
+    };
+
+    await pick("wrong.csv", bad);
+    await expect(page.getByText(/\d+ of \d+ columns matched by name/)).toBeVisible();
+    const sample = await page.getByRole("link", { name: "Sample CSV" }).getAttribute("href");
+    expect((await page.request.get(String(sample))).status()).toBe(200);
+    // Nothing is written until the check says the file is right, and the check is what opens it.
+    const importButton = page.getByRole("button", { name: "Import", exact: true });
+    await expect(importButton).toBeDisabled();
+    await page.getByRole("button", { name: "Check the file" }).click();
+    await expect(page.getByText("0 rows ready. 1 row will be rejected.")).toBeVisible({
+      timeout: 90_000,
+    });
+    await expect(page.getByText("Fix the file and check it again.")).toBeVisible();
+    await expect(importButton).toBeDisabled();
+
+    // Fixing it is loading the right file, and that puts the guard back: a new file has not been
+    // checked, whatever the last one answered.
+    await pick("right.csv", good);
+    await expect(importButton).toBeDisabled();
+    await page.getByRole("button", { name: "Check the file" }).click();
+    await expect(page.getByText("All 2 rows look ready to import.")).toBeVisible({
+      timeout: 90_000,
+    });
+    await expect(importButton).toBeEnabled();
+    await importButton.click();
+    await expect(page.getByText("Imported 1 row. 1 row was rejected.")).toBeVisible({
+      timeout: 90_000,
+    });
+
+    // What landed, read back from the list of runs the project keeps.
     await page.goto("/projects/demo");
     await settle(page);
     await page.getByRole("tab", { name: "Activity" }).click();
-    await page.getByRole("button", { name: "New import" }).click();
-    const wizard = page.locator("dialog[open]");
-    await wizard.locator('input[type="file"]').setInputFiles({
-      name: "customers.csv",
-      mimeType: "text/csv",
-      buffer: Buffer.from(csv),
-    });
-    await expect(wizard.getByRole("columnheader", { name: "email" })).toBeVisible();
-    await wizard.getByRole("combobox", { name: "Database" }).selectOption({ label: postgres.name });
-    await wizard.getByRole("combobox", { name: "Table" }).selectOption(table);
-    await expect(wizard.getByLabel("email: file column")).toHaveValue("email");
-    await wizard.getByLabel("email: adjust the value").selectOption("trim");
-    await wizard.getByLabel("Save this mapping as").fill(`map-${STAMP}`);
-    const sample = await wizard.getByRole("link", { name: "Sample CSV" }).getAttribute("href");
-    expect((await page.request.get(String(sample))).status()).toBe(200);
-    await wizard.getByRole("button", { name: "Preview import" }).click();
-    await expect(wizard.getByText("Preview only — nothing has been imported yet.")).toBeVisible({
-      timeout: 90_000,
-    });
-    // The counts as a sentence: one row of the two validated, the other did not (defect 1).
-    await expect(wizard.getByText("1 row ready. 1 row will be rejected.")).toBeVisible();
-    await expect(wizard.getByText(/row \d+: balance/)).toBeVisible();
-    await wizard.getByRole("button", { name: "Import 1 row", exact: true }).click();
-    await expect(wizard.getByText("Import complete.")).toBeVisible({ timeout: 90_000 });
-    await expect(wizard.getByText("Imported 1 row. 1 row was rejected.")).toBeVisible();
-    await expect(wizard.getByText("A stash was taken first")).toBeVisible();
-    const rejected = await wizard.getByRole("link", { name: "Rejected rows" }).getAttribute("href");
-    const rejectedFile = await page.request.get(String(rejected));
-    expect(rejectedFile.status()).toBe(200);
-    expect(await rejectedFile.text()).toContain(`imp-${STAMP}-2@x.io`);
-    await wizard.getByRole("button", { name: "Done" }).click();
     const run = page
       .locator("main tbody tr", { hasText: "Imported 1 row. 1 row was rejected." })
       .first();
     await run.getByRole("button", { name: "Report" }).click();
-    await expect(page.locator("dialog[open]").getByText("Import complete.")).toBeVisible();
+    const report = page.locator("dialog[open]");
+    await expect(report.getByText("Import complete.")).toBeVisible();
+    await expect(report.getByText("A stash was taken first")).toBeVisible();
+    const rejected = await report.getByRole("link", { name: "Rejected rows" }).getAttribute("href");
+    const rejectedFile = await page.request.get(String(rejected));
+    expect(rejectedFile.status()).toBe(200);
+    expect(await rejectedFile.text()).toContain(`imp-${STAMP}-2@x.io`);
     await page.keyboard.press("Escape");
-    await run.getByRole("button", { name: "Re-import rejected" }).click();
-    await expect(
-      page.locator("dialog[open]").getByRole("columnheader", { name: "email" })
-    ).toBeVisible();
-    await page
-      .locator("dialog[open]")
-      .getByRole("combobox", { name: "Database" })
-      .selectOption({ label: postgres.name });
-    await page
-      .locator("dialog[open]")
-      .getByLabel("Reuse a saved mapping")
-      .selectOption({ label: `map-${STAMP}` });
-    await expect(page.locator("dialog[open]").getByLabel("Save this mapping as")).toHaveValue(
-      `map-${STAMP}`
-    );
-    await page.keyboard.press("Escape");
+
+    // Re-import opens the same screen with the rejected rows as the source, so a partial failure
+    // is fixed and sent again rather than reprocessed whole.
+    await run.getByRole("link", { name: "Re-import rejected" }).click();
+    await settle(page);
+    await expect(page.getByText("The rows an earlier run rejected are the source.")).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "email" })).toBeVisible();
     expect(issues).toStrictEqual([]);
   });
   test("@story-79 a checkout of a partial state leaves the adapters it does not cover untouched and says so", async ({
@@ -266,7 +279,7 @@ test.describe("state stories", () => {
     const name = `partial-${STAMP}`;
     await page.goto("/projects/demo");
     await settle(page);
-    await page.getByRole("tab", { name: "States" }).click();
+    await openStatesList(page);
     await page.getByRole("button", { name: "Take state" }).click();
     const take = page.locator("dialog[open]");
     await take.getByLabel("Name").fill(name);
@@ -290,7 +303,7 @@ test.describe("state stories", () => {
     await expect(history.getByText(`${postgres.name}: Restored`)).toBeVisible();
     // Untouched adapters are not checkout rows: the preflight said so, the history stays honest.
     await expect(history).not.toContainText("shop-mongo");
-    await page.getByRole("tab", { name: "States" }).click();
+    await openStatesList(page);
     await (await rowMenu(row)).getByRole("button", { name: "Delete" }).click();
     await expect(async () => {
       await page.locator("dialog[open]").getByRole("button", { name: "Delete state" }).click();
@@ -309,7 +322,7 @@ test.describe("viewer state stories", () => {
   }) => {
     await page.goto("/projects/demo");
     await settle(page);
-    await page.getByRole("tab", { name: "States" }).click();
+    await openStatesList(page);
     await expect(stateRow(page, "seeded-baseline")).toBeVisible();
     // The footer counts the rows it is showing, so a wrong or missing count fails here.
     const rows = await page.getByRole("list", { name: "States" }).locator("li").count();

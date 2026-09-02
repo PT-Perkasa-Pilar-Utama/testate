@@ -34,6 +34,16 @@ export const importsModel = {
     apiClient.get(`${adapter(slug, adapterId)}/mappings`, { schema: v.array(mappingSchema) }),
   createMapping: (slug: string, adapterId: string, body: JsonObject): Promise<Mapping> =>
     apiClient.post(`${adapter(slug, adapterId)}/mappings`, { schema: mappingSchema, body }),
+  updateMapping: (
+    slug: string,
+    adapterId: string,
+    mappingId: string,
+    body: JsonObject
+  ): Promise<Mapping> =>
+    apiClient.patch(`${adapter(slug, adapterId)}/mappings/${encodeURIComponent(mappingId)}`, {
+      schema: mappingSchema,
+      body,
+    }),
   run: (slug: string, body: JsonObject): Promise<Job> =>
     apiClient.post(`${project(slug)}/imports`, { schema: jobSchema, body }),
   report: (slug: string, runId: string): Promise<ImportReport> =>

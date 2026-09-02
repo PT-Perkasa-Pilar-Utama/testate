@@ -97,6 +97,31 @@ export function blockedReason(
   return null;
 }
 
+/**
+ * Why Import is not available yet, or null when it is.
+ *
+ * The dry run is the guard. It reads every row against the table it is going for and says what
+ * would be refused, and Import stays shut until it comes back clean: a file that is wrong is
+ * fixed and loaded again, not pushed at a database to see what sticks. Every edit on the screen
+ * clears the last report, so changing the file, the table, the mode or one column closes Import
+ * again and the check has to be answered for what is actually there now.
+ *
+ * A clean dry run is not a promise that every row lands. It reads types, nullability, keys and
+ * JSON; foreign keys, unique constraints, checks and triggers are the real run's to find, which
+ * is why an import still reports rejected rows and still offers them back as a file (PRD 56).
+ */
+export function importBlockedReason(
+  draft: { table: string; mode: Mapping["mode"]; key_columns: string },
+  hasPreview: boolean,
+  report: Pick<ImportReport, "dry_run" | "failed"> | null
+): string | null {
+  const missing = blockedReason(draft, hasPreview);
+  if (missing !== null) return missing;
+  if (report === null) return "Run the check first.";
+  if (!report.dry_run) return null;
+  return report.failed > 0 ? "Fix the file and check it again." : null;
+}
+
 export type ReportCounts = { ready: number; rejected: number };
 
 /** Written rows for a real run; rows that validated fine for a preview, which never writes anything. */

@@ -52,7 +52,8 @@ export type ImportPresenter = {
   setDraft: (patch: Partial<ImportDraft>) => void;
   setColumn: (target: string, patch: Partial<Column>) => void;
   /** Dry run first; if nothing would be rejected it commits without asking twice. */
-  start: () => Promise<void>;
+  /** The dry run. Nothing is written, and its report is what opens `commit`. */
+  check: () => Promise<void>;
   commit: () => Promise<void>;
   clear: () => void;
   sampleUrl: (format: "csv" | "xlsx") => string;
@@ -147,6 +148,26 @@ export function createImportPresenter(
    * after its first await is reading whatever the screen holds by then, which is the bug the
    * `solid(reactivity)` rule exists to catch.
    */
+  /**
+   * The mapping this run goes through, created once and updated after that.
+   *
+   * There is no name field on this screen any more, so the name is the table's and there can only
+   * be one mapping per table. A check that created a second would be refused with "mapping name
+   * is taken", which is exactly what checking a file, fixing it and checking it again does.
+   */
+  const mappingFor = async (known: string, table: string, body: JsonObject): Promise<string> => {
+    if (known !== "") {
+      return (await importsModel.updateMapping(slug(), adapterId(), known, body)).id;
+    }
+    const existing = (await importsModel.mappings(slug(), adapterId())).find(
+      (mapping) => mapping.target === table
+    );
+    if (existing === undefined) {
+      return (await importsModel.createMapping(slug(), adapterId(), body)).id;
+    }
+    return (await importsModel.updateMapping(slug(), adapterId(), existing.id, body)).id;
+  };
+
   const runWith = async (
     staticSource: Source,
     staticDraft: ImportDraft,
@@ -154,13 +175,7 @@ export function createImportPresenter(
     staticBody: JsonObject,
     dryRun: boolean
   ): Promise<{ report: ImportReport; mapping: string }> => {
-    // The dry run writes the mapping; the commit after it reuses that one rather than saving a
-    // second copy of a mapping nobody named.
-    let id = staticMapping;
-    if (id === "") {
-      const created = await importsModel.createMapping(slug(), adapterId(), staticBody);
-      id = created.id;
-    }
+    const id = await mappingFor(staticMapping, staticDraft.table, staticBody);
     const job = await importsModel.run(
       slug(),
       runBody(adapterId(), id, staticSource, staticDraft, dryRun)
@@ -177,8 +192,8 @@ export function createImportPresenter(
    * One press.
    *
    * Every signal is read here, before the first await; the async body below works from those
-   * values alone. `commitAfter` is the whole of the shrink: a file with nothing to reject imports
-   * on the same press that checked it (docs/PROJECT_REWORK.md).
+   * values alone. `commitAfter` is left in place for a caller that wants both halves on one
+   * press; the screen no longer asks for that, because the check is what opens Import.
    */
   const attempt = (dryRun: boolean, commitAfter: boolean): Promise<void> => {
     const staticSource = source();
@@ -264,7 +279,9 @@ export function createImportPresenter(
         ),
       }));
     },
-    start: () => attempt(true, true),
+    // The check, and only the check. It used to import too whenever nothing was rejected, which
+    // meant the one press that asked "is this file right?" was also the press that wrote it.
+    check: () => attempt(true, false),
     commit: () => attempt(false, false),
     clear: () => {
       setSource(null);

@@ -94,7 +94,9 @@ test.describe("qa gap stories", () => {
     await page.getByPlaceholder("SELECT ...").fill(`select 1 as h${STAMP}`);
     await page.getByRole("button", { name: "Run (read-only)" }).click();
     await expect(page.getByText(/1 row\(s\)/)).toBeVisible();
-    await page.getByRole("tab", { name: "Activity" }).click();
+    // The console's own side panel, not a project tab: Saved, History and Running sit beside the
+    // editor since the rework.
+    await page.getByRole("tab", { name: "History" }).click();
     await expect(page.locator("main").getByText(`select 1 as h${STAMP}`)).toBeVisible();
     const slow = swallow(
       page.request.post(
@@ -149,38 +151,35 @@ test.describe("qa gap stories", () => {
     await page.getByRole("switch", { name: "Write mode" }).click();
     expect(issues).toStrictEqual([]);
   });
-  test("@story-51 the import wizard reads a file straight from a storage adapter", async ({
-    page,
-  }) => {
+  test("@story-51 an import reads its file straight from a file store", async ({ page }) => {
     test.setTimeout(120_000);
     const issues: Issue[] = [];
     watch(page, issues);
     const storage = await demoAdapter({ kind: "storage" });
     const postgres = await demoAdapter({ engine: "postgres" });
     const table = await tableNamed(postgres.id, "customers");
-    await page.goto("/projects/demo");
+    // Importing belongs to the database it writes into, so the screen hangs off that adapter now
+    // and no longer opens as a wizard over the project (docs/PROJECT_REWORK.md).
+    await page.goto(`/projects/demo/adapters/${postgres.id}/imports`);
     await settle(page);
-    await page.getByRole("tab", { name: "Activity" }).click();
-    await page.getByRole("button", { name: "New import" }).click();
-    const wizard = page.locator("dialog[open]");
-    await wizard.getByRole("tab", { name: "From a storage adapter" }).click();
-    await wizard.getByLabel("Storage adapter").selectOption({ label: storage.name });
-    await wizard.getByLabel("Path").fill("imports/customers.csv");
-    await wizard.getByRole("button", { name: "Load file" }).click();
-    await expect(wizard.getByRole("columnheader", { name: "email" })).toBeVisible({
+    await page.getByText("Or take one from a file store").click();
+    await page.getByLabel("File store").selectOption({ label: storage.name });
+    await page.getByLabel("Path").fill("imports/customers.csv");
+    await page.getByRole("button", { name: "Load" }).click();
+    // The story is the source, not the write: the file store answered and the file parsed into
+    // columns a mapping can be built on. What an import then does to a table is story 50's.
+    await expect(page.getByRole("columnheader", { name: "email" })).toBeVisible({
       timeout: 60_000,
     });
-    await wizard.getByRole("combobox", { name: "Database" }).selectOption({ label: postgres.name });
-    await wizard.getByRole("combobox", { name: "Table" }).selectOption(table);
-    await wizard.getByLabel("Save this mapping as").fill(`storage-${STAMP}`);
-    await wizard.getByRole("button", { name: "Preview import" }).click();
-    await expect(wizard.getByText("Preview only — nothing has been imported yet.")).toBeVisible({
-      timeout: 90_000,
-    });
-    // Only rendered when failed===0 and skipped===2, so this still pins the dry run's known
-    // 2-skipped/0-failed result, not just its rewritten wording.
-    await expect(wizard.getByText("All 2 rows look ready to import.")).toBeVisible();
-    await page.keyboard.press("Escape");
+    await expect(page.getByText("The first rows of the file.")).toBeVisible();
+    // Anchored, not exact: the select is inside its label, so its accessible name is the label
+    // plus every option under it ("Tablechoose a table..."). A bare "Table" also matches the
+    // "What happens" select, whose options talk about adding rows to the table.
+    await page.getByLabel(/^Table/).selectOption(table);
+    // Import itself stays shut until the check answers; the file store's part is done when the
+    // screen can run that check.
+    await expect(page.getByRole("button", { name: "Check the file" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Import", exact: true })).toBeDisabled();
     expect(issues).toStrictEqual([]);
   });
   test("@story-140 the grid lists foreign keys and an FK cell links to the referenced row", async ({

@@ -4,6 +4,7 @@ import { importModeSchema } from "@testate/shared";
 import {
   MODE_OPTIONS,
   blockedReason,
+  importBlockedReason,
   defaultMappingName,
   reportCounts,
   reportSummary,
@@ -44,6 +45,22 @@ describe("imports feature", () => {
   test("a mapping defaults to the table's own name, schema-qualified or not (defect 3)", () => {
     expect(defaultMappingName("public.customers")).toBe("customers");
     expect(defaultMappingName("customers")).toBe("customers");
+  });
+
+  test("Import stays shut until a check comes back clean, and every edit shuts it again", () => {
+    const draft = { ...DRAFT, mode: "append" as const, key_columns: "" };
+    const clean = { dry_run: true, failed: 0 };
+    const dirty = { dry_run: true, failed: 3 };
+    // Nothing checked yet: the file is loaded and the table chosen, and that is still not enough.
+    expect(importBlockedReason(draft, true, null)).toBe("Run the check first.");
+    expect(importBlockedReason(draft, true, clean)).toBeNull();
+    expect(importBlockedReason(draft, true, dirty)).toBe("Fix the file and check it again.");
+    // Every edit on the screen clears the report, which is what puts it back to "run the check".
+    expect(importBlockedReason({ ...draft, table: "" }, true, clean)).toBe(
+      "Choose a table to import into."
+    );
+    // The report of a real run is not a check; it is what happened, and it blocks nothing.
+    expect(importBlockedReason(draft, true, { dry_run: false, failed: 1 })).toBeNull();
   });
 
   test("the primary action says why it is blocked, next to itself, only for upsert without keys (defect 4)", () => {

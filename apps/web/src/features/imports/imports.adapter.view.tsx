@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { Errored, For, Loading, Show, createSignal } from "solid-js";
+import { Errored, For, Loading, Show, createSignal, untrack } from "solid-js";
 
 import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
 import Banner from "@/components/banner.tsx";
@@ -11,7 +11,13 @@ import Select from "@/components/select.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { search } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
-import { MODE_OPTIONS, blockedReason, reportSummary, tableKey } from "./imports.helpers.ts";
+import {
+  MODE_OPTIONS,
+  blockedReason,
+  importBlockedReason,
+  reportSummary,
+  tableKey,
+} from "./imports.helpers.ts";
 import { reportCounts } from "./imports.helpers.ts";
 import ColumnPanel from "./imports.mapping.panel.tsx";
 import { createImportPresenter } from "./imports.adapter.presenter.ts";
@@ -125,7 +131,10 @@ function PreviewRows(props: { presenter: ImportPresenter }): JSX.Element {
  * (docs/PROJECT_REWORK.md).
  */
 export default function AdapterImportsView(props: { slug: string; id: string }): JSX.Element {
-  const rejected = new URLSearchParams(search()).get("rejected") ?? undefined;
+  // Read once, on purpose. Which run's rejected rows this screen is fixing is decided when it
+  // opens; the presenter takes the id as a value and builds its refreshable from it, so a later
+  // read would change nothing and only makes this body re-run.
+  const rejected = untrack(() => new URLSearchParams(search()).get("rejected") ?? undefined);
   const presenter = createImportPresenter(
     () => props.slug,
     () => props.id,
@@ -138,8 +147,9 @@ export default function AdapterImportsView(props: { slug: string; id: string }):
       .value()
       .map((table) => ({ value: tableKey(table), label: tableKey(table) })),
   ];
+  const ready = (): string | null => blockedReason(presenter.draft(), presenter.preview() !== null);
   const blocked = (): string | null =>
-    blockedReason(presenter.draft(), presenter.preview() !== null);
+    importBlockedReason(presenter.draft(), presenter.preview() !== null, presenter.report());
   return (
     <section class="grid gap-4">
       <div class="grid gap-1.5">
@@ -189,6 +199,21 @@ export default function AdapterImportsView(props: { slug: string; id: string }):
                 <p class="text-sm text-muted">
                   {MODE_OPTIONS.find((mode) => mode.value === presenter.draft().mode)?.description}
                 </p>
+                {/* Story 149: the shape of a file this table would accept, so the first import is
+                    not a guess. The wizard offered it and the screen that replaced the wizard
+                    dropped it; the presenter never stopped answering for it. */}
+                <Show when={presenter.draft().table !== ""}>
+                  <p class="text-sm text-muted">
+                    Not sure of the shape?{" "}
+                    <a class="underline" href={presenter.sampleUrl("csv")}>
+                      Sample CSV
+                    </a>{" "}
+                    ·{" "}
+                    <a class="underline" href={presenter.sampleUrl("xlsx")}>
+                      Sample XLSX
+                    </a>
+                  </p>
+                </Show>
                 <Show when={presenter.draft().table !== ""}>
                   <ColumnPanel presenter={presenter} />
                 </Show>
@@ -204,29 +229,28 @@ export default function AdapterImportsView(props: { slug: string; id: string }):
                   </Banner>
                 )}
               </Show>
+              {/* Check, then Import. The check reads every row against the table and says what
+                  would be refused; Import stays shut until it comes back clean, and every edit
+                  above clears the last report, so it shuts again the moment the file changes. */}
               <div class="flex flex-wrap items-center justify-end gap-2">
                 <Show when={blocked()}>
                   {(reason) => <span class="text-sm text-muted">{reason()}</span>}
                 </Show>
-                <Show when={presenter.report()?.dry_run === true}>
-                  <Button
-                    variant="primary"
-                    disabled={presenter.busy()}
-                    onClick={() => void presenter.commit()}
-                  >
-                    Import anyway
-                  </Button>
-                </Show>
-                <Show when={presenter.report()?.dry_run !== true}>
-                  <Button
-                    variant="primary"
-                    disabled={blocked() !== null || presenter.busy()}
-                    onClick={() => void presenter.start()}
-                  >
-                    <Icon name="upload" class="h-3.5 w-3.5" />
-                    Import
-                  </Button>
-                </Show>
+                <Button
+                  variant="secondary"
+                  disabled={ready() !== null || presenter.busy()}
+                  onClick={() => void presenter.check()}
+                >
+                  Check the file
+                </Button>
+                <Button
+                  variant="primary"
+                  disabled={blocked() !== null || presenter.busy()}
+                  onClick={() => void presenter.commit()}
+                >
+                  <Icon name="upload" class="h-3.5 w-3.5" />
+                  Import
+                </Button>
               </div>
             </div>
           </Show>
