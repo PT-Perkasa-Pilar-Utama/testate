@@ -4,6 +4,7 @@ import { Show, createEffect } from "solid-js";
 import { storeMigrationFormSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
+import { DialogActions } from "@/components/dialog.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import FormDialog from "@/components/form-dialog.tsx";
@@ -169,14 +170,14 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
         <Show when={props.presenter.migrateError()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>
-        <div class="flex justify-end gap-2">
+        <DialogActions>
           <Button type="button" variant="ghost" onClick={() => props.presenter.closeMigrate()}>
             Cancel
           </Button>
           <Button type="submit" variant="primary">
             Start migration
           </Button>
-        </div>
+        </DialogActions>
       </Form>
     </FormDialog>
   );

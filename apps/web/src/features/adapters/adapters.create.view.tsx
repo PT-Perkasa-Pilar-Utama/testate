@@ -5,6 +5,7 @@ import type { AdapterCreateFormInput, Engine } from "@testate/shared";
 import { adapterCreateFormSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
+import { DialogActions } from "@/components/dialog.tsx";
 import Button from "@/components/button.tsx";
 import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
@@ -220,7 +221,7 @@ export function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Eleme
         <Show when={props.presenter.error()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>
-        <div class="flex justify-end gap-2">
+        <DialogActions>
           <Button type="button" variant="ghost" onClick={() => props.presenter.closeCreate()}>
             Cancel
           </Button>
@@ -235,7 +236,7 @@ export function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Eleme
           <Button type="submit" variant="primary" disabled={props.presenter.busy()}>
             Create
           </Button>
-        </div>
+        </DialogActions>
       </Form>
     </FormDialog>
   );

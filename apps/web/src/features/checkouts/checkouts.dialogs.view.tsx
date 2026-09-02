@@ -4,7 +4,7 @@ import { For, Show } from "solid-js";
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
-import Dialog from "@/components/dialog.tsx";
+import Dialog, { DialogActions } from "@/components/dialog.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import {
   CHECKOUT_PURPOSE_LABEL,
@@ -162,7 +162,7 @@ export function CountersDialog(props: { presenter: CheckoutsPresenter }): JSX.El
                 </section>
               )}
             </For>
-            <div class="flex justify-end gap-2">
+            <DialogActions>
               <Button type="button" variant="ghost" onClick={() => props.presenter.close()}>
                 Close
               </Button>
@@ -175,7 +175,7 @@ export function CountersDialog(props: { presenter: CheckoutsPresenter }): JSX.El
                   Repair counters
                 </Button>
               </Show>
-            </div>
+            </DialogActions>
           </div>
         )}
       </Show>

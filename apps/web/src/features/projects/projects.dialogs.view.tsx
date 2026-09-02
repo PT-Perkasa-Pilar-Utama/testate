@@ -6,6 +6,7 @@ import { createProjectSchema, projectSlug } from "@testate/shared";
 import { onceSettled } from "@/lib/form.ts";
 import { formatBytes } from "../states/states.format.ts";
 import Banner from "@/components/banner.tsx";
+import { DialogActions } from "@/components/dialog.tsx";
 import Button from "@/components/button.tsx";
 import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
@@ -127,14 +128,14 @@ export function CreateDialog(props: { presenter: ProjectsPresenter }): JSX.Eleme
         <Show when={props.presenter.error()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>
-        <div class="flex justify-end gap-2">
+        <DialogActions>
           <Button type="button" variant="ghost" onClick={() => props.presenter.closeCreate()}>
             Cancel
           </Button>
           <Button type="submit" variant="primary">
             Create
           </Button>
-        </div>
+        </DialogActions>
       </Form>
     </FormDialog>
   );

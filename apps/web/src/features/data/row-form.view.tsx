@@ -5,6 +5,7 @@ import type { TableSchema } from "@testate/shared";
 import { rowFormSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
+import { DialogActions } from "@/components/dialog.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import FormDialog from "@/components/form-dialog.tsx";
@@ -188,7 +189,7 @@ export default function RowForm(props: {
             <Show when={props.presenter.error()}>
               {(message) => <Banner variant="error">{message()}</Banner>}
             </Show>
-            <div class="flex flex-wrap items-center justify-end gap-2">
+            <DialogActions>
               <Show when={open().kind === "insert"}>
                 <label class="flex items-center gap-2 text-base">
                   <FieldLabel required={false}>Copies</FieldLabel>
@@ -213,7 +214,7 @@ export default function RowForm(props: {
               <Button type="submit" variant="primary" onClick={() => setMore(false)}>
                 {open().kind === "insert" ? "Insert" : "Save"}
               </Button>
-            </div>
+            </DialogActions>
           </Form>
         </FormDialog>
       )}

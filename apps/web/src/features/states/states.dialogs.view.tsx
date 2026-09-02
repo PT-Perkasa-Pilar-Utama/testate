@@ -8,7 +8,7 @@ import type { StateDraftInput } from "@testate/shared";
 import Banner from "@/components/banner.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
-import Dialog from "@/components/dialog.tsx";
+import Dialog, { DialogActions } from "@/components/dialog.tsx";
 import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
@@ -81,14 +81,14 @@ function DraftFields(props: { form: FormStore<typeof stateDraftSchema> }): JSX.E
 
 function Actions(props: { presenter: StatesPresenter; submit: string }): JSX.Element {
   return (
-    <div class="flex justify-end gap-2">
+    <DialogActions>
       <Button type="button" variant="ghost" onClick={() => props.presenter.close()}>
         Cancel
       </Button>
       <Button type="submit" variant="primary">
         {props.submit}
       </Button>
-    </div>
+    </DialogActions>
   );
 }
 
@@ -188,6 +188,7 @@ export function EditDialog(props: { presenter: StatesPresenter }): JSX.Element {
   );
   return (
     <FormDialog
+      size="lg"
       open={props.presenter.editing() !== null}
       onClose={() => props.presenter.close()}
       title={`Edit ${props.presenter.editing()?.name ?? ""}`}
@@ -217,14 +218,14 @@ export function DeleteDialog(props: { presenter: StatesPresenter }): JSX.Element
         <Show when={props.presenter.error()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>
-        <div class="flex justify-end gap-2">
+        <DialogActions>
           <Button type="button" variant="ghost" onClick={() => props.presenter.close()}>
             Cancel
           </Button>
           <Button type="submit" variant="destructive">
             Delete state
           </Button>
-        </div>
+        </DialogActions>
       </Form>
     </FormDialog>
   );

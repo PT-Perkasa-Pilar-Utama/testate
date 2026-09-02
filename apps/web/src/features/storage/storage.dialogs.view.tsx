@@ -4,6 +4,7 @@ import { createEffect } from "solid-js";
 import * as v from "valibot";
 
 import Button from "@/components/button.tsx";
+import { DialogActions } from "@/components/dialog.tsx";
 import ConfirmDialog from "@/components/confirm-dialog.tsx";
 import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
@@ -53,6 +54,7 @@ function NameDialog(props: {
   );
   return (
     <FormDialog
+      size="lg"
       open={props.open}
       onClose={props.onClose}
       title={props.title}
@@ -75,14 +77,14 @@ function NameDialog(props: {
             </label>
           )}
         </Field>
-        <div class="flex justify-end gap-2">
+        <DialogActions>
           <Button type="button" variant="ghost" onClick={() => props.onClose()}>
             Cancel
           </Button>
           <Button type="submit" variant="primary">
             {props.submit}
           </Button>
-        </div>
+        </DialogActions>
       </Form>
     </FormDialog>
   );

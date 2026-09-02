@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 
 import Button from "./button.tsx";
-import Dialog from "./dialog.tsx";
+import Dialog, { DialogActions } from "./dialog.tsx";
 
 export type ConfirmDialogProps = {
   open: boolean;
@@ -27,14 +27,14 @@ export default function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
       title={props.title}
       description={props.description}
     >
-      <div class="flex justify-end gap-2">
+      <DialogActions>
         <Button variant="ghost" onClick={() => props.onCancel()}>
           {props.cancelLabel ?? "Cancel"}
         </Button>
         <Button variant="destructive" onClick={() => props.onConfirm()}>
           {props.confirmLabel}
         </Button>
-      </div>
+      </DialogActions>
     </Dialog>
   );
 }

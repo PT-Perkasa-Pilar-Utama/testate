@@ -3,7 +3,7 @@ import { Show } from "solid-js";
 
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
-import Dialog from "@/components/dialog.tsx";
+import Dialog, { DialogActions } from "@/components/dialog.tsx";
 import Icon from "@/components/icon.tsx";
 import type { TokensPresenter } from "./tokens.presenter.ts";
 
@@ -41,7 +41,7 @@ export default function RevealDialog(props: { presenter: TokensPresenter }): JSX
             <p class="text-sm text-muted">
               {result().record.kind} token · role {result().record.role}
             </p>
-            <div class="flex justify-end gap-2">
+            <DialogActions>
               <Button variant="primary" onClick={() => void props.presenter.copyCreated()}>
                 <Icon name="copy" class="h-3.5 w-3.5" />
                 Copy token
@@ -49,7 +49,7 @@ export default function RevealDialog(props: { presenter: TokensPresenter }): JSX
               <Button variant="ghost" onClick={() => props.presenter.dismissCreated()}>
                 Done, I've saved it
               </Button>
-            </div>
+            </DialogActions>
           </div>
         )}
       </Show>

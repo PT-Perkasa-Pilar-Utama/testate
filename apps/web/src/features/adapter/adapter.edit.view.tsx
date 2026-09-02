@@ -5,6 +5,7 @@ import type { Adapter } from "@testate/shared";
 import { adapterEditFormSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
+import { DialogActions } from "@/components/dialog.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import FormDialog from "@/components/form-dialog.tsx";
@@ -192,14 +193,14 @@ export default function EditDialog(props: {
         <Banner variant="secondary">
           Secrets are sealed before storage and never shown again.
         </Banner>
-        <div class="flex justify-end gap-2">
+        <DialogActions>
           <Button type="button" variant="ghost" onClick={() => props.presenter.closeEdit()}>
             Cancel
           </Button>
           <Button type="submit" variant="primary">
             Save adapter
           </Button>
-        </div>
+        </DialogActions>
       </Form>
     </FormDialog>
   );

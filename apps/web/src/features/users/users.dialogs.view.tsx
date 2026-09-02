@@ -4,6 +4,7 @@ import { Show, createEffect } from "solid-js";
 import { createUserSchema, editUserFormSchema, resetPasswordSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
+import { DialogActions } from "@/components/dialog.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import FormDialog from "@/components/form-dialog.tsx";
@@ -99,14 +100,14 @@ export function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element 
         <Show when={props.presenter.error()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>
-        <div class="flex justify-end gap-2">
+        <DialogActions>
           <Button type="button" variant="ghost" onClick={() => props.presenter.closeCreate()}>
             Cancel
           </Button>
           <Button type="submit" variant="primary">
             Create
           </Button>
-        </div>
+        </DialogActions>
       </Form>
     </FormDialog>
   );
@@ -136,6 +137,7 @@ export function EditDialog(props: { presenter: UsersPresenter }): JSX.Element {
   );
   return (
     <FormDialog
+      size="lg"
       open={props.presenter.editing() !== null}
       onClose={() => props.presenter.closeEdit()}
       title={`Edit ${props.presenter.editing()?.username ?? ""}`}
@@ -173,14 +175,14 @@ export function EditDialog(props: { presenter: UsersPresenter }): JSX.Element {
         <Show when={props.presenter.error()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>
-        <div class="flex justify-end gap-2">
+        <DialogActions>
           <Button type="button" variant="ghost" onClick={() => props.presenter.closeEdit()}>
             Cancel
           </Button>
           <Button type="submit" variant="primary">
             Save
           </Button>
-        </div>
+        </DialogActions>
       </Form>
     </FormDialog>
   );
@@ -198,6 +200,7 @@ export function ResetDialog(props: { presenter: UsersPresenter }): JSX.Element {
   );
   return (
     <FormDialog
+      size="lg"
       open={props.presenter.resetting() !== null}
       onClose={() => props.presenter.closeReset()}
       title={`Reset password for ${props.presenter.resetting()?.username ?? ""}`}
@@ -221,14 +224,14 @@ export function ResetDialog(props: { presenter: UsersPresenter }): JSX.Element {
             </label>
           )}
         </Field>
-        <div class="flex justify-end gap-2">
+        <DialogActions>
           <Button type="button" variant="ghost" onClick={() => props.presenter.closeReset()}>
             Cancel
           </Button>
           <Button type="submit" variant="primary">
             Reset
           </Button>
-        </div>
+        </DialogActions>
       </Form>
     </FormDialog>
   );

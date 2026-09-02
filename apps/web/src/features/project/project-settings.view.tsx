@@ -9,7 +9,7 @@ import Badge from "@/components/badge.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
-import Dialog from "@/components/dialog.tsx";
+import Dialog, { DialogActions } from "@/components/dialog.tsx";
 import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
@@ -123,14 +123,14 @@ export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element 
         <Show when={props.presenter.editError()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>
-        <div class="flex justify-end gap-2">
+        <DialogActions>
           <Button type="button" variant="ghost" onClick={() => props.presenter.closeEdit()}>
             Cancel
           </Button>
           <Button type="submit" variant="primary">
             Save
           </Button>
-        </div>
+        </DialogActions>
       </Form>
     </FormDialog>
   );
@@ -265,7 +265,7 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
             <p class="text-xs text-muted">
               Good until {formatWhen(plan().expires_at)}; after that, reopen to refresh it.
             </p>
-            <div class="flex justify-end gap-2">
+            <DialogActions>
               <Button type="button" variant="ghost" onClick={() => props.presenter.closeDelete()}>
                 Cancel
               </Button>
@@ -276,7 +276,7 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
               >
                 Restore and delete
               </Button>
-            </div>
+            </DialogActions>
           </Form>
         )}
       </Show>

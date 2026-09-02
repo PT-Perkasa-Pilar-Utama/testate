@@ -6,6 +6,7 @@ import type { ColumnPolicy } from "@testate/shared";
 import { policyFormSchema } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
+import { DialogActions } from "@/components/dialog.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import FormDialog from "@/components/form-dialog.tsx";
@@ -75,14 +76,14 @@ function PolicyDialog(props: { presenter: PoliciesPresenter }): JSX.Element {
         <Show when={props.presenter.error()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>
-        <div class="flex justify-end gap-2">
+        <DialogActions>
           <Button type="button" variant="ghost" onClick={() => props.presenter.close()}>
             Cancel
           </Button>
           <Button type="submit" variant="primary">
             Save
           </Button>
-        </div>
+        </DialogActions>
       </Form>
     </FormDialog>
   );

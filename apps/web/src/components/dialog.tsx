@@ -4,9 +4,14 @@ import { Show, createEffect, createSignal } from "solid-js";
 import Button from "./button.tsx";
 
 // Size strings for the native <dialog>; it is never conditionally rendered.
+/**
+ * Three widths, chosen by what the dialog holds, never per screen: `base` for a question and its
+ * two buttons, `lg` for a form, `xl` for something to read (a report, a preview, a row). `sm` is
+ * for nothing yet.
+ */
 const SIZES = {
-  sm: "sm:w-72",
-  base: "sm:w-96",
+  sm: "sm:w-80",
+  base: "sm:w-[26rem]",
   lg: "sm:w-[32rem]",
   xl: "sm:w-[48rem]",
 } as const;
@@ -118,5 +123,17 @@ export default function Dialog(props: DialogProps): JSX.Element {
         {props.children}
       </div>
     </dialog>
+  );
+}
+
+/**
+ * The row of buttons that ends a dialog: right-aligned, over a hairline, the confirming action
+ * last. Twenty-eight dialogs wrote this row by hand in four different ways.
+ */
+export function DialogActions(props: { children: JSX.Element }): JSX.Element {
+  return (
+    <div class="flex flex-wrap items-center justify-end gap-2 border-t border-hairline pt-4">
+      {props.children}
+    </div>
   );
 }

@@ -108,6 +108,7 @@ function TargetDialog(props: { row: AuditRow | null; onClose: () => void }): JSX
   const row = (): AuditRow | null => props.row;
   return (
     <Dialog
+      size="lg"
       open={row() !== null}
       onClose={() => props.onClose()}
       title="Target"

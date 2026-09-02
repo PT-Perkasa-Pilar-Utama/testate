@@ -3,7 +3,7 @@ import { Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
-import Dialog from "@/components/dialog.tsx";
+import Dialog, { DialogActions } from "@/components/dialog.tsx";
 import type { EditingPresenter } from "./editing.presenter.ts";
 
 /** The extracted fixture as text to copy (story 150); masked columns are named. */
@@ -30,7 +30,7 @@ export default function FixtureDialog(props: { presenter: EditingPresenter }): J
             <pre class="max-h-96 overflow-auto rounded-lg bg-fill p-3 text-xs">
               {fixture().content}
             </pre>
-            <div class="flex justify-end gap-2">
+            <DialogActions>
               <Button
                 type="button"
                 variant="secondary"
@@ -41,7 +41,7 @@ export default function FixtureDialog(props: { presenter: EditingPresenter }): J
               <Button type="button" variant="ghost" onClick={() => props.presenter.closeFixture()}>
                 Close
               </Button>
-            </div>
+            </DialogActions>
           </div>
         </Dialog>
       )}

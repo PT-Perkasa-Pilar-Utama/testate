@@ -6,7 +6,7 @@ import type { Adapter } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
-import Dialog from "@/components/dialog.tsx";
+import Dialog, { DialogActions } from "@/components/dialog.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { ConnectionCard, StatusLine } from "./adapter.summary.view.tsx";
 import Tabs from "@/components/tabs.tsx";
@@ -86,7 +86,7 @@ function DeleteDialog(props: { presenter: AdapterPresenter; name: string }): JSX
               {plan().states_referencing} state(s) reference this adapter · expires{" "}
               {formatWhen(plan().expires_at)}
             </Banner>
-            <div class="flex justify-end gap-2">
+            <DialogActions>
               <Button type="button" variant="ghost" onClick={() => props.presenter.closeDelete()}>
                 Cancel
               </Button>
@@ -95,7 +95,7 @@ function DeleteDialog(props: { presenter: AdapterPresenter; name: string }): JSX
                   ? "Delete without restore"
                   : "Return to init and delete"}
               </Button>
-            </div>
+            </DialogActions>
           </form>
         </Dialog>
       )}

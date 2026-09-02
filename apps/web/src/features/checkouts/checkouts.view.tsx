@@ -258,7 +258,7 @@ export default function CheckoutsView(props: {
                     </Cell>
                     <Cell class="whitespace-nowrap">{formatWhen(checkout.created_at)}</Cell>
                     <Cell pinned>
-                      <div class="flex flex-wrap justify-end gap-1">
+                      <div class="flex justify-end gap-1 whitespace-nowrap">
                         <Button
                           size="sm"
                           variant="ghost"

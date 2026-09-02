@@ -4,7 +4,7 @@ import type { PreviewPayload } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
-import Dialog from "@/components/dialog.tsx";
+import Dialog, { DialogActions } from "@/components/dialog.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { formatBytes } from "../states/states.format.ts";
 import type { StoragePresenter } from "./storage.presenter.ts";
@@ -84,7 +84,7 @@ export function PreviewDialog(props: { presenter: StoragePresenter }): JSX.Eleme
                 </>
               )}
             </Show>
-            <div class="flex justify-end gap-2">
+            <DialogActions>
               <a
                 class="text-sm underline"
                 href={props.presenter.downloadUrl(preview().entry)}
@@ -95,7 +95,7 @@ export function PreviewDialog(props: { presenter: StoragePresenter }): JSX.Eleme
               <Button type="button" variant="ghost" onClick={() => props.presenter.closePreview()}>
                 Close
               </Button>
-            </div>
+            </DialogActions>
           </div>
         </Dialog>
       )}
