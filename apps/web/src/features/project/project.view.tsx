@@ -52,7 +52,9 @@ function ProjectHeader(props: { presenter: ProjectPresenter }): JSX.Element {
   const badge = () => headBadge(project().head);
   return (
     <div class="grid gap-3 border-b border-line pb-4">
-      <Breadcrumbs items={[{ label: "Projects", href: "/projects" }, { label: project().slug }]} />
+      {/* The name, not the slug: the slug is printed beside the heading already, and one string
+          in two places is two matches for anything that looks for it. */}
+      <Breadcrumbs items={[{ label: "Projects", href: "/projects" }, { label: project().name }]} />
       <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="grid gap-1.5">
           <div class="flex flex-wrap items-baseline gap-2">
