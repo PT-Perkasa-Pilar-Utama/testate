@@ -98,7 +98,7 @@ export function blockedAdapters(checkout: Checkout): Checkout["adapters"] {
 /** Why "Retry" is dead, next to the button rather than left for the row to explain by itself. */
 export function retryBlockedReason(checkout: Checkout): string | undefined {
   if (checkout.status === "running") return "Wait for this restore to finish.";
-  if (!retriable(checkout)) return "Nothing to retry — every database finished cleanly.";
+  if (!retriable(checkout)) return "Nothing to retry. Every database finished cleanly.";
   return undefined;
 }
 

@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { formatWhen } from "@/lib/format.ts";
-import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
+import AdapterBreadcrumbs from "@/features/adapter/adapter.crumb.view.tsx";
 import { Errored, For, Loading, Show, createSignal } from "solid-js";
 import type { Entry } from "@testate/shared";
 
@@ -23,8 +23,6 @@ function PathBar(props: { presenter: StoragePresenter; slug: string; id: string 
   const atRoot = (): boolean => props.presenter.path() === "";
   return (
     <div class="flex flex-wrap items-center gap-1.5 text-base">
-      <AdapterCrumb slug={props.slug} id={props.id} />
-      <Icon name="chevron-right" class="h-3.5 w-3.5 text-muted" aria-hidden="true" />
       <Button
         size="xs"
         variant="ghost"
@@ -212,6 +210,7 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
   return (
     <section class="grid gap-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
+        <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf="files" />
         <PathBar presenter={presenter} slug={props.slug} id={props.id} />
         <div class="flex flex-wrap items-center gap-2">
           <TableSearch

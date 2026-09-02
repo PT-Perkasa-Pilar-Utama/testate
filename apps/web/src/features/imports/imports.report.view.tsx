@@ -34,7 +34,7 @@ export default function ReportPanel(props: ReportPanelProps): JSX.Element {
         <div class="grid gap-0.5">
           <p class="font-medium">
             {props.report.dry_run
-              ? "Preview only — nothing has been imported yet."
+              ? "Preview only. Nothing has been imported yet."
               : "Import complete."}
           </p>
           <p>{reportSummary(counts(), props.report.dry_run)}</p>

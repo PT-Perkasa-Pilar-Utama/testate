@@ -105,7 +105,7 @@ export default function PreflightDialog(props: { presenter: PreflightPresenter }
           />
           <p class="text-sm text-muted">
             Force restores only the tables and columns that exist in both this state and the live
-            database. Anything on just one side is skipped and listed after the restore — never
+            database. Anything on just one side is skipped and listed after the restore, never
             restored or deleted.
           </p>
         </div>
@@ -115,7 +115,7 @@ export default function PreflightDialog(props: { presenter: PreflightPresenter }
         <div class="flex flex-wrap items-center justify-between gap-3">
           <Show when={!props.presenter.busy() && props.presenter.blocked()} fallback={<span />}>
             <p class="text-sm text-warning-fg">
-              Schema drift is blocking this checkout — turn on Force above to continue.
+              Schema drift is blocking this checkout. Turn on Force above to continue.
             </p>
           </Show>
           <div class="ml-auto flex justify-end gap-2">

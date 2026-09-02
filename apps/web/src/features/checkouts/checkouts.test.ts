@@ -112,9 +112,7 @@ describe("checkouts feature", () => {
   });
 
   test("Retry says why it is dead next to the button (defect fix, same shape as preflight)", () => {
-    expect(retryBlockedReason(CHECKOUT)).toBe(
-      "Nothing to retry — every database finished cleanly."
-    );
+    expect(retryBlockedReason(CHECKOUT)).toBe("Nothing to retry. Every database finished cleanly.");
     expect(retryBlockedReason({ ...CHECKOUT, status: "running" })).toBe(
       "Wait for this restore to finish."
     );

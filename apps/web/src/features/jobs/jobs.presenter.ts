@@ -3,7 +3,7 @@ import type { Job, JobKind, JobStatus, JsonObject } from "@testate/shared";
 import { JOB_KINDS, JOB_STATUSES, TERMINAL_JOB_STATUSES } from "@testate/shared";
 import * as v from "valibot";
 
-import { attempt } from "@/lib/toast.ts";
+import { attempt, showToast } from "@/lib/toast.ts";
 import { createPaged } from "@/lib/async.ts";
 import { createTableControls } from "@/lib/table.ts";
 import type { TableControls } from "@/lib/table.ts";
@@ -157,6 +157,7 @@ export function createJobsPresenter(): JobsPresenter {
     cancel: (id) =>
       attempt(async () => {
         await jobsModel.cancel(id);
+        showToast("Cancel requested.", "info");
         jobs.refresh();
       }),
   };

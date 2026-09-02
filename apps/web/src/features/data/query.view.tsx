@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
+import AdapterBreadcrumbs from "@/features/adapter/adapter.crumb.view.tsx";
 import { Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
@@ -110,7 +110,7 @@ function RowCapField(props: { presenter: QueryPresenter }): JSX.Element {
         />
       </label>
       <span class="text-xs text-muted">
-        Limits rows shown here — exports aren't capped by this.
+        Limits the rows shown here. Exports are not capped by it.
       </span>
     </div>
   );
@@ -127,9 +127,10 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
   };
   return (
     <section class="grid gap-4">
+      <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf="query console" />
       <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-heading">
         <Icon name="terminal" class="h-4 w-4 text-muted" />
-        <AdapterCrumb slug={props.slug} id={props.id} /> / query console
+        Query console
       </h2>
       <Loading fallback={<p class="text-muted">Loading adapter...</p>}>
         <div class="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">

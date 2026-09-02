@@ -1,25 +1,33 @@
 import type { JSX } from "@solidjs/web";
 import { Loading } from "solid-js";
 
+import Breadcrumbs from "@/components/breadcrumbs.tsx";
 import { createRefreshable } from "@/lib/async.ts";
-import { href, navigate } from "@/lib/router.ts";
 import { adaptersModel } from "../adapters/adapters.model.ts";
 
 /**
- * The link back to the adapter, carrying its name. The five sub-screens (table, query, policies,
- * files, requests) all led with the literal word "adapter", so the one line that says where you
- * are named nothing at all.
+ * The path down to an adapter's sub-screen: Projects, the project, the adapter, and the screen
+ * itself. The five sub-screens (table, query, masks, files, imports) each led with the literal
+ * word "adapter", so the one line that says where you are named nothing at all; this names all of
+ * it and links every level above the page.
  */
-export default function AdapterCrumb(props: { slug: string; id: string }): JSX.Element {
+export default function AdapterBreadcrumbs(props: {
+  slug: string;
+  id: string;
+  /** The current screen. Absent on the adapter page itself, where the adapter is the page. */
+  leaf?: JSX.Element;
+}): JSX.Element {
   const adapter = createRefreshable(() => adaptersModel.get(props.slug, props.id));
-  const back = (): string => `/projects/${props.slug}/adapters/${props.id}`;
-  const onBack = (event: MouseEvent): void => {
-    event.preventDefault();
-    navigate(back());
-  };
+  const base = (): string => `/projects/${props.slug}/adapters/${props.id}`;
+  const name = (): JSX.Element => <Loading fallback="adapter">{adapter.value().name}</Loading>;
   return (
-    <a class="text-muted hover:underline" href={href(back())} onClick={onBack}>
-      <Loading fallback="adapter">{adapter.value().name}</Loading>
-    </a>
+    <Breadcrumbs
+      items={[
+        { label: "Projects", href: "/projects" },
+        { label: props.slug, href: `/projects/${props.slug}` },
+        props.leaf === undefined ? { label: name() } : { label: name(), href: base() },
+        ...(props.leaf === undefined ? [] : [{ label: props.leaf }]),
+      ]}
+    />
   );
 }

@@ -138,6 +138,7 @@ export function createProjectPresenter(slug: () => string): ProjectPresenter {
       setEditError(null);
       try {
         await projectsModel.update(staticSlug, staticBody);
+        showToast("Project updated.", "success");
         setEditing(false);
         overview.refresh();
       } catch (cause: unknown) {
@@ -172,6 +173,7 @@ export function createProjectPresenter(slug: () => string): ProjectPresenter {
               action: adapter.action === "skip" ? "skip" : "restore",
             })),
         });
+        showToast("Project deleted.", "success");
         setPlan(null);
         showToast("Deletion job queued; every database returns to its init state first", "info");
         navigate("/projects");

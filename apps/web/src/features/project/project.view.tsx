@@ -2,6 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { Loading, Match, Show, Switch } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
+import Breadcrumbs from "@/components/breadcrumbs.tsx";
 import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
 import Meter from "@/components/meter.tsx";
@@ -50,6 +51,7 @@ function ProjectHeader(props: { presenter: ProjectPresenter }): JSX.Element {
   const badge = () => headBadge(project().head);
   return (
     <div class="grid gap-3 border-b border-line pb-4">
+      <Breadcrumbs items={[{ label: "Projects", href: "/projects" }, { label: project().slug }]} />
       <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="grid gap-1.5">
           <div class="flex flex-wrap items-baseline gap-2">

@@ -82,6 +82,7 @@ export function createUsersPresenter(): UsersPresenter {
       setError(null);
       try {
         await usersModel.create(input);
+        showToast("User created.", "success");
         setCreating(false);
         users.refresh();
       } catch (cause: unknown) {
@@ -103,6 +104,7 @@ export function createUsersPresenter(): UsersPresenter {
       setError(null);
       try {
         await usersModel.update(staticUser.id, { ...input });
+        showToast("User updated.", "success");
         setEditing(null);
         users.refresh();
       } catch (cause: unknown) {
@@ -137,6 +139,7 @@ export function createUsersPresenter(): UsersPresenter {
       return attempt(async () => {
         if (staticUser === null) return;
         await usersModel.remove(staticUser.id);
+        showToast("User deleted.", "success");
         users.refresh();
       });
     },

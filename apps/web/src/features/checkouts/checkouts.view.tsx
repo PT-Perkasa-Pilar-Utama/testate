@@ -27,6 +27,16 @@ import { CHECKOUT_PURPOSE_LABEL, CHECKOUT_RESULT_LABEL, JOB_STATUS_LABEL } from 
 import { hasRole } from "@/lib/session.ts";
 import { subscribeJob } from "@/lib/sse.ts";
 import { CountersDialog, DetailDialog, RESULT_VARIANT } from "./checkouts.dialogs.view.tsx";
+
+/**
+ * In the list, a database that restored is the expected case and reads plain; only a doubt or a
+ * failure takes a colour. Four green pills per row made the one red one hard to find.
+ */
+const ROW_RESULT_VARIANT = {
+  ...RESULT_VARIANT,
+  restored: "outline",
+  skipped: "outline",
+} as const;
 import {
   CHECKOUT_PURPOSE_FILTER_OPTIONS,
   CHECKOUT_STATUS_FILTER_OPTIONS,
@@ -241,7 +251,7 @@ export default function CheckoutsView(props: {
                       <span class="inline-flex flex-wrap gap-1">
                         <For each={checkout.adapters}>
                           {(adapter) => (
-                            <Badge variant={RESULT_VARIANT[adapter.result]}>
+                            <Badge variant={ROW_RESULT_VARIANT[adapter.result]}>
                               <span class="block max-w-[8rem] truncate" title={adapter.name}>
                                 {adapter.name}
                               </span>

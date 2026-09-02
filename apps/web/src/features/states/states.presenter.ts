@@ -197,6 +197,7 @@ export function createStatesPresenter(
       let made = false;
       await attempt(async () => {
         await diffsModel.create(staticSlug, { base_state_id: base, target });
+        showToast("Comparison started. It lands in Activity.", "info");
         setSelected([]);
         made = true;
       });
@@ -256,6 +257,7 @@ export function createStatesPresenter(
       if (staticTarget === null) return Promise.resolve();
       return inForm(async () => {
         await statesModel.update(staticSlug, staticTarget.id, staticBody);
+        showToast("State updated.", "success");
         close();
         refreshAll();
       });
@@ -264,6 +266,10 @@ export function createStatesPresenter(
       const staticSlug = slug();
       return attempt(async () => {
         await statesModel.update(staticSlug, state.id, { protected: value });
+        showToast(
+          value ? `${state.name} is protected.` : `${state.name} is no longer protected.`,
+          "success"
+        );
         states.refresh();
       });
     },

@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import Breadcrumbs from "@/components/breadcrumbs.tsx";
 import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { Loading, Match, Show, Switch, createSignal } from "solid-js";
@@ -113,6 +114,13 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
   return (
     <section class="grid gap-6">
       <Loading fallback={<p class="text-muted">Loading adapter...</p>}>
+        <Breadcrumbs
+          items={[
+            { label: "Projects", href: "/projects" },
+            { label: props.slug, href: `/projects/${props.slug}` },
+            { label: presenter.adapter.value().name },
+          ]}
+        />
         <PageHeader
           title={presenter.adapter.value().name}
           actions={<AdminActions presenter={presenter} adapter={presenter.adapter.value()} />}

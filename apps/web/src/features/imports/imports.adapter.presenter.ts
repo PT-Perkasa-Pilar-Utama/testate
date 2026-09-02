@@ -1,4 +1,5 @@
 import { createSignal } from "solid-js";
+import { showToast } from "@/lib/toast.ts";
 import type {
   AdapterWithProject,
   ImportReport,
@@ -206,12 +207,9 @@ export function createImportPresenter(
     staticBody: JsonObject,
     dryRun: boolean
   ): Promise<{ report: ImportReport; normalizer: string }> => {
-    const id = await normalizerFor(
-      staticNormalizer,
-      staticDraft.table,
-      nameOf(staticDraft),
-      staticBody
-    );
+    const name = nameOf(staticDraft);
+    const id = await normalizerFor(staticNormalizer, staticDraft.table, name, staticBody);
+    showToast("Import rule saved.", "success");
     const job = await importsModel.run(
       slug(),
       runBody(adapterId(), id, staticSource, staticDraft, dryRun)

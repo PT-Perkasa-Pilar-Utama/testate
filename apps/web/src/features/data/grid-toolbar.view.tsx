@@ -115,28 +115,49 @@ function WriteSessionControls(props: { presenter: GridPresenter }): JSX.Element 
           void (on ? props.presenter.editing.start() : props.presenter.editing.end())
         }
       />
-      <Show when={session()}>
-        {(open) => (
-          <>
+    </div>
+  );
+}
+
+/**
+ * The strip under the toolbar while a write session is open: what is on, what protects you, and
+ * the two things you do in it. It used to be three controls squeezed into the toolbar's corner,
+ * where "stash taken" read as a badge and nobody could tell the session was the reason the rows
+ * had Edit on them.
+ */
+export function WriteStrip(props: { presenter: GridPresenter }): JSX.Element {
+  return (
+    <Show when={props.presenter.editing.session()}>
+      {(open) => (
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-accent/10 px-4 py-2.5 ring ring-accent/30">
+          <p class="flex items-center gap-2 text-sm text-body">
+            <Icon name="pencil" class="h-4 w-4 shrink-0 text-accent" />
+            <span>
+              <span class="font-medium">Write mode is on.</span>{" "}
+              <span class="text-muted">
+                {open().stash_state_id === null
+                  ? "The first change stashes this table, so every edit is reversible."
+                  : "This table was stashed before the first change, so every edit is reversible."}
+              </span>
+            </span>
+          </p>
+          <div class="flex flex-wrap items-center gap-3">
             <Switch
               label={`Foreign-key checks (${open().fk_checks_mapping})`}
               checked={open().foreign_key_checks}
               onChange={(on) => void props.presenter.editing.setForeignKeyChecks(on)}
             />
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => props.presenter.editing.openInsert()}
-            >
+            <Button size="sm" variant="accent" onClick={() => props.presenter.editing.openInsert()}>
+              <Icon name="plus" class="h-3.5 w-3.5" />
               Insert row
             </Button>
-            <Show when={open().stash_state_id !== null}>
-              <Badge variant="info">stash taken</Badge>
-            </Show>
-          </>
-        )}
-      </Show>
-    </div>
+            <Button size="sm" variant="ghost" onClick={() => void props.presenter.editing.end()}>
+              End write mode
+            </Button>
+          </div>
+        </div>
+      )}
+    </Show>
   );
 }
 

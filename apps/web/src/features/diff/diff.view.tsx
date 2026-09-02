@@ -1,15 +1,17 @@
 import type { JSX } from "@solidjs/web";
+import Icon from "@/components/icon.tsx";
+import { Eyebrow } from "@/components/page-header.tsx";
 import { Errored, For, Loading, Show } from "solid-js";
-import type { DiffRow, JsonValue } from "@testate/shared";
+import type { DiffRow, DiffTable, JsonValue } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
+import Breadcrumbs from "@/components/breadcrumbs.tsx";
 import PageHeader from "@/components/page-header.tsx";
 import Tabs from "@/components/tabs.tsx";
 import { DIFF_OP_LABEL } from "@/lib/labels.ts";
 import { formatWhen } from "@/lib/format.ts";
-import { href } from "@/lib/router.ts";
-import { columnsOf, countsLabel, createDiffPresenter, tableName } from "./diff.presenter.ts";
+import { columnsOf, createDiffPresenter, tableName } from "./diff.presenter.ts";
 import type { DiffPresenter, Target } from "./diff.presenter.ts";
 import { pretty } from "./diff.text.ts";
 import ValueDialog from "./diff.value.tsx";
@@ -32,6 +34,23 @@ function show(value: JsonValue): string {
   return value === null ? "" : pretty(value).replaceAll("\n", " ");
 }
 
+/** What moved in a table, each count in the colour the diff rows use for it; nothing when nothing did. */
+function Counts(props: { table: DiffTable }): JSX.Element {
+  return (
+    <span class="ml-auto flex shrink-0 gap-1.5 font-mono text-xs tabular-nums">
+      <Show when={props.table.added > 0}>
+        <span class="text-success-fg">+{props.table.added}</span>
+      </Show>
+      <Show when={props.table.removed > 0}>
+        <span class="text-danger-fg">-{props.table.removed}</span>
+      </Show>
+      <Show when={props.table.changed > 0}>
+        <span class="text-warning-fg">~{props.table.changed}</span>
+      </Show>
+    </span>
+  );
+}
+
 /** The tables of every adapter, with what moved in each; the rail is how you pick one. */
 function TableRail(props: { presenter: DiffPresenter }): JSX.Element {
   // One key per row rather than two comparisons: the old pair read the candidate's own table when
@@ -42,27 +61,26 @@ function TableRail(props: { presenter: DiffPresenter }): JSX.Element {
     return at !== null && key(at) === key(target);
   };
   return (
-    <nav class="grid gap-4" aria-label="Tables in this diff">
+    <nav class="grid gap-5" aria-label="Tables in this diff">
       <For each={props.presenter.diff.value().adapters}>
         {(adapter) => (
           <div class="grid gap-1">
-            <h3 class="text-sm font-semibold text-heading">{adapter.name}</h3>
+            <h3 class="flex items-center gap-1.5 px-2">
+              <Icon name="database" class="h-3.5 w-3.5 text-muted" />
+              <Eyebrow>{adapter.name}</Eyebrow>
+            </h3>
             <For
               each={adapter.tables}
-              fallback={<p class="text-sm text-muted">Nothing compared here.</p>}
+              fallback={<p class="px-2 text-sm text-muted">Nothing compared here.</p>}
             >
               {(table) => (
                 <button
                   type="button"
                   class={[
-                    "flex cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-hover",
-                    {
-                      "bg-fill font-medium": chosen({
-                        adapter_id: adapter.adapter_id,
-                        adapter_name: adapter.name,
-                        table,
-                      }),
-                    },
+                    "relative flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors duration-[80ms] hover:bg-hover",
+                    chosen({ adapter_id: adapter.adapter_id, adapter_name: adapter.name, table })
+                      ? "bg-fill text-heading before:absolute before:top-2 before:bottom-2 before:-left-px before:w-0.5 before:rounded-full before:bg-accent"
+                      : "text-muted",
                   ]}
                   onClick={() =>
                     void props.presenter.select({
@@ -72,8 +90,9 @@ function TableRail(props: { presenter: DiffPresenter }): JSX.Element {
                     })
                   }
                 >
+                  <Icon name="table" class="h-3.5 w-3.5 shrink-0" />
                   <span class="truncate">{tableName(table)}</span>
-                  <span class="shrink-0 font-mono text-xs text-muted">{countsLabel(table)}</span>
+                  <Counts table={table} />
                 </button>
               )}
             </For>
@@ -153,16 +172,20 @@ export default function DiffView(props: { slug: string; id: string }): JSX.Eleme
     <section class="grid gap-4">
       <Errored fallback={(error) => <Banner variant="error">{String(error())}</Banner>}>
         <Loading fallback={<p class="text-muted">Loading the diff...</p>}>
+          <Breadcrumbs
+            items={[
+              { label: "Projects", href: "/projects" },
+              { label: props.slug, href: `/projects/${props.slug}` },
+              { label: "activity", href: `/projects/${props.slug}?tab=activity` },
+              { label: "diff" },
+            ]}
+          />
           <PageHeader
+            eyebrow="Comparison"
             title={`${presenter.diff.value().base.name} → ${
               "live" in presenter.diff.value().target ? "live databases" : "another state"
             }`}
             description={`Made ${formatWhen(presenter.diff.value().created_at)}. Kept until ${formatWhen(presenter.diff.value().expires_at)}.`}
-            actions={
-              <a class="text-sm underline" href={href(`/projects/${props.slug}?tab=activity`)}>
-                Back to activity
-              </a>
-            }
           />
           <div class="grid gap-4 lg:grid-cols-[16rem_1fr]">
             <TableRail presenter={presenter} />

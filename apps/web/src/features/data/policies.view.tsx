@@ -1,6 +1,6 @@
 import { Field, Form, createForm, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
+import AdapterBreadcrumbs from "@/features/adapter/adapter.crumb.view.tsx";
 import { For, Loading, Show, createEffect } from "solid-js";
 import type { ColumnPolicy } from "@testate/shared";
 import { policyFormSchema } from "@testate/shared";
@@ -173,10 +173,11 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
     presenter.policies.value().filter((policy) => policy.table === table).length;
   return (
     <section class="grid gap-4">
+      <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf="column masks" />
       <div class="grid gap-1.5">
         <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-heading">
           <Icon name="shield" class="h-4 w-4 text-muted" />
-          <AdapterCrumb slug={props.slug} id={props.id} /> / column masks
+          Column masks
         </h2>
         <p class="max-w-prose text-sm text-muted">
           Admin work. A mask set here applies everywhere a value could leave this database: the

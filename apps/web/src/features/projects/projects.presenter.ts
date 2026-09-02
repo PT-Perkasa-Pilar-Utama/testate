@@ -1,4 +1,5 @@
 import { createSignal } from "solid-js";
+import { showToast } from "@/lib/toast.ts";
 import type { CreateProjectInput, JsonObject, Project, ProjectDefaults } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
@@ -100,6 +101,7 @@ export function createProjectsPresenter(): ProjectsPresenter {
         const description = input.description?.trim() ?? "";
         if (description !== "") body["description"] = description;
         await projectsModel.create(body);
+        showToast("Project created.", "success");
         setCreating(false);
         projects.refresh();
       } catch (cause: unknown) {

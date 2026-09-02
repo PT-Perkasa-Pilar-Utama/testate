@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
+import AdapterBreadcrumbs from "@/features/adapter/adapter.crumb.view.tsx";
 import type { JsonObject, TableSchema } from "@testate/shared";
 import { For, Loading, Show } from "solid-js";
 
@@ -11,7 +11,7 @@ import Select from "@/components/select.tsx";
 import { Cell, EmptyRow, Head, Row, Table, TableToolbar } from "@/components/table.tsx";
 import FixtureDialog from "./fixture.view.tsx";
 import { NUMERIC_TYPE, PAGE_SIZES, cellText, createGridPresenter } from "./grid.presenter.ts";
-import { ExportLinks, FilterBar, WriteControls } from "./grid-toolbar.view.tsx";
+import { ExportLinks, FilterBar, WriteControls, WriteStrip } from "./grid-toolbar.view.tsx";
 import type { GridPresenter } from "./grid.presenter.ts";
 import { FkCell, ForeignKeys } from "./grid-cells.view.tsx";
 import RowForm from "./row-form.view.tsx";
@@ -78,9 +78,10 @@ function RowActions(props: { presenter: GridPresenter; row: JsonObject }): JSX.E
         <Show when={canWrite()}>
           <Button
             size="sm"
-            variant="ghost"
+            variant="outline"
             onClick={() => props.presenter.editing.openUpdate(row())}
           >
+            <Icon name="pencil" class="h-3 w-3" />
             Edit
           </Button>
         </Show>
@@ -124,10 +125,11 @@ export default function GridView(props: { slug: string; id: string; table: strin
   };
   return (
     <section class="grid gap-4">
+      <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf={props.table} />
       <div class="flex flex-wrap items-center justify-between gap-2">
         <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-heading">
           <Icon name="table" class="h-4 w-4 text-muted" />
-          <AdapterCrumb slug={props.slug} id={props.id} /> / <code>{props.table}</code>
+          <code>{props.table}</code>
         </h2>
         <ForeignKeys presenter={presenter} />
       </div>
@@ -145,6 +147,7 @@ export default function GridView(props: { slug: string; id: string; table: strin
             columns={presenter.page.value().columns.map((column) => column.name)}
           />
         </TableToolbar>
+        <WriteStrip presenter={presenter} />
         <Show when={presenter.page.value().masked_columns.length > 0}>
           <p class="flex items-center gap-1.5 text-xs text-muted">
             <Icon name="eye-off" class="h-3 w-3 shrink-0" />

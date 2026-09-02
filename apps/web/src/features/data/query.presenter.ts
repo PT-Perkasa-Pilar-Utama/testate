@@ -249,6 +249,7 @@ export function createQueryPresenter(slug: () => string, id: () => string): Quer
       const staticId = id();
       return attempt(async () => {
         await dataModel.cancel(staticSlug, staticId, queryId);
+        showToast("Query cancelled.", "info");
         running.refresh();
       });
     },
