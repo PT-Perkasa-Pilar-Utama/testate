@@ -1,5 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
+import Pending from "@/components/pending.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show, createSignal } from "solid-js";
 import type { Job, JobStatus, JsonObject } from "@testate/shared";
@@ -163,6 +164,7 @@ export default function JobsView(): JSX.Element {
   return (
     <section class="grid gap-6">
       <PageHeader
+        eyebrow="Workspace"
         title="Jobs"
         description="Snapshots, checkouts, comparisons, imports, deletions, and maintenance. Running jobs update live."
         actions={
@@ -213,7 +215,7 @@ export default function JobsView(): JSX.Element {
           />
         </FilterField>
       </FilterPanel>
-      <Loading fallback={<p class="text-muted">Loading jobs...</p>}>
+      <Loading fallback={<Pending>Loading jobs...</Pending>}>
         <Table>
           <thead>
             <tr>

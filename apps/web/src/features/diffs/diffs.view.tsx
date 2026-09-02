@@ -4,6 +4,7 @@ import { For, Loading, Show } from "solid-js";
 import type { Diff } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
+import Pending from "@/components/pending.tsx";
 import Button, { buttonClass } from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
 import { Menu, MenuItem, MenuLink } from "@/components/menu.tsx";
@@ -118,7 +119,7 @@ export default function DiffsView(props: { slug: string }): JSX.Element {
         {/* No New diff here: a diff is two states, and the place to pick two states is the
             States tab, where ticking two offers Compare (docs/PROJECT_REWORK.md). */}
       </div>
-      <Loading fallback={<p class="text-muted">Loading diffs...</p>}>
+      <Loading fallback={<Pending>Loading diffs...</Pending>}>
         <Table>
           <thead>
             <tr>

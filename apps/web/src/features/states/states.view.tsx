@@ -3,6 +3,7 @@ import { Loading, Show } from "solid-js";
 import type { State } from "@testate/shared";
 
 import Button from "@/components/button.tsx";
+import Pending from "@/components/pending.tsx";
 import Icon from "@/components/icon.tsx";
 import { Menu, MenuItem, MenuLink } from "@/components/menu.tsx";
 import LoadMore from "@/components/load-more.tsx";
@@ -167,7 +168,7 @@ export default function StatesView(props: {
           </div>
         </div>
       </Show>
-      <Loading fallback={<p class="text-muted">Loading states...</p>}>
+      <Loading fallback={<Pending>Loading states...</Pending>}>
         <Show when={presenter.view() === "tree"}>
           <Tree
             nodes={presenter.tree.value()}

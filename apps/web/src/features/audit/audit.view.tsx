@@ -1,6 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import type { AuditRow } from "@testate/shared";
 import PageHeader from "@/components/page-header.tsx";
+import Pending from "@/components/pending.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show, createSignal } from "solid-js";
 
@@ -153,6 +154,7 @@ export default function AuditView(): JSX.Element {
   return (
     <section class="grid gap-6">
       <PageHeader
+        eyebrow="Admin"
         title="Audit log"
         description="Every write, by whom, and how it ended."
         actions={
@@ -173,7 +175,7 @@ export default function AuditView(): JSX.Element {
       <FilterPanel open={open()}>
         <Filters presenter={presenter} />
       </FilterPanel>
-      <Loading fallback={<p class="text-muted">Loading audit rows...</p>}>
+      <Loading fallback={<Pending>Loading audit rows...</Pending>}>
         <Table>
           <thead>
             <tr>

@@ -1,5 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
+import Pending from "@/components/pending.tsx";
 import { For, Loading, Show } from "solid-js";
 import type { Settings } from "@testate/shared";
 
@@ -252,10 +253,11 @@ export default function SettingsView(): JSX.Element {
   return (
     <section class="grid gap-6">
       <PageHeader
+        eyebrow="Instance"
         title="Settings"
         description="Instance defaults. Values set by the environment cannot be edited here."
       />
-      <Loading fallback={<p class="text-muted">Loading settings...</p>}>
+      <Loading fallback={<Pending>Loading settings...</Pending>}>
         <HealthCard presenter={presenter} />
         <Group
           id="storage"

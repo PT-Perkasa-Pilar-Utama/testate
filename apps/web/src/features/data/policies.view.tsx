@@ -6,6 +6,7 @@ import type { ColumnPolicy } from "@testate/shared";
 import { policyFormSchema } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
+import Pending from "@/components/pending.tsx";
 import { DialogActions } from "@/components/dialog.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
@@ -185,7 +186,7 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
           Administrators see the real value. There is no unmask.
         </p>
       </div>
-      <Loading fallback={<p class="text-muted">Loading schema...</p>}>
+      <Loading fallback={<Pending>Loading schema...</Pending>}>
         <For
           each={presenter.schema.value().tables}
           fallback={

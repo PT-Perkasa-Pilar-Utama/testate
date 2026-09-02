@@ -5,6 +5,7 @@ import type { Actor, Role } from "@testate/shared";
 import Icon from "@/components/icon.tsx";
 import type { IconName } from "@/components/icon.tsx";
 import Logo from "@/components/logo.tsx";
+import { Eyebrow } from "@/components/page-header.tsx";
 import { Menu, MenuItem } from "@/components/menu.tsx";
 import { ROLE_LABEL } from "@/lib/labels.ts";
 import { signOut } from "@/features/auth/auth.presenter.ts";
@@ -52,6 +53,19 @@ const NAV: readonly {
     ],
   },
 ];
+
+/**
+ * The two halves of the rail, named the way the homepage names a section: the screens everyone
+ * has, then the ones an administrator has. The label sits over the first entry of each.
+ */
+function groupLabel(index: number): string | null {
+  const entries = NAV.filter((item) => hasRole(item.role));
+  if (index === 0) return "Workspace";
+  const here = entries[index];
+  const before = entries[index - 1];
+  if (here?.role === "admin" && before?.role !== "admin") return "Admin";
+  return null;
+}
 
 const SIDEBAR_KEY = "testate.sidebar.collapsed";
 
@@ -230,8 +244,15 @@ export default function Sidebar(props: { current: string | undefined }): JSX.Ele
       */}
       <nav class="grid gap-0.5 overflow-y-auto">
         <For each={NAV.filter((item) => hasRole(item.role))}>
-          {(item) => (
+          {(item, index) => (
             <>
+              <Show when={!collapsed() && groupLabel(index())}>
+                {(label) => (
+                  <Eyebrow class={index() === 0 ? "px-2.5 pt-1 pb-1.5" : "px-2.5 pt-4 pb-1.5"}>
+                    {label()}
+                  </Eyebrow>
+                )}
+              </Show>
               <a
                 class={[
                   "relative flex items-center rounded-md text-base transition-colors duration-[80ms] hover:bg-hover hover:text-body",

@@ -3,6 +3,7 @@ import { Errored, For, Loading, Show, createSignal, untrack } from "solid-js";
 
 import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
 import Banner from "@/components/banner.tsx";
+import Pending from "@/components/pending.tsx";
 import Button from "@/components/button.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Icon from "@/components/icon.tsx";
@@ -163,7 +164,7 @@ export default function AdapterImportsView(props: { slug: string; id: string }):
         </p>
       </div>
       <Errored fallback={(error) => <Banner variant="error">{String(error())}</Banner>}>
-        <Loading fallback={<p class="text-muted">Loading...</p>}>
+        <Loading fallback={<Pending>Loading...</Pending>}>
           {/* Read so the refreshable runs: it is the call that loads a rejected-rows preview. */}
           {presenter.rejected.value()}
           <Show

@@ -1,5 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
+import Pending from "@/components/pending.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show, createSignal } from "solid-js";
 
@@ -57,6 +58,7 @@ export default function ProjectsView(): JSX.Element {
   return (
     <section class="grid gap-6">
       <PageHeader
+        eyebrow="Workspace"
         title="Projects"
         description="Each project owns its adapters and states."
         actions={
@@ -91,7 +93,7 @@ export default function ProjectsView(): JSX.Element {
           />
         </FilterField>
       </FilterPanel>
-      <Loading fallback={<p class="text-muted">Loading projects...</p>}>
+      <Loading fallback={<Pending>Loading projects...</Pending>}>
         <Show
           when={presenter.table.rows().length > 0 || isFiltered(presenter)}
           fallback={

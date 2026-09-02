@@ -1,7 +1,9 @@
 import type { JSX } from "@solidjs/web";
+import EmptyState from "@/components/empty-state.tsx";
 import Icon from "@/components/icon.tsx";
+import Pending from "@/components/pending.tsx";
 import { Eyebrow } from "@/components/page-header.tsx";
-import { Errored, For, Loading, Show } from "solid-js";
+import { Errored, For, Loading, Show, createEffect } from "solid-js";
 import type { DiffRow, DiffTable, JsonValue } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
@@ -168,10 +170,28 @@ export default function DiffView(props: { slug: string; id: string }): JSX.Eleme
     () => props.id
   );
   const columns = (): string[] => columnsOf(presenter.page()?.data ?? []);
+  // Open on the first table that moved rather than on "pick one": a diff page that lands on an
+  // instruction is a page that made the reader do the one thing it already knew to do.
+  createEffect(
+    () => presenter.diff.value(),
+    (diff) => {
+      if (presenter.target() !== null) return;
+      for (const adapter of diff.adapters) {
+        const table = adapter.tables.find((t) => t.added + t.removed + t.changed > 0);
+        if (table === undefined) continue;
+        void presenter.select({
+          adapter_id: adapter.adapter_id,
+          adapter_name: adapter.name,
+          table,
+        });
+        return;
+      }
+    }
+  );
   return (
     <section class="grid gap-4">
       <Errored fallback={(error) => <Banner variant="error">{String(error())}</Banner>}>
-        <Loading fallback={<p class="text-muted">Loading the diff...</p>}>
+        <Loading fallback={<Pending>Loading the diff...</Pending>}>
           <Breadcrumbs
             items={[
               { label: "Projects", href: "/projects" },
@@ -192,7 +212,12 @@ export default function DiffView(props: { slug: string; id: string }): JSX.Eleme
             <div class="grid content-start gap-3">
               <Show
                 when={presenter.target()}
-                fallback={<p class="text-muted">Pick a table on the left.</p>}
+                fallback={
+                  <EmptyState icon="table" title="Nothing moved">
+                    Every compared table holds the same rows on both sides. Pick one on the left to
+                    read it anyway.
+                  </EmptyState>
+                }
               >
                 {(target) => (
                   <>

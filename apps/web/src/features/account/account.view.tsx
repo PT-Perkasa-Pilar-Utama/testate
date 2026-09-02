@@ -1,6 +1,7 @@
 import { Field, Form, createForm, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
+import Pending from "@/components/pending.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import { ROLE_LABEL } from "@/lib/labels.ts";
 import { formatAddress, formatWhen } from "@/lib/format.ts";
@@ -139,6 +140,7 @@ export default function AccountView(): JSX.Element {
   return (
     <section class="grid gap-6">
       <PageHeader
+        eyebrow="You"
         title="Account"
         description={`Signed in as ${actor()?.label ?? ""}, ${roleLabel(actor()?.role)}.`}
       />
@@ -150,7 +152,7 @@ export default function AccountView(): JSX.Element {
             Every device signed in as you. Sign out any you don't recognise.
           </p>
         </div>
-        <Loading fallback={<p class="text-muted">Loading sessions...</p>}>
+        <Loading fallback={<Pending>Loading sessions...</Pending>}>
           <Table>
             <thead>
               <tr>

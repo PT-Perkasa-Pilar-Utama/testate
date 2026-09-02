@@ -1,5 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
+import Pending from "@/components/pending.tsx";
 import { For, Loading, Show, createSignal } from "solid-js";
 
 import { formatWhen } from "@/lib/format.ts";
@@ -80,6 +81,7 @@ export default function UsersView(): JSX.Element {
   return (
     <section class="grid gap-6">
       <PageHeader
+        eyebrow="Admin"
         title="Users"
         description="Accounts on this instance. Roles are cumulative."
         actions={
@@ -109,7 +111,7 @@ export default function UsersView(): JSX.Element {
           />
         </FilterField>
       </FilterPanel>
-      <Loading fallback={<p class="text-muted">Loading users...</p>}>
+      <Loading fallback={<Pending>Loading users...</Pending>}>
         <Table>
           <thead>
             <tr>

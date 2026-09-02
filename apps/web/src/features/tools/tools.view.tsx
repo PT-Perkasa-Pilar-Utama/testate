@@ -168,6 +168,7 @@ export default function ToolsView(): JSX.Element {
   return (
     <section class="grid gap-6">
       <PageHeader
+        eyebrow="Workspace"
         title="Tools"
         description="A scratchpad: hash a value, draw random bytes, mint a UUID. Nothing here is saved."
       />

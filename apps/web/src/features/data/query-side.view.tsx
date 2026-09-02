@@ -3,6 +3,7 @@ import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show, createSignal } from "solid-js";
 
 import Button from "@/components/button.tsx";
+import Pending from "@/components/pending.tsx";
 import Input from "@/components/input.tsx";
 import Tabs from "@/components/tabs.tsx";
 import { hasRole } from "@/lib/session.ts";
@@ -27,7 +28,7 @@ export default function SidePanel(props: { presenter: QueryPresenter }): JSX.Ele
         variant="segmented"
       />
       <Show when={tab() === "saved"}>
-        <Loading fallback={<p class="text-muted">Loading...</p>}>
+        <Loading fallback={<Pending>Loading...</Pending>}>
           <ul class="grid gap-1 text-base">
             <For each={props.presenter.saved.value()}>
               {(query) => (
@@ -75,7 +76,7 @@ export default function SidePanel(props: { presenter: QueryPresenter }): JSX.Ele
         </Show>
       </Show>
       <Show when={tab() === "history"}>
-        <Loading fallback={<p class="text-muted">Loading...</p>}>
+        <Loading fallback={<Pending>Loading...</Pending>}>
           <ul class="grid gap-1 text-sm">
             <For each={props.presenter.history.value()}>
               {(row) => (
@@ -96,7 +97,7 @@ export default function SidePanel(props: { presenter: QueryPresenter }): JSX.Ele
         <Button size="sm" variant="ghost" onClick={() => props.presenter.running.refresh()}>
           Refresh
         </Button>
-        <Loading fallback={<p class="text-muted">Loading...</p>}>
+        <Loading fallback={<Pending>Loading...</Pending>}>
           <ul class="grid gap-1 text-sm">
             <For each={props.presenter.running.value()}>
               {(query) => (

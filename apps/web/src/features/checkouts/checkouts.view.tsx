@@ -5,6 +5,7 @@ import type { Checkout } from "@testate/shared";
 import { TERMINAL_JOB_STATUSES } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
+import Pending from "@/components/pending.tsx";
 import Button from "@/components/button.tsx";
 import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
 import Icon from "@/components/icon.tsx";
@@ -196,7 +197,7 @@ export default function CheckoutsView(props: {
           />
         </FilterField>
       </FilterPanel>
-      <Loading fallback={<p class="text-muted">Loading checkouts...</p>}>
+      <Loading fallback={<Pending>Loading checkouts...</Pending>}>
         <Table>
           <thead>
             <tr>

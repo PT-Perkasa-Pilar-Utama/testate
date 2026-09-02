@@ -3,6 +3,7 @@ import AdapterBreadcrumbs from "@/features/adapter/adapter.crumb.view.tsx";
 import { Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
+import Pending from "@/components/pending.tsx";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import EmptyState from "@/components/empty-state.tsx";
@@ -132,7 +133,7 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
         <Icon name="terminal" class="h-4 w-4 text-muted" />
         Query console
       </h2>
-      <Loading fallback={<p class="text-muted">Loading adapter...</p>}>
+      <Loading fallback={<Pending>Loading adapter...</Pending>}>
         <div class="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
           <form class="grid gap-3" onSubmit={onSubmit}>
             <Show

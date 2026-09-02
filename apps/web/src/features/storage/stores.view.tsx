@@ -51,6 +51,7 @@ export default function StoresView(): JSX.Element {
   return (
     <section class="grid gap-4">
       <PageHeader
+        eyebrow="Workspace"
         title="Storage"
         description="S3, SFTP and FTP adapters, across every project you can see."
       />

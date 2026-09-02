@@ -4,6 +4,7 @@ import type { JsonObject, TableSchema } from "@testate/shared";
 import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
+import Pending from "@/components/pending.tsx";
 import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
 import { Menu, MenuItem } from "@/components/menu.tsx";
@@ -133,7 +134,7 @@ export default function GridView(props: { slug: string; id: string; table: strin
         </h2>
         <ForeignKeys presenter={presenter} />
       </div>
-      <Loading fallback={<p class="text-muted">Loading rows...</p>}>
+      <Loading fallback={<Pending>Loading rows...</Pending>}>
         <TableToolbar
           actions={
             <>

@@ -2,6 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
+import Pending from "@/components/pending.tsx";
 import { statusReason } from "@/lib/api-error.ts";
 import Button from "@/components/button.tsx";
 import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
@@ -77,7 +78,7 @@ export default function AdaptersView(props: { slug: string }): JSX.Element {
           />
         </FilterField>
       </FilterPanel>
-      <Loading fallback={<p class="text-muted">Loading adapters...</p>}>
+      <Loading fallback={<Pending>Loading adapters...</Pending>}>
         <Table>
           <thead>
             <tr>

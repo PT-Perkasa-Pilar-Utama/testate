@@ -1,5 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import Breadcrumbs from "@/components/breadcrumbs.tsx";
+import Pending from "@/components/pending.tsx";
 import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { Loading, Match, Show, Switch, createSignal } from "solid-js";
@@ -113,7 +114,7 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
   const [tableView, setTableView] = createSignal<TableView>("list");
   return (
     <section class="grid gap-6">
-      <Loading fallback={<p class="text-muted">Loading adapter...</p>}>
+      <Loading fallback={<Pending>Loading adapter...</Pending>}>
         <Breadcrumbs
           items={[
             { label: "Projects", href: "/projects" },
@@ -122,6 +123,7 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
           ]}
         />
         <PageHeader
+          eyebrow="Database"
           title={presenter.adapter.value().name}
           actions={<AdminActions presenter={presenter} adapter={presenter.adapter.value()} />}
         />

@@ -2,6 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { Errored, Match, Show, Switch } from "solid-js";
 
 import Banner from "@/components/banner.tsx";
+import Pending from "@/components/pending.tsx";
 import Crashed from "@/components/crashed.tsx";
 import Toaster from "@/components/toast.tsx";
 import AdapterView from "@/features/adapter/adapter.view.tsx";
@@ -139,7 +140,7 @@ export default function App(): JSX.Element {
               <Crashed detail={String(error())} reset={reset} where={location()} />
             )}
           >
-            <Show when={sessionReady()} fallback={<p class="text-muted">Loading...</p>}>
+            <Show when={sessionReady()} fallback={<Pending>Loading...</Pending>}>
               <Switch fallback={<Page match={match()} />}>
                 <Match when={access() === "forbidden"}>
                   <Banner variant="error">Your role cannot open this page.</Banner>

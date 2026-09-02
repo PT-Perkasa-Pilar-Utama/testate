@@ -3,6 +3,7 @@ import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
+import Pending from "@/components/pending.tsx";
 import Button, { buttonClass } from "@/components/button.tsx";
 import Dialog, { DialogActions } from "@/components/dialog.tsx";
 import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
@@ -56,7 +57,7 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
           />
         </FilterField>
       </FilterPanel>
-      <Loading fallback={<p class="text-muted">Loading import runs...</p>}>
+      <Loading fallback={<Pending>Loading import runs...</Pending>}>
         <Table>
           <thead>
             <tr>

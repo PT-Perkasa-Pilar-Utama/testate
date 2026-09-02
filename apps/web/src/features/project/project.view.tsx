@@ -2,6 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { Loading, Match, Show, Switch } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
+import Pending from "@/components/pending.tsx";
 import Breadcrumbs from "@/components/breadcrumbs.tsx";
 import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
@@ -96,7 +97,7 @@ export default function ProjectView(props: { slug: string }): JSX.Element {
   const presenter = createProjectPresenter(() => props.slug);
   return (
     <section class="grid gap-5">
-      <Loading fallback={<p class="text-muted">Loading project...</p>}>
+      <Loading fallback={<Pending>Loading project...</Pending>}>
         <ProjectHeader presenter={presenter} />
       </Loading>
       <Tabs

@@ -1,5 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
+import Pending from "@/components/pending.tsx";
 import { For, Loading, Show, createSignal } from "solid-js";
 import type { ApiToken } from "@testate/shared";
 
@@ -65,6 +66,7 @@ export default function TokensView(): JSX.Element {
   return (
     <section class="grid gap-6">
       <PageHeader
+        eyebrow="Admin"
         title="API tokens"
         description="Personal tokens act as their role on the REST API; agent tokens reach the MCP endpoint alone, where a Guest reads and a Tester also writes."
         actions={
@@ -101,7 +103,7 @@ export default function TokensView(): JSX.Element {
           />
         </FilterField>
       </FilterPanel>
-      <Loading fallback={<p class="text-muted">Loading tokens...</p>}>
+      <Loading fallback={<Pending>Loading tokens...</Pending>}>
         <Table>
           <thead>
             <tr>
