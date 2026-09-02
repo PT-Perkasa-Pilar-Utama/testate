@@ -554,7 +554,8 @@ code {
   font-weight: 200;
   line-height: 1;
   color: transparent;
-  -webkit-text-stroke: 1px rgba(238, 242, 245, 0.08);
+  -webkit-text-stroke: 1.5px rgba(238, 242, 245, 0.28);
+  user-select: none;
 }
 
 .band > .wrap {
