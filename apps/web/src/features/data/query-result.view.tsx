@@ -57,7 +57,9 @@ export default function ResultTable(props: { result: QueryResult }): JSX.Element
         <Table>
           <thead>
             <tr>
-              <For each={props.result.columns}>{(column) => <Head>{column.name}</Head>}</For>
+              <For each={props.result.columns}>
+                {(column) => <Head identifier>{column.name}</Head>}
+              </For>
             </tr>
           </thead>
           <tbody>

@@ -90,15 +90,21 @@ const PINNED_HEAD = "sticky right-0 z-20 bg-surface shadow-[inset_1px_0_0_0_var(
 const PINNED_CELL =
   "sticky right-0 bg-surface group-hover:bg-hover shadow-[inset_1px_0_0_0_var(--color-hairline)]";
 
+/**
+ * A heading is upper-cased mono, the homepage's label. `identifier` is for a heading that is a
+ * name from the database, a CSV or a query: those keep their own case, because `email` and `EMAIL`
+ * can be two different columns and the heading is the only place the reader learns which.
+ */
 export function Head(
-  props: ComponentProps<"th"> & { numeric?: boolean; pinned?: boolean }
+  props: ComponentProps<"th"> & { numeric?: boolean; pinned?: boolean; identifier?: boolean }
 ): JSX.Element {
-  const rest = omit(props, "class", "numeric", "pinned");
+  const rest = omit(props, "class", "numeric", "pinned", "identifier");
   return (
     <th
       {...rest}
       class={[
-        "sticky top-0 z-10 h-9 border-b border-line bg-surface px-4 align-middle font-mono text-[11px] font-normal tracking-[0.08em] whitespace-nowrap text-muted uppercase",
+        "sticky top-0 z-10 h-9 border-b border-line bg-surface px-4 align-middle font-mono text-[11px] font-normal whitespace-nowrap text-muted",
+        props.identifier === true ? "text-xs text-body" : "tracking-[0.08em] uppercase",
         props.numeric === true ? "text-right" : "text-left",
         props.pinned === true ? PINNED_HEAD : "",
         props.class,

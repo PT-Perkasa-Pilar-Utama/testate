@@ -19,7 +19,7 @@ function Payload(props: { payload: PreviewPayload }): JSX.Element {
             <Table>
               <thead>
                 <tr>
-                  <For each={csv().columns}>{(column) => <Head>{column}</Head>}</For>
+                  <For each={csv().columns}>{(column) => <Head identifier>{column}</Head>}</For>
                 </tr>
               </thead>
               <tbody>

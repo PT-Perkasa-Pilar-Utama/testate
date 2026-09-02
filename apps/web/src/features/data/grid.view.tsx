@@ -154,17 +154,12 @@ export default function GridView(props: { slug: string; id: string; table: strin
         <Table>
           <thead>
             <tr>
-              {/* A column name is an identifier, so it keeps its own case and the header's
-                  upper-casing stays off it; the type stays quiet beside it. */}
               <For each={presenter.page.value().columns}>
                 {(column) => (
-                  <Head
-                    numeric={NUMERIC_TYPE.test(column.type)}
-                    class="normal-case tracking-normal"
-                  >
+                  <Head numeric={NUMERIC_TYPE.test(column.type)} identifier>
                     <button
                       type="button"
-                      class="cursor-pointer text-xs font-medium text-body hover:underline"
+                      class="cursor-pointer font-medium hover:underline"
                       onClick={() => presenter.toggleSort(column.name)}
                     >
                       {column.name}

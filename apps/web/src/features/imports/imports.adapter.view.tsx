@@ -101,7 +101,7 @@ function PreviewRows(props: { presenter: ImportPresenter }): JSX.Element {
           <Table>
             <thead>
               <tr>
-                <For each={preview().columns}>{(column) => <Head>{column}</Head>}</For>
+                <For each={preview().columns}>{(column) => <Head identifier>{column}</Head>}</For>
               </tr>
             </thead>
             <tbody>
