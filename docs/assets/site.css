@@ -564,6 +564,25 @@ code {
   z-index: 1;
 }
 
+/* Placement */
+.placement-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.placement {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+@media (max-width: 720px) {
+  .placement {
+    min-width: 820px;
+  }
+}
+
 /* Loop */
 .loop {
   display: grid;
