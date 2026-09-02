@@ -102,9 +102,11 @@ jobs:
           curl -fsSL -o slim.tar.gz \
             "https://github.com/slimtoolkit/slim/releases/download/${SLIM_VERSION}/${{ matrix.slim_asset }}"
           tar -xzf slim.tar.gz
-          slim_bin="$(find . -maxdepth 3 -type f -name slim -perm -u+x | head -1)"
+          # The tool was renamed: the archive holds `mint`, and `slim` is a symlink to it that a
+          # search for regular files walks straight past. Either name is the same binary.
+          slim_bin="$(find . -maxdepth 3 -type f \( -name mint -o -name slim \) -perm -u+x | head -1)"
           if [ -z "$slim_bin" ]; then
-            echo "::error::the slim ${SLIM_VERSION} archive did not contain a slim binary"
+            echo "::error::the slim ${SLIM_VERSION} archive did not contain a mint or slim binary"
             exit 1
           fi
           # One --http-probe-cmd per path: the flag repeats, it does not take a list.
