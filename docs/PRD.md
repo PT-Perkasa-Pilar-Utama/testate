@@ -28,7 +28,7 @@ Three costs follow:
 
 Testate is a self-hosted tool that gives QA "git for the test database". It runs as one Docker image next to the database, on the same intranet. Nobody adds code to the application under test.
 
-A QA engineer opens the dashboard, creates a project, connects one or more databases, and takes a state. A state is a data snapshot of every connected database in the project. Later, QA jumps back to any state with one click or one API call. Testate also lets QA browse tables, run queries, import CSV or XLSX files through saved column mappings, compare two states row by row, and browse files on S3, SFTP, and FTP.
+A QA engineer opens the dashboard, creates a project, connects one or more databases, and takes a state. A state is a data snapshot of every connected database in the project. Later, QA jumps back to any state with one click or one API call. Testate also lets QA browse tables, run queries, import CSV or XLSX files through saved column normalizers, compare two states row by row, and browse files on S3, SFTP, and FTP.
 
 Everything in the dashboard is also available as a versioned REST API, so a CI pipeline can reset a database to a named state before every run.
 
@@ -39,7 +39,7 @@ Roles are cumulative: `admin` includes `qa`, and `qa` includes `viewer`.
 | Role | Adds |
 | --- | --- |
 | `viewer` | Browse projects, adapters, states, tables, files, jobs, diffs, and the audit log. Run read-only queries. Download. |
-| `qa` | Create and edit projects, adapters, states, mappings. Checkout, import, write-mode queries, inline edits. Tighten an adapter from `sandbox` to `read-only`. Delete an adapter, which returns its database to init first. |
+| `qa` | Create and edit projects, adapters, states, normalizers. Checkout, import, write-mode queries, inline edits. Tighten an adapter from `sandbox` to `read-only`. Delete an adapter, which returns its database to init first. |
 | `admin` | Users, API tokens, global settings, backups. Loosen an adapter from `read-only` to `sandbox`. Delete a project, which returns every database to init first. |
 
 The first admin comes from environment variables. On first login Testate forces a password change. The admin then creates the other users. A new user receives a temporary password that must change on first login; the admin hands it over outside Testate.
@@ -89,7 +89,7 @@ apart on what a checkout does.
 26. As a QA engineer, I want to pick which Postgres schemas an adapter covers, so that Testate handles multi-schema databases.
 27. As a QA engineer, I want Testate to take a protected, single-adapter init state when an adapter first connects, so that every adapter has a baseline.
 28. As a QA engineer, I want Testate to take a new init state when I point an adapter at a different host or database, so that the baseline always matches the target.
-29. As a QA engineer, I want to rename an adapter without touching its states, mappings, or saved queries, so that names stay readable.
+29. As a QA engineer, I want to rename an adapter without touching its states, normalizers, or saved queries, so that names stay readable.
 30. As a QA engineer, I want deleting an adapter to return its database to the adapter's init state by default, through the same deletion plan, so that a disconnected database is left as Testate found it.
 31. As a QA engineer, I want a deleted adapter's data to stay inside existing states, so that history stays complete while checkouts skip the removed adapter and say so.
 32. As an admin, I want Testate to block connections to link-local, cloud metadata, and its own addresses without an off switch, and to manage a deny list of hosts and networks that Testate checks on every connection, so that nobody points Testate at production or at the container host.
@@ -118,14 +118,14 @@ apart on what a checkout does.
 49. As a QA engineer, I want to upload a CSV or XLSX file and see a preview with detected columns and a sheet selector, so that I know the file parsed correctly.
 50. As a QA engineer, I want XLSX date and number cells read from their typed value, so that spreadsheet dates do not need a format string.
 51. As a QA engineer, I want to pick a file from a storage adapter as the import source, so that files the application produced can go straight in.
-52. As a QA engineer, I want to create a mapping from file columns to the columns of one table of a Tabular adapter, so that the import is explicit.
-53. As a QA engineer, I want transforms in a mapping (trim, empty to null, number with locale, date with format, boolean word list, constant, generated id, current time, JSON parse, hash), so that files from business users load without a script and a policed column gets its required function.
-54. As a QA engineer, I want to save a mapping per adapter and table and reuse it, so that the weekly import is one click.
+52. As a QA engineer, I want to create a normalizer from file columns to the columns of one table of a Tabular adapter, so that the import is explicit.
+53. As a QA engineer, I want transforms in a normalizer (trim, empty to null, number with locale, date with format, boolean word list, constant, generated id, current time, JSON parse, hash), so that files from business users load without a script and a policed column gets its required function.
+54. As a QA engineer, I want to save a normalizer per adapter and table and reuse it, so that the weekly import is one click.
 55. As a QA engineer, I want to choose append, upsert by key columns, or replace, so that the import matches the test I am setting up.
 56. As a QA engineer, I want a dry run that validates types, nullability, key presence, and JSON cells for every row and lists the first hundred errors, and tells me that foreign keys, unique constraints, check constraints, and triggers are only checked by the real run, so that I know what a clean dry run proves.
 57. As a QA engineer, I want Testate to stash before a replace import, so that a bad file is reversible.
 58. As a QA engineer, I want an import report with inserted, updated, skipped, and failed counts and a downloadable file of rejected rows with the reason per row, so that I know what landed.
-59. As a QA engineer, I want to re-import the rejected rows file with the same mapping after I fix it, so that a partial failure does not mean reprocessing the whole file.
+59. As a QA engineer, I want to re-import the rejected rows file with the same normalizer after I fix it, so that a partial failure does not mean reprocessing the whole file.
 60. As a viewer, I want a list of past import runs per project, so that I can answer what was imported when.
 
 ### States
@@ -140,7 +140,7 @@ apart on what a checkout does.
 68. As a QA engineer, I want to rename a state and edit its notes and tags, except that init states keep their kind and CI filters on kind, so that the history stays readable and scripts stay stable.
 69. As a QA engineer, I want to delete an unprotected state as a job that reclaims storage, so that old states do not pile up.
 70. As a QA engineer, I want Testate to store snapshots so that an unchanged table costs no extra space between two states, so that frequent snapshots are cheap.
-71. As a QA engineer, I want to download a state as one archive and upload it into another project or another Testate, mapping each adapter in the archive onto an adapter of the same engine or creating a new one, so that SIT data moves to UAT without a developer.
+71. As a QA engineer, I want to download a state as one archive and upload it into another project or another Testate, normalizer each adapter in the archive onto an adapter of the same engine or creating a new one, so that SIT data moves to UAT without a developer.
 72. As a QA engineer, I want snapshots to keep exact types (big integers, decimals, binary, timestamps with zone, JSON, arrays, enums, domains, MongoDB object ids, dates, decimal128, and binary), so that a checkout is byte-faithful.
 73. As a QA engineer, I want Testate to name the column types it cannot snapshot, such as Postgres large objects, at introspection time and on every state that contains them, so that a gap is never silent.
 74. As a viewer, I want to see the progress of a snapshot per table, so that a long snapshot is not a black box.
@@ -238,11 +238,11 @@ apart on what a checkout does.
 142. As a QA engineer, I want FK columns in forms and in the grid to offer a lookup that searches the referenced table, so that I never type a wrong key.
 143. As a QA engineer, I want to insert up to fifty rows in one form and "insert and add another", so that seeding a handful of rows is quick.
 144. As a QA engineer, I want an edit form for an existing row with the same inputs, where a hashed column shows only that it is set and accepts a new value through its function, so that a hash is never displayed or replaced by plain text.
-145. As a QA engineer, I want a foreign-key-checks toggle for a write session and for an import run, with the engine mapping shown before I switch it, so that I can load related rows out of order like phpMyAdmin.
+145. As a QA engineer, I want a foreign-key-checks toggle for a write session and for an import run, with the engine normalizer shown before I switch it, so that I can load related rows out of order like phpMyAdmin.
 146. As a QA engineer, I want column policies per table column, a required function (for example hash as bcrypt) and a mask, so that a password column can never be stored raw through forms, grid, or import.
 147. As an admin, I want to lock a policy so that qa cannot remove it, so that a compliance rule survives.
 148. As a viewer, I want masked columns shown as redacted, partial, or hashed values while qa sees raw, so that viewers and agents never see secrets.
-149. As a QA engineer, I want a sample CSV or XLSX generated from a table's schema or from a saved mapping, with an example row and a schema block, so that the first import file is right.
+149. As a QA engineer, I want a sample CSV or XLSX generated from a table's schema or from a saved normalizer, with an example row and a schema block, so that the first import file is right.
 150. As a viewer, I want to extract a fixture for a row (its FK parents to depth three, optionally children, masked by role) as SQL inserts or JSON, so that I can reproduce a case on a local database.
 
 ## 4. Implementation Decisions
@@ -321,7 +321,7 @@ An online schema rebuild that changes nothing in the included set produces the s
 - Kinds: `init` (protected forever), `manual`, `stash`. Protection is a flag users can set on manual states. Protection guards against single-state deletion; an admin deleting the project removes every state, protected or not, after typing the slug.
 - Adding a database adapter, or changing its host, port, or database, takes an init state for that adapter. The first adapter of a project produces the state named `init`; later ones produce `init-<adapter>`. Renaming an adapter changes nothing else.
 - Deleting an adapter keeps its data in every state that references it. Manifests show the adapter as removed. Checkout skips removed adapters and reports them.
-- Deletion returns databases to init first. Project deletion (admin) and adapter deletion (qa) are jobs that start with a deletion plan. The plan lists each database adapter with one action: restore to the adapter's current init state (the most recent init state for that adapter id), force over drift, or skip with a reason (read-only, unreachable, removed). Restore is the default; the actor may change an adapter to force or skip and confirms the plan, typing the slug for a project. The job runs the planned restores exactly like checkouts, without a stash, and only after every planned restore succeeded does it remove the project or adapter, its states and blobs by reference count, mappings, and project-scoped tokens. A failed restore leaves everything in place, sets HEAD unknown for the failed adapters, and offers a retry of the failed adapters only. Audit rows outlive the deleted project and adapter.
+- Deletion returns databases to init first. Project deletion (admin) and adapter deletion (qa) are jobs that start with a deletion plan. The plan lists each database adapter with one action: restore to the adapter's current init state (the most recent init state for that adapter id), force over drift, or skip with a reason (read-only, unreachable, removed). Restore is the default; the actor may change an adapter to force or skip and confirms the plan, typing the slug for a project. The job runs the planned restores exactly like checkouts, without a stash, and only after every planned restore succeeded does it remove the project or adapter, its states and blobs by reference count, normalizers, and project-scoped tokens. A failed restore leaves everything in place, sets HEAD unknown for the failed adapters, and offers a retry of the failed adapters only. Audit rows outlive the deleted project and adapter.
 - Stash runs before checkout, before replace import, and on the first write of a write session. Stash retention keeps the last N per project; protecting a stash converts it to a manual state.
 - Checkout of a state that drifted returns a `SCHEMA_DRIFT` error with the differing tables and columns. `force` restores the intersection and reports what was skipped and which live columns received defaults.
 - A checkout job restores adapters in parallel under the concurrency cap and records a result per adapter: restored, skipped, rolled back, or unknown. Any failure sets project HEAD to unknown. The checkout resource offers a retry limited to the failed adapters.
@@ -334,7 +334,7 @@ An online schema rebuild that changes nothing in the included set produces the s
 - Grid paging uses keyset pagination when the table has a primary key and offset paging otherwise. Inline edit requires a primary key and saves one row per action.
 - MongoDB queries come from JSON forms for find and aggregate. No write forms, no JavaScript evaluation.
 - Tabular editing follows phpMyAdmin: relation view, FK lookups, typed insert and edit forms with a function dropdown (now, uuid v4 and v7, random bytes, hash as bcrypt, argon2id, sha256, sha512, hmac), bulk insert of up to fifty rows, and a foreign-key-checks toggle per write session mapped to `SET FOREIGN_KEY_CHECKS = 0` on MySQL and MariaDB and, on Postgres, to constraints checked at commit or to the replication role when the privilege allows.
-- Column policies per adapter, table, and column: a required function and a mask. Forms, grid edits, and import mappings refuse a policed column without its function. Masks (`redact`, `partial`, `hash`) apply to viewers and agents in the grid, query results, diffs, exports, and fixtures; `qa` and `admin` see raw. An admin can lock a policy. Raw SQL in a write session is not policed; the stash is the safety net and the session start says so.
+- Column policies per adapter, table, and column: a required function and a mask. Forms, grid edits, and import normalizers refuse a policed column without its function. Masks (`redact`, `partial`, `hash`) apply to viewers and agents in the grid, query results, diffs, exports, and fixtures; `qa` and `admin` see raw. An admin can lock a policy. Raw SQL in a write session is not policed; the stash is the safety net and the session start says so.
 - Fixture extraction: a row plus its foreign-key parents to depth three, optionally children up to five hundred rows, as SQL inserts in dependency order in the engine's dialect or as JSON, masked by role. MongoDB extracts the single document.
 - Running queries are listed per adapter with a cancel action. Queries are synchronous requests, not jobs.
 - Saved queries are per adapter. History is per user with a retention setting.
@@ -343,10 +343,10 @@ An online schema rebuild that changes nothing in the included set produces the s
 
 - Sources: upload (size limit from settings) or a file on a storage adapter.
 - Parser: streaming CSV with delimiter detection and UTF-8 with BOM; XLSX with sheet and header row selection, reading typed date and number cells from their typed value.
-- Tabular adapters only. Mapping: target table, column pairs, transforms, key columns, mode. Transforms: trim, empty to null, number with locale, date with format, boolean word list, constant, generated id, current time, JSON parse, hash. A policed column requires its function in the mapping.
-- Sample file: for any table or saved mapping, a CSV or XLSX with the header row, one typed example row, and a schema block (type, nullable, default, foreign key target, required), so the first file matches the schema.
+- Tabular adapters only. Normalizer: target table, column pairs, transforms, key columns, mode. Transforms: trim, empty to null, number with locale, date with format, boolean word list, constant, generated id, current time, JSON parse, hash. A policed column requires its function in the normalizer.
+- Sample file: for any table or saved normalizer, a CSV or XLSX with the header row, one typed example row, and a schema block (type, nullable, default, foreign key target, required), so the first file matches the schema.
 - Dry run validates every row for target column types, nullability, key presence, and JSON cells, and returns counts plus the first hundred errors. It states that foreign keys, unique constraints, check constraints, and triggers are checked by the real run only. A run writes in batches inside a transaction where the engine allows. Replace mode stashes first.
-- Report: inserted, updated, skipped, failed, duration, and a CSV of rejected rows with the reason per row, re-importable with the same mapping. Upload files are deleted when the job ends. Import runs are listed per project.
+- Report: inserted, updated, skipped, failed, duration, and a CSV of rejected rows with the reason per row, re-importable with the same normalizer. Upload files are deleted when the job ends. Import runs are listed per project.
 
 ### 4.8 Storage adapters
 
@@ -379,7 +379,7 @@ Resources:
 | `users` | list, create, get, update, disable, delete, reset password |
 | `tokens` | list, create (shown once), revoke |
 | `projects` | list, create, get, update, head, deletion plan, delete (job) |
-| `projects/{slug}/adapters` | list, create, get, update, deletion plan, delete (job), test draft connection, re-test, schema, table rows, query, running queries, cancel query, saved queries, query history, import mappings |
+| `projects/{slug}/adapters` | list, create, get, update, deletion plan, delete (job), test draft connection, re-test, schema, table rows, query, running queries, cancel query, saved queries, query history, import normalizers |
 | `projects/{slug}/imports` | list, create (dry run or run), get report, download rejected rows |
 | `projects/{slug}/states` | list, create, get, update, delete (job), archive download, archive import (job) |
 | `projects/{slug}/checkouts` | list, create, get, retry failed adapters |
@@ -417,7 +417,7 @@ Error codes: `VALIDATION_ERROR` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `ADAPT
 
 ### 4.14 Data model
 
-Metadata entities: user, session, token, project, adapter, adapter capability, state, state adapter manifest, blob, checkout, checkout adapter result, job, import mapping, import run, saved query, query history, diff, diff table, audit log, setting, idempotency key.
+Metadata entities: user, session, token, project, adapter, adapter capability, state, state adapter manifest, blob, checkout, checkout adapter result, job, import normalizer, import run, saved query, query history, diff, diff table, audit log, setting, idempotency key.
 
 Every mutable entity carries an id, created and updated timestamps. Every sealed value carries its nonce and the fingerprint of the key that sealed it. Migrations for the metadata database are numbered SQL files applied at boot by a runner that resolves them relative to the application, never by absolute path.
 
@@ -451,7 +451,7 @@ Testate serves a Model Context Protocol server over Streamable HTTP at `/api/v1/
 
 A good test checks external behavior: given inputs and a state, assert outputs and side effects. It never asserts on private helpers or call order.
 
-- Unit tests with the Bun test runner for pure modules: snapshot codec, fingerprint inclusion and exclusion, foreign-key closure and dependency ordering with cycles, diff merge, mapping transforms and coercion, crypto, job and checkout state machines, address check, router matching, presenter logic.
+- Unit tests with the Bun test runner for pure modules: snapshot codec, fingerprint inclusion and exclusion, foreign-key closure and dependency ordering with cycles, diff merge, normalizer transforms and coercion, crypto, job and checkout state machines, address check, router matching, presenter logic.
 - Integration tests against real engines in CI through docker compose: Postgres, MySQL, MariaDB, MongoDB. Each engine driver runs the same contract suite: probe and strategy selection, introspect including partitions and unsupported types, consistent snapshot under concurrent writes, restore with an out-of-scope referencing table, drift detection, force restore, counter reset and repair, lock timeout, type round-trip, query limits and cancel, read-only enforcement. The storage drivers run against MinIO, an SFTP container, and an FTP container. These are the core of Testate and are never mocked.
 - API tests boot the Hono app in-process against a temporary metadata database and exercise every endpoint through HTTP: auth, cumulative roles, token scope, envelope shape, success codes, pagination limits, job flow with `wait` and queue position, idempotency, error codes.
 - Browser smoke tests with Playwright drive the built app through login, add adapter, snapshot, checkout, diff, import, and a write session with stash, in the style of the Audionesia smoke script.

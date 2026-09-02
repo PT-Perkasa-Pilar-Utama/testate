@@ -1,5 +1,5 @@
 import { expect } from "bun:test";
-import type { ImportReport, Mapping } from "@testate/shared";
+import type { ImportReport, Normalizer } from "@testate/shared";
 import { importReportSchema } from "@testate/shared";
 import * as v from "valibot";
 
@@ -10,7 +10,7 @@ import { createImportsService } from "../src/modules/imports/imports.service.ts"
 import type {
   ImportRunRequest,
   ImportsService,
-  MappingBody,
+  NormalizerBody,
 } from "../src/modules/imports/imports.service.ts";
 
 export type ImportsHarness = {
@@ -39,7 +39,7 @@ export async function createImportsHarness(): Promise<ImportsHarness> {
   return { harness, imports, adapterId: adapter.id };
 }
 
-export const MAPPING: MappingBody = {
+export const NORMALIZER: NormalizerBody = {
   name: "customers",
   target: "public.customers",
   columns: [
@@ -57,13 +57,13 @@ export async function uploadCsv(h: ImportsHarness, text: string): Promise<string
 
 export async function runToReport(
   h: ImportsHarness,
-  mapping: Mapping,
+  normalizer: Normalizer,
   uploadId: string,
   extra: { dry_run?: boolean; mode?: "append" | "upsert" | "replace" } = {}
 ): Promise<ImportReport> {
   const request: ImportRunRequest = {
     adapter_id: h.adapterId,
-    mapping_id: mapping.id,
+    normalizer_id: normalizer.id,
     source: { upload_id: uploadId },
     dry_run: extra.dry_run ?? false,
     foreign_key_checks: true,

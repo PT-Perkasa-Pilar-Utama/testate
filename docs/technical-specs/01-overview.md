@@ -1,10 +1,10 @@
 # 1. Overview
 
-Testate is a self-hosted tool that gives QA "git for the test database". It runs as one Docker container next to the databases under test, on the same intranet, and never adds code to the application under test. A QA engineer connects a project's databases, takes a state (a data-only snapshot of every connected database), and later checks that state out again with one click or one API call. Around that core sit a table browser and query runner, CSV and XLSX import through saved mappings, row-level diff between states, and a read-only browser for S3, SFTP, and FTP.
+Testate is a self-hosted tool that gives QA "git for the test database". It runs as one Docker container next to the databases under test, on the same intranet, and never adds code to the application under test. A QA engineer connects a project's databases, takes a state (a data-only snapshot of every connected database), and later checks that state out again with one click or one API call. Around that core sit a table browser and query runner, CSV and XLSX import through saved normalizers, row-level diff between states, and a read-only browser for S3, SFTP, and FTP.
 
 This document set is the technical specification. It says how Testate is built. The product requirements document (`../PRD.md`) says what is built and why; where the two disagree, the PRD wins and this set is corrected.
 
-> **Terminology.** Every domain term (project, adapter, state, init state, stash, HEAD, checkout, diff, schema fingerprint, drift, mapping, job, token, sealed value, active key list, deletion plan) is defined in `../PRD.md` §2.2 and mirrored in `../GLOSSARY.md`. This set uses those words and no synonyms. One clash to watch: the product calls a stored connection an *adapter*; the architecture vocabulary also uses *adapter* for a concrete implementation behind a seam. In this set, "adapter" alone means the product entity, and "engine adapter", "store adapter", or "file adapter" means the implementation.
+> **Terminology.** Every domain term (project, adapter, state, init state, stash, HEAD, checkout, diff, schema fingerprint, drift, normalizer, job, token, sealed value, active key list, deletion plan) is defined in `../PRD.md` §2.2 and mirrored in `../GLOSSARY.md`. This set uses those words and no synonyms. One clash to watch: the product calls a stored connection an *adapter*; the architecture vocabulary also uses *adapter* for a concrete implementation behind a seam. In this set, "adapter" alone means the product entity, and "engine adapter", "store adapter", or "file adapter" means the implementation.
 
 > **Language policy.** UI copy, API fields, identifiers, logs, and documentation are English. Testate is a public image; there is no second UI language.
 
@@ -45,7 +45,7 @@ In scope: table list with counts, grid paging with sort and filter, inline edit 
 
 ### 1.2.6 `imports`
 
-In scope: upload or storage-file source, CSV and XLSX parsing with typed cells, mapping editor and saved mappings, transforms, dry run, append, upsert, replace with stash, report with rejected-rows file, re-import of rejected rows, import run list. Stories 46 to 57.
+In scope: upload or storage-file source, CSV and XLSX parsing with typed cells, normalizer editor and saved normalizers, transforms, dry run, append, upsert, replace with stash, report with rejected-rows file, re-import of rejected rows, import run list. Stories 46 to 57.
 
 ### 1.2.7 `states`
 
@@ -123,7 +123,7 @@ qa, every test cycle
     -> stash -> drift check -> restore per adapter -> counters -> HEAD moves
   run tests (outside Testate)
   diff "seeded-baseline" vs live          -> what the test changed
-  import fixtures.xlsx via saved mapping   -> dry run -> run
+  import fixtures.xlsx via saved normalizer   -> dry run -> run
   write session for a data fix            -> stash on first write
 
 ci pipeline, every run

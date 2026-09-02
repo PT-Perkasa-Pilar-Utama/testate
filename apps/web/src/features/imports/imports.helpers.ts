@@ -1,4 +1,4 @@
-import type { ImportReport, ImportRun, JsonObject, Mapping, TableSchema } from "@testate/shared";
+import type { ImportReport, ImportRun, JsonObject, Normalizer, TableSchema } from "@testate/shared";
 
 import { IMPORT_MODE_LABEL } from "@/lib/labels.ts";
 
@@ -18,18 +18,18 @@ export function sourceBody(source: Source): JsonObject {
 }
 
 /** The run body; a real run stashes first so a bad file stays reversible (story 57). */
-export type RunOptions = { mode: Mapping["mode"]; sheet: string };
+export type RunOptions = { mode: Normalizer["mode"]; sheet: string };
 
 export function runBody(
   adapterId: string,
-  mappingId: string,
+  normalizerId: string,
   source: Source,
   draft: RunOptions,
   dryRun: boolean
 ): JsonObject {
   const body: JsonObject = {
     adapter_id: adapterId,
-    mapping_id: mappingId,
+    normalizer_id: normalizerId,
     source: sourceBody(source),
     mode: draft.mode,
     dry_run: dryRun,
@@ -43,7 +43,7 @@ export function runBody(
 // only what a person reads for them, so the codes above never have to reach a screen unexplained. ---
 
 export const MODE_OPTIONS: ReadonlyArray<{
-  value: Mapping["mode"];
+  value: Normalizer["mode"];
   label: string;
   description: string;
 }> = [
@@ -65,7 +65,7 @@ export const MODE_OPTIONS: ReadonlyArray<{
   },
 ];
 
-export function modeLabel(mode: Mapping["mode"]): string {
+export function modeLabel(mode: Normalizer["mode"]): string {
   const found = MODE_OPTIONS.find((option) => option.value === mode);
   return found === undefined ? mode : found.label;
 }
@@ -79,14 +79,14 @@ export function matchesModeFilter(
 }
 
 /** The table's own name is a fine default, so naming a normalizer is only her problem if she wants one. */
-export function defaultMappingName(table: string): string {
+export function defaultNormalizerName(table: string): string {
   const dot = table.lastIndexOf(".");
   return dot === -1 ? table : table.slice(dot + 1);
 }
 
 /** Why the primary action is disabled, next to itself; null once it can be pressed. */
 export function blockedReason(
-  draft: { table: string; mode: Mapping["mode"]; key_columns: string },
+  draft: { table: string; mode: Normalizer["mode"]; key_columns: string },
   hasPreview: boolean
 ): string | null {
   if (!hasPreview) return "Load a file first.";
@@ -111,7 +111,7 @@ export function blockedReason(
  * is why an import still reports rejected rows and still offers them back as a file (PRD 56).
  */
 export function importBlockedReason(
-  draft: { table: string; mode: Mapping["mode"]; key_columns: string },
+  draft: { table: string; mode: Normalizer["mode"]; key_columns: string },
   hasPreview: boolean,
   report: Pick<ImportReport, "dry_run" | "failed"> | null
 ): string | null {

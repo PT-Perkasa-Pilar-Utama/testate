@@ -11,7 +11,7 @@ The Tabular tier edits data the way phpMyAdmin does, with the guard rails Testat
 | Insert and edit forms | One field per column, typed by canonical type; `NULL` and `default` checkboxes; a function dropdown; FK lookup with search; bulk insert of up to 50 rows in one form; "insert and add another" | phpMyAdmin insert page |
 | Functions | `now`, `uuid_v4`, `uuid_v7`, `random_hex{bytes}`, `random_base64{bytes}`, `hash_bcrypt{cost}`, `hash_argon2id`, `hash_sha256`, `hash_sha512`, `hmac_sha256{secret}` applied server-side before the write | A password never lands raw |
 | Policies | `column_policies` per adapter, table, column: `required_function`, `mask`, `display` (use as the lookup display column) | Owner request |
-| Enforcement | Forms, grid edits, and import mappings refuse a policed column without its function (`VALIDATION_ERROR` naming the column and the function); raw SQL in a write session is not inspected | Structural where possible; the stash covers raw SQL |
+| Enforcement | Forms, grid edits, and import normalizers refuse a policed column without its function (`VALIDATION_ERROR` naming the column and the function); raw SQL in a write session is not inspected | Structural where possible; the stash covers raw SQL |
 | Masks | `redact` (`***`), `partial` (last four characters), `hash` (first eight hex of SHA-256); applied to `viewer` users and all agent access in grid, query results, diff rows, fixtures, and exports; `qa` and `admin` see raw | Owner request; 23 |
 | FK checks toggle | Per write session and per import run, default on; off maps per 12 §12.3; refused with the reason when the engine cannot honor it | phpMyAdmin parity |
 | Lookups | `GET .../tables/{table}/lookup?column=<fk column>&q=<text>&limit=20` searches the referenced table by primary key prefix and by the display column | Story 33 grid, forms |
@@ -72,7 +72,7 @@ Policies are per adapter, keyed by `schema.table.column`. Defaults ship for comm
 
 Masks apply on the way out of the `data`, `diffs`, and `agent` modules by role: `viewer` and `agent` see masked values; `qa` and `admin` see raw. Exports and fixtures apply the same rule. A masked value in a fixture becomes a placeholder of the same type (`'***'`, `0`, or `NULL`), never the real value.
 
-Required functions apply on the way in through forms, grid edits, and import mappings. A write-mode SQL statement is not parsed for policy; the write session's stash is the safety net, and the session start warns that policies do not cover raw SQL.
+Required functions apply on the way in through forms, grid edits, and import normalizers. A write-mode SQL statement is not parsed for policy; the write session's stash is the safety net, and the session start warns that policies do not cover raw SQL.
 
 ## 24.5 Foreign-key checks toggle
 
@@ -81,7 +81,7 @@ Required functions apply on the way in through forms, grid edits, and import map
 | MySQL, MariaDB | `SET SESSION FOREIGN_KEY_CHECKS = 0` for the session | never |
 | Postgres | `SET CONSTRAINTS ALL DEFERRED` for the transaction when every FK involved is deferrable; else `SET LOCAL session_replication_role = replica` when the probe allows | neither is available; the message names the non-deferrable constraints or the missing privilege |
 
-The toggle shows the mapping it will use before it is switched. Every write in a session with the toggle off is audited with `foreign_key_checks: false`.
+The toggle shows the normalizer it will use before it is switched. Every write in a session with the toggle off is audited with `foreign_key_checks: false`.
 
 ## 24.6 Fixture extraction
 
@@ -129,7 +129,7 @@ Editing needs `qa`, `sandbox`, and a write session; the first write stashes. Fun
 
 | Concern | Source |
 | --- | --- |
-| Engine write path, FK toggle mapping | [12-engine-port.md](12-engine-port.md) §12.3 |
+| Engine write path, FK toggle normalizer | [12-engine-port.md](12-engine-port.md) §12.3 |
 | Import transforms and policies | [19-import-pipeline.md](19-import-pipeline.md) |
 | Agent access and masks | [23-agent-access.md](23-agent-access.md) |
 | Write sessions and stash | 05 §5.6 |

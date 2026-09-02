@@ -4,7 +4,7 @@ import type {
   ImportRun,
   Job,
   JsonObject,
-  Mapping,
+  Normalizer,
   Preview,
   Upload,
 } from "@testate/shared";
@@ -12,7 +12,7 @@ import {
   importReportSchema,
   importRunSchema,
   jobSchema,
-  mappingSchema,
+  normalizerSchema,
   previewSchema,
   uploadSchema,
 } from "@testate/shared";
@@ -30,18 +30,18 @@ export const importsModel = {
     apiClient.upload(`${project(slug)}/uploads`, file, { purpose: "import" }, uploadSchema),
   preview: (slug: string, body: JsonObject): Promise<Preview> =>
     apiClient.post(`${project(slug)}/imports/preview`, { schema: previewSchema, body }),
-  mappings: (slug: string, adapterId: string): Promise<Mapping[]> =>
-    apiClient.get(`${adapter(slug, adapterId)}/mappings`, { schema: v.array(mappingSchema) }),
-  createMapping: (slug: string, adapterId: string, body: JsonObject): Promise<Mapping> =>
-    apiClient.post(`${adapter(slug, adapterId)}/mappings`, { schema: mappingSchema, body }),
-  updateMapping: (
+  normalizers: (slug: string, adapterId: string): Promise<Normalizer[]> =>
+    apiClient.get(`${adapter(slug, adapterId)}/normalizers`, { schema: v.array(normalizerSchema) }),
+  createNormalizer: (slug: string, adapterId: string, body: JsonObject): Promise<Normalizer> =>
+    apiClient.post(`${adapter(slug, adapterId)}/normalizers`, { schema: normalizerSchema, body }),
+  updateNormalizer: (
     slug: string,
     adapterId: string,
-    mappingId: string,
+    normalizerId: string,
     body: JsonObject
-  ): Promise<Mapping> =>
-    apiClient.patch(`${adapter(slug, adapterId)}/mappings/${encodeURIComponent(mappingId)}`, {
-      schema: mappingSchema,
+  ): Promise<Normalizer> =>
+    apiClient.patch(`${adapter(slug, adapterId)}/normalizers/${encodeURIComponent(normalizerId)}`, {
+      schema: normalizerSchema,
       body,
     }),
   run: (slug: string, body: JsonObject): Promise<Job> =>

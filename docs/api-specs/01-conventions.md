@@ -33,7 +33,7 @@ Roles are cumulative: `admin` ⊇ `qa` ⊇ `viewer`. Each operation names its mi
 | Role | Adds |
 | --- | --- |
 | `viewer` | Read everything in scope, read-only queries, downloads, tools, masked fixtures |
-| `qa` | Create and edit projects, adapters, states, mappings, policies; checkout, import, write sessions, row edits; tighten to read-only; delete adapters |
+| `qa` | Create and edit projects, adapters, states, normalizers, policies; checkout, import, write sessions, row edits; tighten to read-only; delete adapters |
 | `admin` | Users, tokens, settings, backup, store migration, deny list; loosen to sandbox; lock policies; delete projects; reset-state outside production |
 
 ## 1.4 Envelope

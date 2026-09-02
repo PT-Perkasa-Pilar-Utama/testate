@@ -22,7 +22,7 @@ Legend: `OK` implemented and tested · `WIP` in progress · `TODO` not started �
 | Projects | `GET /projects`, `POST /projects`, `GET /projects/{slug}`, `PATCH`, `GET .../head`, `GET .../quota`, `GET .../deletion-plan`, `POST .../deletion` | OK |
 | Adapters | `GET .../adapters`, `POST .../adapters/test`, `POST .../adapters`, `GET .../adapters/{id}`, `PATCH`, `POST .../mode`, `POST .../retest`, `GET .../deletion-plan`, `POST .../deletion` | OK (probes real on Postgres, MySQL/MariaDB, MongoDB, S3, SFTP, FTP) |
 | Data | `GET .../schema`, `GET .../tables/{table}/rows`, `GET .../tables/{table}/export`, `GET .../lookup`, `POST .../write-sessions`, `PATCH/DELETE .../write-sessions/{sid}`, `POST .../row-edits`, `POST .../query`, `POST .../query/export`, `GET .../queries`, `DELETE .../queries/{query_id}`, saved queries, `GET .../query-history`, policies, `POST .../fixture` | OK except query export streaming and mongo dialect (SCAFFOLD) |
-| Imports | `POST .../uploads`, `POST .../imports/preview`, mappings, `POST .../imports`, `GET .../imports`, `GET .../imports/{run_id}`, `GET .../rejected`, `GET .../tables/{table}/sample` | OK for CSV and XLSX uploads and storage-adapter sources (in-house OOXML reader, `lib/xlsx`); xlsx samples |
+| Imports | `POST .../uploads`, `POST .../imports/preview`, normalizers, `POST .../imports`, `GET .../imports`, `GET .../imports/{run_id}`, `GET .../rejected`, `GET .../tables/{table}/sample` | OK for CSV and XLSX uploads and storage-adapter sources (in-house OOXML reader, `lib/xlsx`); xlsx samples |
 | States | `GET .../states`, `GET .../states/tree`, `POST .../states`, `GET .../states/{id}`, `PATCH`, `DELETE`, `GET .../archive`, `GET .../uploads/{upload_id}/archive-manifest`, `POST .../states/import` | OK (archive import maps to existing adapters or creates new ones) |
 | Checkouts | `POST .../checkouts/preflight`, `POST .../checkouts`, `GET .../checkouts`, `GET .../checkouts/{id}`, `POST .../retry`, `POST .../terminate-blockers`, `GET .../counters`, `POST .../repair-counters` | OK (terminate-blockers through the engine port when the probe allows) |
 | Diffs | `POST .../diffs`, `GET .../diffs`, `GET .../diffs/{id}`, `GET .../rows`, `GET .../export`, `DELETE` | OK |
@@ -44,7 +44,7 @@ Legend: `OK` implemented and tested · `WIP` in progress · `TODO` not started �
 | [04-projects.md](04-projects.md) | Projects, HEAD, quota, deletion plan and delete |
 | [05-adapters.md](05-adapters.md) | Adapters of every kind, test, retest, mode, deletion |
 | [06-data.md](06-data.md) | Schema, rows, table export, lookups, write sessions, row edits, queries, saved queries, history, policies, fixtures |
-| [07-imports.md](07-imports.md) | Uploads, preview, mappings, runs, rejected rows, sample files |
+| [07-imports.md](07-imports.md) | Uploads, preview, normalizers, runs, rejected rows, sample files |
 | [08-states.md](08-states.md) | States, tree, archive download and import |
 | [09-checkouts.md](09-checkouts.md) | Preflight, checkout, retry, blockers, counters |
 | [10-diffs.md](10-diffs.md) | Diffs, rows, export |

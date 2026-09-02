@@ -87,7 +87,9 @@ and edit a row with the types the column actually has.
 after every reset is one click away.
 
 **Load fixtures.** Upload a CSV or a spreadsheet, or take one straight from a file store, say how
-each column is read, check it, then import. The check is the guard: nothing is written until it
+each column is read, check it, then import. That answer is a **normalizer**: which column goes
+where, how each value is converted, what happens to a row that is already there. Save it against
+the table and next week's import is one press. The check is the guard: nothing is written until it
 comes back clean, and the rows a run refused come back as a file you can fix and send again.
 
 **Let an agent work.** Testate speaks MCP, so Claude or any agent can read schemas, page rows, run

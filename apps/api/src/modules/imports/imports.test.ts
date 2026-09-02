@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   importReportSchema,
   importRunSchema,
-  mappingSchema,
+  normalizerSchema,
   previewSchema,
   uploadSchema,
 } from "@testate/shared";
@@ -12,7 +12,7 @@ import type { TableSchema } from "@testate/shared";
 import { TEST_META } from "../../../test/accounts.ts";
 import { expectContract } from "../../../test/contract.ts";
 import {
-  MAPPING,
+  NORMALIZER,
   createImportsHarness,
   runToReport,
   uploadCsv,
@@ -21,7 +21,7 @@ import { detectDelimiter, parseCsv, readCsv } from "./imports.csv.ts";
 import {
   IMPORT_REPORT_MOCK,
   IMPORT_RUN_MOCK,
-  MAPPING_MOCK,
+  NORMALIZER_MOCK,
   PREVIEW_MOCK,
   UPLOAD_MOCK,
 } from "./imports.mock.ts";
@@ -65,7 +65,7 @@ describe("imports", () => {
     expectContract(previewSchema, PREVIEW_MOCK, (clone) => {
       clone["detected"] = {};
     });
-    expectContract(mappingSchema, MAPPING_MOCK, (clone) => {
+    expectContract(normalizerSchema, NORMALIZER_MOCK, (clone) => {
       clone["columns"] = [{ source: "Email", target: "email", transforms: [{ kind: "explode" }] }];
     });
     expectContract(importReportSchema, IMPORT_REPORT_MOCK, (clone) => {
@@ -120,17 +120,17 @@ describe("imports", () => {
     ).toHaveLength(64);
   });
 
-  it("validates mappings against the live schema and column policies", async () => {
+  it("validates normalizers against the live schema and column policies", async () => {
     const h = await createImportsHarness();
     await expect(
-      h.imports.createMapping(h.harness.qa, h.adapterId, {
-        ...MAPPING,
+      h.imports.createNormalizer(h.harness.qa, h.adapterId, {
+        ...NORMALIZER,
         columns: [{ source: "X", target: "nope", transforms: [] }],
         key_columns: [],
       })
     ).rejects.toThrow("unknown target column nope");
     await expect(
-      h.imports.createMapping(h.harness.qa, h.adapterId, { ...MAPPING, key_columns: [] })
+      h.imports.createNormalizer(h.harness.qa, h.adapterId, { ...NORMALIZER, key_columns: [] })
     ).rejects.toThrow("pick at least one key column to match rows by");
     h.harness.policies.upsert(
       h.adapterId,
@@ -144,19 +144,19 @@ describe("imports", () => {
       h.harness.qa.id,
       "2026-08-29T00:00:00.000Z"
     );
-    await expect(h.imports.createMapping(h.harness.qa, h.adapterId, MAPPING)).rejects.toThrow(
+    await expect(h.imports.createNormalizer(h.harness.qa, h.adapterId, NORMALIZER)).rejects.toThrow(
       "email requires the hash_sha256 function"
     );
-    const hashed = await h.imports.createMapping(h.harness.qa, h.adapterId, {
-      ...MAPPING,
+    const hashed = await h.imports.createNormalizer(h.harness.qa, h.adapterId, {
+      ...NORMALIZER,
       columns: [
         { source: "Email", target: "email", transforms: [{ kind: "hash", algorithm: "sha256" }] },
       ],
     });
     expect(hashed.mode).toBe("upsert");
     await expect(
-      h.imports.createMapping(h.harness.qa, h.adapterId, {
-        ...MAPPING,
+      h.imports.createNormalizer(h.harness.qa, h.adapterId, {
+        ...NORMALIZER,
         name: "Customers",
         columns: hashed.columns,
       })
@@ -165,11 +165,11 @@ describe("imports", () => {
 
   it("names a normalizer within its table, so two tables can each hold a weekly one", async () => {
     const h = await createImportsHarness();
-    await h.imports.createMapping(h.harness.qa, h.adapterId, { ...MAPPING, name: "weekly" });
+    await h.imports.createNormalizer(h.harness.qa, h.adapterId, { ...NORMALIZER, name: "weekly" });
     // The same name against another table of the same database. It used to be refused: the name
     // was unique per adapter, so whichever table asked first took "weekly" for the whole database.
-    const orders = await h.imports.createMapping(h.harness.qa, h.adapterId, {
-      ...MAPPING,
+    const orders = await h.imports.createNormalizer(h.harness.qa, h.adapterId, {
+      ...NORMALIZER,
       name: "weekly",
       target: "public.orders",
       columns: [{ source: "Total", target: "total", transforms: [{ kind: "trim" }] }],
@@ -178,18 +178,18 @@ describe("imports", () => {
     });
     expect(orders.target).toBe("public.orders");
     expect(
-      (await h.imports.listMappings(h.adapterId)).map((one) => one.target).sort()
+      (await h.imports.listNormalizers(h.adapterId)).map((one) => one.target).sort()
     ).toStrictEqual(["public.customers", "public.orders"]);
   });
 
   it("previews an upload, dry-runs without writing, and reports row errors", async () => {
     const h = await createImportsHarness();
-    const mapping = await h.imports.createMapping(h.harness.qa, h.adapterId, MAPPING);
+    const normalizer = await h.imports.createNormalizer(h.harness.qa, h.adapterId, NORMALIZER);
     const uploadId = await uploadCsv(h, "Email\n C@X.IO \n\nfail@x.io\n");
     const preview = await h.imports.preview("shop", { source: { upload_id: uploadId } });
     expect(preview.columns).toEqual(["Email"]);
     expect(preview.rows.length).toBe(2);
-    const report = await runToReport(h, mapping, uploadId, { dry_run: true });
+    const report = await runToReport(h, normalizer, uploadId, { dry_run: true });
     expect(report).toMatchObject({
       dry_run: true,
       inserted: 0,
@@ -202,7 +202,7 @@ describe("imports", () => {
     expect((await h.imports.preview("shop", { source: { upload_id: uploadId } })).rows.length).toBe(
       2
     );
-    const real = await runToReport(h, mapping, uploadId, { dry_run: false });
+    const real = await runToReport(h, normalizer, uploadId, { dry_run: false });
     expect(real.dry_run).toBe(false);
     await expect(
       h.imports.preview("shop", { source: { upload_id: uploadId } })
@@ -211,10 +211,10 @@ describe("imports", () => {
 
   it("upserts by key, writes rejected rows with reasons, and re-imports them", async () => {
     const h = await createImportsHarness();
-    const mapping = await h.imports.createMapping(h.harness.qa, h.adapterId, MAPPING);
+    const normalizer = await h.imports.createNormalizer(h.harness.qa, h.adapterId, NORMALIZER);
     const report = await runToReport(
       h,
-      mapping,
+      normalizer,
       await uploadCsv(h, "Email\nA@X.IO\nc@x.io\nfail@x.io\n")
     );
     expect(report).toMatchObject({
@@ -235,7 +235,7 @@ describe("imports", () => {
       "shop",
       {
         adapter_id: h.adapterId,
-        mapping_id: mapping.id,
+        normalizer_id: normalizer.id,
         source: { rejected_of_run_id: report.run_id },
         dry_run: true,
         foreign_key_checks: true,
@@ -248,11 +248,11 @@ describe("imports", () => {
 
   it("a dry run previews rejects and writes no rejected file", async () => {
     const h = await createImportsHarness();
-    const mapping = await h.imports.createMapping(h.harness.qa, h.adapterId, {
-      ...MAPPING,
+    const normalizer = await h.imports.createNormalizer(h.harness.qa, h.adapterId, {
+      ...NORMALIZER,
       columns: [{ source: "Email", target: "email", transforms: [{ kind: "number" }] }],
     });
-    const report = await runToReport(h, mapping, await uploadCsv(h, "Email\nnot-a-number\n"), {
+    const report = await runToReport(h, normalizer, await uploadCsv(h, "Email\nnot-a-number\n"), {
       dry_run: true,
     });
     expect(report).toMatchObject({ failed: 1, skipped: 0, rejected_available: false });
@@ -264,12 +264,12 @@ describe("imports", () => {
 
   it("replace stashes first, empties the table, and refuses real runs on read-only adapters", async () => {
     const h = await createImportsHarness();
-    const mapping = await h.imports.createMapping(h.harness.qa, h.adapterId, {
-      ...MAPPING,
+    const normalizer = await h.imports.createNormalizer(h.harness.qa, h.adapterId, {
+      ...NORMALIZER,
       mode: "append",
       key_columns: [],
     });
-    const report = await runToReport(h, mapping, await uploadCsv(h, "Email\nz@x.io\n"), {
+    const report = await runToReport(h, normalizer, await uploadCsv(h, "Email\nz@x.io\n"), {
       mode: "replace",
     });
     expect(report.stash_state_id).not.toBeNull();
@@ -283,7 +283,7 @@ describe("imports", () => {
         "shop",
         {
           adapter_id: h.adapterId,
-          mapping_id: mapping.id,
+          normalizer_id: normalizer.id,
           source: { upload_id: await uploadCsv(h, "Email\n") },
           dry_run: false,
           foreign_key_checks: true,

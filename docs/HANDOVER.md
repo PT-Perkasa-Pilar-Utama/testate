@@ -362,6 +362,72 @@ the version in `org.opencontainers.image.version`.
 every table. Leave alone: FK `_display` join, S3 `q` in-page filter, MongoDB index exclusion,
 `authSource`, the ssh2 note, the in-house router, the diff row cache ceiling.
 
+## 8b. Handed over deliberately, 2026-09-02
+
+Two items were stopped on purpose rather than finished. Both are written up here because whoever
+picks them up should not repeat the search.
+
+### Mobile responsiveness: not started, and the scope is yours to set
+
+Nothing here has ever been looked at below 1440 px. `playwright.config.ts` pins the viewport at
+1440x1000 and every spec runs there, so there is no coverage to regress and no baseline to compare
+against. "Responsiveness work" could mean anything from "the sidebar collapses" to "every table
+reflows", and the difference is weeks.
+
+Audit before touching CSS. The cheap version is a Playwright project at 390x844 that walks
+`SCREENS` from `e2e/lib/roles.ts` plus the id-bearing routes `e2e/bundle.e2e.ts` already discovers,
+screenshots each, and asserts two things per screen: the body does not scroll sideways
+(`document.documentElement.scrollWidth <= clientWidth`) and the crash banner is absent. That gives
+a list of real breakages instead of a guess, and the assertion is worth keeping afterwards as the
+regression net.
+
+Where it will break, from reading rather than measuring, so treat it as a starting list and not a
+finding: the sidebar rail is a fixed column in `app.tsx`; the data grid, audit log and tokens list
+are wide tables whose `overflow-x` container may or may not be the right one; `Dialog` sizes are
+`w-[calc(100%-2rem)]` capped by `SIZES`, which is probably fine, but the two-across form layouts
+inside them are `sm:grid-cols-2` and will need checking; the diff page is a deliberate split pane;
+the ERD is an infinite canvas. The states tree indents per level and will run out of width first.
+
+### Two Solid RC diagnostics on the dialog dismiss path
+
+`e2e/admin.e2e.ts`, "leaving a form", filters exactly two codes and says so in a comment:
+`STRICT_READ_UNTRACKED` and `FLUSH_IN_EFFECT_CALLBACK`, both on `/users`, both raised when a dialog
+is dismissed with Escape or the X. That path is new: it arrived with the unsaved-changes guard, and
+no spec walked it before. Everything else that spec would catch still fails the run.
+
+**The mechanism.** `@solidjs/signals` sets a process-wide flag for the whole of an effect callback
+(`dist/dev.js`, `setStrictRead("an effect callback")`, around line 5533) and warns on any reactive
+read taken while it is set. The flag is not scoped to the callback's own code: the browser fires
+`close` synchronously from `dialog.close()`, so a handler running there is inside the window, and
+so is anything it calls. A screen passes `onClose={() => props.presenter.closeCreate()}`, and
+reading `props.presenter` at that moment is the read being reported.
+
+**Already ruled out, in the order it was tried.** Do not repeat these:
+
+| Tried | Result |
+| --- | --- |
+| Formisch's `getDirtyInput` as the dirty check | Was one source. Removed entirely; the guard listens for `input` events instead |
+| `untrack()` around that read | No effect. The diagnostic is about where the read happens, not whether it is tracked |
+| Moving the read into an effect's compute | 42 warnings to 14, so it is partly a nested-flush artefact |
+| `{...props}` spread in `FormDialog` | Not a factor; replaced with explicit props anyway, which is better |
+| `onOpened` read in the effect callback | Real, fixed: hoisted into the compute |
+| `onClose` read in the effect callback | Real, fixed: hoisted into a plain variable a compute maintains |
+| Echoing our own `dialog.close()` back to `onClose` | Real, fixed: `ours` flag in `dialog.tsx`; the caller was being told twice |
+| `queueMicrotask` around `setAsking` and around `close` | Neither silences what is left |
+| Comparing form values instead of listening for input | Wrong for a second reason: an edit dialog seeds its fields after it opens, so a snapshot on opening races the seeding |
+
+**The likely fix, not attempted.** A feature's close handler must not read props when it runs. That
+is thirteen call sites of the shape `onClose={() => props.presenter.closeX()}`, and the fix is to
+capture the handler where the component is built rather than reading it at call time, the way
+`dialog.tsx` now does for its own `onClose`. It was not done blind at the end of a long session.
+
+### While you are in here
+
+- Run targeted projects (`bunx playwright test --project=flows`), not the whole suite, while
+  iterating. The full run spawns browsers and drives the compose engines; a laptop notices.
+- `docs/E2E.md` has the selector traps this suite teaches. Read it before writing a spec: the
+  accessible-name substring rule alone accounts for four of the thirteen failures repaired here.
+
 ## 9. Recurring pitfalls (each of these cost at least two chain runs)
 
 | Rule | What trips it | Do this instead |

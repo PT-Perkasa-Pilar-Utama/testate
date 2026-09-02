@@ -29,7 +29,7 @@ erDiagram
   projects ||--o{ jobs : scopes
   adapters ||--o{ known_host_keys : trusts
   adapters ||--o{ column_policies : polices
-  adapters ||--o{ import_mappings : targets
+  adapters ||--o{ normalizers : targets
   adapters ||--o{ saved_queries : has
   adapters ||--o{ query_history : has
   adapters ||--o{ write_sessions : has
@@ -39,7 +39,7 @@ erDiagram
   blobs ||--o{ blob_pins : pinned_by
   checkouts ||--o{ checkout_adapters : results
   checkouts }o--|| states : restores
-  import_mappings ||--o{ import_runs : used_by
+  normalizers ||--o{ import_runs : used_by
   diffs ||--o{ diff_tables : per_table
   api_tokens ||--o{ idempotency_keys : owns
 ```
@@ -109,7 +109,7 @@ erDiagram
 
 | column | type | nullable | default | key | notes |
 | --- | --- | --- | --- | --- | --- |
-| id | TEXT | no | | PK | immutable; states, mappings, and queries key on it |
+| id | TEXT | no | | PK | immutable; states, normalizers, and queries key on it |
 | project_id | TEXT | no | | FK projects | |
 | kind | TEXT | no | | | `database`, `storage` |
 | engine | TEXT | no | | | `postgres`, `mysql`, `mariadb`, `mongodb`, `s3`, `sftp`, `ftp` |
@@ -272,7 +272,7 @@ erDiagram
 
 ## 6.7 Data and imports
 
-### IMPORT_MAPPINGS (UI label: "Mappings")
+### IMPORT_MAPPINGS (UI label: "Normalizers")
 
 | column | type | nullable | default | key | notes |
 | --- | --- | --- | --- | --- | --- |
@@ -292,7 +292,7 @@ erDiagram
 | column | type | nullable | default | key | notes |
 | --- | --- | --- | --- | --- | --- |
 | id | TEXT | no | | PK | |
-| project_id, adapter_id, mapping_id, job_id | TEXT | no | | FK | |
+| project_id, adapter_id, normalizer_id, job_id | TEXT | no | | FK | |
 | source_kind, source_ref | TEXT | no | | | `upload` + file name, or `storage` + adapter id and path |
 | dry_run | INTEGER | no | 0 | | |
 | mode | TEXT | no | | | |

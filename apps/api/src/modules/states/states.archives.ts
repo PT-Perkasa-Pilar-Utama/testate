@@ -30,7 +30,7 @@ export type ArchiveDeps = {
   blobs: BlobStore;
   uploads: Pick<ImportsRepository, "upload">;
   now: () => Date;
-  /** Creates a new adapter for a `target.create` mapping (08 §8.9); absent in builds without the adapters service. */
+  /** Creates a new adapter for a `target.create` normalizer (08 §8.9); absent in builds without the adapters service. */
   createAdapter?: (
     actor: Actor,
     project: Project,
@@ -130,10 +130,10 @@ export function createArchiveOps(deps: ArchiveDeps): ArchiveOps {
         throw new AppError("QUOTA_EXCEEDED", "the project is at its storage quota");
       }
       const archive = await manifestOf(project, input.upload_id);
-      const mapping: Mapped[] = [];
+      const normalizer: Mapped[] = [];
       for (const item of input.adapter_mapping)
-        mapping.push(await mapOne(actor, project, archive, item, meta));
-      if (mapping.length === 0)
+        normalizer.push(await mapOne(actor, project, archive, item, meta));
+      if (normalizer.length === 0)
         throw new AppError("VALIDATION_ERROR", "map each database in the archive to one here");
       const stateId = Bun.randomUUIDv7();
       deps.repo.insert({
@@ -154,7 +154,7 @@ export function createArchiveOps(deps: ArchiveDeps): ArchiveOps {
           kind: "archive_import",
           projectId: project.id,
           adapterIds: [],
-          payload: { state_id: stateId, upload_id: input.upload_id, mapping },
+          payload: { state_id: stateId, upload_id: input.upload_id, normalizer },
           actor,
           parentRequestId: meta.request_id,
         });

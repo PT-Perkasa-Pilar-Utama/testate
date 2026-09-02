@@ -145,7 +145,7 @@ describe("archive verification", () => {
     expect((await h.states.get("shop", "bad-copy")).status).toBe("failed");
   });
 
-  it("imports an archive into a new adapter created from the mapping", async () => {
+  it("imports an archive into a new adapter created from the normalizer", async () => {
     const h = await createStatesHarness();
     const adapter = await createSettled(h.harness, PG);
     const id = await snapshotSettled(h, "golden");

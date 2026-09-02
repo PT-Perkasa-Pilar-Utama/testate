@@ -1,4 +1,4 @@
-import type { Mapping, TableSchema } from "@testate/shared";
+import type { Normalizer, TableSchema } from "@testate/shared";
 
 import { canonicalType } from "../../lib/engines/pure/fingerprint.ts";
 import { csvLine } from "./imports.csv.ts";
@@ -30,12 +30,12 @@ function required(column: TableSchema["columns"][number]): string {
   return column.nullable || column.has_default ? "no" : "yes";
 }
 
-/** Header, one example row, then the schema block as comments; the mapping's source names when given. */
-export function sampleCsv(table: TableSchema, mapping: Mapping | null): string {
+/** Header, one example row, then the schema block as comments; the normalizer's source names when given. */
+export function sampleCsv(table: TableSchema, normalizer: Normalizer | null): string {
   const columns =
-    mapping === null
+    normalizer === null
       ? table.columns
-      : mapping.columns.flatMap((item) => {
+      : normalizer.columns.flatMap((item) => {
           const column = table.columns.find((candidate) => candidate.name === item.target);
           return column === undefined || item.source === null
             ? []

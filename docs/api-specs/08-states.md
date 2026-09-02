@@ -58,7 +58,7 @@ Kinds: `init`, `manual`, `stash`; `diff` states are hidden and never listed (sto
 
 ## 8.8 `GET .../uploads/{upload_id}/archive-manifest`
 
-**Purpose.** Read an uploaded archive's adapters before mapping them. **Access.** `qa`. **Output.** `200 { "data": { "state": { "name", "notes", "tags", "created_at" }, "adapters": [ { "archive_adapter_id", "adapter_name", "engine", "engine_version", "tables": 42, "row_count", "byte_count" } ] } }`. **Errors.** `NOT_FOUND`, `VALIDATION_ERROR` (not a Testate archive). **Traceability.** Story 71.
+**Purpose.** Read an uploaded archive's adapters before normalizer them. **Access.** `qa`. **Output.** `200 { "data": { "state": { "name", "notes", "tags", "created_at" }, "adapters": [ { "archive_adapter_id", "adapter_name", "engine", "engine_version", "tables": 42, "row_count", "byte_count" } ] } }`. **Errors.** `NOT_FOUND`, `VALIDATION_ERROR` (not a Testate archive). **Traceability.** Story 71.
 
 ## 8.9 `POST .../states/import`
 

@@ -28,19 +28,19 @@ Module: `imports` ([../technical-specs/05-module-definitions.md §5.7](../techni
 
 **Errors.** `NOT_FOUND` (upload expired, file missing), `VALIDATION_ERROR`, `ADAPTER_UNREACHABLE`. **Traceability.** Stories 49, 50, 51.
 
-## 7.3 Mappings
+## 7.3 Normalizers
 
-`GET /projects/{slug}/adapters/{id}/mappings`, `POST` (body: `name`, `target` table, `columns[]`, `key_columns[]`, `mode`, `options`), `GET .../mappings/{mid}`, `PATCH`, `DELETE`. Mapping JSON per [19 §19.2](../technical-specs/19-import-pipeline.md).
+`GET /projects/{slug}/adapters/{id}/normalizers`, `POST` (body: `name`, `target` table, `columns[]`, `key_columns[]`, `mode`, `options`), `GET .../normalizers/{mid}`, `PATCH`, `DELETE`. Normalizer JSON per [19 §19.2](../technical-specs/19-import-pipeline.md).
 
 **Access.** `viewer` reads; `qa` writes.
 
-**Behavior.** `POST` and `PATCH` validate the mapping against the live schema: target exists, target columns exist, `key_columns` present for `upsert`, every policed target column carries its required transform (`VALIDATION_ERROR` naming column and function, story 146). Names unique per adapter.
+**Behavior.** `POST` and `PATCH` validate the normalizer against the live schema: target exists, target columns exist, `key_columns` present for `upsert`, every policed target column carries its required transform (`VALIDATION_ERROR` naming column and function, story 146). Names unique per adapter.
 
 **Errors.** `CONFLICT`, `NOT_FOUND`, `VALIDATION_ERROR`, `ENGINE_UNSUPPORTED` (tier). **Traceability.** Stories 52, 53, 54.
 
 ## 7.4 `POST /projects/{slug}/imports`
 
-**Purpose.** Dry run or real import through a mapping.
+**Purpose.** Dry run or real import through a normalizer.
 
 **Access.** `qa`; real run needs a `sandbox` adapter.
 
@@ -49,9 +49,9 @@ Module: `imports` ([../technical-specs/05-module-definitions.md §5.7](../techni
 | field | type | required | notes |
 | --- | --- | --- | --- |
 | `adapter_id` | string | yes | Tabular |
-| `mapping_id` | string | yes | |
+| `normalizer_id` | string | yes | |
 | `source` | object | yes | `{ "upload_id" }` or `{ "adapter_id", "path" }` or `{ "rejected_of_run_id" }` (re-import rejected rows, story 59) |
-| `mode` | `append` \| `upsert` \| `replace` | no | default: the mapping's mode |
+| `mode` | `append` \| `upsert` \| `replace` | no | default: the normalizer's mode |
 | `dry_run` | boolean | no | default false |
 | `stash_first` | boolean | no | default: true for `replace`, false otherwise |
 | `foreign_key_checks` | boolean | no | default true |
@@ -65,7 +65,7 @@ Module: `imports` ([../technical-specs/05-module-definitions.md §5.7](../techni
 
 ## 7.5 `GET /projects/{slug}/imports`
 
-**Purpose.** Past runs. **Access.** `viewer`. **Input.** Query: `cursor`, `limit`, `adapter_id`, `dry_run`. **Output.** `200` list of `{ id, adapter_id, mapping_id, job_id, source, dry_run, mode, stash_state_id, counts, rejected_available, actor, created_at, finished_at }`. **Traceability.** Story 60.
+**Purpose.** Past runs. **Access.** `viewer`. **Input.** Query: `cursor`, `limit`, `adapter_id`, `dry_run`. **Output.** `200` list of `{ id, adapter_id, normalizer_id, job_id, source, dry_run, mode, stash_state_id, counts, rejected_available, actor, created_at, finished_at }`. **Traceability.** Story 60.
 
 ## 7.6 `GET /projects/{slug}/imports/{run_id}` and `GET .../imports/{run_id}/rejected`
 
@@ -73,11 +73,11 @@ Module: `imports` ([../technical-specs/05-module-definitions.md §5.7](../techni
 
 ## 7.7 `GET /projects/{slug}/adapters/{id}/tables/{table}/sample`
 
-**Purpose.** A sample file generated from the schema or a mapping (story 149).
+**Purpose.** A sample file generated from the schema or a normalizer (story 149).
 
 **Access.** `viewer`.
 
-**Input.** Query: `format` required `csv` | `xlsx`; `mapping_id` optional (source column names from the mapping instead of table columns).
+**Input.** Query: `format` required `csv` | `xlsx`; `normalizer_id` optional (source column names from the normalizer instead of table columns).
 
 **Behavior.** Per [19 §19.4](../technical-specs/19-import-pipeline.md): header row, one typed example row, schema block; required columns marked; no real data.
 

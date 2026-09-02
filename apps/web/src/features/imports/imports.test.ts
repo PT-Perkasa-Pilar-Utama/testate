@@ -5,7 +5,7 @@ import {
   MODE_OPTIONS,
   blockedReason,
   importBlockedReason,
-  defaultMappingName,
+  defaultNormalizerName,
   reportCounts,
   reportSummary,
   runBody,
@@ -23,7 +23,7 @@ describe("imports feature", () => {
   test("the run body carries the mode, the source and the stash rule (stories 55, 57)", () => {
     expect(runBody("a1", "m1", { kind: "upload", upload_id: "u1" }, DRAFT, true)).toStrictEqual({
       adapter_id: "a1",
-      mapping_id: "m1",
+      normalizer_id: "m1",
       source: { upload_id: "u1" },
       mode: "upsert",
       dry_run: true,
@@ -42,9 +42,9 @@ describe("imports feature", () => {
     expect(MODE_OPTIONS.map((option) => option.value)).toStrictEqual([...importModeSchema.options]);
   });
 
-  test("a mapping defaults to the table's own name, schema-qualified or not (defect 3)", () => {
-    expect(defaultMappingName("public.customers")).toBe("customers");
-    expect(defaultMappingName("customers")).toBe("customers");
+  test("a normalizer defaults to the table's own name, schema-qualified or not (defect 3)", () => {
+    expect(defaultNormalizerName("public.customers")).toBe("customers");
+    expect(defaultNormalizerName("customers")).toBe("customers");
   });
 
   test("Import stays shut until a check comes back clean, and every edit shuts it again", () => {

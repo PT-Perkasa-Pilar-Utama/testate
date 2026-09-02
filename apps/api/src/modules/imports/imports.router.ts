@@ -3,7 +3,7 @@ import {
   importReportSchema,
   importRunSchema,
   jobSchema,
-  mappingSchema,
+  normalizerSchema,
   previewSchema,
   uploadSchema,
 } from "@testate/shared";
@@ -14,7 +14,7 @@ import { describe } from "../../lib/openapi.ts";
 import type { ImportsHandlers } from "./imports.handler.ts";
 
 const P = "/projects/:slug";
-const M = `${P}/adapters/:id/mappings`;
+const M = `${P}/adapters/:id/normalizers`;
 
 export function createImportsRouter(h: ImportsHandlers): Hono {
   const router = new Hono();
@@ -33,32 +33,32 @@ export function createImportsRouter(h: ImportsHandlers): Hono {
   router.get(
     M,
     requireRole("viewer"),
-    describe("imports", "List mappings", v.array(mappingSchema)),
-    h.listMappings
+    describe("imports", "List normalizers", v.array(normalizerSchema)),
+    h.listNormalizers
   );
   router.post(
     M,
     requireRole("qa"),
-    describe("imports", "Create a mapping", mappingSchema, 201),
-    h.createMapping
+    describe("imports", "Create a normalizer", normalizerSchema, 201),
+    h.createNormalizer
   );
   router.get(
     `${M}/:mid`,
     requireRole("viewer"),
-    describe("imports", "Get a mapping", mappingSchema),
-    h.getMapping
+    describe("imports", "Get a normalizer", normalizerSchema),
+    h.getNormalizer
   );
   router.patch(
     `${M}/:mid`,
     requireRole("qa"),
-    describe("imports", "Update a mapping", mappingSchema),
-    h.updateMapping
+    describe("imports", "Update a normalizer", normalizerSchema),
+    h.updateNormalizer
   );
   router.delete(
     `${M}/:mid`,
     requireRole("qa"),
-    describe("imports", "Delete a mapping", v.undefined(), 204),
-    h.removeMapping
+    describe("imports", "Delete a normalizer", v.undefined(), 204),
+    h.removeNormalizer
   );
   router.post(
     `${P}/imports`,

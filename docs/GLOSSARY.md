@@ -19,8 +19,8 @@ Terms as the code, the API, and the UI use them. One meaning each. Specs cite th
 | **Fingerprint** | A stable hash of the introspected schema: tables, columns, types, nullability, keys | A database version |
 | **Diff** | A comparison of two states, or a state and the live database, per table by primary key or row hash | A checkout |
 | **Fixture** | Rows extracted from a table plus their referenced parents, as SQL `INSERT`s or JSON, masks applied | A state |
-| **Import** | Loading CSV, JSON, or spreadsheet rows into a table through a mapping, with a preview and a report | A checkout |
-| **Normalizer** | The saved answer to how a file is read into one table: which column goes where, how each value is converted, what happens to a row that is already there. Named within its table, so two tables may each have a `weekly`. The API and the database still spell it `mapping`, the way the masks screen is still `policies` in a URL | The schema |
+| **Import** | Loading CSV, JSON, or spreadsheet rows into a table through a normalizer, with a preview and a report | A checkout |
+| **Normalizer** | The saved answer to how a file is read into one table: which column goes where, how each value is converted, what happens to a row that is already there. Named within its table, so two tables may each have a `weekly`. The word goes all the way down: the route is `/normalizers` and the table is `normalizers` | The schema |
 | **Import run** | One execution of a normalizer against one file, with its own report | A normalizer |
 | **Column policy** | A per-column rule: required function (`hash_bcrypt`, ...), mask, display flag, lock. Enforced on edits, imports, fixtures, and agent reads | A database constraint |
 | **Mask** | A display rule that hides a value (`redact`, `partial`, ...) in every read path, for viewers and agents | Encryption |

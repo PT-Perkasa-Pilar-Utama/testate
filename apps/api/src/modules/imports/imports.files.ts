@@ -1,6 +1,6 @@
 import { mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { Mapping, Preview, Project, TableSchema, Upload } from "@testate/shared";
+import type { Normalizer, Preview, Project, TableSchema, Upload } from "@testate/shared";
 import type { previewRequestSchema } from "@testate/shared";
 import type * as v from "valibot";
 
@@ -33,7 +33,7 @@ export type FileOps = {
     adapter: AdapterRecord,
     table: string,
     format: "csv" | "xlsx",
-    mapping: Mapping | null
+    normalizer: Normalizer | null
   ): Promise<{ fileName: string; body: string | Uint8Array }>;
 };
 
@@ -112,8 +112,8 @@ export function createFileOps(deps: FileDeps): FileOps {
       if (parsed.sheets !== undefined) preview.sheets = parsed.sheets;
       return preview;
     },
-    async sample(adapter, table, format, mapping) {
-      const csv = sampleCsv(await deps.tableOf(adapter, table), mapping);
+    async sample(adapter, table, format, normalizer) {
+      const csv = sampleCsv(await deps.tableOf(adapter, table), normalizer);
       if (format === "xlsx") {
         return { fileName: `sample-${table}.xlsx`, body: writeXlsx("sample", parseCsv(csv, ",")) };
       }

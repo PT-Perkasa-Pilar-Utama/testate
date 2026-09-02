@@ -1,6 +1,6 @@
 # 19. Import Pipeline
 
-An import turns a CSV or XLSX file into rows in one table of a Tabular adapter through a saved mapping: preview, mapping, dry run, run with a mode, stash, report, rejected rows, retry. Sample files generated from the schema make the first file right. This document is the single source for the pipeline; cite it.
+An import turns a CSV or XLSX file into rows in one table of a Tabular adapter through a saved normalizer: preview, normalizer, dry run, run with a mode, stash, report, rejected rows, retry. Sample files generated from the schema make the first file right. This document is the single source for the pipeline; cite it.
 
 ## 19.1 Decision matrix
 
@@ -9,17 +9,17 @@ An import turns a CSV or XLSX file into rows in one table of a Tabular adapter t
 | Tier | Tabular only (Postgres, MySQL, MariaDB); the Document tier has no import | Owner decision 2026-08-28 |
 | Sources | Upload (limit `TESTATE_MAX_UPLOAD_MB`) or a file on a storage adapter | Story 46, 48 |
 | Parsers | `csv-parse` streaming with delimiter detection (`,` `;` `\t` `|`), UTF-8 with BOM, quoted newlines; `exceljs` streaming reader with sheet and header-row selection, typed cells read as values (dates, numbers, booleans), formulas by cached result | Story 46, 47 |
-| Mapping | Per adapter and target table: `columns[{ source, target, transforms[] }]`, `key_columns`, `mode`, `options{ delimiter, sheet, header_row, encoding }` | Story 49, 51 |
+| Normalizer | Per adapter and target table: `columns[{ source, target, transforms[] }]`, `key_columns`, `mode`, `options{ delimiter, sheet, header_row, encoding }` | Story 49, 51 |
 | Transforms | `trim`, `emptyToNull`, `number{ locale }`, `date{ format, timezone }`, `boolean{ trueValues, falseValues }`, `constant{ value }`, `uuid`, `now`, `json`, `hash{ algorithm, secret? }` (column policies may require it), `lowercase`, `uppercase` | Story 50; policies from 24 |
-| Policies | A policed column (24 §24.4) refuses a mapping without its required transform; masks do not apply to imports | Password columns never land raw |
+| Policies | A policed column (24 §24.4) refuses a normalizer without its required transform; masks do not apply to imports | Password columns never land raw |
 | Dry run | Every row through transforms and `validateImportRow` (type, nullability, key presence, JSON parse, policy); first 100 errors returned with row numbers; states that constraints and triggers are checked by the real run only | Story 53 |
 | Modes | `append`: insert; `upsert`: insert or update by `key_columns` (`ON CONFLICT DO UPDATE`, `ON DUPLICATE KEY UPDATE`); `replace`: delete every row then insert, inside one transaction on the SQL engines | Story 52 |
 | Stash | `replace` stashes first always; `append` and `upsert` when `stash_first` is set | Story 54 |
 | Foreign key checks | Per run toggle, default on; off maps per 12 §12.3 | Owner request: phpMyAdmin parity |
 | Batches | 1 000 rows or 4 MiB, whichever first; a batch failure is retried row by row inside the batch to attribute the failing row, then the run continues | Story 55 |
 | Report | `inserted`, `updated`, `skipped`, `failed`, `duration_ms`, `rejected_path` | Story 55 |
-| Rejected rows | `${TESTATE_DATA_DIR}/imports/<run>/rejected.csv`: the original source columns plus `row_number` and `reason`; re-importable with the same mapping; retention `retention.import_run_days` | Story 56; outside the blob store because its lifecycle is the run's |
-| Sample file | `GET .../tables/{table}/sample?format=csv|xlsx&mapping=<id>`: header row (table columns, or the mapping's source columns), one example row, and a schema block | Owner request |
+| Rejected rows | `${TESTATE_DATA_DIR}/imports/<run>/rejected.csv`: the original source columns plus `row_number` and `reason`; re-importable with the same normalizer; retention `retention.import_run_days` | Story 56; outside the blob store because its lifecycle is the run's |
+| Sample file | `GET .../tables/{table}/sample?format=csv|xlsx&normalizer=<id>`: header row (table columns, or the normalizer's source columns), one example row, and a schema block | Owner request |
 | Upload lifecycle | `${TESTATE_DATA_DIR}/uploads/<job>/` deleted when the job ends or at recovery | PRD §4.7 |
 
 ## 19.2 Interface
@@ -35,7 +35,7 @@ run(actor, slug, {
 sample(actor, adapterId, table: TableRef, opts: { format: "csv" | "xlsx"; mappingId?: string }): ReadableStream;
 ```
 
-Mapping JSON:
+Normalizer JSON:
 
 ```json
 { "target": "public.customers",
@@ -53,9 +53,9 @@ Mapping JSON:
 
 ```text
 run job:
-  1. resolve adapter (Tabular, sandbox unless dryRun), mapping, source stream
+  1. resolve adapter (Tabular, sandbox unless dryRun), normalizer, source stream
   2. stash when required (replace, or stash_first)                     -> import_runs.stash_state_id
-  3. introspect target table; check policies against the mapping        -> VALIDATION_ERROR before any row
+  3. introspect target table; check policies against the normalizer        -> VALIDATION_ERROR before any row
   4. parse -> for each source row: apply transforms -> validateImportRow
        dry run: collect errors (first 100), count; stop after the file; no writes
        real run: batch valid rows; invalid rows go to rejected.csv with reason
@@ -69,7 +69,7 @@ run job:
 
 ## 19.4 Sample file contents
 
-CSV: line 1 headers (table columns in schema order, or the mapping's `source` names), line 2 one example row built from types (`2026-01-31` for dates, `123.45` for numerics, `true` for booleans, `example` for text, `{}` for JSON, blank for nullable columns without default), then a commented block:
+CSV: line 1 headers (table columns in schema order, or the normalizer's `source` names), line 2 one example row built from types (`2026-01-31` for dates, `123.45` for numerics, `true` for booleans, `example` for text, `{}` for JSON, blank for nullable columns without default), then a commented block:
 
 ```text
 # column, type, nullable, default, foreign key, required
@@ -95,12 +95,12 @@ XLSX: sheet `data` with headers and the example row; sheet `schema` with the sam
 
 ## 19.7 Component and contract
 
-`modules/imports/{imports.csv.ts, imports.xlsx.ts, imports.transforms.ts, imports.validate.ts, imports.job.ts, imports.sample.ts, imports.service.ts, imports.repository.ts}`. Locked: the mapping JSON shape, the transform kinds, the rejected-rows layout, the sample layout.
+`modules/imports/{imports.csv.ts, imports.xlsx.ts, imports.transforms.ts, imports.validate.ts, imports.job.ts, imports.sample.ts, imports.service.ts, imports.repository.ts}`. Locked: the normalizer JSON shape, the transform kinds, the rejected-rows layout, the sample layout.
 
 ## 19.8 What this does not do
 
 - No import into MongoDB (Document tier).
-- No multi-table import in one run; one mapping is one table.
+- No multi-table import in one run; one normalizer is one table.
 - No schema creation; the table must exist.
 - No streaming of the report; the job result carries counts, the file carries rows.
 

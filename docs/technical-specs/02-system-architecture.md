@@ -131,7 +131,7 @@ Production is one container and one volume. There is no cluster mode. Upgrades r
 | `projects` | `projects` | `checkouts` (return to init), `states` (delete), `adapters`, `auth` (revoke scoped tokens), `jobs`, `audit` | `adapters`, `states`, `checkouts`, `diffs`, `imports` |
 | `adapters` | `adapters`, `known_host_keys` | `lib/engines`, `lib/files`, `lib/netguard`, `lib/sealed`, `states` (init state), `checkouts` (return to init), `jobs`, `audit` | `data`, `imports`, `states`, `checkouts`, `diffs`, `storage`, `projects` |
 | `data` | `saved_queries`, `query_history`, `write_sessions` | `adapters`, `lib/engines`, `states` (stash), `audit` | none |
-| `imports` | `import_mappings`, `import_runs` | `adapters`, `lib/engines`, `lib/files`, `states` (stash), `jobs`, `audit` | none |
+| `imports` | `normalizers`, `import_runs` | `adapters`, `lib/engines`, `lib/files`, `states` (stash), `jobs`, `audit` | none |
 | `states` | `states`, `state_adapters`, `blobs`, `blob_pins` | `adapters`, `lib/engines`, `lib/blobstore`, `lib/snapshot`, `jobs`, `audit` | `checkouts`, `diffs`, `data`, `imports`, `projects`, `adapters` |
 | `checkouts` | `checkouts`, `checkout_adapters` | `states`, `adapters`, `lib/engines`, `lib/blobstore`, `jobs`, `audit`, `projects` (HEAD) | `projects`, `adapters` |
 | `diffs` | `diffs`, `diff_tables` | `states`, `adapters`, `lib/engines`, `lib/blobstore`, `lib/snapshot`, `jobs` | none |
@@ -157,6 +157,6 @@ Production is one container and one volume. There is no cluster mode. Upgrades r
 | Snapshot | `states` job → `lib/engines.snapshot` per adapter → sorted `RowChunk`s → `lib/snapshot` gzip and hash → `lib/blobstore.put` → manifest rows in `state_adapters` |
 | Checkout | `checkouts` job → stash (snapshot flow) → `diffSchema` → `lib/engines.checkout` with `lib/blobstore.get` streams → counters → HEAD |
 | Diff | `diffs` job → two manifests (or one plus a hidden `diff` snapshot) → `lib/snapshot.merge` per table → diff files in the blob store → `diff_tables` |
-| Import | `imports` job → parser → mapping transforms → `validateImportRow` → `lib/engines.writeRows` batches → report and `/data/imports/<run>/rejected.csv` |
+| Import | `imports` job → parser → normalizer transforms → `validateImportRow` → `lib/engines.writeRows` batches → report and `/data/imports/<run>/rejected.csv` |
 | Query | `data` request → `lib/engines.runQuery` on a reserved connection → capped rows → `query_history` |
 | Storage browse | `storage` request → `lib/files.list/stat/read` → stream to client |

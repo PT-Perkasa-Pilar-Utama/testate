@@ -167,7 +167,7 @@ test.describe("qa gap stories", () => {
     await page.getByLabel("Path").fill("imports/customers.csv");
     await page.getByRole("button", { name: "Load" }).click();
     // The story is the source, not the write: the file store answered and the file parsed into
-    // columns a mapping can be built on. What an import then does to a table is story 50's.
+    // columns a normalizer can be built on. What an import then does to a table is story 50's.
     await expect(page.getByRole("columnheader", { name: "email" })).toBeVisible({
       timeout: 60_000,
     });

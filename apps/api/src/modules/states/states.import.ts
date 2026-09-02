@@ -26,19 +26,19 @@ export type ArchiveImportDeps = {
 export const archiveImportPayloadSchema = v.object({
   state_id: v.string(),
   upload_id: v.string(),
-  mapping: v.array(v.object({ archive_adapter_id: v.string(), adapter_id: v.string() })),
+  normalizer: v.array(v.object({ archive_adapter_id: v.string(), adapter_id: v.string() })),
 });
 
-type Mapping = v.InferOutput<typeof archiveImportPayloadSchema>["mapping"];
+type Normalizer = v.InferOutput<typeof archiveImportPayloadSchema>["normalizer"];
 
 /** Archive adapters land on existing adapters of the same engine; every blob must be in the tar. */
 function resolveManifests(
   deps: ArchiveImportDeps,
   archive: ArchiveContents,
-  mapping: Mapping
+  normalizer: Normalizer
 ): AdapterManifest[] {
   const manifests: AdapterManifest[] = [];
-  for (const item of mapping) {
+  for (const item of normalizer) {
     const source = archive.adapters.get(item.archive_adapter_id);
     const adapter = deps.adapters.byId(item.adapter_id);
     if (source === undefined || adapter === null) throw notFound("adapter");
@@ -79,7 +79,7 @@ export function createArchiveImportRunner(deps: ArchiveImportDeps): JobRunner {
         const put = await deps.blobs.put(new Blob([bytes]).stream(), { expectedHash: hash });
         deps.states.recordBlob(put.hash, put.size, job.id, deps.now().toISOString());
       }
-      const manifests = resolveManifests(deps, archive, payload.mapping);
+      const manifests = resolveManifests(deps, archive, payload.normalizer);
       const size = deps.states.commitManifest(
         payload.state_id,
         manifests,

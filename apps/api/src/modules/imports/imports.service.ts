@@ -3,7 +3,7 @@ import type {
   ImportReport,
   ImportRun,
   Job,
-  Mapping,
+  Normalizer,
   Preview,
   Project,
   TableSchema,
@@ -12,7 +12,7 @@ import type {
 import { importModeSchema, jsonObjectSchema } from "@testate/shared";
 import type {
   importRunRequestSchema,
-  mappingBodySchema,
+  normalizerBodySchema,
   previewRequestSchema,
 } from "@testate/shared";
 import * as v from "valibot";
@@ -35,25 +35,29 @@ import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import type {
   ImportSource,
   ImportsRepository,
-  MappingPatch,
+  NormalizerPatch,
   RunsFilter,
   UploadRecord,
 } from "./imports.repository.ts";
 import { createFileOps } from "./imports.files.ts";
-import { validateMapping } from "./imports.validate.ts";
+import { validateNormalizer } from "./imports.validate.ts";
 
-export type MappingBody = v.InferOutput<typeof mappingBodySchema>;
+export type NormalizerBody = v.InferOutput<typeof normalizerBodySchema>;
 export type PreviewRequest = v.InferOutput<typeof previewRequestSchema>;
 export type ImportRunRequest = v.InferOutput<typeof importRunRequestSchema>;
 
 export type ImportsService = {
   upload(slug: string, file: File, purpose: "import" | "archive"): Promise<Upload>;
   preview(slug: string, request: PreviewRequest): Promise<Preview>;
-  listMappings(adapterId: string): Promise<Mapping[]>;
-  createMapping(actor: Actor, adapterId: string, body: MappingBody): Promise<Mapping>;
-  getMapping(adapterId: string, id: string): Promise<Mapping>;
-  updateMapping(adapterId: string, id: string, patch: Partial<MappingBody>): Promise<Mapping>;
-  removeMapping(adapterId: string, id: string): Promise<void>;
+  listNormalizers(adapterId: string): Promise<Normalizer[]>;
+  createNormalizer(actor: Actor, adapterId: string, body: NormalizerBody): Promise<Normalizer>;
+  getNormalizer(adapterId: string, id: string): Promise<Normalizer>;
+  updateNormalizer(
+    adapterId: string,
+    id: string,
+    patch: Partial<NormalizerBody>
+  ): Promise<Normalizer>;
+  removeNormalizer(adapterId: string, id: string): Promise<void>;
   run(actor: Actor, slug: string, request: ImportRunRequest, meta: RequestMeta): Promise<Job>;
   listRuns(slug: string, filter: RunsFilter): Promise<ImportRun[]>;
   report(slug: string, runId: string): Promise<ImportReport>;
@@ -62,7 +66,7 @@ export type ImportsService = {
     adapterId: string,
     table: string,
     format: "csv" | "xlsx",
-    mappingId: string | undefined
+    normalizerId: string | undefined
   ): Promise<{ fileName: string; body: string | Uint8Array }>;
 };
 
@@ -106,10 +110,10 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
       });
     return adapter;
   };
-  const mappingOf = (adapter: AdapterRecord, id: string): Mapping => {
-    const mapping = repo.mapping(id);
-    if (mapping === null || mapping.adapter_id !== adapter.id) throw notFound("mapping");
-    return mapping;
+  const normalizerOf = (adapter: AdapterRecord, id: string): Normalizer => {
+    const normalizer = repo.normalizer(id);
+    if (normalizer === null || normalizer.adapter_id !== adapter.id) throw notFound("normalizer");
+    return normalizer;
   };
   const tableOf = async (adapter: AdapterRecord, target: string): Promise<TableSchema> => {
     const secrets = await openSecrets(deps.ring, adapter.id, CONFIG_COLUMN, adapter.config_sealed);
@@ -158,22 +162,22 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
   return {
     upload: (slug, file, purpose) => files.upload(projectOf(slug), file, purpose),
     preview: (slug, request) => files.preview(projectOf(slug), request),
-    async listMappings(adapterId) {
-      return repo.mappings(tabular(adapterId).id);
+    async listNormalizers(adapterId) {
+      return repo.normalizers(tabular(adapterId).id);
     },
-    async createMapping(actor, adapterId, body) {
+    async createNormalizer(actor, adapterId, body) {
       const adapter = tabular(adapterId);
-      if (repo.mappingByName(adapter.id, body.target, body.name) !== null)
+      if (repo.normalizerByName(adapter.id, body.target, body.name) !== null)
         throw conflict("a normalizer for that table already has that name", {
           name: body.name,
           target: body.target,
         });
-      validateMapping(
+      validateNormalizer(
         body,
         await tableOf(adapter, body.target),
         deps.policies.list(adapter.id, body.target)
       );
-      return repo.insertMapping({
+      return repo.insertNormalizer({
         ...body,
         id: Bun.randomUUIDv7(),
         adapter_id: adapter.id,
@@ -181,56 +185,56 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
         created_at: nowIso(),
       });
     },
-    async getMapping(adapterId, id) {
-      return mappingOf(tabular(adapterId), id);
+    async getNormalizer(adapterId, id) {
+      return normalizerOf(tabular(adapterId), id);
     },
-    async updateMapping(adapterId, id, patch) {
+    async updateNormalizer(adapterId, id, patch) {
       const adapter = tabular(adapterId);
-      const current = mappingOf(adapter, id);
+      const current = normalizerOf(adapter, id);
       const next = { ...current, ...patch };
       if (
         patch.name !== undefined &&
         patch.name.toLowerCase() !== current.name.toLowerCase() &&
-        repo.mappingByName(adapter.id, next.target, patch.name) !== null
+        repo.normalizerByName(adapter.id, next.target, patch.name) !== null
       ) {
         throw conflict("a normalizer for that table already has that name", {
           name: patch.name,
           target: next.target,
         });
       }
-      validateMapping(
+      validateNormalizer(
         next,
         await tableOf(adapter, next.target),
         deps.policies.list(adapter.id, next.target)
       );
-      const change: MappingPatch = {};
+      const change: NormalizerPatch = {};
       for (const key of ["name", "target", "columns", "key_columns", "mode", "options"] as const) {
         if (patch[key] !== undefined) Object.assign(change, { [key]: patch[key] });
       }
-      repo.updateMapping(current.id, change, nowIso());
-      return mappingOf(adapter, id);
+      repo.updateNormalizer(current.id, change, nowIso());
+      return normalizerOf(adapter, id);
     },
-    async removeMapping(adapterId, id) {
-      repo.removeMapping(mappingOf(tabular(adapterId), id).id);
+    async removeNormalizer(adapterId, id) {
+      repo.removeNormalizer(normalizerOf(tabular(adapterId), id).id);
     },
     async run(actor, slug, request, meta) {
       const project = projectOf(slug);
       const adapter = tabular(request.adapter_id);
       if (adapter.project_id !== project.id) throw notFound("adapter");
-      const mapping = mappingOf(adapter, request.mapping_id);
+      const normalizer = normalizerOf(adapter, request.normalizer_id);
       if (!request.dry_run && adapter.mode !== "sandbox") {
         throw new AppError("ADAPTER_READ_ONLY", `${adapter.name} is read-only`, {
           adapter_id: adapter.id,
         });
       }
-      const mode = request.mode ?? mapping.mode;
+      const mode = request.mode ?? normalizer.mode;
       const source = await sourcePath(project, request.source);
       const runId = Bun.randomUUIDv7();
       repo.insertRun({
         id: runId,
         project_id: project.id,
         adapter_id: adapter.id,
-        mapping_id: mapping.id,
+        normalizer_id: normalizer.id,
         job_id: "",
         source: sourceOf(request.source),
         dry_run: request.dry_run,
@@ -245,7 +249,7 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
         payload: {
           run_id: runId,
           adapter_id: adapter.id,
-          mapping_id: mapping.id,
+          normalizer_id: normalizer.id,
           source_path: source.path,
           source_upload_id: source.uploadId,
           mode: v.parse(importModeSchema, mode),
@@ -264,11 +268,11 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
         action: "import.run",
         target_type: "import_run",
         target_id: runId,
-        // The run itself has no name; the mapping it executes is what a person recognises.
-        target_label: mapping.name,
+        // The run itself has no name; the normalizer it executes is what a person recognises.
+        target_label: normalizer.name,
         project: { id: project.id, slug: project.slug },
         adapter: { id: adapter.id, name: adapter.name },
-        details: { mapping_id: mapping.id, mode, dry_run: request.dry_run },
+        details: { normalizer_id: normalizer.id, mode, dry_run: request.dry_run },
         outcome: "succeeded",
         meta,
       });
@@ -293,12 +297,12 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
       if (!(await file.exists())) throw notFound("rejected rows");
       return file.text();
     },
-    sample: (adapterId, table, format, mappingId) =>
+    sample: (adapterId, table, format, normalizerId) =>
       files.sample(
         tabular(adapterId),
         table,
         format,
-        mappingId === undefined ? null : mappingOf(tabular(adapterId), mappingId)
+        normalizerId === undefined ? null : normalizerOf(tabular(adapterId), normalizerId)
       ),
   };
 }

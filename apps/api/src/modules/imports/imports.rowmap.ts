@@ -1,4 +1,4 @@
-import type { JsonObject, JsonValue, Mapping, TableSchema } from "@testate/shared";
+import type { JsonObject, JsonValue, Normalizer, TableSchema } from "@testate/shared";
 import type { parseOptionsSchema } from "@testate/shared";
 import type * as v from "valibot";
 
@@ -10,16 +10,16 @@ import { validateImportRow } from "./imports.validate.ts";
 
 export type Rejected = { row_number: number; reason: string; source: string[] };
 
-export type RowTarget = { mapping: Mapping; table: TableSchema; keyColumns: string[] };
+export type RowTarget = { normalizer: Normalizer; table: TableSchema; keyColumns: string[] };
 
-/** A parsed source row through the mapping: transforms per column, then the row check (19 §19.3 step 4). */
+/** A parsed source row through the normalizer: transforms per column, then the row check (19 §19.3 step 4). */
 async function transformRow(
-  mapping: Mapping,
+  normalizer: Normalizer,
   columns: string[],
   source: string[]
 ): Promise<JsonObject> {
   const row: JsonObject = {};
-  for (const column of mapping.columns) {
+  for (const column of normalizer.columns) {
     const index = column.source === null ? -1 : columns.indexOf(column.source);
     if (column.source !== null && index === -1) {
       throw new AppError(
@@ -48,14 +48,14 @@ export function toValues(row: JsonObject): RowValues {
 
 type ParseOptions = v.InferOutput<typeof parseOptionsSchema>;
 
-/** Request options win over the mapping's (07 §7.4). */
-export function readOptionsOf(request: ParseOptions, mapping: ParseOptions): TableOptions {
+/** Request options win over the normalizer's (07 §7.4). */
+export function readOptionsOf(request: ParseOptions, normalizer: ParseOptions): TableOptions {
   const options: TableOptions = {};
-  const delimiter = request.delimiter ?? mapping.delimiter;
+  const delimiter = request.delimiter ?? normalizer.delimiter;
   if (delimiter !== undefined) options.delimiter = delimiter;
-  const headerRow = request.header_row ?? mapping.header_row;
+  const headerRow = request.header_row ?? normalizer.header_row;
   if (headerRow !== undefined) options.headerRow = headerRow;
-  const sheet = request.sheet ?? mapping.sheet;
+  const sheet = request.sheet ?? normalizer.sheet;
   if (sheet !== undefined) options.sheet = sheet;
   return options;
 }
@@ -68,7 +68,7 @@ export async function classify(
   rowNumber: number
 ): Promise<{ row: JsonObject } | { rejected: Rejected }> {
   try {
-    const row = await transformRow(prepared.mapping, columns, source);
+    const row = await transformRow(prepared.normalizer, columns, source);
     const problem = validateImportRow(row, prepared.table, prepared.keyColumns);
     return problem === null
       ? { row }

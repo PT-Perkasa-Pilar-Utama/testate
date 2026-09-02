@@ -56,7 +56,7 @@ Roles are cumulative. A cell shows the minimum role.
 | Take state, protect, rename, tag, delete unprotected state, archive download, archive upload | | yes | |
 | Checkout, force checkout, retry | | yes | |
 | Start write session, inline edit, write-mode query, MongoDB write forms | | yes | |
-| Import: mappings, dry run, run, rejected rows | | yes | |
+| Import: normalizers, dry run, run, rejected rows | | yes | |
 | Create diff | | yes | |
 | Accept SFTP host key | | yes | |
 | Cancel a job | own jobs: qa | | any: admin |

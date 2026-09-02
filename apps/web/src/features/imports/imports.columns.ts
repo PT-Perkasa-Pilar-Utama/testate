@@ -72,7 +72,7 @@ export function toTransforms(choice: Choice, nullable: boolean): Transform[] {
   return [...head, { kind: "hash", algorithm: choice.algorithm }];
 }
 
-/** A saved mapping's transforms back into the one question, so an old mapping still opens. */
+/** A saved normalizer's transforms back into the one question, so an old normalizer still opens. */
 export function toChoice(transforms: readonly Transform[]): Choice {
   for (const transform of transforms) {
     if (transform.kind === "date") {

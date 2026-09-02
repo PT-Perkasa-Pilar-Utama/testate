@@ -1,6 +1,6 @@
 import { rmSync } from "node:fs";
 import { dirname } from "node:path";
-import type { JsonObject, Mapping, TableSchema } from "@testate/shared";
+import type { JsonObject, Normalizer, TableSchema } from "@testate/shared";
 import { importModeSchema, parseOptionsSchema } from "@testate/shared";
 import * as v from "valibot";
 
@@ -19,7 +19,7 @@ import { createRejectedSink } from "./imports.rejected.ts";
 import type { RejectedPreview, RejectedSink } from "./imports.rejected.ts";
 import { classify, readOptionsOf, toValues } from "./imports.rowmap.ts";
 import type { ImportsRepository, RunCounts } from "./imports.repository.ts";
-import { validateMapping } from "./imports.validate.ts";
+import { validateNormalizer } from "./imports.validate.ts";
 
 export type ImportJobDeps = SnapshotDeps & {
   imports: ImportsRepository;
@@ -30,7 +30,7 @@ export type ImportJobDeps = SnapshotDeps & {
 export const importPayloadSchema = v.object({
   run_id: v.string(),
   adapter_id: v.string(),
-  mapping_id: v.string(),
+  normalizer_id: v.string(),
   source_path: v.string(),
   source_upload_id: v.nullable(v.string()),
   mode: importModeSchema,
@@ -44,7 +44,7 @@ const BATCH_ROWS = 1000;
 
 type Prepared = {
   adapter: AdapterRecord;
-  mapping: Mapping;
+  normalizer: Normalizer;
   table: TableSchema;
   keyColumns: string[];
 };
@@ -54,27 +54,27 @@ async function prepare(
   payload: v.InferOutput<typeof importPayloadSchema>
 ): Promise<Prepared> {
   const adapter = deps.adapters.byId(payload.adapter_id);
-  const mapping = deps.imports.mapping(payload.mapping_id);
-  if (adapter === null || mapping === null) throw notFound("mapping");
+  const normalizer = deps.imports.normalizer(payload.normalizer_id);
+  if (adapter === null || normalizer === null) throw notFound("normalizer");
   const secrets = await openSecrets(deps.ring, adapter.id, CONFIG_COLUMN, adapter.config_sealed);
   const config = toConnectionConfig(adapter.engine, adapter.config, secrets);
   const live = await deps.engines
     .require(adapter.engine)
     .introspect({ connectionId: adapter.id, config }, []);
-  const dot = mapping.target.indexOf(".");
+  const dot = normalizer.target.indexOf(".");
   const ref =
     dot === -1
-      ? { schema: null, name: mapping.target }
-      : { schema: mapping.target.slice(0, dot), name: mapping.target.slice(dot + 1) };
+      ? { schema: null, name: normalizer.target }
+      : { schema: normalizer.target.slice(0, dot), name: normalizer.target.slice(dot + 1) };
   const table = live.tables.find((item) => sameTable(item, ref));
   if (table === undefined)
-    throw new AppError("VALIDATION_ERROR", `target table ${mapping.target} not found`);
-  validateMapping(
-    { ...mapping, mode: payload.mode },
+    throw new AppError("VALIDATION_ERROR", `target table ${normalizer.target} not found`);
+  validateNormalizer(
+    { ...normalizer, mode: payload.mode },
     table,
-    deps.policies.list(adapter.id, mapping.target)
+    deps.policies.list(adapter.id, normalizer.target)
   );
-  return { adapter, mapping, table, keyColumns: mapping.key_columns };
+  return { adapter, normalizer, table, keyColumns: normalizer.key_columns };
 }
 
 type Batch = { rows: RowValues[]; numbers: number[]; sources: string[][] };
@@ -132,7 +132,7 @@ async function process(
   bytes: Uint8Array,
   progress: (value: JsonObject) => void
 ): Promise<Processed> {
-  const parsed = readTable(bytes, readOptionsOf(payload.options, prepared.mapping.options));
+  const parsed = readTable(bytes, readOptionsOf(payload.options, prepared.normalizer.options));
   const counts: RunCounts = { inserted: 0, updated: 0, skipped: 0, failed: 0, duration_ms: 0 };
   const sink = createRejectedSink({
     dataDir: deps.dataDir,

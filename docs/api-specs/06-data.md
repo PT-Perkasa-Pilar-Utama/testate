@@ -6,7 +6,7 @@ Masks: responses to `viewer` users and agent tokens apply column masks; `masked_
 
 ## 6.1 `GET .../schema`
 
-**Purpose.** Introspection for the grid, forms, mappings, and drift display.
+**Purpose.** Introspection for the grid, forms, normalizers, and drift display.
 
 **Access.** `viewer`.
 
@@ -40,7 +40,7 @@ Masks: responses to `viewer` users and agent tokens apply column masks; `masked_
 
 ## 6.3 `GET .../tables/{table}/export`
 
-**Purpose.** The whole table as a downloadable file: the grid's Export CSV and Export JSON links, and the answer for a mapping or a tester who cannot write SQL.
+**Purpose.** The whole table as a downloadable file: the grid's Export CSV and Export JSON links, and the answer for a normalizer or a tester who cannot write SQL.
 
 **Access.** `viewer`.
 

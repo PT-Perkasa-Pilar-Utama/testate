@@ -4,7 +4,7 @@ import type {
   ImportReport,
   JsonObject,
   JsonValue,
-  Mapping,
+  Normalizer,
   Preview,
   TableSchema,
 } from "@testate/shared";
@@ -16,7 +16,7 @@ import { createJobFollower } from "@/lib/sse.ts";
 import { adapterModel } from "../adapter/adapter.model.ts";
 import { AUTO, isNullable, toTransforms } from "./imports.columns.ts";
 import type { Choice } from "./imports.columns.ts";
-import { defaultMappingName, runBody, sourceBody, tableKey } from "./imports.helpers.ts";
+import { defaultNormalizerName, runBody, sourceBody, tableKey } from "./imports.helpers.ts";
 import type { Source } from "./imports.helpers.ts";
 import { importsModel } from "./imports.model.ts";
 import { storageModel } from "../storage/storage.model.ts";
@@ -28,7 +28,7 @@ export type ImportDraft = {
   /** What this normalizer is saved as. Empty means the table's own name, which nobody picks. */
   name: string;
   table: string;
-  mode: Mapping["mode"];
+  mode: Normalizer["mode"];
   key_columns: string;
   sheet: string;
   columns: Column[];
@@ -40,7 +40,7 @@ export type ImportPresenter = {
   rejected: Refreshable<null>;
   storages: Refreshable<AdapterWithProject[]>;
   /** The saved normalizers for the table now chosen, and nothing from any other table. */
-  saved: () => Mapping[];
+  saved: () => Normalizer[];
   /** Loads a saved normalizer's columns, key columns and mode into the draft. */
   reuse: (id: string) => void;
   /** Which saved normalizer this run is going through, empty for a new one. */
@@ -99,14 +99,14 @@ export function createImportPresenter(
   // owner that is current at this moment, and there is none inside an effect or after an await.
   const jobs = createJobFollower();
   // Every normalizer this adapter holds; the screen only ever offers the chosen table's.
-  const mappings = createRefreshable(() => importsModel.mappings(slug(), adapterId()));
+  const normalizers = createRefreshable(() => importsModel.normalizers(slug(), adapterId()));
   const initial: Source | null =
     rejectedRun === undefined ? null : { kind: "rejected", run_id: rejectedRun };
   const [source, setSource] = createSignal<Source | null>(initial);
   const [preview, setPreview] = createSignal<Preview | null>(null);
   const [draft, setDraftSignal] = createSignal<ImportDraft>(EMPTY);
   const [report, setReport] = createSignal<ImportReport | null>(null);
-  const [mappingId, setMappingId] = createSignal("");
+  const [normalizerId, setNormalizerId] = createSignal("");
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   // A rejected-rows source has no file to pick, so its preview loads with the screen.
@@ -141,7 +141,7 @@ export function createImportPresenter(
     schema.value().find((candidate) => tableKey(candidate) === name);
   /** What this run saves under: the name if one was typed, else the table's own. */
   const nameOf = (current: ImportDraft): string =>
-    current.name.trim() === "" ? defaultMappingName(current.table) : current.name.trim();
+    current.name.trim() === "" ? defaultNormalizerName(current.table) : current.name.trim();
   const wire = (): JsonObject => {
     const current = draft();
     const columns = tableOf(current.table)?.columns ?? [];
@@ -175,39 +175,43 @@ export function createImportPresenter(
    * The normalizer this run goes through, resolved by name.
    *
    * Named within its table, so two tables of one database can each keep a "weekly". Picking a
-   * saved one sets `mappingId` and every run after that updates it in place; typing a name that
+   * saved one sets `normalizerId` and every run after that updates it in place; typing a name that
    * table has not used yet creates one; leaving the name alone falls back to the table's own name,
    * which is what an import that nobody wants to keep gets.
    *
    * By name and not by table: a table can hold several now, and the first one this list happened
    * to return is somebody's saved work.
    */
-  const mappingFor = async (
+  const normalizerFor = async (
     known: string,
     table: string,
     wanted: string,
     body: JsonObject
   ): Promise<string> => {
-    if (known !== "") {
-      return (await importsModel.updateMapping(slug(), adapterId(), known, body)).id;
-    }
-    const existing = (await importsModel.mappings(slug(), adapterId())).find(
-      (mapping) => mapping.target === table && mapping.name.toLowerCase() === wanted.toLowerCase()
-    );
-    if (existing === undefined) {
-      return (await importsModel.createMapping(slug(), adapterId(), body)).id;
-    }
-    return (await importsModel.updateMapping(slug(), adapterId(), existing.id, body)).id;
+    const project = slug();
+    const adapter = adapterId();
+    const same = (one: Normalizer): boolean =>
+      one.target === table && one.name.toLowerCase() === wanted.toLowerCase();
+    const found =
+      known !== "" ? known : (await importsModel.normalizers(project, adapter)).find(same)?.id;
+    return found === undefined
+      ? (await importsModel.createNormalizer(project, adapter, body)).id
+      : (await importsModel.updateNormalizer(project, adapter, found, body)).id;
   };
 
   const runWith = async (
     staticSource: Source,
     staticDraft: ImportDraft,
-    staticMapping: string,
+    staticNormalizer: string,
     staticBody: JsonObject,
     dryRun: boolean
-  ): Promise<{ report: ImportReport; mapping: string }> => {
-    const id = await mappingFor(staticMapping, staticDraft.table, nameOf(staticDraft), staticBody);
+  ): Promise<{ report: ImportReport; normalizer: string }> => {
+    const id = await normalizerFor(
+      staticNormalizer,
+      staticDraft.table,
+      nameOf(staticDraft),
+      staticBody
+    );
     const job = await importsModel.run(
       slug(),
       runBody(adapterId(), id, staticSource, staticDraft, dryRun)
@@ -218,7 +222,7 @@ export function createImportPresenter(
     await jobs.settle(job);
     const found = (await importsModel.list(slug())).find((row) => row.job_id === job.id);
     if (found === undefined) throw new Error("the import run was not recorded");
-    return { report: await importsModel.report(slug(), found.id), mapping: id };
+    return { report: await importsModel.report(slug(), found.id), normalizer: id };
   };
 
   /**
@@ -231,18 +235,18 @@ export function createImportPresenter(
   const attempt = (dryRun: boolean, commitAfter: boolean): Promise<void> => {
     const staticSource = source();
     const staticDraft = draft();
-    const staticMapping = mappingId();
+    const staticNormalizer = normalizerId();
     const staticBody = wire();
     if (staticSource === null) return Promise.resolve();
     return guarded(async () => {
-      const first = await runWith(staticSource, staticDraft, staticMapping, staticBody, dryRun);
-      setMappingId(first.mapping);
+      const first = await runWith(staticSource, staticDraft, staticNormalizer, staticBody, dryRun);
+      setNormalizerId(first.normalizer);
       setReport(first.report);
       if (!commitAfter || first.report.failed > 0) {
         if (!dryRun) onDone();
         return;
       }
-      const done = await runWith(staticSource, staticDraft, first.mapping, staticBody, false);
+      const done = await runWith(staticSource, staticDraft, first.normalizer, staticBody, false);
       setReport(done.report);
       onDone();
     });
@@ -251,16 +255,16 @@ export function createImportPresenter(
     schema,
     rejected,
     storages,
-    saved: () => mappings.value().filter((one) => one.target === draft().table),
-    savedId: mappingId,
+    saved: () => normalizers.value().filter((one) => one.target === draft().table),
+    savedId: normalizerId,
     reuse: (id) => {
-      const found = mappings.value().find((one) => one.id === id);
+      const found = normalizers.value().find((one) => one.id === id);
       if (found === undefined) {
-        setMappingId("");
+        setNormalizerId("");
         setDraftSignal((current) => ({ ...current, name: "" }));
         return;
       }
-      setMappingId(found.id);
+      setNormalizerId(found.id);
       setReport(null);
       // A snapshot on purpose: this reads the file that is loaded at the moment of the pick.
       const staticFileColumns = preview()?.columns ?? [];
@@ -316,7 +320,7 @@ export function createImportPresenter(
     setTable: (table) => {
       const found = tableOf(table);
       const staticFileColumns = preview()?.columns ?? [];
-      setMappingId("");
+      setNormalizerId("");
       setReport(null);
       setDraftSignal((current) => ({
         ...current,
@@ -325,12 +329,12 @@ export function createImportPresenter(
       }));
     },
     setDraft: (patch) => {
-      setMappingId("");
+      setNormalizerId("");
       setReport(null);
       setDraftSignal((current) => ({ ...current, ...patch }));
     },
     setColumn: (target, patch) => {
-      setMappingId("");
+      setNormalizerId("");
       setReport(null);
       setDraftSignal((current) => ({
         ...current,
@@ -348,7 +352,7 @@ export function createImportPresenter(
       setPreview(null);
       setDraftSignal(EMPTY);
       setReport(null);
-      setMappingId("");
+      setNormalizerId("");
       setError(null);
     },
     sampleUrl: (format) => importsModel.sampleUrl(slug(), adapterId(), draft().table, format),

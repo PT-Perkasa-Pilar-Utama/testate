@@ -71,34 +71,34 @@ export type Transform = v.InferOutput<typeof transformSchema>;
 
 export const importModeSchema = v.picklist(["append", "upsert", "replace"]);
 
-export const mappingColumnSchema = v.object({
+export const normalizerColumnSchema = v.object({
   source: v.nullable(v.string()),
   target: v.string(),
   transforms: v.array(transformSchema),
 });
 
-export const mappingBodySchema = v.object({
+export const normalizerBodySchema = v.object({
   name: v.pipe(v.string(), v.minLength(1), v.maxLength(80)),
   target: v.string(),
-  columns: v.pipe(v.array(mappingColumnSchema), v.minLength(1)),
+  columns: v.pipe(v.array(normalizerColumnSchema), v.minLength(1)),
   key_columns: v.optional(v.array(v.string()), []),
   mode: v.optional(importModeSchema, "append"),
   options: v.optional(parseOptionsSchema, {}),
 });
 
-export const mappingSchema = v.object({
-  ...mappingBodySchema.entries,
+export const normalizerSchema = v.object({
+  ...normalizerBodySchema.entries,
   id: idSchema,
   adapter_id: idSchema,
   created_by: idSchema,
   created_at: timestampSchema,
   updated_at: timestampSchema,
 });
-export type Mapping = v.InferOutput<typeof mappingSchema>;
+export type Normalizer = v.InferOutput<typeof normalizerSchema>;
 
 export const importRunRequestSchema = v.object({
   adapter_id: idSchema,
-  mapping_id: idSchema,
+  normalizer_id: idSchema,
   source: importSourceSchema,
   mode: v.optional(importModeSchema),
   dry_run: v.optional(v.boolean(), false),
@@ -124,7 +124,7 @@ export type ImportReport = v.InferOutput<typeof importReportSchema>;
 export const importRunSchema = v.object({
   id: idSchema,
   adapter_id: idSchema,
-  mapping_id: idSchema,
+  normalizer_id: idSchema,
   job_id: idSchema,
   source: jsonObjectSchema,
   dry_run: v.boolean(),

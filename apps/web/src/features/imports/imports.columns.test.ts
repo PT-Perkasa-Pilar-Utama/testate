@@ -39,7 +39,7 @@ describe("how a column is read", () => {
     expect(kinds).toEqual(["trim", "emptyToNull", "hash"]);
   });
 
-  test("a saved mapping opens as the same question it was saved from", () => {
+  test("a saved normalizer opens as the same question it was saved from", () => {
     const choice: Choice = { kind: "date", format: "dd/MM/yyyy", timezone: "Asia/Jakarta" };
     expect(toChoice(toTransforms(choice, true))).toEqual(choice);
     expect(toChoice(toTransforms({ kind: "number", locale: "id" }, false))).toEqual({

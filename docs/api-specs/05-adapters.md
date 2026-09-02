@@ -124,6 +124,6 @@ Draft body (create, test, update):
 
 **Input.** Body: `plan_id` required; `action` required: `restore` | `force` | `skip`.
 
-**Behavior.** Enqueue job `adapter_delete`; the job restores per the action (no stash), then marks the adapter removed in every manifest, deletes mappings, saved queries, policies, and the adapter row only after the restore succeeded or was skipped (stories 30, 31). Audit `adapter.deleted` with the result.
+**Behavior.** Enqueue job `adapter_delete`; the job restores per the action (no stash), then marks the adapter removed in every manifest, deletes normalizers, saved queries, policies, and the adapter row only after the restore succeeded or was skipped (stories 30, 31). Audit `adapter.deleted` with the result.
 
 **Output.** `202` job. **Errors.** `CONFLICT` (stale plan), `JOB_IN_PROGRESS`, `NOT_FOUND`. **Traceability.** Stories 30, 31.

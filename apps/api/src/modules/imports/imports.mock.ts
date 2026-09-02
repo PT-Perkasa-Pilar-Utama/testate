@@ -1,4 +1,4 @@
-import type { ImportReport, ImportRun, Mapping, Preview, Upload } from "@testate/shared";
+import type { ImportReport, ImportRun, Normalizer, Preview, Upload } from "@testate/shared";
 
 import {
   ADAPTER_ID,
@@ -6,7 +6,7 @@ import {
   EARLIER,
   IMPORT_RUN_ID,
   JOB_ID,
-  MAPPING_ID,
+  NORMALIZER_ID,
   NOW,
   QA_ACTOR,
   STASH_ID,
@@ -29,8 +29,8 @@ export const PREVIEW_MOCK: Preview = {
   typed_cells: true,
 };
 
-export const MAPPING_MOCK: Mapping = {
-  id: MAPPING_ID,
+export const NORMALIZER_MOCK: Normalizer = {
+  id: NORMALIZER_ID,
   adapter_id: ADAPTER_ID,
   name: "customers-weekly",
   target: "public.customers",
@@ -72,7 +72,7 @@ export const IMPORT_REPORT_MOCK: ImportReport = {
 export const IMPORT_RUN_MOCK: ImportRun = {
   id: IMPORT_RUN_ID,
   adapter_id: ADAPTER_ID,
-  mapping_id: MAPPING_ID,
+  normalizer_id: NORMALIZER_ID,
   job_id: JOB_ID,
   source: { upload_id: UPLOAD_ID, file_name: "customers.xlsx" },
   dry_run: false,

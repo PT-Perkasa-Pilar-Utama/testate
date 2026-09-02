@@ -1,4 +1,4 @@
-import type { ColumnPolicy, JsonObject, JsonValue, Mapping, TableSchema } from "@testate/shared";
+import type { ColumnPolicy, JsonObject, JsonValue, Normalizer, TableSchema } from "@testate/shared";
 import * as v from "valibot";
 
 import { AppError } from "../../lib/http/index.ts";
@@ -13,11 +13,11 @@ const POLICY_TO_HASH = new Map<string, string>([
   ["hmac_sha256", "hmac_sha256"],
 ]);
 
-type MappingSpec = Pick<Mapping, "target" | "columns" | "key_columns" | "mode">;
+type NormalizerSpec = Pick<Normalizer, "target" | "columns" | "key_columns" | "mode">;
 
-function assertTargets(mapping: MappingSpec, table: TableSchema): void {
+function assertTargets(normalizer: NormalizerSpec, table: TableSchema): void {
   const names = new Set(table.columns.map((column) => column.name));
-  for (const column of mapping.columns) {
+  for (const column of normalizer.columns) {
     if (!names.has(column.target)) {
       throw new AppError("VALIDATION_ERROR", `unknown target column ${column.target}`, {
         column: column.target,
@@ -26,21 +26,21 @@ function assertTargets(mapping: MappingSpec, table: TableSchema): void {
   }
 }
 
-function assertKeys(mapping: MappingSpec): void {
-  if (mapping.mode === "upsert" && mapping.key_columns.length === 0) {
+function assertKeys(normalizer: NormalizerSpec): void {
+  if (normalizer.mode === "upsert" && normalizer.key_columns.length === 0) {
     throw new AppError("VALIDATION_ERROR", "pick at least one key column to match rows by");
   }
-  for (const key of mapping.key_columns) {
-    if (!mapping.columns.some((column) => column.target === key)) {
+  for (const key of normalizer.key_columns) {
+    if (!normalizer.columns.some((column) => column.target === key)) {
       throw new AppError("VALIDATION_ERROR", `key column ${key} is not mapped`, { column: key });
     }
   }
 }
 
-function assertPolicies(mapping: MappingSpec, policies: ColumnPolicy[]): void {
+function assertPolicies(normalizer: NormalizerSpec, policies: ColumnPolicy[]): void {
   for (const policy of policies) {
     const required = policy.required_function;
-    const mapped = mapping.columns.find((column) => column.target === policy.column);
+    const mapped = normalizer.columns.find((column) => column.target === policy.column);
     if (required === null || mapped === undefined) continue;
     const algorithm = POLICY_TO_HASH.get(required.name);
     const carries = mapped.transforms.some(
@@ -57,14 +57,14 @@ function assertPolicies(mapping: MappingSpec, policies: ColumnPolicy[]): void {
 }
 
 /** Target exists, target columns exist, upsert has keys, policed columns carry their hash (07 §7.3). */
-export function validateMapping(
-  mapping: MappingSpec,
+export function validateNormalizer(
+  normalizer: NormalizerSpec,
   table: TableSchema,
   policies: ColumnPolicy[]
 ): void {
-  assertTargets(mapping, table);
-  assertKeys(mapping);
-  assertPolicies(mapping, policies);
+  assertTargets(normalizer, table);
+  assertKeys(normalizer);
+  assertPolicies(normalizer, policies);
 }
 
 const NUMERIC = new Set(["integer", "bigint", "smallint", "numeric", "real", "double precision"]);

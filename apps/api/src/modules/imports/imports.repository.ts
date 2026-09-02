@@ -1,5 +1,5 @@
-import type { Actor, Mapping, Upload } from "@testate/shared";
-import { importModeSchema, mappingColumnSchema, parseOptionsSchema } from "@testate/shared";
+import type { Actor, Normalizer, Upload } from "@testate/shared";
+import { importModeSchema, normalizerColumnSchema, parseOptionsSchema } from "@testate/shared";
 import * as v from "valibot";
 
 import type { MetadataDb } from "../../lib/db/index.ts";
@@ -17,13 +17,13 @@ export type NewUpload = Omit<UploadRecord, "expires_at"> & {
   created_at: string;
 };
 
-export type NewMapping = Omit<Mapping, "id" | "created_at" | "updated_at"> & {
+export type NewNormalizer = Omit<Normalizer, "id" | "created_at" | "updated_at"> & {
   id: string;
   created_at: string;
 };
 
-export type MappingPatch = Partial<
-  Omit<Mapping, "id" | "adapter_id" | "created_by" | "created_at" | "updated_at">
+export type NormalizerPatch = Partial<
+  Omit<Normalizer, "id" | "adapter_id" | "created_by" | "created_at" | "updated_at">
 >;
 
 export type ImportSource = { kind: "upload" | "storage" | "rejected"; ref: string };
@@ -32,11 +32,11 @@ export type NewRun = {
   id: string;
   project_id: string;
   adapter_id: string;
-  mapping_id: string;
+  normalizer_id: string;
   job_id: string;
   source: ImportSource;
   dry_run: boolean;
-  mode: Mapping["mode"];
+  mode: Normalizer["mode"];
   actor: Actor;
   created_at: string;
 };
@@ -57,13 +57,13 @@ export type ImportsRepository = {
   insertUpload(upload: NewUpload): void;
   upload(id: string): UploadRecord | null;
   removeUpload(id: string): void;
-  mappings(adapterId: string): Mapping[];
-  mapping(id: string): Mapping | null;
+  normalizers(adapterId: string): Normalizer[];
+  normalizer(id: string): Normalizer | null;
   /** A normalizer is named within its table, so two tables may each hold a "weekly". */
-  mappingByName(adapterId: string, target: string, name: string): Mapping | null;
-  insertMapping(mapping: NewMapping): Mapping;
-  updateMapping(id: string, patch: MappingPatch, at: string): void;
-  removeMapping(id: string): void;
+  normalizerByName(adapterId: string, target: string, name: string): Normalizer | null;
+  insertNormalizer(normalizer: NewNormalizer): Normalizer;
+  updateNormalizer(id: string, patch: NormalizerPatch, at: string): void;
+  removeNormalizer(id: string): void;
   insertRun(run: NewRun): void;
   setRunJob(id: string, jobId: string): void;
   setStash(id: string, stashStateId: string): void;
@@ -83,7 +83,7 @@ const uploadRow = v.object({
   expires_at: v.string(),
 });
 
-const mappingRow = v.object({
+const normalizerRow = v.object({
   id: v.string(),
   adapter_id: v.string(),
   name: v.string(),
@@ -101,19 +101,19 @@ function toUpload(row: v.InferOutput<typeof uploadRow>): UploadRecord {
   return { upload_id: row.id, ...row };
 }
 
-function toMapping(row: v.InferOutput<typeof mappingRow>): Mapping {
+function toNormalizer(row: v.InferOutput<typeof normalizerRow>): Normalizer {
   return {
     ...row,
-    columns: v.parse(v.array(mappingColumnSchema), JSON.parse(row.columns)),
+    columns: v.parse(v.array(normalizerColumnSchema), JSON.parse(row.columns)),
     key_columns: v.parse(v.array(v.string()), JSON.parse(row.key_columns)),
     options: v.parse(parseOptionsSchema, JSON.parse(row.options)),
   };
 }
 
 export function createImportsRepository(db: MetadataDb): ImportsRepository {
-  const oneMapping = (where: string, ...params: string[]): Mapping | null => {
-    const row = db.query(`SELECT * FROM import_mappings WHERE ${where}`).get(...params);
-    return row === null ? null : toMapping(v.parse(mappingRow, row));
+  const oneNormalizer = (where: string, ...params: string[]): Normalizer | null => {
+    const row = db.query(`SELECT * FROM normalizers WHERE ${where}`).get(...params);
+    return row === null ? null : toNormalizer(v.parse(normalizerRow, row));
   };
   return {
     insertUpload(upload) {
@@ -139,40 +139,38 @@ export function createImportsRepository(db: MetadataDb): ImportsRepository {
     removeUpload(id) {
       db.query("DELETE FROM uploads WHERE id = ?").run(id);
     },
-    mappings: (adapterId) =>
+    normalizers: (adapterId) =>
       v
         .parse(
-          v.array(mappingRow),
-          db
-            .query("SELECT * FROM import_mappings WHERE adapter_id = ? ORDER BY name")
-            .all(adapterId)
+          v.array(normalizerRow),
+          db.query("SELECT * FROM normalizers WHERE adapter_id = ? ORDER BY name").all(adapterId)
         )
-        .map(toMapping),
-    mapping: (id) => oneMapping("id = ?", id),
-    mappingByName: (adapterId, target, name) =>
-      oneMapping("adapter_id = ? AND target = ? AND name = ?", adapterId, target, name),
-    insertMapping(mapping) {
+        .map(toNormalizer),
+    normalizer: (id) => oneNormalizer("id = ?", id),
+    normalizerByName: (adapterId, target, name) =>
+      oneNormalizer("adapter_id = ? AND target = ? AND name = ?", adapterId, target, name),
+    insertNormalizer(normalizer) {
       db.query(
-        `INSERT INTO import_mappings (id, adapter_id, name, target, columns, key_columns, mode, options, created_by, created_at, updated_at)
+        `INSERT INTO normalizers (id, adapter_id, name, target, columns, key_columns, mode, options, created_by, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
-        mapping.id,
-        mapping.adapter_id,
-        mapping.name,
-        mapping.target,
-        JSON.stringify(mapping.columns),
-        JSON.stringify(mapping.key_columns),
-        mapping.mode,
-        JSON.stringify(mapping.options),
-        mapping.created_by,
-        mapping.created_at,
-        mapping.created_at
+        normalizer.id,
+        normalizer.adapter_id,
+        normalizer.name,
+        normalizer.target,
+        JSON.stringify(normalizer.columns),
+        JSON.stringify(normalizer.key_columns),
+        normalizer.mode,
+        JSON.stringify(normalizer.options),
+        normalizer.created_by,
+        normalizer.created_at,
+        normalizer.created_at
       );
-      const inserted = oneMapping("id = ?", mapping.id);
-      if (inserted === null) throw new Error("mapping insert failed");
+      const inserted = oneNormalizer("id = ?", normalizer.id);
+      if (inserted === null) throw new Error("normalizer insert failed");
       return inserted;
     },
-    updateMapping(id, patch, at) {
+    updateNormalizer(id, patch, at) {
       const sets = ["updated_at = ?"];
       const params: string[] = [at];
       const columns: [string, string | undefined][] = [
@@ -191,21 +189,21 @@ export function createImportsRepository(db: MetadataDb): ImportsRepository {
         sets.push(`${column} = ?`);
         params.push(value);
       }
-      db.query(`UPDATE import_mappings SET ${sets.join(", ")} WHERE id = ?`).run(...params, id);
+      db.query(`UPDATE normalizers SET ${sets.join(", ")} WHERE id = ?`).run(...params, id);
     },
-    removeMapping(id) {
-      db.query("DELETE FROM import_mappings WHERE id = ?").run(id);
+    removeNormalizer(id) {
+      db.query("DELETE FROM normalizers WHERE id = ?").run(id);
     },
     insertRun(run) {
       db.query(
-        `INSERT INTO import_runs (id, project_id, adapter_id, mapping_id, job_id, source_kind, source_ref, dry_run, mode,
+        `INSERT INTO import_runs (id, project_id, adapter_id, normalizer_id, job_id, source_kind, source_ref, dry_run, mode,
            actor_user_id, actor_token_id, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
         run.id,
         run.project_id,
         run.adapter_id,
-        run.mapping_id,
+        run.normalizer_id,
         run.job_id,
         run.source.kind,
         run.source.ref,

@@ -83,6 +83,6 @@ Project object:
 **Behavior.**
 1. Validate the slug, the plan id, and that every action is allowed by the plan (`force` only where drift was reported) (`CONFLICT` otherwise).
 2. Enqueue job kind `project_delete` claiming every adapter (`JOB_IN_PROGRESS` if any is busy).
-3. The job runs `returnToInit` for `restore` and `force` adapters (no stash), records per-adapter results, and removes tokens scoped to the project, mappings, states, adapters, and the project only after every non-skipped adapter reports `restored`. A failure leaves everything, sets HEAD unknown for failed adapters, and the job result offers `retry` (story 15). Audit `project.deleted` with per-adapter results (stories 13, 108, 109).
+3. The job runs `returnToInit` for `restore` and `force` adapters (no stash), records per-adapter results, and removes tokens scoped to the project, normalizers, states, adapters, and the project only after every non-skipped adapter reports `restored`. A failure leaves everything, sets HEAD unknown for failed adapters, and the job result offers `retry` (story 15). Audit `project.deleted` with per-adapter results (stories 13, 108, 109).
 
 **Output.** `202` job, `Location`. **Errors.** `CONFLICT`, `JOB_IN_PROGRESS`, `NOT_FOUND`, `VALIDATION_ERROR`. **Traceability.** Stories 13, 14, 15, 109.

@@ -75,7 +75,7 @@ deletionPlan(actor, slug): Promise<DeletionPlan>    // per database adapter: res
 deleteProject(actor, slug, { confirmSlug; plan: PlanChoice[] }, event): Promise<Job>   // job kind project_delete
 ```
 
-| Invariants | Slug is `[a-z0-9-]{2,64}`, unique. Deletion requires `confirmSlug === slug` and the admin role. The delete job runs the plan through `checkouts.returnToInit`; removal happens only after every planned restore succeeded; a failure leaves the project, sets HEAD unknown on failed adapters, and the job offers retry. Removal order: project-scoped tokens revoked, mappings, states (blob refcounts), adapters, project. Audit rows outlive the project. |
+| Invariants | Slug is `[a-z0-9-]{2,64}`, unique. Deletion requires `confirmSlug === slug` and the admin role. The delete job runs the plan through `checkouts.returnToInit`; removal happens only after every planned restore succeeded; a failure leaves the project, sets HEAD unknown on failed adapters, and the job offers retry. Removal order: project-scoped tokens revoked, normalizers, states (blob refcounts), adapters, project. Audit rows outlive the project. |
 | Ordering | `deletionPlan` must be fetched before `deleteProject`; the plan is re-validated at job start (adapter mode, reachability) and the job fails on a mismatch. |
 | Error modes | `CONFLICT` (slug taken, wrong confirm slug, plan stale), `JOB_IN_PROGRESS` (any job on the project), `FORBIDDEN`. |
 
@@ -133,11 +133,11 @@ Tabular editing additions (`lookup`, `insertRows`, `updateRow`, `deleteRow`, `se
 
 ## 5.7 `imports`
 
-**Responsibility.** Turn a CSV or XLSX file into rows in one table through a saved mapping, with dry run, modes, stash, report, and retry.
+**Responsibility.** Turn a CSV or XLSX file into rows in one table through a saved normalizer, with dry run, modes, stash, report, and retry.
 
 ```ts
 preview(actor, source: UploadRef | StorageFileRef, opts, event): Promise<Preview>       // columns, first 20 rows, sheets
-mappings: { list; create; update; remove }                                              // per adapter and table
+normalizers: { list; create; update; remove }                                              // per adapter and table
 run(actor, slug, { adapterId; mappingId; source; mode; dryRun; stashFirst? }, event): Promise<Job>   // job kind import
 report(actor, runId): Promise<ImportReport>
 rejectedRows(actor, runId): ReadableStream                                               // CSV with reason column
@@ -147,10 +147,10 @@ sample(actor, adapterId, table, { format: "csv" | "xlsx"; mappingId? }): Readabl
 
 Tabular adapters only; a Document adapter answers `ENGINE_UNSUPPORTED` on every import route.
 
-| Invariants | Dry run validates types, nullability, key presence, and JSON cells for every row and returns the first hundred errors; it states that constraints and triggers are checked by the real run only. `replace` stashes first by default; `append` and `upsert` stash when `stashFirst` is true. Rows go through `lib/engines.writeRows` in batches inside a transaction where the engine allows. The rejected-rows file lives under `${TESTATE_DATA_DIR}/imports/<run>/rejected.csv` with the same columns plus `reason`, so it re-imports with the same mapping. Upload files are deleted when the job ends. |
-| Error modes | `PAYLOAD_TOO_LARGE`, `VALIDATION_ERROR` (mapping mismatch, upsert without keys), `ADAPTER_READ_ONLY`, `JOB_IN_PROGRESS`. |
+| Invariants | Dry run validates types, nullability, key presence, and JSON cells for every row and returns the first hundred errors; it states that constraints and triggers are checked by the real run only. `replace` stashes first by default; `append` and `upsert` stash when `stashFirst` is true. Rows go through `lib/engines.writeRows` in batches inside a transaction where the engine allows. The rejected-rows file lives under `${TESTATE_DATA_DIR}/imports/<run>/rejected.csv` with the same columns plus `reason`, so it re-imports with the same normalizer. Upload files are deleted when the job ends. |
+| Error modes | `PAYLOAD_TOO_LARGE`, `VALIDATION_ERROR` (normalizer mismatch, upsert without keys), `ADAPTER_READ_ONLY`, `JOB_IN_PROGRESS`. |
 
-**Owns.** `import_mappings`, `import_runs`. **Stories.** 46 to 57. **Seams.** `lib/engines`, `lib/files` (storage source). **Deep because** parsing, transforms, validation, batching, and the report are one pipeline behind `run`.
+**Owns.** `normalizers`, `import_runs`. **Stories.** 46 to 57. **Seams.** `lib/engines`, `lib/files` (storage source). **Deep because** parsing, transforms, validation, batching, and the report are one pipeline behind `run`.
 
 ## 5.8 `states`
 
@@ -166,7 +166,7 @@ get(actor, slug, idOrName): Promise<StateDetail>                                
 update(actor, slug, id, { name?; notes?; tags?; protected? }, event): Promise<State>
 remove(actor, slug, id, event): Promise<Job>                                             // kind state_delete; refuses protected and init
 archive(actor, slug, id): ReadableStream                                                  // PAX tar, streamed
-importArchive(actor, slug, upload, mapping: ArchiveAdapterMapping[], event): Promise<Job> // kind archive_import
+importArchive(actor, slug, upload, normalizer: ArchiveAdapterMapping[], event): Promise<Job> // kind archive_import
 readManifest(stateId, adapterId): Promise<AdapterManifest>                               // for checkouts and diffs
 openChunks(manifest, table): AsyncIterable<EncodedRow>                                    // from lib/blobstore through lib/snapshot
 pruneStashes(slug, keep: number, event): Promise<void>                                   // retention
@@ -174,7 +174,7 @@ pruneStashes(slug, keep: number, event): Promise<void>                          
 
 | Invariants | Names are unique per project case-insensitively and may not match the UUID pattern. Kinds: `init`, `manual`, `stash`, `diff` (hidden, owned by a diff). Init states are protected forever; protection blocks `remove`, never `deleteProject`. The parent of a new state is the project HEAD at snapshot time; HEAD moves to the new state. One snapshot job covers the chosen adapters in parallel under the global cap, one point in time per adapter. Blobs referenced by a running snapshot are pinned in `blob_pins` until the manifest row commits. Stash keeps the last N per project (setting); protecting a stash turns it into `manual`. An archive contains the manifest and its blobs; upload verifies every hash before creating the state and requires an adapter mapping by engine. |
 | Ordering | `stash` runs inside the caller's job, before any destructive step, and its state id is recorded on the checkout, import run, or write session. |
-| Error modes | `CONFLICT` (name taken, name looks like an id, protected), `QUOTA_EXCEEDED`, `JOB_IN_PROGRESS`, `ADAPTER_UNREACHABLE`, `VALIDATION_ERROR` (archive hash mismatch, engine mismatch in mapping). |
+| Error modes | `CONFLICT` (name taken, name looks like an id, protected), `QUOTA_EXCEEDED`, `JOB_IN_PROGRESS`, `ADAPTER_UNREACHABLE`, `VALIDATION_ERROR` (archive hash mismatch, engine mismatch in normalizer). |
 
 **Owns.** `states`, `state_adapters`, `blobs`, `blob_pins`. **Stories.** 58 to 71. **Seams.** `lib/engines` (`snapshot`), `lib/blobstore`, `lib/snapshot`. **Deep because** the consistent read, deduplication, pinning, naming, and tree rules are invisible to the six modules that call `stash` and `readManifest`.
 

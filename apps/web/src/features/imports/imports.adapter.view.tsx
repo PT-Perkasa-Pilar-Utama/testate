@@ -19,7 +19,7 @@ import {
   tableKey,
 } from "./imports.helpers.ts";
 import { reportCounts } from "./imports.helpers.ts";
-import ColumnPanel from "./imports.mapping.panel.tsx";
+import ColumnPanel from "./imports.normalizer.panel.tsx";
 import { createImportPresenter } from "./imports.adapter.presenter.ts";
 import type { ImportPresenter } from "./imports.adapter.presenter.ts";
 

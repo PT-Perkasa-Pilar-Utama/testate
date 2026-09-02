@@ -1,4 +1,8 @@
-import { importRunRequestSchema, mappingBodySchema, previewRequestSchema } from "@testate/shared";
+import {
+  importRunRequestSchema,
+  normalizerBodySchema,
+  previewRequestSchema,
+} from "@testate/shared";
 import * as v from "valibot";
 
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
@@ -14,16 +18,16 @@ import {
 import type { Handler } from "../../lib/http/index.ts";
 import { firstQuery } from "../../lib/http/query.ts";
 import type { RunsFilter } from "./imports.repository.ts";
-import type { ImportsService, MappingBody } from "./imports.service.ts";
+import type { ImportsService, NormalizerBody } from "./imports.service.ts";
 
 export type ImportsHandlers = {
   upload: Handler;
   preview: Handler;
-  listMappings: Handler;
-  createMapping: Handler;
-  getMapping: Handler;
-  updateMapping: Handler;
-  removeMapping: Handler;
+  listNormalizers: Handler;
+  createNormalizer: Handler;
+  getNormalizer: Handler;
+  updateNormalizer: Handler;
+  removeNormalizer: Handler;
   run: Handler;
   listRuns: Handler;
   report: Handler;
@@ -33,7 +37,7 @@ export type ImportsHandlers = {
 
 const sampleQuerySchema = v.object({
   format: v.array(v.picklist(["csv", "xlsx"])),
-  mapping_id: v.optional(v.array(v.string())),
+  normalizer_id: v.optional(v.array(v.string())),
 });
 const runsQuery = v.object({
   limit: v.optional(
@@ -46,9 +50,9 @@ const purposeSchema = v.optional(v.picklist(["import", "archive"]), "import");
 
 /** Drops undefined fields so the patch matches exactOptionalPropertyTypes. */
 function toPatch(
-  body: v.InferOutput<ReturnType<typeof v.partial<typeof mappingBodySchema>>>
-): Partial<MappingBody> {
-  const patch: Partial<MappingBody> = {};
+  body: v.InferOutput<ReturnType<typeof v.partial<typeof normalizerBodySchema>>>
+): Partial<NormalizerBody> {
+  const patch: Partial<NormalizerBody> = {};
   if (body.name !== undefined) patch.name = body.name;
   if (body.target !== undefined) patch.target = body.target;
   if (body.columns !== undefined) patch.columns = body.columns;
@@ -85,18 +89,19 @@ export function createImportsHandlers(
     },
     preview: async (c) =>
       ok(c, await service.preview(param(c, "slug"), await parseBody(c, previewRequestSchema))),
-    listMappings: async (c) => okPage(c, await service.listMappings(param(c, "id")), null, 50),
-    createMapping: async (c) => {
-      const body = await parseBody(c, mappingBodySchema);
-      return ok(c, await service.createMapping(currentActor(c), param(c, "id"), body), 201);
+    listNormalizers: async (c) =>
+      okPage(c, await service.listNormalizers(param(c, "id")), null, 50),
+    createNormalizer: async (c) => {
+      const body = await parseBody(c, normalizerBodySchema);
+      return ok(c, await service.createNormalizer(currentActor(c), param(c, "id"), body), 201);
     },
-    getMapping: async (c) => ok(c, await service.getMapping(param(c, "id"), param(c, "mid"))),
-    updateMapping: async (c) => {
-      const body = await parseBody(c, v.partial(mappingBodySchema));
-      return ok(c, await service.updateMapping(param(c, "id"), param(c, "mid"), toPatch(body)));
+    getNormalizer: async (c) => ok(c, await service.getNormalizer(param(c, "id"), param(c, "mid"))),
+    updateNormalizer: async (c) => {
+      const body = await parseBody(c, v.partial(normalizerBodySchema));
+      return ok(c, await service.updateNormalizer(param(c, "id"), param(c, "mid"), toPatch(body)));
     },
-    removeMapping: async (c) => {
-      await service.removeMapping(param(c, "id"), param(c, "mid"));
+    removeNormalizer: async (c) => {
+      await service.removeNormalizer(param(c, "id"), param(c, "mid"));
       return c.body(null, 204);
     },
     run: async (c) => {
@@ -124,7 +129,7 @@ export function createImportsHandlers(
         param(c, "id"),
         param(c, "table"),
         query.format[0] ?? "csv",
-        firstQuery(query.mapping_id)
+        firstQuery(query.normalizer_id)
       );
       c.header(
         "Content-Type",

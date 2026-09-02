@@ -35,7 +35,7 @@ export const ROUTES: readonly RouteDef<RouteName>[] = [
   { name: "adapter", pattern: "/projects/:slug/adapters/:id", role: "viewer" },
   { name: "table", pattern: "/projects/:slug/adapters/:id/tables/:table", role: "viewer" },
   { name: "query", pattern: "/projects/:slug/adapters/:id/query", role: "viewer" },
-  // An import mapping belongs to an adapter (import_mappings.adapter_id), so the screen does too;
+  // An import normalizer belongs to an adapter (normalizers.adapter_id), so the screen does too;
   // it used to be a project tab that opened by asking which database (docs/PROJECT_REWORK.md).
   { name: "imports", pattern: "/projects/:slug/adapters/:id/imports", role: "qa" },
   // Masking rules are admin work (docs/UI_REWORK.md). The engine stays load-bearing for the grid,

@@ -6,7 +6,7 @@ import * as v from "valibot";
 
 import { TEST_META } from "../../../test/accounts.ts";
 import { S3, createSettled } from "../../../test/adapters.ts";
-import { MAPPING, createImportsHarness, runToReport } from "../../../test/imports-harness.ts";
+import { NORMALIZER, createImportsHarness, runToReport } from "../../../test/imports-harness.ts";
 import type { MemoryTree } from "../../lib/files/index.ts";
 import type { ImportRunRequest } from "./imports.service.ts";
 import { readXlsx, writeXlsx } from "../../lib/xlsx/index.ts";
@@ -21,10 +21,10 @@ describe("import sources", () => {
       modified_at: "2026-08-28T00:00:00.000Z",
     });
     h.harness.trees.set("exports", tree);
-    const mapping = await h.imports.createMapping(h.harness.qa, h.adapterId, MAPPING);
+    const normalizer = await h.imports.createNormalizer(h.harness.qa, h.adapterId, NORMALIZER);
     const request: ImportRunRequest = {
       adapter_id: h.adapterId,
-      mapping_id: mapping.id,
+      normalizer_id: normalizer.id,
       source: { adapter_id: s3.id, path: "drops/customers.csv" },
       dry_run: false,
       foreign_key_checks: true,
@@ -70,8 +70,8 @@ describe("import sources", () => {
       rows: [[" X@X.IO "], ["y@x.io"]],
       sheets: ["customers"],
     });
-    const mapping = await h.imports.createMapping(h.harness.qa, h.adapterId, MAPPING);
-    const report = await runToReport(h, mapping, upload.upload_id);
+    const normalizer = await h.imports.createNormalizer(h.harness.qa, h.adapterId, NORMALIZER);
+    const report = await runToReport(h, normalizer, upload.upload_id);
     expect(report).toMatchObject({ inserted: 2, failed: 0 });
     expect(h.harness.databases.get("shop")?.get("public.customers")?.length).toBe(4);
   });

@@ -32,7 +32,7 @@ Enforced by the oxlint `jest` plugin **(enforced)**: `expect-expect`, `no-condit
 
 Every function stays at cyclomatic complexity 10 or under **(enforced)**: `complexity: ["error", { "max": 10 }]`. Branches, loops, `case` labels, `catch`, and `&&`, `||`, `??`, `?.`, `?:` each add one. A function over the limit is split by extracting a named function, not by suppressing the rule. `oxlint-disable complexity` does not appear in the codebase.
 
-Why 10: a function with more than ten paths cannot be covered by a handful of tests, and the 300-line file cap already assumes small units. Restore planners, mapping transforms, and the route matcher are where this bites first; they need small, tested pieces most.
+Why 10: a function with more than ten paths cannot be covered by a handful of tests, and the 300-line file cap already assumes small units. Restore planners, normalizer transforms, and the route matcher are where this bites first; they need small, tested pieces most.
 
 ## 3. Files and names
 

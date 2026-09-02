@@ -153,7 +153,7 @@ export async function applyTransform(value: JsonValue, transform: Transform): Pr
   return APPLIERS[transform.kind](value, transform);
 }
 
-/** Every transform of a mapping column in order; `null` short-circuits after `emptyToNull`. */
+/** Every transform of a normalizer column in order; `null` short-circuits after `emptyToNull`. */
 export async function applyTransforms(
   value: JsonValue,
   transforms: Transform[]
