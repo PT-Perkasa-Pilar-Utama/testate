@@ -11,6 +11,7 @@ import { createdRangeConditions } from "../../lib/db/date-range.ts";
 import { keysetCondition } from "../../lib/db/keyset.ts";
 
 import type { MetadataDb } from "../../lib/db/index.ts";
+import { blobAccounting } from "./states.blobs.ts";
 import { eventsOf } from "./states.events.ts";
 import { createManifestStore } from "./states.manifests.ts";
 import type { ManifestStore } from "./states.manifests.ts";
@@ -76,6 +77,19 @@ export type StateRows = {
   update(id: string, patch: StatePatch, at: string): void;
   /** Deletes the state, decrements blob references, and names the blobs left with none (15 §15.4). */
   remove(id: string): Removal;
+  /**
+   * Deletes a project and every blob reference its states held, in one transaction.
+   *
+   * The project row alone cascades the states away, and that was the whole of a project delete
+   * until now: the manifests went, `blobs.ref_count` did not, and every blob those states pinned
+   * stayed on disk with nobody left to name it.
+   *
+   * One transaction, not two statements, and the order is the reason. Decrementing and then
+   * deleting as separate steps leaves a window where a crash keeps the states with refs already
+   * taken off them; the next state delete floors those counts to zero and the sweep removes files
+   * a live state still reads from. Deleting files is the caller's, after this commits.
+   */
+  removeProject(projectId: string): string[];
   /** Blobs with no reference and no pin; the caller deletes them from the store. */
   unpinnedOrphans(hashes: string[]): string[];
   /** Every blob some state or diff still references; the store migration copies exactly these. */
@@ -220,21 +234,7 @@ function createStateRows(db: MetadataDb): StateRows {
     },
     remove(id) {
       return db.transaction((): Removal => {
-        const hashes = v.parse(
-          v.array(v.object({ blob_hash: v.string(), refs: v.number() })),
-          db
-            .query(
-              `SELECT sa.tables AS tables_json, j.value ->> 'blob_hash' AS blob_hash, COUNT(*) AS refs
-               FROM state_adapters sa, json_each(sa.tables) j WHERE sa.state_id = ? GROUP BY blob_hash`
-            )
-            .all(id)
-        );
-        for (const item of hashes) {
-          db.query("UPDATE blobs SET ref_count = MAX(ref_count - ?, 0) WHERE hash = ?").run(
-            item.refs,
-            item.blob_hash
-          );
-        }
+        const orphans = blobAccounting.releaseState(db, id);
         const wasHead =
           db
             .query(
@@ -242,7 +242,14 @@ function createStateRows(db: MetadataDb): StateRows {
             )
             .run(id).changes > 0;
         db.query("DELETE FROM states WHERE id = ?").run(id);
-        return { orphans: hashes.map((item) => item.blob_hash), wasHead };
+        return { orphans, wasHead };
+      })();
+    },
+    removeProject(projectId) {
+      return db.transaction((): string[] => {
+        const orphans = blobAccounting.releaseProject(db, projectId);
+        db.query("DELETE FROM projects WHERE id = ?").run(projectId);
+        return orphans;
       })();
     },
     referencedBlobs() {

@@ -13,7 +13,9 @@ import { createImportRunner } from "../imports/imports.job.ts";
 import type { ImportsRepository } from "../imports/imports.repository.ts";
 import type { PoliciesRepository } from "../data/data.policies.ts";
 import type { DiffsRepository } from "../diffs/diffs.repository.ts";
+import type { BlobStore } from "../../lib/blobstore/index.ts";
 import { createStateDeleteRunner } from "../states/states.delete.ts";
+import type { StatesRepository } from "../states/states.repository.ts";
 import { createArchiveImportRunner } from "../states/states.import.ts";
 import { createSnapshotRunner } from "../states/states.snapshot.ts";
 import type { QuotaSettings } from "../states/states.snapshot.ts";
@@ -21,6 +23,9 @@ import type { Dispatcher, JobRunner, JobRunnerContext } from "./jobs.dispatcher.
 
 export type RunnerDeps = ReturnToInitDeps & {
   db: MetadataDb;
+  /** Deleting a project takes its blobs with it; the state runners already hold both of these. */
+  states: Pick<StatesRepository, "removeProject" | "unpinnedOrphans" | "forgetBlobs">;
+  blobs: BlobStore;
   checkouts: CheckoutsRepository;
   diffs: DiffsRepository;
   imports: ImportsRepository;
@@ -96,7 +101,13 @@ export function registerRunners(dispatcher: Dispatcher, deps: RunnerDeps): void 
     const tokens = deps.db
       .query("UPDATE api_tokens SET revoked_at = ? WHERE revoked_at IS NULL AND project_ids LIKE ?")
       .run(nowIso(), `%"${job.project_id ?? ""}"%`).changes;
-    deps.db.query("DELETE FROM projects WHERE id = ?").run(job.project_id);
+    // The project row and the blob accounting go together, in one transaction: the states cascade
+    // away with it, and until now their references stayed counted on blobs nobody could reach.
+    const candidates = deps.states.removeProject(job.project_id ?? "");
+    progress({ phase: "gc", candidates: candidates.length });
+    const orphans = deps.states.unpinnedOrphans(candidates);
+    for (const hash of orphans) await deps.blobs.delete(hash);
+    deps.states.forgetBlobs(orphans);
     // No target_label: only the slug reaches this payload, not the project's display name, and
     // the slug already has its own column on this row (project.slug below).
     deps.audit.record({
@@ -105,12 +116,22 @@ export function registerRunners(dispatcher: Dispatcher, deps: RunnerDeps): void 
       target_type: "project",
       target_id: job.project_id ?? "",
       project: { id: job.project_id, slug: payload.slug },
-      details: { tokens_revoked: tokens, adapters: payload.actions.length, restored },
+      details: {
+        tokens_revoked: tokens,
+        adapters: payload.actions.length,
+        restored,
+        blobs_deleted: orphans.length,
+      },
       outcome: "succeeded",
     });
     return {
       status: "succeeded",
-      result: { tokens_revoked: tokens, adapters: payload.actions.length, restored },
+      result: {
+        tokens_revoked: tokens,
+        adapters: payload.actions.length,
+        restored,
+        blobs_deleted: orphans.length,
+      },
     };
   };
 

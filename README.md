@@ -1,3 +1,5 @@
+![Testate: git for your test database. Testers, CI pipelines and AI agents drive Testate, which runs on the same test server as the system under test and snapshots or restores its databases](docs/assets/hero.svg)
+
 # Testate
 
 [![License: MIT](https://img.shields.io/github/license/PT-Perkasa-Pilar-Utama/testate)](./LICENSE) [![Release](https://img.shields.io/github/v/release/PT-Perkasa-Pilar-Utama/testate?include_prereleases)](https://github.com/PT-Perkasa-Pilar-Utama/testate/releases) [![Container](https://img.shields.io/badge/ghcr.io-testate-blue?logo=docker&logoColor=white)](https://github.com/PT-Perkasa-Pilar-Utama/testate/pkgs/container/testate) [![Bun](https://img.shields.io/badge/Bun-1.4-black?logo=bun)](https://bun.sh)

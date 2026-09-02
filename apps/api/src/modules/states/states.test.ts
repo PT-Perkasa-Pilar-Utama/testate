@@ -13,6 +13,21 @@ import {
 } from "../../../test/states-harness.ts";
 import { ARCHIVE_MANIFEST_MOCK, STASH_MOCK, STATE_MOCK, TREE_MOCK } from "./states.mock.ts";
 
+/** The first of a set the caller has already asserted is not empty. */
+function firstOf(hashes: string[]): string {
+  const [first] = hashes;
+  if (first === undefined) throw new Error("no blobs to pin");
+  return first;
+}
+
+function projectId(harness: {
+  projectsRepo: { bySlug: (slug: string) => { id: string } | null };
+}): string {
+  const project = harness.projectsRepo.bySlug("shop");
+  if (project === null) throw new Error("the seeded project is gone");
+  return project.id;
+}
+
 describe("states", () => {
   it("mocks match the contract", () => {
     expectContract(stateSchema, STATE_MOCK, (clone) => {
@@ -117,6 +132,39 @@ describe("states", () => {
     await expect(h.states.remove(h.harness.qa, "shop", "init", TEST_META)).rejects.toThrow(
       "init states cannot be deleted"
     );
+  });
+
+  it("takes a project's blob references with the project, and leaves a pinned blob alone", async () => {
+    const h = await createStatesHarness();
+    await createSettled(h.harness, PG);
+    await snapshotSettled(h, "one");
+    h.harness.databases
+      .get("shop")
+      ?.set("public.orders", [{ id: 1, customer_id: 2, total: "1.00" }]);
+    await snapshotSettled(h, "two");
+    const owner = projectId(h.harness);
+    const before = h.harness.states.referencedBlobs();
+    expect(before.length).toBeGreaterThan(1);
+    // A job holding a blob open, which is what a diff does while it reads one.
+    const pinned = firstOf(before);
+    h.harness.db
+      .query(
+        "INSERT INTO jobs (id, kind, status, payload, created_at) VALUES (?, 'diff', 'running', '{}', ?)"
+      )
+      .run("01991f00-0000-7000-8000-0000000000ff", "2026-08-28T00:00:00.000Z");
+    h.harness.db
+      .query("INSERT INTO blob_pins (blob_hash, job_id) VALUES (?, ?)")
+      .run(pinned, "01991f00-0000-7000-8000-0000000000ff");
+
+    const candidates = h.harness.states.removeProject(owner);
+    expect([...candidates].sort()).toStrictEqual([...before].sort());
+    // Deleting the project cascades its states away, and until this method existed their blob
+    // references stayed counted, so nothing was ever left with none and nothing was ever swept.
+    expect(h.harness.states.referencedBlobs()).toStrictEqual([]);
+    expect(h.harness.projectsRepo.bySlug("shop")).toBeNull();
+    const orphans = h.harness.states.unpinnedOrphans(candidates);
+    expect(orphans).not.toContain(pinned);
+    expect(orphans.length).toBe(candidates.length - 1);
   });
 
   it("deletes a state, keeps shared blobs, frees unique ones, and clears HEAD", async () => {
