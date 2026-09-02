@@ -179,11 +179,10 @@ export default function DiffView(props: { slug: string; id: string }): JSX.Eleme
       for (const adapter of diff.adapters) {
         const table = adapter.tables.find((t) => t.added + t.removed + t.changed > 0);
         if (table === undefined) continue;
-        void presenter.select({
-          adapter_id: adapter.adapter_id,
-          adapter_name: adapter.name,
-          table,
-        });
+        // On the next turn, not inside the effect: `select` reads the presenter's own signals,
+        // and a read from an effect callback is the one Solid 2 warns about.
+        const pick = { adapter_id: adapter.adapter_id, adapter_name: adapter.name, table };
+        queueMicrotask(() => void presenter.select(pick));
         return;
       }
     }
