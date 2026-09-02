@@ -64,13 +64,22 @@ test.describe("qa gap stories", () => {
     await expect(dataRows(page)).toHaveCount(0);
     await page.getByRole("button", { name: "Remove filter" }).click();
     await settle(page);
-    const firstBefore = await dataRows(page).first().innerText();
-    await page.getByRole("button", { name: /^email/ }).click();
+    // Sort by id, both ways, and judge each against the ids on the page rather than against the
+    // previous first row: a parallel spec can leave the table with one row, and then "the first
+    // row changed" is false however well sorting works.
+    const ids = (await dataRows(page).locator("td:first-child").allInnerTexts()).map(Number);
+    await page.getByRole("button", { name: /^id/ }).click();
     await settle(page);
-    await page.getByRole("button", { name: /^email/ }).click();
+    const firstAscending = Number(
+      await dataRows(page).locator("td:first-child").first().innerText()
+    );
+    expect(firstAscending).toBeLessThanOrEqual(Math.min(...ids));
+    await page.getByRole("button", { name: /^id/ }).click();
     await settle(page);
-    const firstAfter = await page.locator("main tbody tr").first().innerText();
-    expect(firstAfter).not.toBe(firstBefore);
+    const firstDescending = Number(
+      await dataRows(page).locator("td:first-child").first().innerText()
+    );
+    expect(firstDescending).toBeGreaterThanOrEqual(Math.max(...ids));
     await page.getByLabel("Filter column").selectOption("email");
     await page.getByLabel("Filter operator").selectOption("like");
     await page.getByLabel("Filter value").fill("%@x.io");

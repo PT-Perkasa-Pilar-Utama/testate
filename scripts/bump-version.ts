@@ -52,7 +52,7 @@ const SLOTS: Slot[] = [
   },
   {
     file: "README.md",
-    pattern: /^Version ([^\s.]+(?:\.[^\s.]+)*)\./m,
+    pattern: /\bVersion (\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\./,
     render: (version: string) => `Version ${version}.`,
   },
   {

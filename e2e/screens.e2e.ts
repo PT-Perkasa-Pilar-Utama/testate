@@ -120,5 +120,16 @@ test.describe("README screens", () => {
     await page.screenshot({ path: join(SHOTS, "query.png") });
     await page.getByRole("button", { name: "Delete" }).first().click();
     await expect(page.getByRole("button", { name: "rows after a reset" })).toHaveCount(0);
+
+    // The API reference the instance serves itself, rendered by Scalar from the live contract.
+    // Not `fit`: the page has no `main`, and a reference is read at a screen's height anyway.
+    await page.setViewportSize({ width: WIDTH, height: 900 });
+    await page.goto("/api/v1/docs");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Testate", { exact: false }).first()).toBeVisible({
+      timeout: 30_000,
+    });
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: join(SHOTS, "openapi.png") });
   });
 });
