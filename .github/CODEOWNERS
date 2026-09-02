@@ -1,0 +1,3 @@
+# Code owners for Testate. Every pull request asks these maintainers for review, and any one of
+# them satisfies the code-owner approval the main ruleset requires.
+* @snowfluke @extenv @amaruki
