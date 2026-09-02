@@ -177,7 +177,7 @@ test.describe("state stories", () => {
       .click();
     await expect(page.getByRole("table")).toBeVisible();
     await expect(page.getByText("A tinted cell changed")).toBeVisible();
-    await page.getByRole("link", { name: "Back to activity" }).click();
+    await page.getByLabel("Breadcrumb").getByRole("link", { name: "activity" }).click();
     await settle(page);
     // Export and delete moved into the row's overflow; Details is the only control still out front.
     const menu = await rowMenu(row);
