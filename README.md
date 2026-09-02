@@ -166,7 +166,7 @@ cosign verify ghcr.io/pt-perkasa-pilar-utama/testate:1.0.0-beta \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
-For a binary, run the same two commands on the archive, with `--bundle <archive>.sigstore.json` for cosign. A download that fails either check is not ours; [SECURITY.md](SECURITY.md) says how to report it.
+For a binary, run the same two commands on the archive, with `--bundle <archive>.sigstore.json` for cosign; the release also carries `testate-<version>.intoto.jsonl`, the provenance statement for every archive, for a check without network access (`gh attestation verify <archive> --bundle <that file>`). A download that fails either check is not ours; [SECURITY.md](SECURITY.md) says how to report it.
 
 ## Operate it
 
