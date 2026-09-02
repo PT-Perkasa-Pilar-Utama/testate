@@ -72,8 +72,13 @@ export function watch(page: Page, issues: Issue[]): void {
     const diagnostic = message.type() === "warning" && /\[[A-Z_]{6,}\]/.test(text);
     if (message.type() !== "error" && !diagnostic) return;
     if (/Failed to load resource/.test(text)) return;
-    // The location too, for a diagnostic: the code names the mistake and the file names the line.
     const at = message.location();
+    // A stored file previews inside a frame that is sandboxed twice over, by the dialog and by
+    // the API's own policy on the bytes. Chrome's image viewer document then reports its own
+    // inline style and script being refused, which is the sandbox working, not the app failing.
+    // One of those reports arrives with no location and names the frame in its text instead.
+    if (at.url.includes("/entries/preview") || text.includes("/entries/preview?")) return;
+    // The location too, for a diagnostic: the code names the mistake and the file names the line.
     const site = at.url === "" ? "" : ` (${at.url.split("/").slice(-1)[0]}:${at.lineNumber})`;
     issues.push({ kind: "console", detail: `${where()} ${text.slice(0, 300)}${site}` });
   });
@@ -308,6 +313,11 @@ export async function overflowingCards(page: Page): Promise<string[]> {
 export async function topOf(target: Locator): Promise<number> {
   const box = await target.boundingBox();
   return box === null ? Number.NaN : box.y;
+}
+
+/** The bytes a preview frame loads, as opposed to the listing the dialog asked for first. */
+export function isPreviewFetch(response: Response): boolean {
+  return response.url().includes("/preview") && response.request().method() === "GET";
 }
 
 /** How many cards a screen is showing. An overflow check over zero cards proves nothing. */

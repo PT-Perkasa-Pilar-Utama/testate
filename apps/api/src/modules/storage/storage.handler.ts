@@ -84,7 +84,10 @@ export function createStorageHandlers(
         contentDisposition("inline", path.split("/").pop() ?? "file")
       );
       c.header("X-Content-Type-Options", "nosniff");
-      c.header("Content-Security-Policy", "sandbox; default-src 'none'");
+      // Sandboxed and inert, but framed by the dashboard's own preview dialog, so the frame
+      // headers say so; the global DENY would blank every image and PDF.
+      c.header("Content-Security-Policy", "sandbox; default-src 'none'; frame-ancestors 'self'");
+      c.header("X-Frame-Options", "SAMEORIGIN");
       return c.body(new Blob([result.bytes]).stream(), 200);
     },
     download: async (c) => {

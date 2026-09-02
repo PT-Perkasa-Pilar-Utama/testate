@@ -2,11 +2,16 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import { apiContext, demoAdapter, firstTable } from "./lib/api.ts";
-import { dataRows, rowMenu, settle, watch } from "./lib/crawl.ts";
+import { dataRows, isPreviewFetch, rowMenu, settle, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
 const STAMP = Date.now().toString(36);
+/** A one-pixel PNG, the smallest thing the preview will frame as an image. */
+const PIXEL = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  "base64"
+);
 
 async function postgresBase(): Promise<string> {
   return `/projects/demo/adapters/${(await demoAdapter({ engine: "postgres" })).id}`;
@@ -147,10 +152,22 @@ test.describe("qa flows", () => {
         page.getByRole("button", { name: `batch-b-${STAMP}.txt`, exact: true })
       ).toBeVisible();
 
-      // Two ticks, one press, and the empty folder goes with the file.
+      // An image previews inside a sandboxed frame the API must let the dashboard frame (story
+      // 95): the response the frame loads is asserted, not only the dialog around it.
+      await upload.setInputFiles({ name: "pixel.png", mimeType: "image/png", buffer: PIXEL });
+      const framed = page.waitForResponse(isPreviewFetch);
+      await page.getByRole("button", { name: "pixel.png", exact: true }).click();
+      expect((await framed).status()).toBe(200);
+      // The pixel itself, inside the frame: a blank frame with a 200 behind it would pass the
+      // line above, and that is exactly what a frame-denying header produces.
+      await expect(page.frameLocator("dialog[open] iframe").locator("img")).toBeVisible();
+      await page.locator("dialog[open]").getByText("Close", { exact: true }).click();
+
+      // Three ticks, one press, and the empty folder goes with the files.
       await page.getByRole("checkbox", { name: `Select batch-b-${STAMP}.txt` }).check();
+      await page.getByRole("checkbox", { name: "Select pixel.png" }).check();
       await page.getByRole("checkbox", { name: `Select e2e-${STAMP}` }).check();
-      await expect(page.getByText("2 entries selected.")).toBeVisible();
+      await expect(page.getByText("3 entries selected.")).toBeVisible();
       await page.getByRole("button", { name: "Delete selected" }).click();
       await page.locator("dialog[open]").getByRole("button", { name: "Delete" }).click();
       await expect(

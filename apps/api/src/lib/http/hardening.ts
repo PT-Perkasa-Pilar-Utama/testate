@@ -61,15 +61,18 @@ export type HeaderOptions = {
 };
 
 /**
- * Every response leaves with the headers 07 §7.5 promises. The Content-Security-Policy is set
- * only where the handler set none, because the storage preview locks its own response down
- * harder than the dashboard's policy would, and a middleware that overwrote it would loosen the
- * one path that renders someone else's bytes.
+ * Every response leaves with the headers 07 §7.5 promises. The Content-Security-Policy and
+ * X-Frame-Options are set only where the handler set none, because the storage preview locks its
+ * own response down harder than the dashboard's policy would and is framed by the dashboard on
+ * purpose; a middleware that overwrote either would loosen the one path that renders someone
+ * else's bytes, or blank it.
  */
 export function securityHeaders(options: HeaderOptions): MiddlewareHandler {
   const base = secureHeaders({
     strictTransportSecurity: options.hsts ? "max-age=31536000; includeSubDomains" : false,
-    xFrameOptions: "DENY",
+    // Set below, and only where the handler set none: the stored-file preview is framed by the
+    // dashboard on purpose and answers SAMEORIGIN itself.
+    xFrameOptions: false,
     referrerPolicy: "no-referrer",
     crossOriginOpenerPolicy: "same-origin",
     permissionsPolicy: { camera: [], microphone: [], geolocation: [], payment: [], usb: [] },
@@ -77,6 +80,7 @@ export function securityHeaders(options: HeaderOptions): MiddlewareHandler {
   return async (c, next) => {
     await base(c, next);
     const headers = c.res.headers;
+    if (!headers.has("x-frame-options")) headers.set("x-frame-options", "DENY");
     if (!headers.has("content-security-policy")) {
       const docs = c.req.path === `${options.apiPrefix}/docs`;
       headers.set("content-security-policy", docs ? DOCS_CSP : APP_CSP);

@@ -15,7 +15,8 @@ function app(hsts = false): Hono {
   a.get("/", (c) => c.html("<p>app</p>"));
   a.get(`${PREFIX}/docs`, (c) => c.html("<p>docs</p>"));
   a.get(`${PREFIX}/preview`, (c) => {
-    c.header("Content-Security-Policy", "sandbox; default-src 'none'");
+    c.header("Content-Security-Policy", "sandbox; default-src 'none'; frame-ancestors 'self'");
+    c.header("X-Frame-Options", "SAMEORIGIN");
     return c.body("bytes", 200);
   });
   a.post(`${PREFIX}/echo`, async (c) => c.json({ size: (await c.req.text()).length }));
@@ -51,9 +52,13 @@ describe("security headers (07 §7.5)", () => {
     expect(res.headers.get("content-security-policy")).toContain("https://cdn.jsdelivr.net");
   });
 
-  it("keeps the preview's own, stricter policy", async () => {
+  it("keeps the preview's own policy and lets the dashboard frame it", async () => {
     const res = await app().request(`${PREFIX}/preview`);
-    expect(res.headers.get("content-security-policy")).toBe("sandbox; default-src 'none'");
+    expect(res.headers.get("content-security-policy")).toBe(
+      "sandbox; default-src 'none'; frame-ancestors 'self'"
+    );
+    // DENY here would blank every image and PDF preview: the frame is the dashboard's own.
+    expect(res.headers.get("x-frame-options")).toBe("SAMEORIGIN");
   });
 });
 
