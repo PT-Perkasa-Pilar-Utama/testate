@@ -4,7 +4,10 @@
  * three states with tags, a checkout, a diff against the live databases, a saved query, two more
  * accounts and two tokens. Point it at your own `bun run dev` (TESTATE_ENV=development):
  *
- *   TESTATE_ADMIN_PASSWORD=<your bootstrap password> bun run seed:dev [http://localhost:7378]
+ *   bun run seed:dev [http://localhost:7378]
+ *
+ * The bootstrap password comes from `apps/api/.env`, the same file `bun run dev` reads; set
+ * TESTATE_ADMIN_PASSWORD only for an instance that started with a different one.
  *
  * It resets the instance: `POST /admin/reset-state` drops every project, adapter, state and
  * account and recreates the dev seed. Run it against a box you do not mind wiping, with
@@ -14,9 +17,21 @@
 import * as v from "valibot";
 
 const base = (process.argv[2] ?? "http://localhost:7378").replace(/\/$/, "");
-const bootstrap = Bun.env["TESTATE_ADMIN_PASSWORD"] ?? "";
-if (bootstrap === "")
-  throw new Error("set TESTATE_ADMIN_PASSWORD to the instance's bootstrap password");
+/**
+ * The bootstrap password `bun run dev` started with: the environment if set, else the line in
+ * `apps/api/.env`, which is the file the dev server itself reads. Nobody should have to know it.
+ */
+async function bootstrapPassword(): Promise<string> {
+  const fromEnv = Bun.env["TESTATE_ADMIN_PASSWORD"] ?? "";
+  if (fromEnv !== "") return fromEnv;
+  const file = Bun.file(new URL("../.env", import.meta.url));
+  const text = (await file.exists()) ? await file.text() : "";
+  const line = /^TESTATE_ADMIN_PASSWORD=(.+)$/m.exec(text)?.[1]?.trim() ?? "";
+  if (line === "")
+    throw new Error("no TESTATE_ADMIN_PASSWORD in the environment or in apps/api/.env");
+  return line;
+}
+const bootstrap = await bootstrapPassword();
 
 const FINAL = {
   admin: "admin-final-password-1",

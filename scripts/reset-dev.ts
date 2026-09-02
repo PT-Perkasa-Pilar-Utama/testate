@@ -99,4 +99,4 @@ if (args.includes("--engines") && !dryRun) {
   await step("demo schema created by the contract suites", ["bun", "run", "contract"]);
 }
 
-console.log("clean. Next: bun run dev, then TESTATE_ADMIN_PASSWORD=<bootstrap> bun run seed:dev");
+console.log("clean. Next: bun run dev, then bun run seed:dev");

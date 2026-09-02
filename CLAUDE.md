@@ -11,7 +11,7 @@ Git for your test database. Bun 1.4 monorepo: `apps/api` (Hono), `apps/web` (Sol
 | Lint and format                       | `bun run lint`, `bun run fmt:fix`                                                                           |
 | Dev servers                           | `bun run dev` (API :7378, Vite :7379 proxying `/api`)                                                       |
 | Smoke a running API                   | `bun run smoke`                                                                                             |
-| Seed a dev instance with the demo     | `TESTATE_ADMIN_PASSWORD=<bootstrap> bun run seed:dev [url]` (wipes it; needs the compose engines)           |
+| Seed a dev instance with the demo     | `bun run seed:dev [url]` (wipes it; needs the compose engines; bootstrap read from `apps/api/.env`)         |
 | Wipe the dev environment              | `bun run reset:dev --yes [--engines]` (stop `bun run dev` first; `--engines` also rebuilds the demo schema) |
 | Browser end-to-end (Playwright)       | `bun run e2e` (its own ports 7478/7479, so it runs beside `bun run dev`)                                    |
 | Engine contract suites                | `bun run contract` (needs the compose engines; fails on a skip)                                             |
