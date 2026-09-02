@@ -1,4 +1,4 @@
--- Hooks and saved REST requests were removed in the beta UI rework (docs/UI_REWORK.md).
+-- Hooks and saved REST requests were removed in the UI rework of 2026-09-01.
 -- Hooks fired a saved HTTP request around a checkout, a snapshot, or an import. Nobody used it.
 -- Saved REST requests existed almost entirely so hooks had something to point at: the `hooks`
 -- table carried a foreign key into `rest_requests`, so one could not go without the other.
