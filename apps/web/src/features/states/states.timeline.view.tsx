@@ -9,19 +9,45 @@ import { formatWhen } from "@/lib/format.ts";
 import { STATE_KIND_LABEL, STATE_STATUS_LABEL } from "@/lib/labels.ts";
 import { adapterSummary, eventsLabel, formatBytes } from "./states.format.ts";
 
+const DOT_BASE = "z-10 mt-1 h-3.5 w-3.5 shrink-0 rounded-full ring-4 ring-surface";
+/** HEAD is the mark's own green, filled, the way the head node reads on the logo. */
+const DOT_HEAD = "bg-success";
+const DOT_OTHER = "border-2 border-line bg-surface";
+
 /**
- * The dot on the rail. HEAD is filled and cyan, the way the current commit reads on a graph;
- * everything else is a hollow ring, so the eye finds where the databases are without reading.
+ * The dot on the rail, which is also the tick for a comparison when the reader may compare.
+ *
+ * It used to be a dot beside a checkbox, two boxes on every row for one idea. The dot is now the
+ * checkbox itself: `appearance-none` and drawn as the node, a teal ring when ticked, and the same
+ * accessible name as before, so nothing that selects "Compare <name>" changes.
  */
-function Dot(props: { head: boolean }): JSX.Element {
+function Dot(props: {
+  head: boolean;
+  name: string;
+  picked: boolean;
+  onPick?: (() => void) | undefined;
+}): JSX.Element {
   return (
-    <span
-      class={[
-        "z-10 mt-1.5 h-3 w-3 shrink-0 rounded-full ring-4 ring-canvas",
-        props.head ? "bg-accent" : "border-2 border-line bg-canvas",
-      ]}
-      aria-hidden="true"
-    />
+    <Show
+      when={props.onPick}
+      fallback={<span class={[DOT_BASE, props.head ? DOT_HEAD : DOT_OTHER]} aria-hidden="true" />}
+    >
+      {(pick) => (
+        <input
+          type="checkbox"
+          class={[
+            DOT_BASE,
+            "cursor-pointer appearance-none outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+            props.head ? DOT_HEAD : DOT_OTHER,
+            props.picked ? "!ring-accent" : "",
+          ]}
+          aria-label={`Compare ${props.name}`}
+          title={props.picked ? "Ticked for a comparison" : "Tick to compare"}
+          checked={props.picked}
+          onChange={() => pick()()}
+        />
+      )}
+    </Show>
   );
 }
 
@@ -52,10 +78,21 @@ function Meta(props: { state: StateListItem }): JSX.Element {
   );
 }
 
+/** HEAD reads plainly only while the databases are known to hold it (docs/PROJECT_REWORK.md). */
+function headLabel(unknown: boolean, dirty: boolean): string {
+  if (unknown) return "HEAD, unverified";
+  return dirty ? "HEAD · modified" : "HEAD";
+}
+
+function headTone(unknown: boolean, dirty: boolean): "warning" | "success" {
+  return unknown || dirty ? "warning" : "success";
+}
+
 export type TimelineRowProps = {
   state: StateListItem;
   head: boolean;
   headUnknown?: boolean | undefined;
+  headDirty?: boolean | undefined;
   /** The row's own controls, so this file never learns what a checkout is. */
   actions: JSX.Element;
   onPick?: ((id: string) => void) | undefined;
@@ -72,19 +109,15 @@ function TimelineRow(props: TimelineRowProps): JSX.Element {
       {/* `pointer-events-none` because it is a drawn line: without it the rail sits over the
           checkbox beside it and swallows the click. */}
       <span
-        class="pointer-events-none absolute top-5 bottom-0 left-1.5 w-px bg-line group-last:hidden"
+        class="pointer-events-none absolute top-5 bottom-0 left-[6px] w-px bg-line group-last:hidden"
         aria-hidden="true"
       />
-      <Show when={props.onPick !== undefined}>
-        <input
-          type="checkbox"
-          class="mt-1 shrink-0 cursor-pointer"
-          aria-label={`Compare ${props.state.name}`}
-          checked={props.picked === true}
-          onChange={() => props.onPick?.(props.state.id)}
-        />
-      </Show>
-      <Dot head={props.head} />
+      <Dot
+        head={props.head}
+        name={props.state.name}
+        picked={props.picked === true}
+        onPick={props.onPick === undefined ? undefined : () => props.onPick?.(props.state.id)}
+      />
       <div class="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div class="grid min-w-0 gap-1">
           <div class="flex flex-wrap items-center gap-2">
@@ -93,8 +126,8 @@ function TimelineRow(props: TimelineRowProps): JSX.Element {
               {/* A checkout that failed part way leaves head_status 'unknown': the databases hold
                   some of this state and some of whatever came before, and saying HEAD flat would
                   be a claim nobody checked (docs/PROJECT_REWORK.md). */}
-              <Badge variant={props.headUnknown === true ? "warning" : "primary"}>
-                {props.headUnknown === true ? "HEAD, unverified" : "HEAD"}
+              <Badge variant={headTone(props.headUnknown === true, props.headDirty === true)}>
+                {headLabel(props.headUnknown === true, props.headDirty === true)}
               </Badge>
             </Show>
             <Show when={props.state.protected}>
@@ -134,6 +167,8 @@ export type TimelineProps = {
   headStateId: string | null;
   /** A failed restore leaves HEAD unknown; the badge says so rather than claiming the state. */
   headUnknown?: boolean;
+  /** The databases are known to have moved off HEAD; the badge says modified. */
+  headDirty?: boolean;
   actionsFor: (state: StateListItem) => JSX.Element;
   empty: JSX.Element;
   /** Ticking picks a state to compare; absent means the column is not there at all. */
@@ -164,6 +199,7 @@ export default function Timeline(props: TimelineProps): JSX.Element {
               state={state}
               head={state.id === props.headStateId}
               headUnknown={props.headUnknown === true}
+              headDirty={props.headDirty === true}
               actions={props.actionsFor(state)}
               onPick={props.onPick}
               picked={props.picked?.includes(state.id) === true}

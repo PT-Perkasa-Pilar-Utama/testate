@@ -56,6 +56,11 @@ export type StatesPresenter = Paged<StateListItem> & {
    * imports it cannot be tested outside a browser; where to go next is the view's answer anyway.
    */
   compare: () => Promise<boolean>;
+  /**
+   * Diffs HEAD against the live databases, which is the one way an outside write can be seen, and
+   * says what it found. The project's HEAD badge follows through `onChanged`.
+   */
+  checkDrift: (state: State) => Promise<void>;
 };
 
 /** "a, b,,a " -> ["a", "b"]. */
@@ -196,6 +201,28 @@ export function createStatesPresenter(
         made = true;
       });
       return made;
+    },
+    checkDrift: async (state) => {
+      const staticSlug = slug();
+      await attempt(async () => {
+        const { diff, job } = await diffsModel.create(staticSlug, {
+          base_state_id: state.id,
+          target: LIVE,
+        });
+        showToast(`Comparing ${state.name} with the live databases...`);
+        await jobs.settle(job);
+        const result = await diffsModel.get(staticSlug, diff.id);
+        const moved = result.adapters.some((adapter) =>
+          adapter.tables.some((table) => table.added + table.removed + table.changed > 0)
+        );
+        onChanged();
+        showToast(
+          moved
+            ? `The databases have changed since ${state.name}.`
+            : `The databases still match ${state.name}.`,
+          moved ? "info" : "success"
+        );
+      });
     },
     openDetail: (state) => openById(state.id),
     openDetailById: (id) => openById(id),

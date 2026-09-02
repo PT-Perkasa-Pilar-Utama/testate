@@ -3,6 +3,7 @@ import { Loading, Show } from "solid-js";
 import type { State } from "@testate/shared";
 
 import Button from "@/components/button.tsx";
+import Icon from "@/components/icon.tsx";
 import { Menu, MenuItem, MenuLink } from "@/components/menu.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Switch from "@/components/switch.tsx";
@@ -26,6 +27,10 @@ const VIEWS = [
 function RowActions(props: {
   presenter: StatesPresenter;
   state: State;
+  /** This row is HEAD. */
+  head: boolean;
+  /** HEAD, verified and unmoved: the databases hold exactly this state. */
+  atHead: boolean;
   checkout: (state: State) => Promise<void>;
 }): JSX.Element {
   return (
@@ -42,11 +47,17 @@ function RowActions(props: {
           </Button>
         }
       >
+        {/* Quiet on the state the databases already hold, solid on every other: the button says
+            where you are as well as where you can go. Never disabled, because an outside write
+            Testate has not seen yet is exactly when a tester reaches for it. */}
         <Button
           size="sm"
-          variant="primary"
+          variant={props.atHead ? "outline" : "accent"}
           disabled={props.state.status !== "ready"}
-          title={checkoutBlockedReason(props.state)}
+          title={
+            checkoutBlockedReason(props.state) ??
+            (props.atHead ? "The databases are on this state" : undefined)
+          }
           onClick={() => void props.checkout(props.state)}
         >
           Check out
@@ -55,6 +66,11 @@ function RowActions(props: {
       <Menu label={`Actions for ${props.state.name}`}>
         <Show when={hasRole("qa")}>
           <MenuItem onClick={() => void props.presenter.openDetail(props.state)}>Details</MenuItem>
+        </Show>
+        <Show when={hasRole("qa") && props.head}>
+          <MenuItem onClick={() => void props.presenter.checkDrift(props.state)}>
+            Check for changes
+          </MenuItem>
         </Show>
         <MenuLink href={props.presenter.archiveUrl(props.state)}>Download</MenuLink>
         <Show when={hasRole("qa")}>
@@ -83,6 +99,8 @@ export default function StatesView(props: {
   headStateId?: string | null;
   /** A restore failed part way, so nobody knows what the databases hold; the row says so. */
   headUnknown?: boolean;
+  /** The databases are known to have moved off HEAD (`head.dirty`). */
+  headDirty?: boolean;
   onChanged?: () => void;
 }): JSX.Element {
   const presenter = createStatesPresenter(
@@ -114,13 +132,17 @@ export default function StatesView(props: {
           variant="segmented"
         />
         <div class="flex items-center gap-4">
+          <Show when={hasRole("qa") && presenter.view() === "list"}>
+            <span class="text-xs text-muted">Tick a dot to compare</span>
+          </Show>
           <Switch
             label="Show stashes"
             checked={presenter.showStashes()}
             onChange={(value) => presenter.setShowStashes(value)}
           />
           <Show when={hasRole("qa")}>
-            <Button variant="primary" onClick={() => presenter.openTake()}>
+            <Button variant="accent" size="lg" onClick={() => presenter.openTake()}>
+              <Icon name="camera" class="h-4 w-4" />
               Take state
             </Button>
           </Show>
@@ -158,12 +180,19 @@ export default function StatesView(props: {
             states={presenter.value()}
             headStateId={props.headStateId ?? null}
             headUnknown={props.headUnknown === true}
+            headDirty={props.headDirty === true}
             onPick={hasRole("qa") ? (id) => presenter.toggleSelected(id) : undefined}
             picked={presenter.selected()}
             actionsFor={(state) => (
               <RowActions
                 presenter={presenter}
                 state={state}
+                head={state.id === props.headStateId}
+                atHead={
+                  state.id === props.headStateId &&
+                  props.headUnknown !== true &&
+                  props.headDirty !== true
+                }
                 checkout={(target) => preflight.open(target)}
               />
             )}

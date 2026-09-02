@@ -15,7 +15,12 @@ export type HeadBadge = { tone: HeadTone; label: string };
 /** The badge for a project's HEAD: the enum word `head.status` stores is not what a person calls it. */
 export function headBadge(head: Head): HeadBadge {
   const tone = HEAD_TONE[head.status];
-  if (head.status === "at_state") return { tone, label: head.state_name ?? "at a state" };
+  if (head.status === "at_state") {
+    const name = head.state_name ?? "at a state";
+    // Known to have moved on: Testate wrote to the databases, or a diff against live found rows
+    // that changed. The state is still the reference point, so it keeps its name in the pill.
+    return head.dirty ? { tone: "warning", label: `${name} · modified` } : { tone, label: name };
+  }
   if (head.status === "unknown") return { tone, label: "unknown" };
   return { tone, label: "no state yet" };
 }

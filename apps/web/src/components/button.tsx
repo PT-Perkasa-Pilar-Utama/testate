@@ -19,6 +19,10 @@ const VARIANTS = {
     "bg-danger !text-white ring ring-danger not-disabled:hover:opacity-90 disabled:opacity-50",
   outline:
     "bg-transparent text-body ring ring-line not-disabled:hover:bg-hover not-disabled:hover:ring-inactive",
+  // The product's own two verbs, take a state and check one out, and nothing else: the one solid
+  // teal on a screen is the thing Testate exists to do.
+  accent:
+    "bg-accent !text-on-accent ring ring-accent not-disabled:hover:bg-accent-hover disabled:opacity-50",
   // A destructive action that sits in a row or a header, where a solid red on every line would
   // shout. The confirm dialog that follows it carries the solid one.
   danger:
