@@ -20,7 +20,7 @@ export function JunctionToolbar(props: { adapter: Adapter; base: string }): JSX.
   const a = (): Adapter => props.adapter;
   return (
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h3 class="text-base font-semibold text-heading">
+      <h3 class="text-lg font-semibold tracking-tight text-heading">
         {a().tier === "files" ? "Files" : "Tables"}
       </h3>
       <div class="flex flex-wrap items-center gap-2">

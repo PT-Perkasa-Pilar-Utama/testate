@@ -35,7 +35,7 @@ export default function Tabs<T extends string>(props: TabsProps<T>): JSX.Element
             role="tab"
             aria-selected={props.value === item.id ? "true" : "false"}
             class={[
-              "inline-flex cursor-pointer items-center gap-1.5 px-3 text-base outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+              "inline-flex cursor-pointer items-center gap-1.5 px-3 text-base outline-none transition-colors duration-[80ms] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
               props.variant === "segmented"
                 ? "h-7 rounded-sm"
                 : "-mb-px h-9 rounded-t-md border-b-2",
@@ -52,7 +52,9 @@ export default function Tabs<T extends string>(props: TabsProps<T>): JSX.Element
           >
             {item.label}
             <Show when={item.count !== undefined && item.count > 0}>
-              <span class="rounded-full bg-fill px-1.5 text-xs text-muted">{item.count}</span>
+              <span class="rounded-full bg-fill px-1.5 font-mono text-xs text-muted">
+                {item.count}
+              </span>
             </Show>
           </button>
         )}

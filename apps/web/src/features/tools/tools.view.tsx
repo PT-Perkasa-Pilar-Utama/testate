@@ -18,7 +18,7 @@ const ENCODING_OPTIONS = ENCODINGS.map((value) => ({ value, label: value }));
 /** A card's own name, so three generators read as three tools and not three settings sections. */
 function CardTitle(props: { icon: IconName; children: JSX.Element }): JSX.Element {
   return (
-    <h3 class="flex items-center gap-1.5 text-base font-semibold text-heading">
+    <h3 class="flex items-center gap-1.5 text-lg font-semibold tracking-tight text-heading">
       <Icon name={props.icon} class="h-4 w-4 text-muted" />
       {props.children}
     </h3>

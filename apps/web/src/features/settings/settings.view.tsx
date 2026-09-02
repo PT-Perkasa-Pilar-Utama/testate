@@ -58,7 +58,7 @@ function Group(props: {
   return (
     <div class="grid gap-4 border-t border-line pt-6 first:border-t-0 first:pt-0">
       <div class="grid gap-1.5">
-        <h3 id={props.id} class="scroll-mt-6 text-base font-semibold text-heading">
+        <h3 id={props.id} class="scroll-mt-6 text-lg font-semibold tracking-tight text-heading">
           {props.title}
         </h3>
         <Show when={props.description}>
@@ -83,7 +83,10 @@ function Section(props: {
     <LayerCard class="grid gap-3 px-5 py-4">
       <form class="grid gap-3" onSubmit={onSubmit}>
         <div class="flex items-center justify-between">
-          <h3 id={props.name} class="scroll-mt-6 text-base font-semibold text-heading capitalize">
+          <h3
+            id={props.name}
+            class="scroll-mt-6 text-lg font-semibold tracking-tight text-heading capitalize"
+          >
             {props.name}
           </h3>
           <Button type="submit" size="sm" variant="primary">
@@ -170,7 +173,7 @@ function StoreCard(props: { presenter: SettingsPresenter }): JSX.Element {
 function BackupCard(props: { presenter: SettingsPresenter }): JSX.Element {
   return (
     <LayerCard class="grid gap-3 px-5 py-4">
-      <h3 class="text-base font-semibold text-heading">Backup</h3>
+      <h3 class="text-lg font-semibold tracking-tight text-heading">Backup</h3>
       <div class="flex flex-wrap items-center gap-4">
         <Switch
           label="Include snapshot blobs"
@@ -213,7 +216,10 @@ function NetguardCard(props: { presenter: SettingsPresenter }): JSX.Element {
   return (
     <LayerCard class="grid gap-3 px-5 py-4">
       <div class="grid gap-1">
-        <h3 id="blocked-hosts" class="scroll-mt-6 text-base font-semibold text-heading">
+        <h3
+          id="blocked-hosts"
+          class="scroll-mt-6 text-lg font-semibold tracking-tight text-heading"
+        >
           Blocked hosts
         </h3>
         <p class="text-sm text-muted">

@@ -4,10 +4,12 @@ import { For } from "solid-js";
 import { toasts } from "@/lib/toast.ts";
 import type { ToastTone } from "@/lib/toast.ts";
 
+// A raised card with one coloured edge, rather than a wash: the message reads in body text and
+// the tone is a glance at the left.
 const TONES = {
-  info: "bg-info-tint text-info-fg ring-info/40",
-  success: "bg-success-tint text-success-fg ring-success/40",
-  error: "bg-danger-tint text-danger-fg ring-danger/40",
+  info: "border-l-info",
+  success: "border-l-success",
+  error: "border-l-danger",
 } satisfies Record<ToastTone, string>;
 
 /** Mount once, near the end of the app tree. */
@@ -19,7 +21,12 @@ export default function Toaster(): JSX.Element {
     >
       <For each={toasts()}>
         {(toast) => (
-          <div class={["rounded-md px-4 py-2 text-base shadow-md ring", TONES[toast.tone]]}>
+          <div
+            class={[
+              "rounded-md border-l-2 bg-surface px-4 py-2.5 text-base text-body shadow-lg shadow-black/40 ring ring-line",
+              TONES[toast.tone],
+            ]}
+          >
             {toast.message}
           </div>
         )}

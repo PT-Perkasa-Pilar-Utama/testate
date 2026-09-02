@@ -24,8 +24,8 @@ export default function Switch(props: SwitchProps): JSX.Element {
       >
         <span
           class={[
-            "absolute top-0.5 left-0.5 h-5.5 w-5.5 rounded-full bg-surface shadow-sm transition-transform duration-[80ms]",
-            { "translate-x-4": props.checked },
+            "absolute top-0.5 left-0.5 h-5.5 w-5.5 rounded-full shadow-sm transition-transform duration-[80ms]",
+            { "translate-x-4 bg-canvas": props.checked, "bg-muted": !props.checked },
           ]}
         />
       </button>

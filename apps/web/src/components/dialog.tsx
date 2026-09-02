@@ -76,7 +76,7 @@ export default function Dialog(props: DialogProps): JSX.Element {
     <dialog
       ref={setElement}
       class={[
-        "m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] overflow-y-auto rounded-lg bg-surface p-0 text-body shadow-xl ring ring-line backdrop:bg-sunken/80",
+        "m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] overflow-y-auto rounded-xl bg-surface p-0 text-body ring ring-line backdrop:bg-canvas/75",
         SIZES[props.size ?? "base"],
       ]}
       onCancel={(event) => {
@@ -94,7 +94,10 @@ export default function Dialog(props: DialogProps): JSX.Element {
           <div class="flex min-w-0 flex-col gap-1">
             {/* Titles are built from what a person named a thing: `Delete ${slug}`, `Revoke ${name}`.
                 A 64-character username stretched the header off the dialog. */}
-            <h2 class="truncate text-lg font-semibold text-heading" title={props.title}>
+            <h2
+              class="truncate text-lg font-semibold tracking-tight text-heading"
+              title={props.title}
+            >
               {props.title}
             </h2>
             <Show when={props.description}>

@@ -100,7 +100,7 @@ function RecoveryActions(props: {
         {(adapter) => (
           <Button
             size="sm"
-            variant="destructive"
+            variant="danger"
             onClick={() => void props.presenter.terminate(props.checkout, adapter)}
           >
             <Icon name="ban" class="h-3 w-3" />

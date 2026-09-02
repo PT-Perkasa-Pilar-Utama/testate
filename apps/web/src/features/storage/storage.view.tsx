@@ -254,7 +254,7 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
             <Button size="sm" variant="ghost" onClick={() => presenter.clearPicked()}>
               Clear
             </Button>
-            <Button size="sm" variant="destructive" onClick={() => presenter.askBatch()}>
+            <Button size="sm" variant="danger" onClick={() => presenter.askBatch()}>
               <Icon name="trash-2" class="h-3.5 w-3.5" />
               Delete selected
             </Button>

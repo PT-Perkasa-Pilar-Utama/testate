@@ -33,7 +33,7 @@ function PasswordCard(props: { presenter: AccountPresenter }): JSX.Element {
   return (
     <LayerCard class="grid gap-4 px-5 py-4">
       <div class="grid gap-1">
-        <h3 class="text-base font-semibold text-heading">Change password</h3>
+        <h3 class="text-lg font-semibold tracking-tight text-heading">Change password</h3>
         <p class="text-sm text-muted">This signs you out of every other session.</p>
       </div>
       <Form of={form} class="grid gap-3 sm:grid-cols-2" onSubmit={(input) => submit(input)}>
@@ -139,7 +139,7 @@ export default function AccountView(): JSX.Element {
       <PasswordCard presenter={presenter} />
       <LayerCard class="grid gap-3 px-5 py-4">
         <div class="grid gap-1">
-          <h3 class="text-base font-semibold text-heading">Sessions</h3>
+          <h3 class="text-lg font-semibold tracking-tight text-heading">Sessions</h3>
           <p class="text-sm text-muted">
             Every device signed in as you. Sign out any you don't recognise.
           </p>

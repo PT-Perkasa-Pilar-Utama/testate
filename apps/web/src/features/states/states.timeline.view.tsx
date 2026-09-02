@@ -152,10 +152,12 @@ export default function Timeline(props: TimelineProps): JSX.Element {
     <Show
       when={props.states.length > 0}
       fallback={
-        <div class="rounded-lg px-5 py-8 text-center text-muted ring ring-line">{props.empty}</div>
+        <div class="rounded-lg bg-surface px-5 py-8 text-center text-muted ring ring-line">
+          {props.empty}
+        </div>
       }
     >
-      <ul class="grid rounded-lg px-5 py-4 ring ring-line" aria-label="States">
+      <ul class="grid rounded-lg bg-surface px-5 py-4 ring ring-line" aria-label="States">
         <For each={props.states}>
           {(state) => (
             <TimelineRow

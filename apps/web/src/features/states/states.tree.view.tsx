@@ -75,10 +75,15 @@ export default function Tree(props: TreeProps): JSX.Element {
     <Show
       when={props.nodes.length > 0}
       fallback={
-        <div class="rounded-lg px-5 py-8 text-center text-muted ring ring-line">{props.empty}</div>
+        <div class="rounded-lg bg-surface px-5 py-8 text-center text-muted ring ring-line">
+          {props.empty}
+        </div>
       }
     >
-      <ul class="grid gap-3 rounded-lg px-5 py-4 ring ring-line" aria-label="State history">
+      <ul
+        class="grid gap-3 rounded-lg bg-surface px-5 py-4 ring ring-line"
+        aria-label="State history"
+      >
         <For each={props.nodes}>{(node) => <Node node={node} onOpen={props.onOpen} />}</For>
       </ul>
     </Show>

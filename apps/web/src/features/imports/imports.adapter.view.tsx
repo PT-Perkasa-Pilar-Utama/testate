@@ -153,7 +153,7 @@ export default function AdapterImportsView(props: { slug: string; id: string }):
   return (
     <section class="grid gap-4">
       <div class="grid gap-1.5">
-        <h2 class="flex items-center gap-2 text-lg font-semibold">
+        <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-heading">
           <Icon name="upload" class="h-4 w-4 text-muted" />
           <AdapterCrumb slug={props.slug} id={props.id} /> / import a file
         </h2>
@@ -170,7 +170,7 @@ export default function AdapterImportsView(props: { slug: string; id: string }):
             when={hasRole("qa")}
             fallback={<Banner variant="default">Importing needs the Tester role.</Banner>}
           >
-            <div class="grid gap-4 rounded-lg p-4 ring ring-line">
+            <div class="grid gap-4 rounded-lg bg-surface p-4 ring ring-line">
               <Show when={rejected === undefined} fallback={<RejectedNote />}>
                 <SourceRow presenter={presenter} />
               </Show>

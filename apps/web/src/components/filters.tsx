@@ -27,7 +27,7 @@ export function FilterToggle(props: {
       <Icon name="sliders-horizontal" class="h-4 w-4" />
       Filters
       <Show when={props.active > 0}>
-        <span class="rounded-full bg-accent px-1.5 text-xs font-medium text-on-accent">
+        <span class="rounded-full bg-accent/15 px-1.5 font-mono text-xs font-medium text-accent">
           {props.active}
         </span>
       </Show>
@@ -38,7 +38,7 @@ export function FilterToggle(props: {
 export function FilterPanel(props: { open: boolean; children: JSX.Element }): JSX.Element {
   return (
     <Show when={props.open}>
-      <div class="grid gap-3 rounded-lg p-4 ring ring-line sm:grid-cols-2 lg:grid-cols-4">
+      <div class="grid gap-3 rounded-lg bg-surface p-4 ring ring-line sm:grid-cols-2 lg:grid-cols-4">
         {props.children}
       </div>
     </Show>

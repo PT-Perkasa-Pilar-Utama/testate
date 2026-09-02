@@ -173,7 +173,7 @@ export default function TokensView(): JSX.Element {
                         <Show when={token.revoked_at === null}>
                           <Button
                             size="xs"
-                            variant="destructive"
+                            variant="danger"
                             onClick={() => presenter.askRevoke(token)}
                           >
                             Revoke

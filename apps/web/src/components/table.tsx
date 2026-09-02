@@ -3,6 +3,7 @@ import { Show, children, omit } from "solid-js";
 
 import Icon from "./icon.tsx";
 import Input from "./input.tsx";
+import { counted } from "@/lib/format.ts";
 import { directionOf } from "@/lib/table.ts";
 import type { Direction, SortControl } from "@/lib/table.ts";
 
@@ -17,7 +18,7 @@ import type { Direction, SortControl } from "@/lib/table.ts";
 export function Table(props: ComponentProps<"table">): JSX.Element {
   const rest = omit(props, "class");
   return (
-    <div class="w-full overflow-x-auto overflow-y-auto rounded-lg ring ring-line">
+    <div class="w-full overflow-x-auto overflow-y-auto rounded-lg bg-surface ring ring-line">
       <table {...rest} class={["w-full border-collapse text-base", props.class]} />
     </div>
   );
@@ -55,14 +56,16 @@ export function TableFooter(props: {
   // "12 of 340" only when the two differ: "340 of 340" is a worse way of writing "340".
   const count = (): string => {
     const total = props.total;
-    if (total === undefined || total === null) return `${props.shown}`;
-    return total === props.shown ? `${total}` : `${props.shown} of ${total}`;
+    if (total === undefined || total === null) return counted(props.shown, props.noun);
+    return total === props.shown
+      ? counted(total, props.noun)
+      : `${props.shown} of ${counted(total, props.noun)}`;
   };
   const trailing = (): string => (props.hasMore === true && props.total == null ? " so far" : "");
   return (
-    <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
+    <div class="flex flex-wrap items-center justify-between gap-3 font-mono text-xs text-muted">
       <span>
-        {count()} {props.noun}
+        {count()}
         {trailing()}
       </span>
       <Show when={extra()}>
@@ -85,7 +88,7 @@ const PINNED_HEAD = "sticky right-0 z-20 bg-surface shadow-[inset_1px_0_0_0_var(
 // to need this cell lifted above the next row's, and no longer does: the menu is a popover, drawn
 // in the top layer above the whole page rather than inside this cell's stacking context.
 const PINNED_CELL =
-  "sticky right-0 bg-canvas group-hover:bg-hover shadow-[inset_1px_0_0_0_var(--color-hairline)]";
+  "sticky right-0 bg-surface group-hover:bg-hover shadow-[inset_1px_0_0_0_var(--color-hairline)]";
 
 export function Head(
   props: ComponentProps<"th"> & { numeric?: boolean; pinned?: boolean }
@@ -95,7 +98,7 @@ export function Head(
     <th
       {...rest}
       class={[
-        "sticky top-0 z-10 h-10 border-b border-hairline bg-surface px-4 align-middle text-xs font-medium whitespace-nowrap text-muted",
+        "sticky top-0 z-10 h-9 border-b border-line bg-surface px-4 align-middle font-mono text-[11px] font-normal tracking-[0.08em] whitespace-nowrap text-muted uppercase",
         props.numeric === true ? "text-right" : "text-left",
         props.pinned === true ? PINNED_HEAD : "",
         props.class,

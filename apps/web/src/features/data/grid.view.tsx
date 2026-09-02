@@ -125,7 +125,7 @@ export default function GridView(props: { slug: string; id: string; table: strin
   return (
     <section class="grid gap-4">
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <h2 class="flex items-center gap-2 text-lg font-semibold">
+        <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-heading">
           <Icon name="table" class="h-4 w-4 text-muted" />
           <AdapterCrumb slug={props.slug} id={props.id} /> / <code>{props.table}</code>
         </h2>
@@ -154,12 +154,17 @@ export default function GridView(props: { slug: string; id: string; table: strin
         <Table>
           <thead>
             <tr>
+              {/* A column name is an identifier, so it keeps its own case and the header's
+                  upper-casing stays off it; the type stays quiet beside it. */}
               <For each={presenter.page.value().columns}>
                 {(column) => (
-                  <Head numeric={NUMERIC_TYPE.test(column.type)}>
+                  <Head
+                    numeric={NUMERIC_TYPE.test(column.type)}
+                    class="normal-case tracking-normal"
+                  >
                     <button
                       type="button"
-                      class="cursor-pointer font-medium hover:underline"
+                      class="cursor-pointer text-xs font-medium text-body hover:underline"
                       onClick={() => presenter.toggleSort(column.name)}
                     >
                       {column.name}
@@ -167,7 +172,7 @@ export default function GridView(props: { slug: string; id: string; table: strin
                         {presenter.order() === "asc" ? " ↑" : " ↓"}
                       </Show>
                     </button>
-                    <span class="ml-1 text-xs text-muted">{column.type}</span>
+                    <span class="ml-1.5 text-[11px] text-muted">{column.type}</span>
                   </Head>
                 )}
               </For>

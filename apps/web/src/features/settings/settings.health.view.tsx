@@ -89,7 +89,7 @@ export default function HealthCard(props: { presenter: SettingsPresenter }): JSX
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2">
           <Icon name="activity" class="h-4 w-4 text-muted" />
-          <h3 id="health" class="scroll-mt-6 text-base font-semibold text-heading">
+          <h3 id="health" class="scroll-mt-6 text-lg font-semibold tracking-tight text-heading">
             Instance health
           </h3>
         </div>

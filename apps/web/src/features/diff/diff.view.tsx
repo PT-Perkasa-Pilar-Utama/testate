@@ -198,7 +198,7 @@ export default function DiffView(props: { slug: string; id: string }): JSX.Eleme
                         </p>
                       }
                     >
-                      <div class="overflow-x-auto rounded-lg ring ring-line">
+                      <div class="overflow-x-auto rounded-lg bg-surface ring ring-line">
                         <table class="w-full text-left">
                           <thead>
                             <tr class="bg-fill">

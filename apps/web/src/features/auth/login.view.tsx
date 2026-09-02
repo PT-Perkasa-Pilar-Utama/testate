@@ -12,6 +12,7 @@ import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import LayerCard from "@/components/layer-card.tsx";
 import Logo from "@/components/logo.tsx";
+import { Eyebrow } from "@/components/page-header.tsx";
 import { createLoginPresenter } from "./auth.presenter.ts";
 
 /**
@@ -26,13 +27,15 @@ export default function LoginView(props: { next: string }): JSX.Element {
     // GitHub's sign-in: the mark above a narrow card, nothing else on the page. The page centres
     // this, so there is no padding here pushing it off the middle.
     <section class="grid w-full max-w-[340px] gap-6">
-      <div class="grid justify-items-center gap-2 text-center">
+      <div class="grid justify-items-center gap-3 text-center">
         <Logo class="h-12 w-12 text-accent" label="Testate" />
-        <span class="text-2xl font-semibold text-heading">Testate</span>
-        <p class="text-muted">Git for your test database</p>
+        <span class="text-2xl font-semibold tracking-tight text-heading">
+          Test<span class="text-success">ate</span>
+        </span>
+        <Eyebrow>Git for your test database</Eyebrow>
       </div>
       <LayerCard class="grid gap-4 px-6 py-5">
-        <h1 class="text-base font-semibold text-heading">Sign in</h1>
+        <h1 class="text-lg font-semibold tracking-tight text-heading">Sign in</h1>
         <Form of={form} class="grid gap-4" onSubmit={(input) => presenter.submit(input)}>
           <Field of={form} path={["username"]}>
             {(field) => (

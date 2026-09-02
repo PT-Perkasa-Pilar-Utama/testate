@@ -173,7 +173,7 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
   return (
     <section class="grid gap-4">
       <div class="grid gap-1.5">
-        <h2 class="flex items-center gap-2 text-lg font-semibold">
+        <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-heading">
           <Icon name="shield" class="h-4 w-4 text-muted" />
           <AdapterCrumb slug={props.slug} id={props.id} /> / column masks
         </h2>

@@ -159,7 +159,7 @@ function Identity(props: {
             props.collapsed ? "justify-center p-1" : "p-2",
           ]}
         >
-          <span class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-fill text-xs font-semibold text-body">
+          <span class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-accent/15 font-mono text-xs font-semibold text-accent ring ring-accent/30">
             {initials(props.actor.label)}
           </span>
           <Show when={!props.collapsed}>
@@ -209,14 +209,18 @@ export default function Sidebar(props: { current: string | undefined }): JSX.Ele
   return (
     <aside
       class={[
-        "sticky top-0 flex h-screen flex-col border-r border-line py-4",
+        "sticky top-0 flex h-screen flex-col border-r border-hairline bg-sunken/60 py-4",
         collapsed() ? "w-12 items-center px-2" : "w-60 px-3",
       ]}
     >
       <div class={["mb-6 flex h-8 items-center", collapsed() ? "justify-center" : "gap-2 px-2"]}>
         <Show when={!collapsed()}>
           <Logo class="h-5 w-5 text-accent" />
-          <span class="text-base font-semibold text-heading">Testate</span>
+          {/* The wordmark as the homepage and the README banner set it: the last three letters in
+              the mark's own green. */}
+          <span class="text-base font-semibold tracking-tight text-heading">
+            Test<span class="text-success">ate</span>
+          </span>
         </Show>
         <SidebarToggle />
       </div>
@@ -230,9 +234,13 @@ export default function Sidebar(props: { current: string | undefined }): JSX.Ele
             <>
               <a
                 class={[
-                  "flex items-center rounded-md text-base hover:bg-hover hover:text-body",
-                  collapsed() ? "h-9 w-8 justify-center" : "gap-2.5 px-2 py-1.5",
-                  props.current === item.path ? "bg-fill font-medium text-body" : "text-muted",
+                  "relative flex items-center rounded-md text-base transition-colors duration-[80ms] hover:bg-hover hover:text-body",
+                  collapsed() ? "h-9 w-8 justify-center" : "gap-2.5 px-2.5 py-1.5",
+                  // The teal bar at the left edge is the active mark, the way the homepage's rail
+                  // lights the section you are in; the fill alone was hard to tell from hover.
+                  props.current === item.path
+                    ? "bg-fill font-medium text-heading before:absolute before:top-2 before:bottom-2 before:-left-px before:w-0.5 before:rounded-full before:bg-accent"
+                    : "text-muted",
                 ]}
                 href={href(item.path)}
                 onClick={(event) => onNav(event, item.path)}

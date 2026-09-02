@@ -127,7 +127,7 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
   };
   return (
     <section class="grid gap-4">
-      <h2 class="flex items-center gap-2 text-lg font-semibold">
+      <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-heading">
         <Icon name="terminal" class="h-4 w-4 text-muted" />
         <AdapterCrumb slug={props.slug} id={props.id} /> / query console
       </h2>

@@ -25,7 +25,7 @@ function Section(props: {
     <section class="grid gap-3">
       <Show when={props.labelled}>
         <div class="grid gap-1">
-          <h3 class="text-base font-semibold text-heading">{props.title}</h3>
+          <h3 class="text-lg font-semibold tracking-tight text-heading">{props.title}</h3>
           <p class="text-sm text-muted">{props.hint}</p>
         </div>
       </Show>

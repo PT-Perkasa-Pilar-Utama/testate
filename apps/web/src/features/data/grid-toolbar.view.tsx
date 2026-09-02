@@ -50,7 +50,7 @@ export function FilterBar(props: { presenter: GridPresenter; columns: string[] }
     setValue("");
   };
   return (
-    <div class="flex flex-wrap items-center gap-2 rounded-lg p-1.5 ring ring-line">
+    <div class="flex flex-wrap items-center gap-2 rounded-lg bg-surface p-1.5 ring ring-line">
       <Icon name="funnel" class="h-3.5 w-3.5 shrink-0 text-muted" />
       <form class="flex flex-wrap items-center gap-1.5" onSubmit={onSubmit}>
         <Select

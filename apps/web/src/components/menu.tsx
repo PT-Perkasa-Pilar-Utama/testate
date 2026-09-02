@@ -91,7 +91,7 @@ export function Menu(props: {
         popover="auto"
         onBeforeToggle={onOpening}
         class={[
-          "fixed inset-auto m-0 rounded-lg bg-surface p-1 text-left shadow-lg ring ring-line",
+          "fixed inset-auto m-0 rounded-lg bg-surface p-1 text-left shadow-lg shadow-black/40 ring ring-line",
           props.panelClass ?? "w-44",
         ]}
       >

@@ -107,7 +107,7 @@ export default function SidePanel(props: { presenter: QueryPresenter }): JSX.Ele
                   </span>
                   <Button
                     size="sm"
-                    variant="destructive"
+                    variant="danger"
                     onClick={() => void props.presenter.cancel(query.query_id)}
                   >
                     Cancel

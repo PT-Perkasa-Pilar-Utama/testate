@@ -57,7 +57,7 @@ function AdminActions(props: { presenter: AdapterPresenter; adapter: Adapter }):
             Allow restores
           </Button>
         </Show>
-        <Button size="sm" variant="destructive" onClick={() => void props.presenter.openDelete()}>
+        <Button size="sm" variant="danger" onClick={() => void props.presenter.openDelete()}>
           Delete
         </Button>
       </div>

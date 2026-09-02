@@ -5,7 +5,7 @@ const BASE =
   "inline-flex w-fit flex-none shrink-0 items-center justify-self-start gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap";
 
 const VARIANTS = {
-  primary: "bg-accent text-on-accent",
+  primary: "bg-accent/15 text-accent ring ring-accent/40",
   secondary: "bg-fill text-muted ring ring-line",
   error: "bg-danger-tint text-danger-fg ring ring-danger/40",
   warning: "bg-warning-tint text-warning-fg ring ring-warning/40",

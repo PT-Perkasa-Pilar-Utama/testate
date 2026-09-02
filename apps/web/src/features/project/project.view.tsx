@@ -53,7 +53,7 @@ function ProjectHeader(props: { presenter: ProjectPresenter }): JSX.Element {
       <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="grid gap-1.5">
           <div class="flex flex-wrap items-baseline gap-2">
-            <h2 class="text-xl font-semibold text-heading">{project().name}</h2>
+            <h2 class="text-2xl font-semibold tracking-tight text-heading">{project().name}</h2>
             <code class="text-sm text-muted">{project().slug}</code>
           </div>
           <Show when={project().description}>

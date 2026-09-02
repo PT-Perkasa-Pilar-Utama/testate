@@ -22,9 +22,9 @@ function Card(props: {
   children: JSX.Element;
 }): JSX.Element {
   return (
-    <section class="grid content-start gap-3 rounded-lg p-4 ring ring-line">
+    <section class="grid content-start gap-3 rounded-lg bg-surface p-4 ring ring-line">
       <div class="flex items-center justify-between gap-2">
-        <h3 class="text-base font-semibold text-heading">{props.title}</h3>
+        <h3 class="text-lg font-semibold tracking-tight text-heading">{props.title}</h3>
         <Show when={props.action}>
           {(action) => (
             <a class="text-sm text-muted hover:underline" href={href(action().href)}>
@@ -40,7 +40,7 @@ function Card(props: {
 
 function Stat(props: { label: string; value: string }): JSX.Element {
   return (
-    <div class="grid gap-0.5 rounded-lg px-4 py-3 ring ring-line">
+    <div class="grid gap-0.5 rounded-lg bg-surface px-4 py-3 ring ring-line">
       <span class="text-xl font-semibold tabular-nums text-heading">{props.value}</span>
       <span class="text-sm text-muted">{props.label}</span>
     </div>
@@ -188,7 +188,7 @@ export default function HomeView(): JSX.Element {
   return (
     <section class="grid gap-6">
       <div class="grid gap-1">
-        <h2 class="text-xl font-semibold text-heading">
+        <h2 class="text-2xl font-semibold tracking-tight text-heading">
           {greeting(new Date())}
           <Show when={who() !== ""}>, {who()}</Show>
         </h2>

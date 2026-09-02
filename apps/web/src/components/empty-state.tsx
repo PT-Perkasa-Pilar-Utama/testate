@@ -25,8 +25,8 @@ export default function EmptyState(props: EmptyStateProps): JSX.Element {
   // See the note in page-header.tsx: a JSX prop read inside `when` is read outside tracking.
   const action = children(() => props.action);
   return (
-    <div class="grid justify-items-center gap-3 rounded-lg px-6 py-10 text-center ring ring-line">
-      <span class="grid h-10 w-10 place-items-center rounded-full bg-fill text-muted">
+    <div class="grid justify-items-center gap-3 rounded-lg bg-surface px-6 py-12 text-center ring ring-line">
+      <span class="grid h-10 w-10 place-items-center rounded-full bg-accent/10 text-accent">
         <Icon name={props.icon} class="h-5 w-5" />
       </span>
       <div class="grid gap-1.5">
