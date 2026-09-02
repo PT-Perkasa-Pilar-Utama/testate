@@ -3,7 +3,7 @@ import type { Diff, DiffRow, JsonObject, State } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
-import { createRefreshable } from "@/lib/async.ts";
+import { createRefreshable, refreshWhileBusy } from "@/lib/async.ts";
 import { DIFF_STATUS_LABEL } from "@/lib/labels.ts";
 import { createTableView } from "@/lib/table.ts";
 import type { TableView } from "@/lib/table.ts";
@@ -116,6 +116,12 @@ function messageOf(cause: unknown): string {
 
 export function createDiffsPresenter(slug: () => string): DiffsPresenter {
   const diffs = createRefreshable(() => diffsModel.list(slug()));
+  // A comparison started on the States tab is followed by that screen, not this one. Opening
+  // Activity while it runs used to show "Running" until the page was reloaded.
+  refreshWhileBusy(
+    () => diffs.value().some((diff) => diff.status === "running"),
+    () => diffs.refresh()
+  );
   const table = createTableView<Diff, DiffSort>({
     rows: () => diffs.value(),
     sorters: {

@@ -87,12 +87,15 @@ for (const role of ROLES) {
       expect(issues).toStrictEqual([]);
     });
 
-    test("@story-6 @story-9 the account screen is one click from the sidebar", async ({ page }) => {
+    test("@story-6 @story-9 the account screen is one menu from the sidebar", async ({ page }) => {
       const issues: Issue[] = [];
       watch(page, issues);
       await page.goto("/projects");
       await settle(page);
-      await page.getByRole("link", { name: new RegExp(`${role}$`) }).click();
+      // Account moved into the identity menu at the foot of the rail, beside the theme and sign
+      // out, which is where a person looks for it. It used to be a bare link on the name.
+      await page.getByRole("button", { name: `${USERNAMES[role]}, account and sign out` }).click();
+      await page.getByRole("link", { name: "Account" }).click();
       await expect(page.getByRole("heading", { name: "Change password" })).toBeVisible();
       await expect(page.getByRole("heading", { name: "Sessions" })).toBeVisible();
       // The two password boxes share a row, and a message under one of them used to push the
@@ -170,7 +173,10 @@ test.describe("signing in", () => {
     await page.getByLabel("Username").fill(USERNAMES.qa);
     await page.getByLabel("Password").fill(PASSWORDS.qa);
     await page.locator('form button[type="submit"]').click();
-    await expect(page.getByRole("heading", { name: "Jobs" })).toBeVisible();
+    // Its own timeout: signing in verifies an argon2id hash at 64 MiB and two passes, on purpose,
+    // and three workers doing that at once on one machine take longer than the default five
+    // seconds. The product is slow here by design; the assertion should not read that as a bug.
+    await expect(page.getByRole("heading", { name: "Jobs" })).toBeVisible({ timeout: 20_000 });
     await expect(page).toHaveURL(/\/jobs$/);
   });
 
@@ -211,7 +217,12 @@ for (const role of ROLES) {
           await page.goto(path);
           await settle(page);
           // The crumb carries the adapter's own name; it used to be the literal word "adapter".
-          await expect(page.getByRole("link", { name: adapter.name }).first()).toBeVisible();
+          // Its own timeout: the crumb fetches the adapter separately from the screen under it,
+          // so `settle` can return while it still reads "adapter", and three workers against one
+          // MySQL container made 5 seconds a coin toss.
+          await expect(page.getByRole("link", { name: adapter.name }).first()).toBeVisible({
+            timeout: 15_000,
+          });
         }
       }
       expect(issues).toStrictEqual([]);

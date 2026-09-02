@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { settle, stateRow, watch } from "./lib/crawl.ts";
+import { openStatesList, settle, stateRow, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
@@ -29,7 +29,7 @@ test.describe("adapter settings stories", () => {
     await create.getByLabel("Password").fill("testate");
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
-    await page.getByRole("tab", { name: "States" }).click();
+    await openStatesList(page);
     await expect(stateRow(page, `init-cfg-${STAMP}`)).toBeVisible({
       timeout: 60_000,
     });
@@ -55,7 +55,7 @@ test.describe("adapter settings stories", () => {
     await expect(page.getByText("init snapshot queued")).toBeVisible();
     await page.goto("/projects/demo");
     await settle(page);
-    await page.getByRole("tab", { name: "States" }).click();
+    await openStatesList(page);
     await expect(stateRow(page, `init-cfg-${STAMP}-2`)).toBeVisible({
       timeout: 60_000,
     });
@@ -72,7 +72,7 @@ test.describe("adapter settings stories", () => {
     await expect(page.getByRole("link", { name: `cfg-${STAMP}-2` })).toHaveCount(0, {
       timeout: 60_000,
     });
-    await page.getByRole("tab", { name: "States" }).click();
+    await openStatesList(page);
     // Both init states outlive the adapter (story 31): the first target and the retarget.
     await expect(stateRow(page, `init-cfg-${STAMP}`)).toHaveCount(2);
     expect(issues).toStrictEqual([]);

@@ -48,7 +48,7 @@ test.describe("a list you can order and narrow", () => {
     await expect(first.filter({ hasText: USERNAMES.qa })).toBeVisible();
     await expect(first.filter({ hasText: USERNAMES.viewer })).toHaveCount(0);
     await page.getByLabel("Search users").fill("nobody-by-that-name");
-    await expect(page.getByText("No account matches that search.")).toBeVisible();
+    await expect(page.getByText("No account matches that search or filter.")).toBeVisible();
     await page.getByLabel("Search users").fill("");
     await expect(first.filter({ hasText: USERNAMES.viewer })).toBeVisible();
     expect(issues).toStrictEqual([]);

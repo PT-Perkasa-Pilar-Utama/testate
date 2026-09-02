@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import { demoAdapter, firstTable } from "./lib/api.ts";
-import { openTab, settle } from "./lib/crawl.ts";
+import { openStatesList, openTab, settle } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
 /**
@@ -55,7 +55,8 @@ test.describe("README screens", () => {
     await settle(page);
 
     // Earlier specs name their states after themselves, so lead the list with two readable ones.
-    await openTab(page, "States");
+    // The list, not the tree: only a list row carries Check out, which is what "ready" means here.
+    await openStatesList(page);
     const take = async (name: string, tags: string): Promise<void> => {
       await page.getByRole("button", { name: "Take state" }).click();
       const form = page.locator("dialog[open]");
@@ -77,8 +78,7 @@ test.describe("README screens", () => {
 
     // The demo has no diff of its own, so make one against the live database first: tick a state
     // on the States tab and compare it, which is where a diff starts now.
-    await openTab(page, "States");
-    await page.getByRole("tab", { name: "List" }).click();
+    await openStatesList(page);
     await page.getByRole("checkbox", { name: "Compare seeded-baseline" }).check();
     await page.getByRole("button", { name: "Compare with live" }).click();
     await expect(

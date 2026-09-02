@@ -3,9 +3,9 @@
 ## Testate REST API v1 (plus the MCP agent surface)
 
 **Version:** 1.0.0  
-**Date:** 2026-08-28  
+**Date:** 2026-09-02  
 **Author:** Tech Lead  
-**Status:** Sprint 0 scaffold; every operation answers the contract with typed mock data  
+**Status:** Every operation below is real. `grep SCAFFOLD:` lists what still answers with mock data  
 **Base URL:** `${TESTATE_BASE_PATH}/api/v1`  
 
 ---
@@ -26,12 +26,12 @@ Legend: `OK` implemented and tested · `WIP` in progress · `TODO` not started �
 | States | `GET .../states`, `GET .../states/tree`, `POST .../states`, `GET .../states/{id}`, `PATCH`, `DELETE`, `GET .../archive`, `GET .../uploads/{upload_id}/archive-manifest`, `POST .../states/import` | OK (archive import maps to existing adapters or creates new ones) |
 | Checkouts | `POST .../checkouts/preflight`, `POST .../checkouts`, `GET .../checkouts`, `GET .../checkouts/{id}`, `POST .../retry`, `POST .../terminate-blockers`, `GET .../counters`, `POST .../repair-counters` | OK (terminate-blockers through the engine port when the probe allows) |
 | Diffs | `POST .../diffs`, `GET .../diffs`, `GET .../diffs/{id}`, `GET .../rows`, `GET .../export`, `DELETE` | OK |
-| Storage | `GET .../entries`, `GET .../entries/stat`, `GET .../entries/preview`, `GET .../entries/download`, `POST .../host-key/accept` | Real (S3 via `Bun.S3Client`, SFTP via ssh2, FTP via basic-ftp; host-key TOFU and accept; 5 MB preview cap) |
+| Storage | `GET .../entries`, `GET .../entries/stat`, `GET .../entries/preview`, `GET .../entries/download`, `POST .../entries`, `DELETE .../entries`, `POST .../host-key/accept` | Real (S3 via `Bun.S3Client`, SFTP via ssh2, FTP via basic-ftp; host-key TOFU and accept; 5 MB preview cap) |
 | Jobs | `GET /jobs`, `GET /jobs/{id}`, `POST /jobs/{id}/cancel`, `GET /jobs/{id}/events` | OK |
 | Audit logs | `GET /audit-logs`, `GET /audit-logs/export` | OK |
 | Settings | `GET /settings`, `PATCH /settings`, `POST /settings/store-migration`, `POST /settings/backup`, `GET /settings/backups/{job_id}` | OK: sealed `store.s3` keys, `storage_migration` job (S3 store via `Bun.S3Client`); `backup` job to a 24-hour download tar or the store, with download |
 | Tools | `POST /tools/hash`, `POST /tools/random`, `POST /tools/uuid` | OK |
-| Agent (MCP) | `POST /mcp`, `GET /mcp`: `initialize`, `tools/list`, `tools/call` (14 tools), `resources/list`, `resources/read`, `ping`. `GET /agent/guide` serves the same agent guide as Markdown to a role token | Real (per-token rate limit, scope, masks, storage tools) |
+| Agent (MCP) | `POST /mcp`, `GET /mcp`: `initialize`, `tools/list`, `tools/call` (14 read tools, and 7 more a Tester token reaches), `resources/list`, `resources/read`, `ping`. `GET /agent/guide` serves the same agent guide as Markdown to a role token | Real (per-token rate limit, scope, masks, storage tools) |
 | System | `GET /health`, `GET /health/live`, `GET /health/ready`, `POST /admin/reset-state` (non-production), `GET /openapi.json`, `GET /docs` | OK |
 
 ## Files in This Directory

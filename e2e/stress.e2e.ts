@@ -78,8 +78,7 @@ test.describe("the grid under a hand that never waits", () => {
       // fixture dialog and the row form, both of which mount their own async reads over the grid.
       // Extracting a fixture moved into the row's overflow menu, so the menu has to open first.
       await page
-        .locator("main tbody")
-        .getByRole("group")
+        .locator("main tbody button[aria-haspopup=menu]")
         .first()
         .click(optional)
         .catch(() => undefined);

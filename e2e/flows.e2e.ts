@@ -83,7 +83,7 @@ test.describe("qa flows", () => {
     await settle(page);
     const rows = await dataRows(page).count();
     await expect(page.getByText(new RegExp(`^${rows} entries( so far)?$`))).toBeVisible();
-    await page.getByPlaceholder("filter by name").fill("no-such-file-anywhere");
+    await page.getByPlaceholder("Search files...").fill("no-such-file-anywhere");
     await settle(page);
     await expect(page.getByText('No files match "no-such-file-anywhere".')).toBeVisible();
     await expect(page.getByText("0 entries")).toBeVisible();

@@ -46,33 +46,9 @@ The first admin comes from environment variables. On first login Testate forces 
 
 ### 2.2 Glossary
 
-| Term | Meaning |
-| --- | --- |
-| Project | A system under test. Owns adapters, states, mappings, and a quota. |
-| Adapter | A connection owned by a project, with an immutable id. Kinds: database (Postgres, MySQL, MariaDB, MongoDB), storage (S3, SFTP, FTP). |
-| Adapter mode | `sandbox` allows checkout, import, and writes. `read-only` refuses all writes. |
-| State | A data-only snapshot of one or more database adapters in a project. Never a snapshot of Testate itself. |
-| Init state | The protected, single-adapter state Testate takes when a database adapter first connects, or when its connection target changes. |
-| Stash | A state Testate takes on its own before a destructive operation. |
-| Write session | The period between switching an adapter to write mode in the dashboard and switching it off or leaving the page. The first write in a session takes a stash. |
-| HEAD | The state a project last checked out. HEAD is `unknown` after an interrupted or partly failed checkout. |
-| Checkout | Restore every adapter in a state to the data in that state. Recorded as a resource with per-adapter results. |
-| Diff | A row-by-row comparison of two states, or of a state and the live database. |
-| Schema fingerprint | A hash of the schema metadata that matters for restore. Stored with every state, checked before checkout. |
-| Drift | The live schema differs from the fingerprint in the state. |
-| Mapping | A saved rule set that maps file columns to one table of a Tabular adapter. |
-| Import run | One execution of a mapping against one file. |
-| Return to init | The restore of a database adapter to its current init state that runs before the adapter or its project is deleted. |
-| Deletion plan | The per-adapter list of what a deletion will do: restore, force over drift, or skip with a reason. Confirmed by the actor before the job starts. |
-| Job | A long-running operation with progress, a queue position, and a terminal status. Kinds: snapshot, checkout, import, diff, state delete, adapter delete, project delete, archive import, storage migration, backup. Queries are not jobs. |
-| Token | A bearer credential for the REST API with a role, a project scope, and an optional expiry. |
-| Sealed value | A password, secret, or key that Testate must present to another system. Stored encrypted under the active key, never displayed or returned after entry, replaceable only. |
-| Active key list | The comma-separated encryption keys in the environment. The first seals new values; every listed key opens stored ones. |
-| Tier | What Testate can do with an adapter. Files (S3, SFTP, FTP): view, download. Document (MongoDB): view, state, diff, extract. Tabular (Postgres, MySQL, MariaDB): view, state, diff, extract, edit, import. |
-| Column policy | A rule on one table column of a Tabular adapter: a required function (a value must pass through it before it is stored) and a mask (how viewers and agents see it). |
-| Mask | A display rule for a column: `redact`, `partial` (last four characters), or `hash`. Applies to viewers and agents; `qa` and `admin` see raw. |
-| Fixture | A row plus its related rows (foreign-key parents, optionally children), extracted as SQL inserts or JSON to reproduce a case elsewhere. |
-| Agent token | An API token of kind `agent`: role `viewer` or `qa` and never `admin`, accepted only by the MCP endpoint, masked results, lower caps, every call audited. A `viewer` one reads; a `qa` one also writes to sandbox adapters, snapshots, and checks a state out. |
+Every term this document uses is defined once, in [GLOSSARY.md](GLOSSARY.md), which the specs and
+the code cite as well. It used to be defined twice, here and there, and the two had already drifted
+apart on what a checkout does.
 
 ## 3. User Stories
 

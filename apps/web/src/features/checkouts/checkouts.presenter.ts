@@ -3,7 +3,7 @@ import * as v from "valibot";
 import type { Checkout, Counters } from "@testate/shared";
 
 import { attempt, showToast } from "@/lib/toast.ts";
-import { createPaged } from "@/lib/async.ts";
+import { createPaged, refreshWhileBusy } from "@/lib/async.ts";
 import { createTableControls } from "@/lib/table.ts";
 import type { TableControls } from "@/lib/table.ts";
 import type { Paged } from "@/lib/async.ts";
@@ -142,6 +142,12 @@ export function createCheckoutsPresenter(
   const checkouts = createPaged(
     (cursor) => checkoutsModel.page(slug(), cursor, controls.params(), filters()),
     () => `${controls.key()}|${filters().status}|${filters().purpose}`
+  );
+  // Same reason as the diffs list: a restore started from the States tab is followed there, and
+  // this screen only ever asked once.
+  refreshWhileBusy(
+    () => checkouts.value().some((checkout) => checkout.status === "running"),
+    () => checkouts.refresh()
   );
   const table: TableControls<CheckoutSort> & { rows: () => Checkout[] } = {
     ...controls,

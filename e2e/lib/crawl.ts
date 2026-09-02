@@ -233,11 +233,28 @@ async function afterClick(
 /** Opens a project tab when one is named, then waits for the screen to settle. */
 /**
  * Opens a row's overflow menu and answers with the row, so a spec can reach the actions that no
- * longer sit in the row itself. <details> keeps them out of the DOM's reach until it is open.
+ * longer sit in the row itself.
+ *
+ * Addressed by `aria-haspopup`, not by a label: the trigger's name is "More actions" in a table
+ * and whatever the screen sets everywhere else. The panel renders in the top layer but stays a
+ * child of the row in the DOM, so the row is still the right thing to hand back.
  */
 export async function rowMenu(row: Locator): Promise<Locator> {
-  await row.getByRole("group").click();
+  await row.locator("button[aria-haspopup=menu]").first().click();
   return row;
+}
+
+/**
+ * Opens a project's States tab on the list, not the tree.
+ *
+ * Tree is the default since the rework, and it is a history: a row links to the state and carries
+ * no actions, because an action on a node of a graph reads as an action on the branch. Every spec
+ * that checks a state out, renames one, or protects one wants the list.
+ */
+export async function openStatesList(page: Page): Promise<void> {
+  await page.getByRole("tab", { name: "States" }).click();
+  await page.getByRole("tab", { name: "List" }).click();
+  await settle(page);
 }
 
 /**

@@ -24,6 +24,40 @@ export function createRefreshable<T>(load: () => Promise<T>): Refreshable<T> {
 }
 
 /**
+ * Asks a list again, every `everyMs`, for as long as it holds work that has not finished.
+ *
+ * A screen that starts a job follows that job's own event stream. A list does not: open Activity
+ * while a diff someone started on another tab is still running and the row says "Running" until
+ * the page is reloaded, because nothing on that screen ever asks again. A row carries no job id
+ * to subscribe to, so the list asks.
+ *
+ * It stops the moment nothing is busy, which is what keeps this from being a poll on every screen
+ * that shows a list.
+ *
+ * Its check is `@story-88` in `e2e/states.e2e.ts`, which compares a state with the live databases
+ * on one tab and reads the result on another. There is no unit test because there cannot be one:
+ * `bun test` resolves Solid's server build, where an effect never runs at all.
+ */
+export function refreshWhileBusy(
+  busy: () => boolean,
+  refreshList: () => void,
+  everyMs = 2_000
+): void {
+  // An interval, not a chain of timeouts. `createEffect` re-runs its effect when the computed
+  // value changes, and "still running" does not change, so a timeout set here would have fired
+  // exactly once and the row would have gone on saying Running. The effect re-runs when the work
+  // finishes, and the cleanup of the busy run is what stops the interval.
+  createEffect(busy, (isBusy) => {
+    if (!isBusy) return undefined;
+    const timer = setInterval(refreshList, everyMs);
+    // Returned, not `onCleanup`. A Solid 2 effect body runs with no owner, so an `onCleanup`
+    // registered in one is never run and the interval outlives the screen; the effect's own
+    // return value is the disposal the next run and the teardown both call.
+    return () => clearInterval(timer);
+  });
+}
+
+/**
  * A list that grows page by page: the first page reloads with `refresh`, later pages append until
  * the API answers without a cursor. Extra pages are dropped on refresh so a filter change starts over.
  */

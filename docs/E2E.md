@@ -37,6 +37,7 @@ starts its ephemeral range at 49152, which is why this only ever failed in CI.
 | `crawl`     | `e2e/buttons.e2e.ts`                                             | Clicks every visible control per role; no 5xx, no console error       |
 | `screens`   | `e2e/screens.e2e.ts`                                             | README screenshots off the seeded demo; skipped unless `SHOTS=1`      |
 | `stress`    | `e2e/stress.e2e.ts`                                              | Hunts the reactive-loop warning on the grid; skipped unless `STRESS=1` |
+| `bundle`    | `e2e/bundle.e2e.ts`                                              | The built bundle, not Vite: every screen settles and none crashes      |
 | `boot`      | `e2e/boot.e2e.ts`, `engine`, `types`, `session`, `storage`       | Stories that need their own instance, engine, or clock                |
 
 Projects run in that order (`dependencies`), tests inside a project run on 3 workers.
@@ -71,4 +72,15 @@ cannot be exercised.
   (`SKIP` in `e2e/lib/crawl.ts`); story tests cover those on purpose.
 - Lint applies jest rules here: no conditionals in a test, `?.` and `??` included. Put the logic in
   `e2e/lib` and assert on what it returns.
+- A row's actions live behind its overflow menu. Open it with `rowMenu(row)`; the trigger is a
+  `button[aria-haspopup=menu]`, not the `<details>` group it used to be. The panel renders in the
+  top layer but stays a child of the row, so the row is still what you query.
+- Name matching is a substring by default, and an accessible name is more than the label: a
+  `<select>` carries its options and a menu button carries the row it belongs to. `Create` matched
+  the `Created` sort header, `Table` matched `What happens`, and `Edit` matched
+  `More actions for edit-<stamp>`. Reach for `{ exact: true }` before assuming the screen changed.
+- Signing in is deliberately expensive (argon2id, 64 MiB, two passes). Three workers logging in
+  at once beat the default five-second timeout, so a post-login assertion carries its own.
+- A filter panel opens from a `Filters` toggle. Four empty boxes over every list was a row of the
+  page spent on nothing, so nothing filterable shows its filters until asked.
 - Iterate with `bunx playwright test --project=<name> --no-deps`; the full chain is for the gate.

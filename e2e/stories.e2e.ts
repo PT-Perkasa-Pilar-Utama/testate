@@ -30,7 +30,7 @@ test.describe("qa stories", () => {
     await dialog.getByLabel("Name").fill(`E2E ${STAMP}`);
     // The URL preview says what the name will become; the API is what decides it.
     await expect(dialog.getByLabel("URL")).toHaveValue(`/projects/e2e-${STAMP}`);
-    await page.getByRole("button", { name: "Create" }).click();
+    await page.getByRole("button", { name: "Create", exact: true }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
     await page.getByRole("link", { name: `E2E ${STAMP}` }).click();
     await settle(page);
@@ -70,7 +70,7 @@ test.describe("qa stories", () => {
     await expect(dialog.getByText(/postgres 1\d/)).toBeVisible({ timeout: 15_000 });
     // The seeded adapter already tracks this database, and two on one target collide.
     await expect(dialog.getByText(/already tracks this database/)).toBeVisible();
-    await page.getByRole("button", { name: "Create" }).click();
+    await page.getByRole("button", { name: "Create", exact: true }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
     await expect(page.getByRole("link", { name: `pg-${STAMP}` })).toBeVisible();
     expect(issues).toStrictEqual([]);
@@ -212,13 +212,16 @@ test.describe("admin stories", () => {
       .getByLabel(/password/i)
       .first()
       .fill("tmp-temporary-1234");
-    await page.getByRole("button", { name: "Create" }).click();
+    await page.getByRole("button", { name: "Create", exact: true }).click();
     const row = page.locator("tr", { hasText: `tmp-${STAMP}` });
     await expect(row).toBeVisible();
-    // Edit stays in the row; everything else moved behind the row's overflow menu. The Enable
-    // click is the assertion that Disable worked: the item is only there if the toggle flipped.
+    // Edit stays in the row; everything else moved behind the row's overflow menu. The badge is
+    // what says the toggle landed: the menu item's own label flips from the same refresh, so
+    // reopening the menu on the click alone is a race the list wins about one run in ten.
     await (await rowMenu(row)).getByRole("button", { name: "Disable" }).click();
+    await expect(row.getByText("disabled", { exact: true })).toBeVisible();
     await (await rowMenu(row)).getByRole("button", { name: "Enable" }).click();
+    await expect(row.getByText("disabled", { exact: true })).toHaveCount(0);
     await (await rowMenu(row)).getByRole("button", { name: "Reset password" }).click();
     const dialog = page.locator("dialog[open]");
     await dialog.getByLabel(/Temporary password/).fill("tmp-reset-password-1");
@@ -240,12 +243,14 @@ test.describe("admin stories", () => {
       .getByLabel(/password/i)
       .first()
       .fill("edit-temporary-1234");
-    await page.getByRole("button", { name: "Create" }).click();
+    await page.getByRole("button", { name: "Create", exact: true }).click();
     const row = page.locator("tr", { hasText: `edit-${STAMP}` });
     await expect(row).toBeVisible();
     await expect(row).toContainText("Guest");
 
-    await row.getByRole("button", { name: "Edit" }).click();
+    // Exact: the row's overflow menu is named after the account, and this run's account is
+    // called edit-<stamp>, which a substring match reads as an Edit button of its own.
+    await row.getByRole("button", { name: "Edit", exact: true }).click();
     const edit = page.locator("dialog[open]");
     // The dialog carries the row it was opened on, which is the half of this that used to be
     // impossible: the API took the change and nothing on any screen sent it one.
@@ -266,7 +271,7 @@ test.describe("admin stories", () => {
     await settle(page);
     await page.getByRole("button", { name: "New token" }).click();
     await page.locator("dialog[open]").getByLabel("Name").fill(`revoke-${STAMP}`);
-    await page.getByRole("button", { name: "Create" }).click();
+    await page.getByRole("button", { name: "Create", exact: true }).click();
     await page.getByRole("button", { name: "Done" }).click();
     const row = page.locator("tr", { hasText: `revoke-${STAMP}` });
     await row.getByRole("button", { name: "Revoke" }).click();
@@ -285,7 +290,10 @@ test.describe("admin stories", () => {
     await page.goto("/audit");
     await settle(page);
     await expect(page.getByText("auth.login").first()).toBeVisible();
-    // The filters reach the API, which has taken them since it was written.
+    // The filters reach the API, which has taken them since it was written. They sit behind the
+    // toggle now: most visits to a log are unfiltered, and four empty boxes over every one of
+    // them was a row of the page spent on nothing.
+    await page.getByRole("button", { name: "Filters" }).click();
     await page.getByLabel("Action").fill("auth.login");
     await expect(page.getByText("auth.login").first()).toBeVisible();
     await page.getByLabel("Action").fill("nothing.matches.this");

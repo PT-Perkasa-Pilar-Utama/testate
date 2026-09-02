@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 import { apiContext, demoAdapter } from "./lib/api.ts";
 import { settle, watch } from "./lib/crawl.ts";
@@ -22,6 +23,11 @@ function parsePolicyDialogTitle(title: string | null) {
   return { table, column };
 }
 
+/** The driver named on the settings store card, which is a span and not the dialog's option. */
+function storeBadge(page: Page, label: string): Locator {
+  return page.locator("main span").filter({ hasText: new RegExp(`^${label}$`) });
+}
+
 test.describe("admin gap stories", () => {
   test.use({ storageState: statePath("admin") });
 
@@ -40,7 +46,7 @@ test.describe("admin gap stories", () => {
       .getByLabel(/password/i)
       .first()
       .fill("fresh-temporary-1234");
-    await page.getByRole("button", { name: "Create" }).click();
+    await page.getByRole("button", { name: "Create", exact: true }).click();
     await expect(page.locator("tr", { hasText: `fresh-${STAMP}` })).toBeVisible();
     // The admin session is dropped so the same page becomes the new user's browser.
     await page.context().clearCookies();
@@ -68,7 +74,7 @@ test.describe("admin gap stories", () => {
     await page.getByRole("button", { name: "New project" }).click();
     // No slug field any more: the API derives it from the name, so `Gone abc` becomes `gone-abc`.
     await page.locator("dialog[open]").getByLabel("Name").fill(`Gone ${STAMP}`);
-    await page.getByRole("button", { name: "Create" }).click();
+    await page.getByRole("button", { name: "Create", exact: true }).click();
     await page.getByRole("link", { name: `Gone ${STAMP}` }).click();
     await settle(page);
     await page.getByRole("button", { name: "Edit" }).click();
@@ -192,8 +198,10 @@ test.describe("admin gap stories", () => {
     await expect(page.getByText("Store migration succeeded").first()).toBeVisible({
       timeout: 120_000,
     });
-    // The store card names the driver in words now; "S3" is the badge, not the stored "s3".
-    await expect(page.locator("main").getByText("S3", { exact: true })).toBeVisible();
+    // The store card names the driver in words now; "S3" is the badge, not the stored "s3". The
+    // badge is a span: the migrate dialog holds an <option> of the same words, and a closed dialog
+    // is still in the DOM, so an unscoped text match resolves to two.
+    await expect(storeBadge(page, "S3")).toBeVisible();
     await page.getByRole("button", { name: "Migrate store" }).click();
     await page
       .locator("dialog[open]")
@@ -204,7 +212,7 @@ test.describe("admin gap stories", () => {
     await expect(page.getByText("Store migration succeeded").nth(1)).toBeVisible({
       timeout: 120_000,
     });
-    await expect(page.locator("main").getByText("local", { exact: true })).toBeVisible();
+    await expect(storeBadge(page, "Local disk")).toBeVisible();
     await page.getByRole("button", { name: "Run backup" }).click();
     const download = page.getByRole("link", { name: "Download backup" });
     await expect(download).toBeVisible({ timeout: 60_000 });
