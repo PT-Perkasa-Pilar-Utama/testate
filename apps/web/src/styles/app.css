@@ -14,49 +14,50 @@
  * read on the wash. One token cannot be both, because one name generates both utilities.
  */
 @theme {
-  /* Two surfaces, as the specification asks, plus one for hover and row striping. */
-  --color-canvas: #000000;
-  --color-surface: #0d1117;
-  --color-sunken: #010409;
-  --color-hover: #161b22;
-  --color-fill: #161b22;
-  --color-fill-hover: #21262d;
-  --color-control: #0d1117;
+  /*
+   * The homepage's palette (docs/index.html), brought inside. Near-black rather than black, one
+   * raised surface, and a line that is light at low opacity instead of a grey, so it reads the same
+   * on either ground.
+   */
+  --color-canvas: #05070a;
+  --color-surface: #0b1017;
+  --color-sunken: #030508;
+  --color-hover: #10161e;
+  --color-fill: #121a24;
+  --color-fill-hover: #1a2431;
+  --color-control: #0b1017;
 
-  /* The 1px ring inside the specification's card shadow, which is what its border really is. */
-  --color-line: rgba(209, 217, 224, 0.25);
-  --color-hairline: rgba(209, 217, 224, 0.15);
+  --color-line: rgba(238, 242, 245, 0.16);
+  --color-hairline: rgba(238, 242, 245, 0.08);
 
-  /* Cyan is what you can act on, and it is the focus ring too. Everything on it is near-black:
-     white on cyan fails AA. */
-  --color-accent: #8dd6ff;
-  --color-accent-hover: #b6e3ff;
-  --color-on-accent: #111111;
+  /* Teal is what you can act on: the focus ring, the active tab, a link, the dot that marks HEAD.
+     Text on it is the ground colour; white on teal fails AA. */
+  --color-accent: #7dd3c0;
+  --color-accent-hover: #9ae3d3;
+  --color-on-accent: #05070a;
 
-  /* Status. The specification carries none, and a job outcome has to read as one. */
-  --color-success: #238636;
-  --color-success-tint: #0f2f18;
-  --color-success-fg: #3fb950;
-  --color-warning: #9e6a03;
-  --color-warning-tint: #2e2306;
-  --color-warning-fg: #d29922;
+  /* Status. Green is the logo's own, amber is the homepage's dirty row, red is GitHub's danger. */
+  --color-success: #10b981;
+  --color-success-tint: #0c2a21;
+  --color-success-fg: #34d399;
+  --color-warning: #f0b35a;
+  --color-warning-tint: #2d2110;
+  --color-warning-fg: #f0b35a;
   --color-danger: #da3633;
   --color-danger-tint: #3d1315;
   --color-danger-fg: #f85149;
-  --color-info: #58a6ff;
-  --color-info-tint: #0d2237;
-  --color-info-fg: #58a6ff;
+  --color-info: #8dd6ff;
+  --color-info-tint: #0e2233;
+  --color-info-fg: #8dd6ff;
 
-  /* White is what you read; #8b949e is what you skim. Black on black is unreadable (ADR 0002). */
-  --color-body: #ffffff;
-  --color-heading: #ffffff;
-  --color-muted: #8b949e;
-  /* #6e7681 was GitHub's, and it measures 4.12:1 on `control`. An empty input still has to be
-     read, so this is the nearest value that clears AA. `scripts/check-contrast.ts` found it. */
-  --color-placeholder: #767e89;
-  --color-inactive: #6e7681;
-  --color-inverse: #111111;
-  --color-link: #8dd6ff;
+  /* Off-white is what you read; grey-blue is what you skim. */
+  --color-body: #eef2f5;
+  --color-heading: #eef2f5;
+  --color-muted: #8b96a3;
+  --color-placeholder: #7d8794;
+  --color-inactive: #5c6773;
+  --color-inverse: #05070a;
+  --color-link: #7dd3c0;
 
   /*
    * Mona Sans is served from this instance, never from a font CDN: the README promises nothing
@@ -67,25 +68,25 @@
     sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   --font-mono: "Mona Sans Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 
-  /* 6px and 8px, the two radii GitHub actually uses on controls and cards. */
+  /* 6 on a control, 8 on a button or input, 12 on a card, 16 on a dialog: the homepage's radii. */
   --radius-sm: 6px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 }
 
 /*
  * Light.
  *
- * The supplied specification (docs/design/github.md) is dark only, so these are Primer's light
- * values, which is the same design language read in its other half; ADR 0002 records that as an
- * extension rather than a transcription.
+ * The homepage is dark only, so this is a mapping of the same palette onto a light ground rather
+ * than a second design: the teal darkens to the mark's own dark-teal (docs/assets/logo-dark.svg),
+ * the washes lighten, the lines turn into greys. The theme control in the sidebar offers it, so it
+ * has to hold, and `scripts/check-contrast.ts` holds both palettes to the same floors.
  *
  * The dark palette stays in `@theme` above, so it is what Tailwind generates from and what a
  * viewer with no stated preference still gets. Light arrives two ways and neither may override the
  * other by accident: the media query answers a system preference but stands aside once someone has
- * chosen dark in the app, and the attribute answers that choice. `scripts/check-contrast.ts` holds
- * both palettes to the same contrast floors.
+ * chosen dark in the app, and the attribute answers that choice.
  *
  * `@theme inline` would break all of this: an inlined value is substituted where it is used and
  * cannot be redefined by a selector, and the failure is silent.
@@ -98,92 +99,110 @@
   :root:not([data-mode="dark"]) {
     color-scheme: light;
 
-    --color-canvas: #ffffff;
+    --color-canvas: #f7f8fa;
     --color-surface: #ffffff;
-    --color-sunken: #f6f8fa;
-    --color-hover: #f6f8fa;
-    --color-fill: #f6f8fa;
-    --color-fill-hover: #eaeef2;
+    --color-sunken: #eef1f4;
+    --color-hover: #f0f3f6;
+    --color-fill: #eef1f4;
+    --color-fill-hover: #e3e8ed;
     --color-control: #ffffff;
 
-    --color-line: #d1d9e0;
-    --color-hairline: #eaeef2;
+    --color-line: #c9d1d9;
+    --color-hairline: #e2e7ec;
 
-    /* Cyan on white is a 1.5:1 focus ring, which is no ring at all. Light takes Primer's blue and
-       carries white on it, the exact inverse of the dark pair. */
-    --color-accent: #0969da;
-    --color-accent-hover: #0550ae;
+    --color-accent: #0f766e;
+    --color-accent-hover: #0d5f59;
     --color-on-accent: #ffffff;
 
-    --color-success: #1f883d;
-    --color-success-tint: #dafbe1;
-    --color-success-fg: #1a7f37;
-    --color-warning: #bf8700;
-    --color-warning-tint: #fff8c5;
-    --color-warning-fg: #9a6700;
-    --color-danger: #cf222e;
-    --color-danger-tint: #ffebe9;
-    --color-danger-fg: #d1242f;
-    --color-info: #0969da;
-    --color-info-tint: #ddf4ff;
-    --color-info-fg: #0550ae;
+    --color-success: #15803d;
+    --color-success-tint: #dcfce7;
+    --color-success-fg: #166534;
+    --color-warning: #b45309;
+    --color-warning-tint: #fef3c7;
+    --color-warning-fg: #92400e;
+    --color-danger: #dc2626;
+    --color-danger-tint: #fee2e2;
+    --color-danger-fg: #b91c1c;
+    --color-info: #0369a1;
+    --color-info-tint: #e0f2fe;
+    --color-info-fg: #075985;
 
-    --color-body: #1f2328;
-    --color-heading: #1f2328;
-    --color-muted: #59636e;
-    --color-placeholder: #6e7781;
-    --color-inactive: #8c959f;
-    /* Text on a dark ground, which is the uncommon one in this theme. */
+    --color-body: #0b1017;
+    --color-heading: #0b1017;
+    --color-muted: #5b6572;
+    --color-placeholder: #667180;
+    --color-inactive: #8a94a0;
     --color-inverse: #ffffff;
-    --color-link: #0969da;
+    --color-link: #0f766e;
   }
 }
 
 :root[data-mode="light"] {
   color-scheme: light;
 
-  --color-canvas: #ffffff;
+  --color-canvas: #f7f8fa;
   --color-surface: #ffffff;
-  --color-sunken: #f6f8fa;
-  --color-hover: #f6f8fa;
-  --color-fill: #f6f8fa;
-  --color-fill-hover: #eaeef2;
+  --color-sunken: #eef1f4;
+  --color-hover: #f0f3f6;
+  --color-fill: #eef1f4;
+  --color-fill-hover: #e3e8ed;
   --color-control: #ffffff;
 
-  --color-line: #d1d9e0;
-  --color-hairline: #eaeef2;
+  --color-line: #c9d1d9;
+  --color-hairline: #e2e7ec;
 
-  --color-accent: #0969da;
-  --color-accent-hover: #0550ae;
+  --color-accent: #0f766e;
+  --color-accent-hover: #0d5f59;
   --color-on-accent: #ffffff;
 
-  --color-success: #1f883d;
-  --color-success-tint: #dafbe1;
-  --color-success-fg: #1a7f37;
-  --color-warning: #bf8700;
-  --color-warning-tint: #fff8c5;
-  --color-warning-fg: #9a6700;
-  --color-danger: #cf222e;
-  --color-danger-tint: #ffebe9;
-  --color-danger-fg: #d1242f;
-  --color-info: #0969da;
-  --color-info-tint: #ddf4ff;
-  --color-info-fg: #0550ae;
+  --color-success: #15803d;
+  --color-success-tint: #dcfce7;
+  --color-success-fg: #166534;
+  --color-warning: #b45309;
+  --color-warning-tint: #fef3c7;
+  --color-warning-fg: #92400e;
+  --color-danger: #dc2626;
+  --color-danger-tint: #fee2e2;
+  --color-danger-fg: #b91c1c;
+  --color-info: #0369a1;
+  --color-info-tint: #e0f2fe;
+  --color-info-fg: #075985;
 
-  --color-body: #1f2328;
-  --color-heading: #1f2328;
-  --color-muted: #59636e;
-  --color-placeholder: #6e7781;
-  --color-inactive: #8c959f;
+  --color-body: #0b1017;
+  --color-heading: #0b1017;
+  --color-muted: #5b6572;
+  --color-placeholder: #667180;
+  --color-inactive: #8a94a0;
   --color-inverse: #ffffff;
-  --color-link: #0969da;
+  --color-link: #0f766e;
 }
 
-/* The page paints its own ground, or the browser's white shows through a dark theme on first
-   paint and behind an overscroll. */
+/*
+ * The page paints its own ground, or the browser's white shows through a dark theme on first paint
+ * and behind an overscroll. The glow is the homepage's, on the root element so it is painted once
+ * with the canvas and never again while the page scrolls.
+ */
+html {
+  background-color: var(--color-canvas);
+  background-image: radial-gradient(
+    60% 32rem at 72% -8rem,
+    color-mix(in srgb, var(--color-accent) 11%, transparent),
+    transparent 70%
+  );
+  background-repeat: no-repeat;
+}
+
 body {
-  background: var(--color-canvas);
   color: var(--color-body);
+}
+
+/* The homepage's tight headings, everywhere a heading is. */
+@layer base {
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.02em;
+  }
 }
 
 /* One file each, every weight inside it, and the fallback stack keeps the page readable meanwhile. */
