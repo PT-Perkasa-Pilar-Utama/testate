@@ -6,6 +6,7 @@ import * as v from "valibot";
 
 import { AppError } from "../http/index.ts";
 import {
+  alreadyThere,
   byName,
   joinPath,
   missing,
@@ -144,6 +145,25 @@ export function createFtpSource(config: FtpSourceConfig): FileSource {
         if (entry === undefined) throw missing(clean);
         if (entry.kind === "directory") throw notAFile(clean);
         await ftp.remove(joinPath(config.root_path, clean));
+      });
+    },
+    async move(from, to) {
+      const source = normalizePath(from);
+      const target = normalizePath(to);
+      if (target === "") throw notAFile(target);
+      return guard(source, async (ftp) => {
+        const parent = source.includes("/") ? source.slice(0, source.lastIndexOf("/")) : "";
+        const entry = (await listDir(ftp, parent)).find((item) => item.name === nameOf(source));
+        if (entry === undefined) throw missing(source);
+        if (entry.kind === "directory") throw notAFile(source);
+        const into = target.includes("/") ? target.slice(0, target.lastIndexOf("/")) : "";
+        const there = (await listDir(ftp, into).catch(() => [])).find(
+          (item) => item.name === nameOf(target)
+        );
+        if (there !== undefined) throw alreadyThere(target);
+        if (into !== "") await ftp.ensureDir(joinPath(config.root_path, into));
+        await ftp.cd("/");
+        await ftp.rename(joinPath(config.root_path, source), joinPath(config.root_path, target));
       });
     },
     async close() {

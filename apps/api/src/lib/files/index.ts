@@ -25,8 +25,21 @@ export type FileSource = {
    * different on each of the three protocols, and it is the one mistake here nothing undoes.
    */
   remove(path: string): Promise<void>;
+  /**
+   * Renames one file, which is also how it is moved to another directory.
+   *
+   * A directory is refused for the same reason `remove` refuses one, and an occupied destination
+   * is refused rather than overwritten: a rename that lands on an existing file destroys it with
+   * nothing to undo it from, and the caller cannot see that coming.
+   */
+  move(from: string, to: string): Promise<void>;
   close(): Promise<void>;
 };
+
+/** The destination of a move is taken; the caller decides whether to delete it first. */
+export function alreadyThere(path: string): AppError {
+  return new AppError("CONFLICT", "something is already at that path", { path });
+}
 
 /** A directory is not a file, and neither `put` nor `remove` pretends otherwise. */
 export function notAFile(path: string): AppError {

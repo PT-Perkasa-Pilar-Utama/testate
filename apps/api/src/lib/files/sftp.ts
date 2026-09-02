@@ -4,6 +4,7 @@ import SftpClient from "ssh2-sftp-client";
 
 import { AppError } from "../http/index.ts";
 import {
+  alreadyThere,
   byName,
   joinPath,
   missing,
@@ -146,6 +147,22 @@ export function createSftpSource(config: SftpSourceConfig): FileSource {
         const stats = await sftp.stat(joinPath(config.root_path, clean));
         if (stats.isDirectory) throw notAFile(clean);
         await sftp.delete(joinPath(config.root_path, clean));
+      });
+    },
+    async move(from, to) {
+      const source = normalizePath(from);
+      const target = normalizePath(to);
+      if (target === "") throw notAFile(target);
+      return guard(source, async (sftp) => {
+        if ((await sftp.stat(joinPath(config.root_path, source))).isDirectory)
+          throw notAFile(source);
+        // `exists` answers "" for nothing there, and a letter for what is: the protocol's own
+        // rename would clobber a file, and SFTP servers differ on whether they even allow it.
+        if ((await sftp.exists(joinPath(config.root_path, target))) !== false)
+          throw alreadyThere(target);
+        const parent = target.includes("/") ? target.slice(0, target.lastIndexOf("/")) : "";
+        if (parent !== "") await sftp.mkdir(joinPath(config.root_path, parent), true);
+        await sftp.rename(joinPath(config.root_path, source), joinPath(config.root_path, target));
       });
     },
     async close() {

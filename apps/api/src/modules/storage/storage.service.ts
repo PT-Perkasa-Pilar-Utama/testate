@@ -1,4 +1,4 @@
-import type { Actor, Entry, Project } from "@testate/shared";
+import type { Actor, Entry, JsonObject, Project } from "@testate/shared";
 
 import type { FileSource, ListPage } from "../../lib/files/index.ts";
 import { nameOf, normalizePath, notAFile } from "../../lib/files/index.ts";
@@ -38,6 +38,18 @@ export type StorageService = {
     adapterId: string,
     path: string,
     body: Uint8Array,
+    meta: RequestMeta
+  ): Promise<Entry>;
+  /**
+   * Renames one file on a sandbox adapter, which is also how it moves to another directory.
+   * Directories are refused, and so is a destination that already holds something.
+   */
+  rename(
+    actor: Actor,
+    slug: string,
+    adapterId: string,
+    path: string,
+    to: string,
     meta: RequestMeta
   ): Promise<Entry>;
   /** Deletes one file from a sandbox adapter. Directories are refused. */
@@ -144,7 +156,7 @@ export function createStorageService(deps: StorageDeps): StorageService {
     adapter: ResolvedFiles["adapter"],
     slug: string,
     path: string,
-    details: Record<string, number>,
+    details: JsonObject,
     meta: RequestMeta
   ): void =>
     deps.audit.record({
@@ -206,6 +218,20 @@ export function createStorageService(deps: StorageDeps): StorageService {
         // SFTP ends the transport and FTP closes the control connection, either of which turns a
         // write that landed into an error the caller sees while the audit row says it succeeded.
         return await source.stat(clean);
+      } finally {
+        await source.close();
+      }
+    },
+    async rename(actor, slug, adapterId, path, to, meta) {
+      const from = normalizePath(path);
+      const target = normalizePath(to);
+      if (from === "" || target === "") throw notAFile(from === "" ? from : target);
+      const { adapter, source } = await writable(actor, slug, adapterId);
+      try {
+        await source.move(from, target);
+        record(actor, "file.renamed", adapter, slug, from, { to: target }, meta);
+        // Awaited for the same reason `upload` awaits its stat: see the note there.
+        return await source.stat(target);
       } finally {
         await source.close();
       }

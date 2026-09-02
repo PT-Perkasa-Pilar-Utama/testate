@@ -174,6 +174,36 @@ function writesAndDeletes(open: () => FileSource, dropDir: () => Promise<void>):
     }
   });
 
+  test("renames a file, into another directory too, and refuses to land on something", async () => {
+    const source = open();
+    const from = "scratch/before.txt";
+    const to = "scratch/after.txt";
+    const deeper = "scratch/kept/after.txt";
+    try {
+      await source.put(from, new TextEncoder().encode("hello"));
+      await source.move(from, to);
+      await expect(source.stat(from)).rejects.toMatchObject({ code: "NOT_FOUND" });
+      expect(await new Response(await source.read(to)).text()).toBe("hello");
+      // A move is also how a file changes directory, and the directory above it may not exist yet.
+      await source.move(to, deeper);
+      expect((await source.stat(deeper)).size_bytes).toBe(5);
+      // Landing on an existing file would destroy it with nothing to undo it from.
+      await source.put(from, new TextEncoder().encode("other"));
+      await expect(source.move(from, deeper)).rejects.toMatchObject({ code: "CONFLICT" });
+      expect(await new Response(await source.read(deeper)).text()).toBe("hello");
+      await expect(source.move("scratch/nope.txt", to)).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
+      await expect(source.move("scratch", to)).rejects.toMatchObject({
+        code: "VALIDATION_ERROR",
+      });
+    } finally {
+      for (const path of [from, to, deeper]) await source.remove(path).catch(() => "already gone");
+      await source.close();
+      await dropDir();
+    }
+  });
+
   test("refuses to delete a directory", async () => {
     const source = open();
     const path = "scratch/keep/file.txt";

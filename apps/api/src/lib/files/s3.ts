@@ -2,7 +2,15 @@ import { S3Client } from "bun";
 import type { Entry } from "@testate/shared";
 import * as v from "valibot";
 
-import { byName, missing, nameOf, normalizePath, notAFile, unreachable } from "./index.ts";
+import {
+  alreadyThere,
+  byName,
+  missing,
+  nameOf,
+  normalizePath,
+  notAFile,
+  unreachable,
+} from "./index.ts";
 import type { FileSource, ListPage } from "./index.ts";
 
 export type S3SourceConfig = {
@@ -154,6 +162,29 @@ export function createS3Source(config: S3SourceConfig): FileSource {
         .file(keyOf(config.prefix, clean))
         .delete()
         .catch((cause: unknown) => Promise.reject(failure(cause, clean)));
+    },
+    async move(from, to) {
+      const source = normalizePath(from);
+      const target = normalizePath(to);
+      if (target === "") throw notAFile(target);
+      if ((await statEntry(source)).kind !== "file") throw notAFile(source);
+      // A key that is only a prefix is a directory here, and `statEntry` throws for a key that is
+      // neither, which is the answer a caller wants: the destination is free.
+      const taken = await statEntry(target).then(
+        () => true,
+        () => false
+      );
+      if (taken) throw alreadyThere(target);
+      try {
+        // ponytail: copy then delete, which is the only rename this store has. Bun hands the
+        // source S3File to the destination rather than pulling the bytes through this process,
+        // so the cost is the store's own; swap for a multipart copy if a file ever exceeds 5 GiB,
+        // which is where a single-part CopyObject stops.
+        await client.write(keyOf(config.prefix, target), client.file(keyOf(config.prefix, source)));
+        await client.file(keyOf(config.prefix, source)).delete();
+      } catch (cause: unknown) {
+        throw failure(cause, source);
+      }
     },
     async close() {},
   };
