@@ -37,6 +37,8 @@ first table that did. Every action that finished in silence now says so.
 - A list of one said "1 file stores". The sessions table printed `::ffff:127.0.0.1`.
 - A state created while the states list was open never appeared until a reload.
 - Two Solid diagnostics on every dialog dismissed with Escape or the ✕.
+- A checkout or a comparison watched from Activity finished without the project header hearing
+  of it: HEAD kept its old state and `modified` stayed put until a reload.
 
 ## 1.1.0-alpha
 

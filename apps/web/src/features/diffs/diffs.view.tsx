@@ -106,8 +106,11 @@ function DiffRow(props: { presenter: DiffsPresenter; diff: Diff; slug: string })
   );
 }
 
-export default function DiffsView(props: { slug: string }): JSX.Element {
-  const presenter = createDiffsPresenter(() => props.slug);
+export default function DiffsView(props: { slug: string; onChanged?: () => void }): JSX.Element {
+  const presenter = createDiffsPresenter(
+    () => props.slug,
+    () => props.onChanged?.()
+  );
   return (
     <div class="grid gap-3">
       <div class="flex flex-wrap items-center justify-end gap-2">

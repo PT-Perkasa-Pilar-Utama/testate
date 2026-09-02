@@ -35,20 +35,33 @@ export function createRefreshable<T>(load: () => Promise<T>): Refreshable<T> {
  * that shows a list.
  *
  * Its check is `@story-88` in `e2e/states.e2e.ts`, which compares a state with the live databases
- * on one tab and reads the result on another. There is no unit test because there cannot be one:
+ * on one tab and reads the result on another. `onSettled` is checked by `@story-152` there, which
+ * watches a checkout finish on Activity and expects the header to say where HEAD went. There is no unit test because there cannot be one:
  * `bun test` resolves Solid's server build, where an effect never runs at all.
  */
 export function refreshWhileBusy(
   busy: () => boolean,
   refreshList: () => void,
+  onSettled: () => void = () => undefined,
   everyMs = 2_000
 ): void {
+  let wasBusy = false;
   // An interval, not a chain of timeouts. `createEffect` re-runs its effect when the computed
   // value changes, and "still running" does not change, so a timeout set here would have fired
   // exactly once and the row would have gone on saying Running. The effect re-runs when the work
   // finishes, and the cleanup of the busy run is what stops the interval.
   createEffect(busy, (isBusy) => {
-    if (!isBusy) return undefined;
+    if (!isBusy) {
+      // The rows went from running to done, and what they did is the project header's to show: a
+      // checkout moved HEAD, a diff of HEAD against live settled whether it is modified. The screen
+      // that started the job follows it and tells the header itself; a list watching someone
+      // else's job is the only one that knows the moment. A microtask, because the refresh writes
+      // signals and an effect callback is not the place to start a flush.
+      if (wasBusy) queueMicrotask(onSettled);
+      wasBusy = false;
+      return undefined;
+    }
+    wasBusy = true;
     const timer = setInterval(refreshList, everyMs);
     // Returned, not `onCleanup`. A Solid 2 effect body runs with no owner, so an `onCleanup`
     // registered in one is never run and the interval outlives the screen; the effect's own

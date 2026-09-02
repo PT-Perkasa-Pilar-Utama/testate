@@ -150,7 +150,8 @@ export function createCheckoutsPresenter(
   // this screen only ever asked once.
   refreshWhileBusy(
     () => checkouts.value().some((checkout) => checkout.status === "running"),
-    () => checkouts.refresh()
+    () => checkouts.refresh(),
+    onChanged
   );
   const table: TableControls<CheckoutSort> & { rows: () => Checkout[] } = {
     ...controls,

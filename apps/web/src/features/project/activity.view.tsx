@@ -75,7 +75,7 @@ export default function ActivityView(props: { slug: string; onChanged: () => voi
           hint="Two states compared. A diff is kept for a week, then swept."
           labelled={labelled()}
         >
-          <DiffsView slug={props.slug} />
+          <DiffsView slug={props.slug} onChanged={() => props.onChanged()} />
         </Section>
       </Show>
       <Show when={shows("imports")}>

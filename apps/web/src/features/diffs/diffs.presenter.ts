@@ -114,16 +114,21 @@ function messageOf(cause: unknown): string {
   return humanMessage(cause, "That comparison did not work.");
 }
 
-export function createDiffsPresenter(slug: () => string): DiffsPresenter {
+export function createDiffsPresenter(
+  slug: () => string,
+  onChanged: () => void = () => undefined
+): DiffsPresenter {
   // Created here, in the presenter's own body: the follower registers its cleanup with the
   // owner that is current at this moment, and there is none inside an effect or after an await.
   const jobs = createJobFollower();
   const diffs = createRefreshable(() => diffsModel.list(slug()));
   // A comparison started on the States tab is followed by that screen, not this one. Opening
   // Activity while it runs used to show "Running" until the page was reloaded.
+  // A finished diff of HEAD against live is what settles the header's "modified" badge.
   refreshWhileBusy(
     () => diffs.value().some((diff) => diff.status === "running"),
-    () => diffs.refresh()
+    () => diffs.refresh(),
+    onChanged
   );
   const table = createTableView<Diff, DiffSort>({
     rows: () => diffs.value(),
