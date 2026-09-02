@@ -1,3 +1,4 @@
+import { untrack } from "solid-js";
 import type { AuditRow, HealthAdmin, Job, Project } from "@testate/shared";
 
 import { createRefreshable } from "@/lib/async.ts";
@@ -41,10 +42,12 @@ function lastDay(from: string): Parameters<typeof jobsModel.page>[1] {
  * 200 with the public shape and the parse throws.
  */
 export function createHomePresenter(now: () => Date): HomePresenter {
-  const admin = hasRole("admin");
+  // Read once, on purpose: the role decides which requests exist, and a role does not change while
+  // the screen is up. Tracking it here would be a read outside any scope, which Solid 2 reports.
+  const admin = untrack(() => hasRole("admin"));
   // Whoever sees the card. A memo fetches when it is built, so an admin building one would ask
   // /jobs for a number its own Stats row replaces with Users and Tokens.
-  const tester = hasRole("qa") && !admin;
+  const tester = untrack(() => hasRole("qa")) && !admin;
   const window = (): string => since(now());
   // One status per call: the API reads a single `status`, so a second one would be a second call.
   const byStatus = async (
