@@ -192,6 +192,10 @@ These are the design language, not the old vendor's house style. They survive it
   top of a hollow reads as a card that failed to load.
 - **Never conditionally render a dialog.** Drive `<dialog>` from a signal; mounting it on demand
   kills the open and close animation.
+- **A dialog opens and closes on the next turn.** `Dialog` calls `showModal()` and `close()` from a
+  microtask, never inside its effect: the native focus moves they cause run the field's own
+  handlers, and from an effect callback those are the reads and flushes Solid 2 reports. Nothing
+  a screen does should depend on the dialog being open synchronously after its signal flips.
 - **A collapsing panel keeps its content width** while it closes, or the text reflows mid-animation.
 
 ## Before you finish
