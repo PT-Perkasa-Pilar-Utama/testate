@@ -2,7 +2,7 @@ import type { JSX } from "@solidjs/web";
 import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { For, Loading, Show, createSignal } from "solid-js";
-import type { Job, JsonObject } from "@testate/shared";
+import type { Job, JobStatus, JsonObject } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
@@ -51,14 +51,18 @@ const STATUS_VARIANT = {
  * A sentence for jobs with nothing to count (stashing, hooks), a meter for jobs that do. The bar
  * is the difference between reading a number and reading a shape at a glance.
  */
-function ProgressCell(props: { progress: JsonObject | null }): JSX.Element {
-  const ratio = (): number | null => progressFraction(props.progress);
+function ProgressCell(props: { progress: JsonObject | null; status: JobStatus }): JSX.Element {
+  // A job that succeeded is all the way there whatever its last event said. A restore reports
+  // "2 of 3 tables" and then finishes without a final count, so the list showed 67% next to
+  // "Succeeded" for good.
+  const ratio = (): number | null =>
+    props.status === "succeeded" ? 1 : progressFraction(props.progress);
   return (
     <Show
       when={ratio() !== null}
       fallback={<span class="text-xs text-muted">{describeProgress(props.progress)}</span>}
     >
-      <div class="w-40">
+      <div class="w-44">
         <Meter
           value={ratio() ?? 0}
           max={1}
@@ -89,7 +93,7 @@ function JobRow(props: { presenter: JobsPresenter; job: Job }): JSX.Element {
       <Cell>
         <Show
           when={props.job.queue_position !== null}
-          fallback={<ProgressCell progress={live.progress()} />}
+          fallback={<ProgressCell progress={live.progress()} status={live.status()} />}
         >
           queue #{props.job.queue_position}
         </Show>

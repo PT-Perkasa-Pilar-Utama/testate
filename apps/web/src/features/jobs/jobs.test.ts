@@ -34,6 +34,14 @@ describe("describeProgress", () => {
     expect(describeProgress(null)).toBe("");
     expect(describeProgress({ phase: "stash" })).toBe("Stashing the live data");
   });
+
+  test("says every runner phase in a person's words, never the runner's own", () => {
+    expect(describeProgress({ phase: "tar" })).toBe("Packing the archive");
+    expect(describeProgress({ phase: "gc", candidates: 3 })).toBe(
+      "Removing what nothing references"
+    );
+    expect(describeProgress({ phase: "no-such-phase" })).toBe("Working");
+  });
 });
 
 describe("progressFraction", () => {

@@ -66,14 +66,28 @@ const progressSchema = v.object({
 
 type Progress = v.InferOutput<typeof progressSchema>;
 
+/**
+ * Every phase a runner reports, as a person would say it. The table used to stop at five, so a
+ * backup read "tar" and a deletion read "gc" in the jobs list: the runner's own words, leaked.
+ */
+const PHRASE = new Map<string, string>([
+  ["snapshot", "Snapshotting"],
+  ["restore", "Restoring"],
+  ["stash", "Stashing the live data"],
+  ["merge", "Comparing"],
+  ["write", "Writing rows"],
+  ["read", "Reading"],
+  ["copy", "Copying"],
+  ["verify", "Verifying"],
+  ["metadata", "Writing the metadata"],
+  ["tar", "Packing the archive"],
+  ["gc", "Removing what nothing references"],
+  ["remove", "Removing"],
+  ["done", "Done"],
+]);
+
 function phraseOf(progress: Progress): string {
-  const phase = progress.phase ?? "";
-  if (phase === "snapshot") return "Snapshotting";
-  if (phase === "restore") return "Restoring";
-  if (phase === "stash") return "Stashing the live data";
-  if (phase === "merge") return "Comparing";
-  if (phase === "write") return "Writing rows";
-  return phase === "" ? "Working" : phase;
+  return PHRASE.get(progress.phase ?? "") ?? "Working";
 }
 
 function countOf(progress: Progress): string {
