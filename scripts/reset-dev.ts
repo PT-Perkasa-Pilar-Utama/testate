@@ -103,4 +103,4 @@ if (args.includes("--engines") && !dryRun) {
   await step("demo schema created by the contract suites", ["bun", "run", "contract"]);
 }
 
-console.log("clean. Next: bun run dev, then in a second terminal: bun run seed:dev");
+console.log("clean. Next: bun run seed:dev, then bun run dev");

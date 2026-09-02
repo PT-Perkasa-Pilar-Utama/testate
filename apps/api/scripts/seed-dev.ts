@@ -1,13 +1,18 @@
 /**
- * Seeds a running instance with the demo the browser suite runs against, plus what the suite
+ * Seeds the dev instance with the demo the browser suite runs against, plus what the suite
  * itself leaves behind, so every screen has something on it: a project on the compose engines,
  * three states with tags, a checkout, a diff against the live databases, a saved query, two more
- * accounts and two tokens. Point it at your own `bun run dev` (TESTATE_ENV=development):
+ * accounts and two tokens.
  *
- *   bun run seed:dev [http://localhost:7378]
+ *   bun run reset:dev --yes --engines
+ *   bun run seed:dev
+ *   bun run dev
  *
- * The bootstrap password comes from `apps/api/.env`, the same file `bun run dev` reads; set
- * TESTATE_ADMIN_PASSWORD only for an instance that started with a different one.
+ * It needs no server: when nothing answers on the dev port it starts the API itself on
+ * `apps/api/.env` and a spare port, seeds through it, and stops it. When `bun run dev` is already
+ * up, or a URL is given, it talks to that instance instead. The admin ends with the password in
+ * `apps/api/.env` and no forced change, so `bun run dev` afterwards signs in as it always did.
+ * TESTATE_ADMIN_PASSWORD is only for an instance that started with a different one.
  *
  * It resets the instance: `POST /admin/reset-state` drops every project, adapter, state and
  * account and recreates the dev seed. Run it against a box you do not mind wiping, with
@@ -16,7 +21,21 @@
  */
 import * as v from "valibot";
 
-const base = (process.argv[2] ?? "http://localhost:7378").replace(/\/$/, "");
+function say(line: string): void {
+  process.stdout.write(`${line}\n`);
+}
+
+/** The dev port: PORT in the environment, else in apps/api/.env, else the default. */
+async function devPort(): Promise<string> {
+  const fromEnv = Bun.env["PORT"] ?? "";
+  if (fromEnv !== "") return fromEnv;
+  const file = Bun.file(new URL("../.env", import.meta.url));
+  const text = (await file.exists()) ? await file.text() : "";
+  return /^PORT=(\d+)$/m.exec(text)?.[1] ?? "7378";
+}
+
+let base = (process.argv[2] ?? `http://localhost:${await devPort()}`).replace(/\/$/, "");
+const SPARE_PORT = 7391;
 /**
  * The bootstrap password `bun run dev` started with: the environment if set, else the line in
  * `apps/api/.env`, which is the file the dev server itself reads. Nobody should have to know it.
@@ -36,26 +55,52 @@ async function bootstrapPassword(): Promise<string> {
   return line;
 }
 
-/**
- * `bun run dev` takes a while to answer, and a seed started in a second terminal a moment after
- * it used to die on a refused connection before the first request. Up to a minute of patience.
- */
-async function waitForApi(): Promise<void> {
-  for (let attempt = 0; attempt < 60; attempt += 1) {
-    const alive = await fetch(`${base}/api/v1/health/live`).then(
-      (r) => r.ok,
-      () => false
-    );
-    if (alive) return;
-    if (attempt === 0) process.stdout.write(`waiting for the API at ${base} ...\n`);
-    await Bun.sleep(1000);
-  }
-  throw new Error(
-    `nothing answered at ${base}/api/v1/health/live in 60 seconds; is bun run dev up?`
+async function alive(url: string): Promise<boolean> {
+  return fetch(`${url}/api/v1/health/live`).then(
+    (r) => r.ok,
+    () => false
   );
 }
 
-await waitForApi();
+async function waitForApi(url: string, seconds: number): Promise<void> {
+  for (let attempt = 0; attempt < seconds; attempt += 1) {
+    if (await alive(url)) return;
+    await Bun.sleep(1000);
+  }
+  throw new Error(`nothing answered at ${url}/api/v1/health/live in ${seconds} seconds`);
+}
+
+/**
+ * The instance to seed: the one already answering, or one started here for the duration. The
+ * child reads `apps/api/.env` like `bun run dev` does (Bun loads it from the working directory
+ * and never overrides a variable already set), so only the port and the log stream differ.
+ */
+async function ensureApi(): Promise<() => Promise<void>> {
+  if (await alive(base)) {
+    say(`seeding the instance at ${base}`);
+    return async () => undefined;
+  }
+  if (process.argv[2] !== undefined) throw new Error(`nothing answers at ${base}`);
+  const child = Bun.spawn(["bun", "src/index.ts"], {
+    cwd: new URL("..", import.meta.url).pathname,
+    env: { ...process.env, PORT: String(SPARE_PORT), TESTATE_LOG_STDOUT: "false" },
+    stdout: "ignore",
+    stderr: "pipe",
+  });
+  base = `http://localhost:${SPARE_PORT}`;
+  say(`no API on the dev port; starting one on ${base} for the seed`);
+  await waitForApi(base, 60).catch(async (cause: Error) => {
+    child.kill();
+    throw new Error(`${cause.message}\n${await new Response(child.stderr).text()}`);
+  });
+  return async () => {
+    child.kill();
+    await child.exited;
+    say("seed API stopped");
+  };
+}
+
+const stopApi = await ensureApi();
 const bootstrap = await bootstrapPassword();
 
 const FINAL = {
@@ -64,10 +109,6 @@ const FINAL = {
   viewer: "viewer-final-password-1",
 };
 const TEMP = { qa: "qa-password-1234", viewer: "viewer-password-1234" };
-
-const say = (line: string): void => {
-  process.stdout.write(`${line}\n`);
-};
 
 type Session = { cookie: string };
 type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
@@ -175,6 +216,8 @@ say(`seeded the demo project with ${report.data.adapters} adapters`);
 // 2. The reset recreated every account with a temporary password; rotate them all again.
 admin = await rotate("admin", bootstrap, FINAL.admin);
 await expectOk(await call(admin, "PATCH", "settings", { netguard: { deny: [] } }), "settings");
+// And back: the admin keeps the password in apps/api/.env, with the forced change behind it.
+admin = await rotate("admin", FINAL.admin, bootstrap);
 const qa = await rotate("qa-user", TEMP.qa, FINAL.qa);
 await rotate("viewer-user", TEMP.viewer, FINAL.viewer);
 
@@ -237,7 +280,7 @@ const mcp = v.parse(tokenSchema, await agent.json()).data.token;
 
 say(`
 Seeded ${base}. Sign in as:
-  admin        ${FINAL.admin}      (Administrator)
+  admin        ${bootstrap}      (Administrator, the TESTATE_ADMIN_PASSWORD in apps/api/.env)
   qa-user      ${FINAL.qa}         (Tester)
   viewer-user  ${FINAL.viewer}     (Guest)
 
@@ -247,3 +290,4 @@ Tokens, shown once:
 
   claude mcp add --transport http testate ${base}/api/v1/mcp --header "Authorization: Bearer ${mcp}"
 `);
+await stopApi();

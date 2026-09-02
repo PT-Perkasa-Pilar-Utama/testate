@@ -4,18 +4,18 @@ Git for your test database. Bun 1.4 monorepo: `apps/api` (Hono), `apps/web` (Sol
 
 ## Commands
 
-| Task                                  | Command                                                                                                                                           |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Full gate (run before every hand-off) | `bun run complete-check`                                                                                                                          |
-| Tests                                 | `bun test` or `bun test apps/api/src/modules/states`                                                                                              |
-| Lint and format                       | `bun run lint`, `bun run fmt:fix`                                                                                                                 |
-| Dev servers                           | `bun run dev` (API :7378, Vite :7379 proxying `/api`)                                                                                             |
-| Smoke a running API                   | `bun run smoke`                                                                                                                                   |
-| Seed a dev instance with the demo     | `bun run seed:dev [url]` in a second terminal while `bun run dev` runs (wipes it; needs the compose engines; bootstrap read from `apps/api/.env`) |
-| Wipe the dev environment              | `bun run reset:dev --yes [--engines]` (stop `bun run dev` first; `--engines` also rebuilds the demo schema)                                       |
-| Browser end-to-end (Playwright)       | `bun run e2e` (its own ports 7478/7479, so it runs beside `bun run dev`)                                                                          |
-| Engine contract suites                | `bun run contract` (needs the compose engines; fails on a skip)                                                                                   |
-| Set the version everywhere            | `bun run bump-version <version>` (`--check` reports drift)                                                                                        |
+| Task                                  | Command                                                                                                                                                             |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Full gate (run before every hand-off) | `bun run complete-check`                                                                                                                                            |
+| Tests                                 | `bun test` or `bun test apps/api/src/modules/states`                                                                                                                |
+| Lint and format                       | `bun run lint`, `bun run fmt:fix`                                                                                                                                   |
+| Dev servers                           | `bun run dev` (API :7378, Vite :7379 proxying `/api`)                                                                                                               |
+| Smoke a running API                   | `bun run smoke`                                                                                                                                                     |
+| Seed a dev instance with the demo     | `bun run seed:dev` after the reset and before `bun run dev` (starts its own API if none is up; needs the compose engines; admin keeps the `apps/api/.env` password) |
+| Wipe the dev environment              | `bun run reset:dev --yes [--engines]` (stop `bun run dev` first; `--engines` also rebuilds the demo schema)                                                         |
+| Browser end-to-end (Playwright)       | `bun run e2e` (its own ports 7478/7479, so it runs beside `bun run dev`)                                                                                            |
+| Engine contract suites                | `bun run contract` (needs the compose engines; fails on a skip)                                                                                                     |
+| Set the version everywhere            | `bun run bump-version <version>` (`--check` reports drift)                                                                                                          |
 
 The gate is green today. Keep it green: a change that adds a lint error or a failing test is not done.
 

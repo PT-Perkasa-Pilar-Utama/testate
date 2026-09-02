@@ -182,7 +182,7 @@ cp apps/api/.env.example apps/api/.env      # set the key and the admin password
 bun run dev                                 # API on :7378, dashboard on :7379
 ```
 
-`bun run seed:dev` fills a dev instance with the demo project the test suite uses, on the databases from `deploy/compose.engines.yml`. `bun run reset:dev --yes` wipes it. [CLAUDE.md](CLAUDE.md) has the rest: the gate, the layout, the conventions.
+`bun run reset:dev --yes --engines`, then `bun run seed:dev`, then `bun run dev`: a clean dev instance holding the demo project the test suite uses, on the databases from `deploy/compose.engines.yml`, with the admin on the password from `apps/api/.env`. [CLAUDE.md](CLAUDE.md) has the rest of the commands.
 
 ## Docs
 
