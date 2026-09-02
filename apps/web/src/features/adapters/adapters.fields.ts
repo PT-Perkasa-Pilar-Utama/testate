@@ -62,9 +62,20 @@ export const ENGINE_FORMS = {
       { key: "prefix", label: "Prefix", type: "text", placeholder: "exports/" },
       {
         key: "endpoint",
-        label: "Endpoint (optional, for MinIO)",
+        // Not "for MinIO". This one field is the whole of supporting every other S3-compatible
+        // store: Cloudflare R2, Google Cloud Storage through its interoperability API, Backblaze
+        // B2, Wasabi, Ceph. Leave it empty for Amazon's own S3.
+        label: "Endpoint (leave empty for Amazon S3)",
         type: "url",
-        placeholder: "https://minio.sit.internal:9000",
+        placeholder: "https://<account>.r2.cloudflarestorage.com",
+      },
+      {
+        key: "virtual_hosted",
+        // Amazon deprecated path-style addressing for buckets made after September 2020, and
+        // every other store here wants path-style. The default is off because that is what the
+        // stores people point this at want; an Amazon bucket turns it on.
+        label: "Bucket in the hostname (Amazon S3 wants this)",
+        type: "boolean",
       },
     ],
     secrets: [
@@ -149,6 +160,11 @@ export function toDraftBody(
   const config: JsonObject = {};
   for (const field of form.config) {
     const raw = values[`config.${field.key}`] ?? "";
+    // A tick is a value even when it is off, unlike an empty text box, which means "not set".
+    if (field.type === "boolean") {
+      config[field.key] = raw === "true";
+      continue;
+    }
     if (raw === "") continue;
     config[field.key] = field.type === "number" ? Number(raw) : raw;
   }

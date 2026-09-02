@@ -4,6 +4,7 @@ import {
   ADAPTER_FILTERS_EMPTY,
   matchesAdapterFilters,
   missingRequiredFields,
+  toDraftBody,
 } from "./adapters.fields.ts";
 import type { AdapterFilters } from "./adapters.fields.ts";
 
@@ -53,5 +54,35 @@ describe("matchesAdapterFilters", () => {
       mode: "read_only",
     };
     expect(matchesAdapterFilters(shop, rightEngineWrongMode)).toBe(false);
+  });
+});
+
+describe("an S3-compatible bucket", () => {
+  const values = {
+    "config.bucket": "exports",
+    "config.region": "auto",
+    "config.endpoint": "https://acct.r2.cloudflarestorage.com",
+    "secret.access_key_id": "id",
+    "secret.secret_access_key": "key",
+  };
+
+  test("carries the endpoint through, which is the whole of supporting R2, GCS and the rest", () => {
+    const body = toDraftBody("s3", "r2", "sandbox", values);
+    expect(body["config"]).toMatchObject({
+      bucket: "exports",
+      region: "auto",
+      endpoint: "https://acct.r2.cloudflarestorage.com",
+    });
+  });
+
+  test("sends the addressing style either way, because off is an answer and not a blank", () => {
+    // A text field left empty means "not set" and is dropped. A switch left off means path-style,
+    // which is what every store but Amazon's own wants, and the API has to be told so.
+    expect(toDraftBody("s3", "r2", "sandbox", values)["config"]).toMatchObject({
+      virtual_hosted: false,
+    });
+    expect(
+      toDraftBody("s3", "aws", "sandbox", { ...values, "config.virtual_hosted": "true" })["config"]
+    ).toMatchObject({ virtual_hosted: true });
   });
 });

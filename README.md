@@ -6,7 +6,7 @@
 
 **Git for your test database. Snapshot it, break it, put it back in seconds.**
 
-Self-hosted, one Docker image, one volume. Testate takes data-only snapshots of the databases behind a system under test, restores any of them on demand, diffs them, loads fixtures from a CSV or a spreadsheet, and lets an AI agent work on them over [MCP](#5-how-to-connect-an-ai-agent-to-a-project). PostgreSQL, MySQL, MariaDB and MongoDB, plus S3, SFTP and FTP for the files beside them. Nothing here is a stand-in: every engine in the table below is driven by a real connection, and the suite proves it against real servers.
+Self-hosted, one Docker image, one volume. Testate takes data-only snapshots of the databases behind a system under test, restores any of them on demand, diffs them, loads fixtures from a CSV or a spreadsheet, and lets an AI agent work on them over [MCP](#5-how-to-connect-an-ai-agent-to-a-project). PostgreSQL, MySQL, MariaDB and MongoDB, plus any S3-compatible bucket, SFTP and FTP for the files beside them. Nothing here is a stand-in: every engine in the table below is driven by a real connection, and the suite proves it against real servers.
 
 Reset the database before every test run from [CI](#6-how-to-integrate-into-a-cicd-pipeline), or from the screen below.
 
@@ -23,11 +23,11 @@ Open <http://localhost:7378>, sign in as `admin` with that password, and add a d
 
 That command is fine for a look. For anything you rely on, use Compose and an `.env` file: [how to install](#1-how-to-install).
 
-| Tier     | Engines                    | What you get                                           |
-| -------- | -------------------------- | ------------------------------------------------------ |
-| Tabular  | PostgreSQL, MySQL, MariaDB | view, snapshot, checkout, diff, extract, edit, import  |
-| Document | MongoDB                    | view, snapshot, checkout, diff, extract                |
-| Files    | S3, SFTP, FTP              | view, preview, download, insert, rename, delete, batch |
+| Tier     | Engines                            | What you get                                           |
+| -------- | ---------------------------------- | ------------------------------------------------------ |
+| Tabular  | PostgreSQL, MySQL, MariaDB         | view, snapshot, checkout, diff, extract, edit, import  |
+| Document | MongoDB                            | view, snapshot, checkout, diff, extract                |
+| Files    | Any S3-compatible store, SFTP, FTP | view, preview, download, insert, rename, delete, batch |
 
 Version 1.1.0-alpha.
 
@@ -50,6 +50,7 @@ Version 1.1.0-alpha.
   - [3a. A database running in Docker, on the same machine as Testate](#3a-a-database-running-in-docker-on-the-same-machine-as-testate)
   - [3b. A database running as a native binary on the host](#3b-a-database-running-as-a-native-binary-on-the-host)
   - [3c. A database in the cloud (managed or remote)](#3c-a-database-in-the-cloud-managed-or-remote)
+  - [3d. An object store that is not Amazon's](#3d-an-object-store-that-is-not-amazons)
 - [4. How to test the connection](#4-how-to-test-the-connection)
 - [5. How to connect an AI agent to a project](#5-how-to-connect-an-ai-agent-to-a-project)
   - [When the token expires](#when-the-token-expires)
@@ -171,6 +172,37 @@ Adapter form: Host `host.docker.internal`, Port whatever the native process list
 Adapter form: Host is the provider's address or DNS name, Port its usual port. Nothing extra to configure on the Testate side beyond a route from the host running Testate to that address (an open firewall, a VPN, a public endpoint, whatever your provider needs).
 
 On Supabase specifically, use the direct connection string, not the pooler, and a role that owns the tables. The pooler refuses the transaction shape a restore needs.
+
+### 3d. An object store that is not Amazon's
+
+There is one storage engine, `s3`, and it speaks to anything that speaks S3. The **Endpoint** field
+is the whole of it: leave it empty for Amazon, fill it in for everyone else. Addressing style is
+the other half, and the two go together.
+
+| Store                    | Endpoint                                        | Region                        | Bucket in the hostname |
+| ------------------------ | ----------------------------------------------- | ----------------------------- | ---------------------- |
+| Amazon S3                | leave empty                                     | the bucket's own, `eu-west-1` | **on**                 |
+| Cloudflare R2            | `https://<account-id>.r2.cloudflarestorage.com` | `auto`                        | off                    |
+| Google Cloud Storage     | `https://storage.googleapis.com`                | the bucket's own              | off                    |
+| Backblaze B2             | `https://s3.<region>.backblazeb2.com`           | the region in that host       | off                    |
+| MinIO, Ceph, or your own | wherever it listens                             | anything the server accepts   | off                    |
+
+Amazon stopped accepting path-style addressing for buckets created after September 2020, which is
+why theirs is the one that wants the bucket in the hostname. Every other store here is happy with
+path style and several only accept it.
+
+Two credentials, whoever the provider is: an access key id and a secret access key. Google Cloud
+Storage does not hand those out with a service account; they come from **Interoperability** in the
+Cloud Storage settings, as an HMAC key for a service account, and that is the only mode of theirs
+this speaks.
+
+Tested here: Amazon's own protocol against MinIO, on every operation, in `bun run contract`. The
+others are the same code path with a different endpoint and are not in that suite, because it runs
+without credentials to anybody's cloud. **Test connection** in the New adapter dialog is the check
+that matters for yours; it lists the bucket before anything is saved.
+
+The same is true of the snapshot store, which is where states and backups live rather than the
+files you browse: `TESTATE_STORE=s3` with `TESTATE_S3_ENDPOINT` points it at any of these.
 
 ## 4. How to test the connection
 

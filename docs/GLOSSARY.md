@@ -7,7 +7,7 @@ Terms as the code, the API, and the UI use them. One meaning each. Specs cite th
 | **Project** | The unit of ownership: a slug, a set of adapters, a set of states, one HEAD, one quota | A Testate deployment |
 | **Adapter** | A connection Testate owns to one target: a database or a file store | The engine driver code |
 | **Adapter mode** | `sandbox` allows checkout, import, and writes; `read_only` refuses every write | A role |
-| **Engine** | The target technology behind an adapter: `postgres`, `mysql`, `mariadb`, `mongodb`, `s3`, `sftp`, `ftp` | A version |
+| **Engine** | The target technology behind an adapter: `postgres`, `mysql`, `mariadb`, `mongodb`, `s3`, `sftp`, `ftp`. `s3` is a protocol rather than a vendor: the endpoint decides whether it reaches Amazon, R2, Google Cloud Storage, B2 or a MinIO on the next rack | A version |
 | **Tier** | What an engine supports: **Tabular** (view, state, diff, extract, edit, import), **Document** (view, state, diff, extract), **Files** (view, download) | A pricing plan |
 | **State** | A data-only snapshot of every database adapter in a project, taken at one moment, named, and stored as blobs | A snapshot of Testate's own metadata |
 | **Init state** | The state taken when an adapter joins a project. Protected. The target returns to it before a project or adapter deletion | A backup |

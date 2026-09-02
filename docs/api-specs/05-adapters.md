@@ -17,7 +17,7 @@ Adapter object (secrets never included):
   "read_only_enforcement": "transaction", "last_probe_at": "...", "created_at": "...", "updated_at": "..." }
 ```
 
-`config` fields by kind: database `{ host, port, database, user, ssl, schemas? }` or `{ connection_string_set: true }`; storage s3 `{ bucket, prefix, region, endpoint?, virtual_hosted }`, sftp and ftp `{ host, port, user, root_path, tls? }`.
+`config` fields by kind: database `{ host, port, database, user, ssl, schemas? }` or `{ connection_string_set: true }`; storage s3 `{ bucket, prefix, region, endpoint?, virtual_hosted }` (`s3` is any store that speaks S3: `endpoint` empty means Amazon, filled means R2, Google Cloud Storage over its interoperability API, Backblaze B2, MinIO or anything else, and `virtual_hosted` is on only for Amazon, who stopped accepting path style for buckets made after September 2020), sftp and ftp `{ host, port, user, root_path, tls? }`.
 
 Draft body (create, test, update):
 
