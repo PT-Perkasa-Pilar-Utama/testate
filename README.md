@@ -1,5 +1,11 @@
 ![Testate: git for your test database. Testers, CI pipelines and AI agents drive Testate, which runs on the same test server as the system under test and snapshots or restores its databases](docs/assets/hero.svg)
 
+[![CI](https://github.com/PT-Perkasa-Pilar-Utama/testate/actions/workflows/ci.yml/badge.svg)](https://github.com/PT-Perkasa-Pilar-Utama/testate/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/PT-Perkasa-Pilar-Utama/testate/badge)](https://scorecard.dev/viewer/?uri=github.com/PT-Perkasa-Pilar-Utama/testate)
+[![CodeQL](https://github.com/PT-Perkasa-Pilar-Utama/testate/actions/workflows/codeql.yml/badge.svg)](https://github.com/PT-Perkasa-Pilar-Utama/testate/actions/workflows/codeql.yml)
+[![Release](https://img.shields.io/github/v/release/PT-Perkasa-Pilar-Utama/testate?include_prereleases&sort=semver)](https://github.com/PT-Perkasa-Pilar-Utama/testate/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-0f766e)](LICENSE)
+
 # Testate
 
 [![License: MIT](https://img.shields.io/github/license/PT-Perkasa-Pilar-Utama/testate)](./LICENSE) [![Release](https://img.shields.io/github/v/release/PT-Perkasa-Pilar-Utama/testate?include_prereleases)](https://github.com/PT-Perkasa-Pilar-Utama/testate/releases) [![Container](https://img.shields.io/badge/ghcr.io-testate-blue?logo=docker&logoColor=white)](https://github.com/PT-Perkasa-Pilar-Utama/testate/pkgs/container/testate) [![Bun](https://img.shields.io/badge/Bun-1.4-black?logo=bun)](https://bun.sh)
@@ -142,6 +148,33 @@ TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
 It listens on port 7378 and keeps everything under `TESTATE_DATA_DIR`, which has to be set: the
 default is the image's `/data`. Every other variable in `deploy/.env.example` applies the same way.
 The dashboard and the migrations are unpacked under `<data dir>/run/app/<version>/` on every boot.
+
+### Verify a download
+
+Every release is built by this repository's own workflow and leaves a trail you can check
+without trusting us. The image carries SLSA build provenance in the registry and a keyless
+Sigstore signature on its digest:
+
+```sh
+gh attestation verify oci://ghcr.io/pt-perkasa-pilar-utama/testate:1.0.0-beta \
+  --repo PT-Perkasa-Pilar-Utama/testate
+cosign verify ghcr.io/pt-perkasa-pilar-utama/testate:1.0.0-beta \
+  --certificate-identity-regexp 'https://github.com/PT-Perkasa-Pilar-Utama/testate/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+Each binary archive on the release has the same provenance and a `.sigstore.json` bundle beside
+it, and the release carries a CycloneDX SBOM of everything inside:
+
+```sh
+gh attestation verify testate-1.0.0-beta-linux-x64.tar.gz --repo PT-Perkasa-Pilar-Utama/testate
+cosign verify-blob testate-1.0.0-beta-linux-x64.tar.gz \
+  --bundle testate-1.0.0-beta-linux-x64.tar.gz.sigstore.json \
+  --certificate-identity-regexp 'https://github.com/PT-Perkasa-Pilar-Utama/testate/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+A download that fails either check is not ours. `SECURITY.md` says how to report it.
 
 ## 2. First-time setup
 

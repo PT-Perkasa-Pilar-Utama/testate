@@ -193,7 +193,7 @@ jobs:
 
       - name: Upload the digest
         if: steps.published.outputs.skip != 'true'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: digest-${{ matrix.arch }}
           path: digests/*
@@ -209,6 +209,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write # keyless signing and the provenance attestation
+      attestations: write
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -230,7 +232,7 @@ jobs:
 
       - name: Collect the digests
         id: digests
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: digests
           pattern: digest-*
@@ -271,6 +273,38 @@ jobs:
           done
           echo "manifest carries linux/amd64 and linux/arm64"
 
+      - name: Resolve the published digest
+        id: published
+        run: |
+          if [ ! -f digests/amd64 ]; then echo "digest=" >> "$GITHUB_OUTPUT"; exit 0; fi
+          digest=$(docker buildx imagetools inspect "${{ steps.img.outputs.image }}:${{ steps.img.outputs.version }}" --format '{{ json .Manifest.Digest }}' | tr -d '"')
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+          echo "published manifest is ${digest}"
+
+      # SLSA build provenance for the image, stored in the registry beside it. Verify with:
+      #   gh attestation verify oci://ghcr.io/pt-perkasa-pilar-utama/testate:<version> --repo PT-Perkasa-Pilar-Utama/testate
+      - name: Attest the image's build provenance
+        if: steps.published.outputs.digest != ''
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ steps.img.outputs.image }}
+          subject-digest: ${{ steps.published.outputs.digest }}
+          push-to-registry: true
+
+      - name: Install cosign
+        if: steps.published.outputs.digest != ''
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      # Keyless, through the workflow's OIDC identity: no long-lived key anywhere. Verify with:
+      #   cosign verify ghcr.io/pt-perkasa-pilar-utama/testate:<version> \
+      #     --certificate-identity-regexp 'https://github.com/PT-Perkasa-Pilar-Utama/testate/' \
+      #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+      - name: Sign the image (keyless)
+        if: steps.published.outputs.digest != ''
+        env:
+          COSIGN_YES: "true"
+        run: cosign sign "${{ steps.img.outputs.image }}@${{ steps.published.outputs.digest }}"
+
   # One executable per platform, the SPA and the migrations inside it, so a machine with no Docker
   # can run Testate from a download. Cross-compiled on one Linux runner: nothing native is inside
   # the bundle (`*.node` stays external and ssh2 falls back to its pure-JS crypto).
@@ -293,7 +327,7 @@ jobs:
       - name: Compile every target
         run: bun scripts/binary/build-binaries.ts --all
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: binaries
           path: .bin-build/testate-*
@@ -325,7 +359,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: binaries
           path: binaries
@@ -366,11 +400,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write # keyless signing and the provenance attestation
+      attestations: write
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: binaries
           path: binaries
@@ -388,6 +424,37 @@ jobs:
             esac
           done
           ls -lh dist
+
+      # SLSA build provenance for each archive. Verify a download with:
+      #   gh attestation verify testate-<version>-<target>.tar.gz --repo PT-Perkasa-Pilar-Utama/testate
+      # Before signing, so the subject glob cannot match the bundles the signing step adds.
+      - name: Attest the archives' build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      # One .sigstore.json bundle per archive: signature, certificate and transparency-log entry
+      # in one file, which is also what Scorecard's Signed-Releases check looks for.
+      - name: Sign the archives (keyless)
+        env:
+          COSIGN_YES: "true"
+        run: |
+          for f in dist/*.tar.gz dist/*.zip; do
+            cosign sign-blob "$f" --bundle "$f.sigstore.json"
+          done
+
+      # What is inside: every package the binaries and the image carry, as CycloneDX.
+      - name: Generate the SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: dist/testate-sbom.cyclonedx.json
+          upload-artifact: false
+          upload-release-assets: false
 
       - name: Create the release, unless it exists
         env:

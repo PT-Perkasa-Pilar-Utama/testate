@@ -31,6 +31,7 @@
     "test": "bun test",
     "smoke": "bun scripts/smoke.ts",
     "seed:dev": "bun apps/api/scripts/seed-dev.ts",
+    "reset:dev": "bun scripts/reset-dev.ts",
     "contract": "bun scripts/contract.ts",
     "generate-key": "bun scripts/generate-key.ts",
     "bump-version": "bun scripts/bump-version.ts",

@@ -1,0 +1,15 @@
+# Weekly update pull requests for the workspace's packages (bun.lock) and for the actions the
+# workflows pin by commit SHA, so the pins keep moving without anyone watching release feeds.
+version: 2
+updates:
+  - package-ecosystem: "bun"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
