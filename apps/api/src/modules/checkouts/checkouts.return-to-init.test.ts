@@ -3,6 +3,8 @@ import * as v from "valibot";
 
 import { TEST_META } from "../../../test/accounts.ts";
 import { PG, createAdaptersHarness, createSettled, fakeRegistry } from "../../../test/adapters.ts";
+import { createTestSettings } from "../../../test/settings.ts";
+import { createProjectsService } from "../projects/projects.service.ts";
 import { returnToInit } from "./checkouts.return-to-init.ts";
 
 const headRow = v.object({ head_status: v.string() });
@@ -35,6 +37,50 @@ describe("return to init", () => {
     await expect(harness.adapters.get("shop", adapter.id)).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
+  });
+
+  it("project deletion restores every database first, edits and all", async () => {
+    const harness = await createAdaptersHarness();
+    const adapter = await createSettled(harness, PG);
+    const projects = createProjectsService({
+      repo: harness.projectsRepo,
+      audit: harness.audit,
+      settings: createTestSettings(harness.db, harness.audit, harness.now),
+      adapters: harness.adapters,
+      jobs: harness.runtime.jobs,
+      now: harness.now,
+    });
+    // What a tester does: open a table and change it. Add a row, change a value, drop another.
+    const shop = harness.databases.get("shop");
+    shop?.set("public.customers", [
+      { id: 1, email: "edited@x.io" },
+      { id: 3, email: "new@x.io" },
+    ]);
+    shop?.set("public.orders", []);
+
+    const plan = await projects.deletionPlan("shop");
+    expect(plan.adapters.map((one) => one.action)).toStrictEqual(["restore"]);
+    const job = await projects.deleteProject(
+      harness.qa,
+      "shop",
+      {
+        confirm_slug: "shop",
+        plan_id: plan.plan_id,
+        adapters: plan.adapters.map((one) => ({ adapter_id: one.adapter_id, action: "restore" })),
+      },
+      TEST_META
+    );
+    const done = await harness.runtime.jobs.wait(null, job.id, 5);
+    expect(done.error).toBeNull();
+    expect(done.status).toBe("succeeded");
+    expect(done.result?.["restored"]).toEqual({ [adapter.id]: { tables: 2, batches: 2 } });
+    // Back to what the adapter joined with: the edit, the addition and the deletion all undone.
+    expect(shop?.get("public.customers")).toEqual([
+      { id: 1, email: "a@x.io" },
+      { id: 2, email: "b@x.io" },
+    ]);
+    expect(shop?.get("public.orders")).toEqual([{ id: 1, customer_id: 1, total: "10.00" }]);
+    expect(harness.projectsRepo.bySlug("shop")).toBeNull();
   });
 
   it("a failed restore keeps the adapter, fails the job, and sets HEAD unknown", async () => {

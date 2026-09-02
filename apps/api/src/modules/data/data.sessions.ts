@@ -12,7 +12,7 @@ import type { DataRepository, WriteSessionRecord } from "./data.repository.ts";
 
 export type SessionDeps = {
   repo: DataRepository;
-  states: Pick<StatesRepository, "insert" | "byIdOrName">;
+  states: Pick<StatesRepository, "insert" | "byIdOrName" | "latestInit">;
   projects: Pick<ProjectsRepository, "byId">;
   jobs: Pick<JobsService, "enqueue" | "wait">;
   audit: AuditService;
@@ -117,6 +117,15 @@ export function createWriteSessions(deps: SessionDeps): WriteSessions {
       throw new AppError("ENGINE_UNSUPPORTED", "write sessions need a tabular adapter", {
         reason: "tier",
       });
+    }
+    // Nothing may be written before the adapter has the state it joined with.
+    //
+    // The init snapshot is a job, so there is a window between adding an adapter and having one.
+    // A write inside that window lands in the snapshot itself, and the init state then holds the
+    // edited rows: deleting the project or the adapter afterwards "returns to init" and puts the
+    // edit back, which reads as a reset that did nothing.
+    if (deps.states.latestInit(adapter.id) === null) {
+      throw conflict("the adapter is still taking its starting state", { adapter_id: adapter.id });
     }
     if (adapter.mode !== "sandbox") {
       throw new AppError("ADAPTER_READ_ONLY", `${adapter.name} is read-only`, {

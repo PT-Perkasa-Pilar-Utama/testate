@@ -142,6 +142,21 @@ describe("data", () => {
     );
   });
 
+  it("refuses a write session until the adapter has the state it joined with", async () => {
+    const h = await createDataHarness();
+    // The adapter as it is the moment after it is added: the init snapshot is a job, and it has
+    // not landed yet. A write inside that window lands in the snapshot itself, so the state the
+    // adapter "joined with" would hold the edit, and returning to it later would put the edit
+    // back. That reads as a project delete that reset nothing.
+    h.harness.db.query("DELETE FROM states WHERE kind = 'init'").run();
+    await expect(
+      h.data.startWriteSession(h.harness.qa, h.adapterId, true, TEST_META)
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "the adapter is still taking its starting state",
+    });
+  });
+
   it("refuses write sessions on read-only adapters and tabular-only operations elsewhere", async () => {
     const h = await createDataHarness();
     await h.harness.adapters.setMode(h.harness.qa, "shop", h.adapterId, "read_only", TEST_META);
