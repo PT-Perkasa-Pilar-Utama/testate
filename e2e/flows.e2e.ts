@@ -108,9 +108,11 @@ test.describe("qa flows", () => {
     // The seed writes exactly one file, imports/customers.csv (ops.seeds.ts), so the root holds one
     // folder and that folder holds one file: entries are buttons now, not anchors, and carry no
     // trailing slash.
-    await page.getByRole("button", { name: "imports" }).click();
+    // Exact: the sandbox test beside this one loosens the store while it runs, and then every
+    // entry also carries a "Rename customers.csv" and a "Delete customers.csv" button.
+    await page.getByRole("button", { name: "imports", exact: true }).click();
     await settle(page);
-    await page.getByRole("button", { name: "customers.csv" }).click();
+    await page.getByRole("button", { name: "customers.csv", exact: true }).click();
     await expect(page.locator("dialog[open]")).toBeVisible();
     await page.locator("dialog[open]").getByText("Close", { exact: true }).click();
     expect(issues).toStrictEqual([]);
