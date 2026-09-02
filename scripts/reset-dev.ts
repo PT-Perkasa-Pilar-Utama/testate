@@ -1,8 +1,9 @@
 /**
  * Wipes the development environment back to nothing: the API's data directory (metadata, blobs,
  * logs, uploads, the unpacked SPA), the suite's and smoke's scratch trees, both build outputs and
- * the compiled binaries. With `--engines` it also drops the compose databases and brings them up
- * fresh, which is the only way to get the demo tables back to what the seed expects.
+ * the compiled binaries. With `--engines` it also drops the compose databases, brings them up
+ * fresh, creates the MinIO bucket, and runs the contract suites once, because those suites are
+ * what create the demo tables the seed reads; a fresh engine holds an empty `shop`.
  *
  *   bun run reset:dev --yes [--engines]      # or --dry-run to see what would go
  *
@@ -57,17 +58,45 @@ for (const target of targets) {
   console.log(`removed ${relative(ROOT, target)}`);
 }
 
+/** Runs a step with its output held back, printed only when the step fails; one line otherwise. */
+async function step(label: string, command: string[]): Promise<string> {
+  const proc = Bun.spawn(command, { cwd: ROOT, stdout: "pipe", stderr: "pipe" });
+  const [out, err, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
+  if (code !== 0) {
+    process.stdout.write(out + err);
+    throw new Error(`${label}: ${command.slice(0, 2).join(" ")} exited ${code}`);
+  }
+  console.log(label);
+  return out;
+}
+
 if (args.includes("--engines") && !dryRun) {
   const compose = ["docker", "compose", "-f", join(ROOT, "deploy/compose.engines.yml")];
-  for (const step of [
-    [...compose, "down", "--volumes", "--remove-orphans"],
-    [...compose, "up", "-d", "--wait"],
-  ]) {
-    const proc = Bun.spawn(step, { stdout: "inherit", stderr: "inherit" });
-    const code = await proc.exited;
-    if (code !== 0) throw new Error(`${step.slice(2).join(" ")} exited ${code}`);
-  }
-  console.log("compose engines recreated with empty volumes");
+  // `up --wait` fails on a container that exits, however cleanly, and the bucket creation is
+  // a one-shot: it is left out of the wait and run on its own afterwards, as CI does.
+  const services = (await step("compose services listed", [...compose, "config", "--services"]))
+    .split("\n")
+    .filter((name) => name !== "" && name !== "minio-init");
+  await step("engines dropped with their volumes", [
+    ...compose,
+    "down",
+    "--volumes",
+    "--remove-orphans",
+  ]);
+  await step("engines up and healthy", [
+    ...compose,
+    "up",
+    "-d",
+    "--wait",
+    "--quiet-pull",
+    ...services,
+  ]);
+  await step("MinIO bucket created", [...compose, "run", "--rm", "minio-init"]);
+  await step("demo schema created by the contract suites", ["bun", "run", "contract"]);
 }
 
 console.log("clean. Next: bun run dev, then TESTATE_ADMIN_PASSWORD=<bootstrap> bun run seed:dev");
