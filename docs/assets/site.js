@@ -471,6 +471,7 @@ async function playTerminal() {
       el.append(ps);
     }
     const body = document.createElement("span");
+    const follow = term.scrollHeight - term.scrollTop - term.clientHeight < 40;
     el.append(body);
     term.append(el);
     const typed = (line.k === "cmd" || line.type) && !reduced;
@@ -481,7 +482,7 @@ async function playTerminal() {
       body.innerHTML = line.t;
     }
     if (line.cursor) el.append(cursor);
-    term.scrollTop = term.scrollHeight;
+    if (follow) term.scrollTop = term.scrollHeight;
     if (!reduced) await pause(line.wait ?? (line.k === "td" ? 70 : 250));
   }
   replay.hidden = false;

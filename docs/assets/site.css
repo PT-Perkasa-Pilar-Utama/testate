@@ -911,11 +911,9 @@ code {
   border-radius: 12px;
   border: 1px solid var(--line-strong);
   background: #0a0d12;
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.6),
-    0 40px 100px -30px rgba(0, 0, 0, 0.9),
-    0 30px 80px -40px rgba(125, 211, 192, 0.25);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
   overflow: hidden;
+  contain: content;
 }
 
 .mac .titlebar {
@@ -985,6 +983,7 @@ code {
   white-space: pre;
   tab-size: 2;
   font-variant-ligatures: none;
+  contain: content;
 }
 
 .mac .screen .ps {
@@ -1065,12 +1064,14 @@ code {
   height: 1.1em;
   vertical-align: text-bottom;
   background: var(--ink);
+  will-change: opacity;
   animation: blink 1s steps(2, start) infinite;
 }
 
+/* Opacity, not visibility: the compositor blinks it and nothing around it repaints */
 @keyframes blink {
   to {
-    visibility: hidden;
+    opacity: 0;
   }
 }
 
