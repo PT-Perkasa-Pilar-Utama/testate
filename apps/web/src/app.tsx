@@ -129,7 +129,7 @@ export default function App(): JSX.Element {
       access() === "login" ||
       (match()?.name === "login" && actor() === null));
   return (
-    <Show when={!signedOut()} fallback={<AuthScreen next={location()} />}>
+    <Show when={!signedOut()} fallback={<AuthScreen next={afterSignIn(location())} />}>
       <div class="flex min-h-full">
         <Sidebar current={match()?.path} />
         {/* `min-w-0` so a wide table scrolls inside its own box rather than stretching the shell. */}
@@ -155,6 +155,15 @@ export default function App(): JSX.Element {
       </div>
     </Show>
   );
+}
+
+/**
+ * Where signing in lands you. The page you were refused from, so a deep link survives the login,
+ * except when that page is the login form itself: sending someone back to /login after they sign
+ * in leaves the address bar saying they have not.
+ */
+function afterSignIn(from: string): string {
+  return from.startsWith("/login") ? "/" : from;
 }
 
 /** The signed-out page: one card, centred on both axes, and nothing else on screen. */
