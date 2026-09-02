@@ -13,6 +13,7 @@ import {
   nameOf,
   normalizePath,
   notAFile,
+  notEmpty,
   pageEntries,
   unreachable,
 } from "./index.ts";
@@ -145,6 +146,28 @@ export function createFtpSource(config: FtpSourceConfig): FileSource {
         if (entry === undefined) throw missing(clean);
         if (entry.kind === "directory") throw notAFile(clean);
         await ftp.remove(joinPath(config.root_path, clean));
+      });
+    },
+    async makeDirectory(path) {
+      const clean = normalizePath(path);
+      if (clean === "") throw notAFile(clean);
+      return guard(clean, async (ftp) => {
+        const parent = clean.includes("/") ? clean.slice(0, clean.lastIndexOf("/")) : "";
+        const there = (await listDir(ftp, parent).catch(() => [])).find(
+          (item) => item.name === nameOf(clean)
+        );
+        if (there !== undefined) throw alreadyThere(clean);
+        await ftp.ensureDir(joinPath(config.root_path, clean));
+        await ftp.cd("/");
+      });
+    },
+    async removeDirectory(path) {
+      const clean = normalizePath(path);
+      if (clean === "") throw notAFile(clean);
+      return guard(clean, async (ftp) => {
+        if ((await listDir(ftp, clean)).length > 0) throw notEmpty(clean);
+        await ftp.cd("/");
+        await ftp.removeDir(joinPath(config.root_path, clean));
       });
     },
     async move(from, to) {

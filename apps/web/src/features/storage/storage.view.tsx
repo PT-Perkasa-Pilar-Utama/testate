@@ -6,11 +6,11 @@ import type { Entry } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
 import Button, { buttonClass } from "@/components/button.tsx";
-import ConfirmDialog from "@/components/confirm-dialog.tsx";
 import Icon from "@/components/icon.tsx";
 import { Cell, EmptyRow, Head, Row, Table, TableFooter, TableSearch } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { formatBytes } from "../states/states.format.ts";
+import { DeleteDialogs, FolderDialog, RenameDialog } from "./storage.dialogs.view.tsx";
 import { PreviewDialog } from "./storage.preview.view.tsx";
 import { createStoragePresenter } from "./storage.presenter.ts";
 import type { StoragePresenter } from "./storage.presenter.ts";
@@ -78,8 +78,20 @@ function PathBar(props: { presenter: StoragePresenter; slug: string; id: string 
 
 /** One entry; a folder icon or a file icon says what a click does before the click happens. */
 function EntryRow(props: { presenter: StoragePresenter; entry: Entry }): JSX.Element {
+  const writable = (): boolean => hasRole("qa") && props.presenter.writable();
   return (
     <Row>
+      <Cell class="w-8">
+        <Show when={writable()}>
+          <input
+            type="checkbox"
+            class="cursor-pointer"
+            aria-label={`Select ${props.entry.name}`}
+            checked={props.presenter.picked().includes(props.entry.path)}
+            onChange={() => props.presenter.togglePicked(props.entry)}
+          />
+        </Show>
+      </Cell>
       {/* A file or folder name has no length cap; a storage path can be far longer than the
           63-character username that broke the users table. 20rem, the widest bound in this
           batch, because Name is this screen's one and only descriptive column. */}
@@ -128,7 +140,15 @@ function EntryRow(props: { presenter: StoragePresenter; entry: Entry }): JSX.Ele
               <Icon name="download" class="h-3.5 w-3.5" />
               Download
             </a>
-            <Show when={hasRole("qa") && props.presenter.writable()}>
+            <Show when={writable()}>
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label={`Rename ${props.entry.name}`}
+                onClick={() => props.presenter.askRename(props.entry)}
+              >
+                <Icon name="pencil" class="h-3.5 w-3.5" />
+              </Button>
               <Button
                 size="sm"
                 variant="ghost"
@@ -211,12 +231,36 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
           <Errored fallback={() => null}>
             <Loading fallback={null}>
               <Show when={hasRole("qa") && presenter.writable()}>
+                <Button size="sm" variant="secondary" onClick={() => presenter.askFolder()}>
+                  <Icon name="folder" class="h-3.5 w-3.5" />
+                  New folder
+                </Button>
                 <UploadButton presenter={presenter} />
               </Show>
             </Loading>
           </Errored>
         </div>
       </div>
+      {/* Only while something is ticked: a bar of actions over a table nobody has chosen from is
+          a row of the page spent on nothing. */}
+      <Show when={presenter.picked().length > 0}>
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-fill px-4 py-2.5 ring ring-line">
+          <span class="text-base text-body">
+            {presenter.picked().length === 1
+              ? "1 entry selected."
+              : `${presenter.picked().length} entries selected.`}
+          </span>
+          <div class="flex items-center gap-2">
+            <Button size="sm" variant="ghost" onClick={() => presenter.clearPicked()}>
+              Clear
+            </Button>
+            <Button size="sm" variant="destructive" onClick={() => presenter.askBatch()}>
+              <Icon name="trash-2" class="h-3.5 w-3.5" />
+              Delete selected
+            </Button>
+          </div>
+        </div>
+      </Show>
       <Show when={presenter.changedKey()}>
         {(fingerprint) => (
           <Banner variant="alert">
@@ -234,6 +278,7 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
           <Table>
             <thead>
               <tr>
+                <Head class="w-8" />
                 <Head>Name</Head>
                 <Head numeric>Size</Head>
                 <Head>Modified</Head>
@@ -273,14 +318,9 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
           </TableFooter>
         </Loading>
       </Errored>
-      <ConfirmDialog
-        open={presenter.deleting() !== null}
-        title={`Delete ${presenter.deleting()?.name ?? ""}`}
-        description="This removes the file from the store itself. Testate keeps no copy of it."
-        confirmLabel="Delete"
-        onCancel={() => presenter.cancelDelete()}
-        onConfirm={() => void presenter.remove()}
-      />
+      <DeleteDialogs presenter={presenter} />
+      <RenameDialog presenter={presenter} />
+      <FolderDialog presenter={presenter} />
       <PreviewDialog presenter={presenter} />
     </section>
   );

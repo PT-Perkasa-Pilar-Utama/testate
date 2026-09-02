@@ -130,7 +130,7 @@ describe("adapters", () => {
     await expect(adapters.list("nope", {})).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
-  it("lets qa tighten, only admin loosen, and refuses a mode on storage adapters", async () => {
+  it("lets qa tighten and only admin loosen, on a file store as much as on a database", async () => {
     const { adapters, qa, admin } = await createAdaptersHarness();
     const { adapter } = await adapters.create(qa, "shop", PG, TEST_META);
     const tightened = await adapters.setMode(qa, "shop", adapter.id, "read_only", TEST_META);
@@ -141,9 +141,18 @@ describe("adapters", () => {
     expect((await adapters.setMode(admin, "shop", adapter.id, "sandbox", TEST_META)).mode).toBe(
       "sandbox"
     );
+    // A file store's mode is the gate on uploading, deleting and renaming a file, so it has to be
+    // changeable. It used to be refused here, which left a store stuck on whatever it was made
+    // with: one made read-only could never be written to and one made sandbox never protected.
     const s3 = await adapters.create(qa, "shop", S3, TEST_META);
+    expect((await adapters.setMode(qa, "shop", s3.adapter.id, "read_only", TEST_META)).mode).toBe(
+      "read_only"
+    );
     await expect(
-      adapters.setMode(admin, "shop", s3.adapter.id, "sandbox", TEST_META)
-    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+      adapters.setMode(qa, "shop", s3.adapter.id, "sandbox", TEST_META)
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect((await adapters.setMode(admin, "shop", s3.adapter.id, "sandbox", TEST_META)).mode).toBe(
+      "sandbox"
+    );
   });
 });

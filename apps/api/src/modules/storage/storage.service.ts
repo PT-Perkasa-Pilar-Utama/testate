@@ -1,7 +1,7 @@
 import type { Actor, Entry, JsonObject, Project } from "@testate/shared";
 
 import type { FileSource, ListPage } from "../../lib/files/index.ts";
-import { nameOf, normalizePath, notAFile } from "../../lib/files/index.ts";
+import { nameOf, normalizePath } from "../../lib/files/index.ts";
 import type { RequestMeta } from "../../lib/http/auth.ts";
 import { AppError, notFound } from "../../lib/http/index.ts";
 import type { FilesResolver, ResolvedFiles } from "../adapters/adapters.files.ts";
@@ -10,6 +10,8 @@ import type { AuditService } from "../audit/audit.service.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import { collectCapped, renderPreview, tooLarge, PREVIEW_CAP_BYTES } from "./storage.preview.ts";
 import type { PreviewResult } from "./storage.preview.ts";
+import { createStorageWrites } from "./storage.write.ts";
+import type { StorageWrites } from "./storage.write.ts";
 
 export type StorageDeps = {
   projects: Pick<ProjectsRepository, "bySlug">;
@@ -26,40 +28,11 @@ export type Download = {
   size: number | null;
 };
 
-export type StorageService = {
+export type StorageService = StorageWrites & {
   list(actor: Actor, slug: string, adapterId: string, query: EntriesQuery): Promise<ListPage>;
   stat(actor: Actor, slug: string, adapterId: string, path: string): Promise<Entry>;
   preview(actor: Actor, slug: string, adapterId: string, path: string): Promise<PreviewResult>;
   download(actor: Actor, slug: string, adapterId: string, path: string): Promise<Download>;
-  /** Writes a file to a sandbox adapter, overwriting whatever is at that path. */
-  upload(
-    actor: Actor,
-    slug: string,
-    adapterId: string,
-    path: string,
-    body: Uint8Array,
-    meta: RequestMeta
-  ): Promise<Entry>;
-  /**
-   * Renames one file on a sandbox adapter, which is also how it moves to another directory.
-   * Directories are refused, and so is a destination that already holds something.
-   */
-  rename(
-    actor: Actor,
-    slug: string,
-    adapterId: string,
-    path: string,
-    to: string,
-    meta: RequestMeta
-  ): Promise<Entry>;
-  /** Deletes one file from a sandbox adapter. Directories are refused. */
-  remove(
-    actor: Actor,
-    slug: string,
-    adapterId: string,
-    path: string,
-    meta: RequestMeta
-  ): Promise<void>;
   acceptHostKey(
     actor: Actor,
     slug: string,
@@ -206,46 +179,7 @@ export function createStorageService(deps: StorageDeps): StorageService {
         throw cause;
       }
     },
-    async upload(actor, slug, adapterId, path, body, meta) {
-      const clean = normalizePath(path);
-      if (clean === "") throw notAFile(clean);
-      const { adapter, source } = await writable(actor, slug, adapterId);
-      try {
-        await source.put(clean, body);
-        record(actor, "file.uploaded", adapter, slug, clean, { bytes: body.byteLength }, meta);
-        // Awaited, not returned bare: a bare `return promise` inside a try enters the finally at
-        // once, so `close()` would tear the connection down while this stat is still in flight.
-        // SFTP ends the transport and FTP closes the control connection, either of which turns a
-        // write that landed into an error the caller sees while the audit row says it succeeded.
-        return await source.stat(clean);
-      } finally {
-        await source.close();
-      }
-    },
-    async rename(actor, slug, adapterId, path, to, meta) {
-      const from = normalizePath(path);
-      const target = normalizePath(to);
-      if (from === "" || target === "") throw notAFile(from === "" ? from : target);
-      const { adapter, source } = await writable(actor, slug, adapterId);
-      try {
-        await source.move(from, target);
-        record(actor, "file.renamed", adapter, slug, from, { to: target }, meta);
-        // Awaited for the same reason `upload` awaits its stat: see the note there.
-        return await source.stat(target);
-      } finally {
-        await source.close();
-      }
-    },
-    async remove(actor, slug, adapterId, path, meta) {
-      const clean = normalizePath(path);
-      const { adapter, source } = await writable(actor, slug, adapterId);
-      try {
-        await source.remove(clean);
-        record(actor, "file.deleted", adapter, slug, clean, {}, meta);
-      } finally {
-        await source.close();
-      }
-    },
+    ...createStorageWrites({ writable, record }),
     async acceptHostKey(actor, slug, adapterId, fingerprint, meta) {
       const project = projectOf(slug);
       const resolved = await deps.files.resolve(project.id, adapterId, null);

@@ -204,6 +204,37 @@ function writesAndDeletes(open: () => FileSource, dropDir: () => Promise<void>):
     }
   });
 
+  test("makes an empty directory, lists it, and refuses to make it twice", async () => {
+    const source = open();
+    const dir = "scratch/empty";
+    const inside = "scratch/empty/later.txt";
+    try {
+      await source.makeDirectory(dir);
+      expect((await source.stat(dir)).kind).toBe("directory");
+      // Listed as a directory and not as a file: on a key store the folder is a zero-byte key
+      // whose name ends in a slash, and a listing that showed it would show a nameless file.
+      const page = await source.list("scratch", { limit: 20 });
+      expect(
+        page.data.filter((entry) => entry.name === "empty").map((entry) => entry.kind)
+      ).toEqual(["directory"]);
+      await expect(source.makeDirectory(dir)).rejects.toMatchObject({ code: "CONFLICT" });
+      await source.put(inside, new TextEncoder().encode("x"));
+      expect((await source.list(dir, { limit: 20 })).data.map((entry) => entry.name)).toEqual([
+        "later.txt",
+      ]);
+      // A folder with something in it is not swept away by one press.
+      await expect(source.removeDirectory(dir)).rejects.toMatchObject({ code: "CONFLICT" });
+      await source.remove(inside);
+      await source.removeDirectory(dir);
+      await expect(source.stat(dir)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    } finally {
+      await source.remove(inside).catch(() => "already gone");
+      await source.removeDirectory(dir).catch(() => "already gone");
+      await source.close();
+      await dropDir();
+    }
+  });
+
   test("refuses to delete a directory", async () => {
     const source = open();
     const path = "scratch/keep/file.txt";

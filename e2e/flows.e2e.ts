@@ -1,10 +1,12 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { demoAdapter, firstTable } from "./lib/api.ts";
+import { apiContext, demoAdapter, firstTable } from "./lib/api.ts";
 import { dataRows, rowMenu, settle, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
+
+const STAMP = Date.now().toString(36);
 
 async function postgresBase(): Promise<string> {
   return `/projects/demo/adapters/${(await demoAdapter({ engine: "postgres" })).id}`;
@@ -107,6 +109,61 @@ test.describe("qa flows", () => {
     await expect(page.locator("dialog[open]")).toBeVisible();
     await page.locator("dialog[open]").getByText("Close", { exact: true }).click();
     expect(issues).toStrictEqual([]);
+  });
+
+  test("@story-93 @story-95 makes a folder, renames a file into it, and deletes a batch", async ({
+    page,
+  }) => {
+    const issues: Issue[] = [];
+    watch(page, issues);
+    const storage = await demoAdapter({ kind: "storage" });
+    // The seeded store is read_only, which is the default and the reason nothing writes to a file
+    // store by accident. An admin loosens it, and puts it back so the rest of the suite finds the
+    // store it expects.
+    const admin = await apiContext("admin");
+    await admin.post(`projects/demo/adapters/${storage.id}/mode`, { data: { mode: "sandbox" } });
+    try {
+      await page.goto(`/projects/demo/adapters/${storage.id}/files`);
+      await settle(page);
+      await page.getByRole("button", { name: "New folder" }).click();
+      await page.locator("dialog[open]").getByLabel("Folder name").fill(`e2e-${STAMP}`);
+      await page.locator("dialog[open]").getByRole("button", { name: "Create" }).click();
+      const folder = page.getByRole("button", { name: `e2e-${STAMP}`, exact: true });
+      await expect(folder).toBeVisible();
+
+      // A rename asks for a name, and the file stays in the folder it is in.
+      const upload = page.locator('input[type="file"]');
+      await upload.setInputFiles({
+        name: "batch-a.txt",
+        mimeType: "text/plain",
+        buffer: Buffer.from("a"),
+      });
+      // Exact: the row also holds "Rename batch-a.txt" and "Delete batch-a.txt".
+      await expect(page.getByRole("button", { name: "batch-a.txt", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Rename batch-a.txt" }).click();
+      await page.locator("dialog[open]").getByLabel("New name").fill(`batch-b-${STAMP}.txt`);
+      await page.locator("dialog[open]").getByRole("button", { name: "Rename" }).click();
+      await expect(
+        page.getByRole("button", { name: `batch-b-${STAMP}.txt`, exact: true })
+      ).toBeVisible();
+
+      // Two ticks, one press, and the empty folder goes with the file.
+      await page.getByRole("checkbox", { name: `Select batch-b-${STAMP}.txt` }).check();
+      await page.getByRole("checkbox", { name: `Select e2e-${STAMP}` }).check();
+      await expect(page.getByText("2 entries selected.")).toBeVisible();
+      await page.getByRole("button", { name: "Delete selected" }).click();
+      await page.locator("dialog[open]").getByRole("button", { name: "Delete" }).click();
+      await expect(
+        page.getByRole("button", { name: `batch-b-${STAMP}.txt`, exact: true })
+      ).toHaveCount(0);
+      await expect(folder).toHaveCount(0);
+      expect(issues).toStrictEqual([]);
+    } finally {
+      await admin.post(`projects/demo/adapters/${storage.id}/mode`, {
+        data: { mode: "read_only" },
+      });
+      await admin.dispose();
+    }
   });
 });
 

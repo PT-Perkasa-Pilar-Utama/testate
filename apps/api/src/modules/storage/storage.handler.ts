@@ -1,4 +1,4 @@
-import { acceptHostKeySchema } from "@testate/shared";
+import { acceptHostKeySchema, directorySchema, renameEntrySchema } from "@testate/shared";
 import * as v from "valibot";
 
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
@@ -20,6 +20,9 @@ export type StorageHandlers = {
   preview: Handler;
   download: Handler;
   upload: Handler;
+  rename: Handler;
+  makeDirectory: Handler;
+  removeDirectory: Handler;
   remove: Handler;
   acceptHostKey: Handler;
 };
@@ -114,6 +117,26 @@ export function createStorageHandlers(
         requestMeta(c, trustProxy)
       );
       return ok(c, entry, 201);
+    },
+    rename: async (c) => {
+      const body = await parseBody(c, renameEntrySchema);
+      const entry = await service.rename(
+        ...args(c),
+        body.path,
+        body.to,
+        requestMeta(c, trustProxy)
+      );
+      return ok(c, entry);
+    },
+    makeDirectory: async (c) => {
+      const body = await parseBody(c, directorySchema);
+      const entry = await service.makeDirectory(...args(c), body.path, requestMeta(c, trustProxy));
+      return ok(c, entry, 201);
+    },
+    removeDirectory: async (c) => {
+      const query = parseQuery(c, requiredPathQuery);
+      await service.removeDirectory(...args(c), query.path[0] ?? "", requestMeta(c, trustProxy));
+      return c.body(null, 204);
     },
     remove: async (c) => {
       const query = parseQuery(c, requiredPathQuery);

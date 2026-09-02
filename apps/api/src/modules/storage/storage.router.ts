@@ -50,6 +50,24 @@ export function createStorageRouter(h: StorageHandlers): Hono {
     describe("storage", "Delete a file from a sandbox adapter", v.undefined(), 204),
     h.remove
   );
+  router.patch(
+    `${P}/entries`,
+    requireRole("qa"),
+    describe("storage", "Rename or move a file on a sandbox adapter", entrySchema),
+    h.rename
+  );
+  router.post(
+    `${P}/entries/directory`,
+    requireRole("qa"),
+    describe("storage", "Make an empty folder on a sandbox adapter", entrySchema, 201),
+    h.makeDirectory
+  );
+  router.delete(
+    `${P}/entries/directory`,
+    requireRole("qa"),
+    describe("storage", "Remove an empty folder from a sandbox adapter", v.undefined(), 204),
+    h.removeDirectory
+  );
   router.post(
     `${P}/host-key/accept`,
     requireRole("qa"),

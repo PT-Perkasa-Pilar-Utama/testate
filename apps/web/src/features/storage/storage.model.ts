@@ -55,6 +55,22 @@ export const storageModel = {
       {},
       entrySchema
     ),
+  /** A rename is a move: `to` is the whole path, so this is also how a file changes folder. */
+  rename: (slug: string, id: string, path: string, to: string): Promise<Entry> =>
+    apiClient.patch(`${adapterPath(slug, id)}/entries`, {
+      schema: entrySchema,
+      body: { path, to },
+    }),
+  makeDirectory: (slug: string, id: string, path: string): Promise<Entry> =>
+    apiClient.post(`${adapterPath(slug, id)}/entries/directory`, {
+      schema: entrySchema,
+      body: { path },
+    }),
+  removeDirectory: (slug: string, id: string, path: string): Promise<undefined> =>
+    apiClient.delete(`${adapterPath(slug, id)}/entries/directory`, {
+      schema: v.undefined(),
+      query: { path },
+    }),
   remove: (slug: string, id: string, path: string): Promise<undefined> =>
     apiClient.delete(`${adapterPath(slug, id)}/entries`, {
       schema: v.undefined(),

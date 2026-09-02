@@ -7,6 +7,7 @@ import {
   nameOf,
   normalizePath,
   notAFile,
+  notEmpty,
   pageEntries,
 } from "./index.ts";
 import type { FileSource } from "./index.ts";
@@ -21,6 +22,8 @@ function childrenOf(tree: MemoryTree, dir: string): Entry[] {
   for (const [path, file] of tree) {
     if (!path.startsWith(prefix)) continue;
     const rest = path.slice(prefix.length);
+    // The marker an empty directory is spelled with, which is this directory itself.
+    if (rest === "") continue;
     const slash = rest.indexOf("/");
     if (slash === -1) {
       seen.set(rest, {
@@ -94,6 +97,18 @@ export function createMemorySource(tree: MemoryTree): FileSource {
       const clean = normalizePath(path);
       if (!tree.has(clean)) throw isDirectory(tree, clean) ? notAFile(clean) : missing(clean);
       tree.delete(clean);
+    },
+    async makeDirectory(path) {
+      const clean = normalizePath(path);
+      if (clean === "") throw notAFile(clean);
+      if (tree.has(clean) || isDirectory(tree, clean)) throw alreadyThere(clean);
+      tree.set(`${clean}/`, { bytes: new Uint8Array(), modified_at: new Date().toISOString() });
+    },
+    async removeDirectory(path) {
+      const clean = normalizePath(path);
+      if (clean === "" || !isDirectory(tree, clean)) throw missing(clean);
+      if (childrenOf(tree, clean).length > 0) throw notEmpty(clean);
+      tree.delete(`${clean}/`);
     },
     async move(from, to) {
       const source = normalizePath(from);

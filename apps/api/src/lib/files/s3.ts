@@ -9,6 +9,7 @@ import {
   nameOf,
   normalizePath,
   notAFile,
+  notEmpty,
   unreachable,
 } from "./index.ts";
 import type { FileSource, ListPage } from "./index.ts";
@@ -93,6 +94,23 @@ export function createS3Source(config: S3SourceConfig): FileSource {
       next_cursor: response.isTruncated === true ? (response.nextContinuationToken ?? null) : null,
     };
   };
+  /**
+   * The zero-byte object that holds an empty folder open.
+   *
+   * A key store has no directories: a folder is the prefix its keys share, so a folder with nothing
+   * in it does not exist. The usual answer is a key whose name ends in a slash, and Bun's S3 client
+   * drops that slash on the way out, which turns the marker into an ordinary file called `empty`.
+   * A named object inside the folder survives that, and every S3 tool already understands this one.
+   */
+  const KEEP = ".keep";
+
+  const asDirectory = (path: string): Entry => ({
+    name: nameOf(path),
+    path,
+    kind: "directory",
+    size_bytes: null,
+    modified_at: null,
+  });
   const statEntry = async (path: string): Promise<Entry> => {
     const clean = normalizePath(path);
     try {
@@ -112,20 +130,18 @@ export function createS3Source(config: S3SourceConfig): FileSource {
       throw failure(cause, clean);
     });
     if (page.data.length === 0) throw missing(clean);
-    return {
-      name: nameOf(clean),
-      path: clean,
-      kind: "directory",
-      size_bytes: null,
-      modified_at: null,
-    };
+    return asDirectory(clean);
   };
   return {
     async list(path, query) {
       const dir = normalizePath(path);
       try {
-        const page = await listDir(dir, query.limit, query.cursor);
-        if (dir !== "" && page.data.length === 0 && query.cursor === undefined) throw missing(dir);
+        const held = await listDir(dir, query.limit, query.cursor);
+        // Everything but the keep object, which is bookkeeping and not a file anybody put here.
+        // `listDir` itself keeps it, because stat and removeDirectory both ask it whether the
+        // folder is there at all.
+        const page = { ...held, data: held.data.filter((entry) => entry.name !== KEEP) };
+        if (dir !== "" && held.data.length === 0 && query.cursor === undefined) throw missing(dir);
         // ponytail: `q` filters within the fetched page only; S3 has no server-side name search.
         if (query.q !== undefined)
           page.data = page.data.filter((e) => e.name.includes(query.q ?? ""));
@@ -160,6 +176,33 @@ export function createS3Source(config: S3SourceConfig): FileSource {
       if ((await statEntry(clean)).kind !== "file") throw notAFile(clean);
       await client
         .file(keyOf(config.prefix, clean))
+        .delete()
+        .catch((cause: unknown) => Promise.reject(failure(cause, clean)));
+    },
+    async makeDirectory(path) {
+      const clean = normalizePath(path);
+      if (clean === "") throw notAFile(clean);
+      const taken = await statEntry(clean).then(
+        () => true,
+        () => false
+      );
+      if (taken) throw alreadyThere(clean);
+      try {
+        await client.write(keyOf(config.prefix, `${clean}/${KEEP}`), new Uint8Array());
+      } catch (cause: unknown) {
+        throw failure(cause, clean);
+      }
+    },
+    async removeDirectory(path) {
+      const clean = normalizePath(path);
+      if (clean === "") throw notAFile(clean);
+      const page = await listDir(clean, 2, undefined);
+      if (page.data.some((entry) => entry.name !== KEEP)) throw notEmpty(clean);
+      if (page.data.length === 0) throw missing(clean);
+      // Dropping the keep object is the whole of removing the folder: a prefix with no keys under
+      // it is not a place this store has.
+      await client
+        .file(keyOf(config.prefix, `${clean}/${KEEP}`))
         .delete()
         .catch((cause: unknown) => Promise.reject(failure(cause, clean)));
     },

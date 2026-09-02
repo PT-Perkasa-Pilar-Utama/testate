@@ -251,10 +251,18 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
         init_job: change.newTarget ? await initJob(updated, actor, meta) : null,
       };
     },
+    /**
+     * A file store has a mode too, and it means the same thing there as it does on a database:
+     * `read_only` refuses every write, and only an admin loosens one.
+     *
+     * This used to refuse anything that was not a database, which left a file store stuck on
+     * whatever mode it was created with. Uploading, deleting and renaming a file all check the
+     * mode, so a store made read-only could never be written to again and one made sandbox could
+     * never be protected. Ending write sessions is still a database's business; a file store has
+     * none, and `endWriteSessions` finds none to end.
+     */
     async setMode(actor, slug, id, mode, meta) {
       const adapter = find(projectOf(slug).id, id);
-      if (adapter.kind !== "database")
-        throw new AppError("VALIDATION_ERROR", "only database adapters have a mode");
       if (mode === "sandbox" && actor.role !== "admin") throw forbidden("loosening requires admin");
       repo.setMode(id, mode, nowIso());
       const ended = mode === "read_only" ? repo.endWriteSessions(id, nowIso()) : 0;

@@ -33,8 +33,28 @@ export type FileSource = {
    * nothing to undo it from, and the caller cannot see that coming.
    */
   move(from: string, to: string): Promise<void>;
+  /**
+   * Makes an empty directory.
+   *
+   * Uploading into a path that does not exist already makes the directories above it, so this is
+   * only ever for the empty one a person makes before they have the file. On a key store there is
+   * no such thing as an empty directory, so it writes the zero-byte `path/` key that every S3
+   * browser uses to spell one, and the listing already reads that key as a directory rather than
+   * as a file of its own.
+   */
+  makeDirectory(path: string): Promise<void>;
+  /**
+   * Removes an empty directory. A directory with anything in it is refused, for the same reason
+   * `remove` refuses a directory at all: recursive delete is the one mistake here nothing undoes.
+   */
+  removeDirectory(path: string): Promise<void>;
   close(): Promise<void>;
 };
+
+/** A directory with something in it; emptying it is the caller's to do, one file at a time. */
+export function notEmpty(path: string): AppError {
+  return new AppError("CONFLICT", "that folder still has something in it", { path });
+}
 
 /** The destination of a move is taken; the caller decides whether to delete it first. */
 export function alreadyThere(path: string): AppError {

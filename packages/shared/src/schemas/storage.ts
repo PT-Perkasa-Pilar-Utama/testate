@@ -35,3 +35,13 @@ export type PreviewPayload = v.InferOutput<typeof previewPayloadSchema>;
 export const acceptHostKeySchema = v.object({
   fingerprint: v.pipe(v.string(), v.minLength(1)),
 });
+
+/** A rename, which is also a move: `to` is a whole path, not just the new name. */
+export const renameEntrySchema = v.object({
+  path: v.pipe(v.string(), v.minLength(1)),
+  to: v.pipe(v.string(), v.minLength(1)),
+});
+
+export const directorySchema = v.object({
+  path: v.pipe(v.string(), v.minLength(1)),
+});

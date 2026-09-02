@@ -43,6 +43,26 @@ export type StoragePresenter = {
   askDelete: (entry: Entry) => void;
   cancelDelete: () => void;
   remove: () => Promise<void>;
+  /** The entry the rename dialog is asking about, null when it is closed. */
+  renaming: () => Entry | null;
+  askRename: (entry: Entry) => void;
+  cancelRename: () => void;
+  rename: (name: string) => Promise<void>;
+  /** Whether the new-folder dialog is open. */
+  addingFolder: () => boolean;
+  askFolder: () => void;
+  cancelFolder: () => void;
+  makeFolder: (name: string) => Promise<void>;
+  /** The paths ticked for a batch action, in the order they were ticked. */
+  picked: () => string[];
+  /** Whether the batch delete is waiting to be confirmed. */
+  confirmingBatch: () => boolean;
+  askBatch: () => void;
+  cancelBatch: () => void;
+  togglePicked: (entry: Entry) => void;
+  clearPicked: () => void;
+  /** Deletes every ticked entry, one call each, and says what it could not do. */
+  removePicked: () => Promise<void>;
 };
 
 /** A screenful. The listing pages with a cursor, so a bucket with thousands of keys
@@ -72,6 +92,10 @@ export function createStoragePresenter(slug: () => string, id: () => string): St
   const [preview, setPreview] = createSignal<Preview | null>(null);
   const [changedKey, setChangedKey] = createSignal<string | null>(null);
   const [deleting, setDeleting] = createSignal<Entry | null>(null);
+  const [renaming, setRenaming] = createSignal<Entry | null>(null);
+  const [addingFolder, setAddingFolder] = createSignal(false);
+  const [picked, setPicked] = createSignal<string[]>([]);
+  const [confirmingBatch, setConfirmingBatch] = createSignal(false);
   // The adapter says whether it may be written; the API refuses either way, and this is only so
   // the screen does not offer a button that always fails.
   const adapter = createRefreshable(() => adaptersModel.get(slug(), id()));
@@ -168,6 +192,76 @@ export function createStoragePresenter(slug: () => string, id: () => string): St
         setDeleting(null);
         page.refresh();
         showToast(`${staticEntry.name} deleted.`, "success");
+      });
+    },
+    renaming,
+    askRename: setRenaming,
+    cancelRename: () => setRenaming(null),
+    rename: (name) => {
+      const staticEntry = renaming();
+      const staticSlug = slug();
+      const staticId = id();
+      const staticParent = path();
+      if (staticEntry === null) return Promise.resolve();
+      // The name, not the path: the dialog asks for a name and the folder it is in does not move.
+      const target = staticParent === "" ? name : `${staticParent}/${name}`;
+      return attempt(async () => {
+        await storageModel.rename(staticSlug, staticId, staticEntry.path, target);
+        setRenaming(null);
+        page.refresh();
+        showToast(`Renamed to ${name}.`, "success");
+      });
+    },
+    addingFolder,
+    askFolder: () => setAddingFolder(true),
+    cancelFolder: () => setAddingFolder(false),
+    makeFolder: (name) => {
+      const staticSlug = slug();
+      const staticId = id();
+      const staticParent = path();
+      const target = staticParent === "" ? name : `${staticParent}/${name}`;
+      return attempt(async () => {
+        await storageModel.makeDirectory(staticSlug, staticId, target);
+        setAddingFolder(false);
+        page.refresh();
+        showToast(`${name} created.`, "success");
+      });
+    },
+    picked,
+    confirmingBatch,
+    askBatch: () => setConfirmingBatch(true),
+    cancelBatch: () => setConfirmingBatch(false),
+    togglePicked: (entry) =>
+      setPicked((current) =>
+        current.includes(entry.path)
+          ? current.filter((one) => one !== entry.path)
+          : [...current, entry.path]
+      ),
+    clearPicked: () => setPicked([]),
+    removePicked: () => {
+      const staticSlug = slug();
+      const staticId = id();
+      const staticRows = page.value().data.filter((entry) => picked().includes(entry.path));
+      if (staticRows.length === 0) return Promise.resolve();
+      return attempt(async () => {
+        // One call each, and one at a time: these go over SFTP and FTP, where a session runs a
+        // single command, and a store answering slowly is not a reason to open eight connections.
+        const failures: string[] = [];
+        for (const entry of staticRows) {
+          const remove =
+            entry.kind === "directory" ? storageModel.removeDirectory : storageModel.remove;
+          await remove(staticSlug, staticId, entry.path).catch(() => failures.push(entry.name));
+        }
+        setPicked([]);
+        setConfirmingBatch(false);
+        page.refresh();
+        const done = staticRows.length - failures.length;
+        showToast(
+          failures.length === 0
+            ? `${done} deleted.`
+            : `${done} deleted. ${failures.length} could not be: ${failures.join(", ")}.`,
+          failures.length === 0 ? "success" : "error"
+        );
       });
     },
     acceptHostKey: () => {

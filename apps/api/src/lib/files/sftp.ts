@@ -11,6 +11,7 @@ import {
   nameOf,
   normalizePath,
   notAFile,
+  notEmpty,
   pageEntries,
   unreachable,
 } from "./index.ts";
@@ -147,6 +148,25 @@ export function createSftpSource(config: SftpSourceConfig): FileSource {
         const stats = await sftp.stat(joinPath(config.root_path, clean));
         if (stats.isDirectory) throw notAFile(clean);
         await sftp.delete(joinPath(config.root_path, clean));
+      });
+    },
+    async makeDirectory(path) {
+      const clean = normalizePath(path);
+      if (clean === "") throw notAFile(clean);
+      return guard(clean, async (sftp) => {
+        if ((await sftp.exists(joinPath(config.root_path, clean))) !== false)
+          throw alreadyThere(clean);
+        await sftp.mkdir(joinPath(config.root_path, clean), true);
+      });
+    },
+    async removeDirectory(path) {
+      const clean = normalizePath(path);
+      if (clean === "") throw notAFile(clean);
+      return guard(clean, async (sftp) => {
+        const stats = await sftp.stat(joinPath(config.root_path, clean));
+        if (!stats.isDirectory) throw notAFile(clean);
+        if ((await sftp.list(joinPath(config.root_path, clean))).length > 0) throw notEmpty(clean);
+        await sftp.rmdir(joinPath(config.root_path, clean));
       });
     },
     async move(from, to) {
