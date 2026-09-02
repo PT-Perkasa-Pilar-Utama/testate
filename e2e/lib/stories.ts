@@ -13,15 +13,8 @@ const ROOT = join(import.meta.dirname, "..", "..");
  */
 const NON_UI: [number, number][] = [];
 
-/**
- * Stories whose screen does not exist in the SPA.
- *
- * 54, saving a mapping per adapter and table and reusing it by name: the import wizard had the
- * field and the rework replaced the wizard with one screen per adapter that creates the mapping
- * without ever naming it (docs/PROJECT_REWORK.md phase 4). The API still keeps named mappings and
- * `api.e2e.ts` still drives them; nothing in the SPA reaches them.
- */
-const NO_SCREEN: [number, number][] = [[54, 54]];
+/** Stories whose screen does not exist in the SPA; empty since 2026-08-29. */
+const NO_SCREEN: [number, number][] = [];
 
 function inRanges(id: number, ranges: [number, number][]): boolean {
   return ranges.some(([from, to]) => id >= from && id <= to);

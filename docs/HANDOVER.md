@@ -16,12 +16,9 @@ homepage at <https://pt-perkasa-pilar-utama.github.io/testate/> served from `doc
 engineering's green light. **Beta is the next phase and a lot is expected to change.**
 
 E2E: 141 Playwright tests (135 run, 6 gated behind `SHOTS=1` and `STRESS=1`), ~4 min, coverage
-**144 of 145 stories covered**. `NON_UI` in `e2e/lib/stories.ts` is empty: what no screen shows, an
-API or boot test covers. `NO_SCREEN` holds one id, 54: saving an import mapping under a name and
-reusing it. The wizard had that field; the rework replaced the wizard with one screen per adapter
-that creates the mapping without naming it, so the API keeps named mappings and nothing in the SPA
-reaches them. The story count fell from 150 to 144 because the UI rework cut the features six
-stories described (`docs/UI_REWORK.md`), then rose to 145 with story 151.
+**145/145 stories covered**. Both exception lists in `e2e/lib/stories.ts` are empty: what no screen
+shows, an API or boot test covers. The story count fell from 150 to 144 because the UI rework cut
+the features six stories described (`docs/UI_REWORK.md`), then rose to 145 with story 151.
 
 The version is `1.1.0-alpha`. The API listens on **7378** and the dev web server on **7379**;
 3000 and 5173 were abandoned because they collide with every other project on the machine. The

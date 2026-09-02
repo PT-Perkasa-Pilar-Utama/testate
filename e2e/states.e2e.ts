@@ -189,7 +189,7 @@ test.describe("state stories", () => {
     await expect(page.locator("tr", { hasText: "live database" })).toHaveCount(0);
     expect(issues).toStrictEqual([]);
   });
-  test("@story-49 @story-52 @story-53 @story-55 @story-56 @story-57 @story-58 @story-59 @story-60 @story-149 checks a file before importing it, and re-imports what the run rejected", async ({
+  test("@story-49 @story-52 @story-53 @story-54 @story-55 @story-56 @story-57 @story-58 @story-59 @story-60 @story-149 checks a file before importing it, saves the normalizer, and re-imports what the run rejected", async ({
     page,
   }) => {
     test.setTimeout(180_000);
@@ -234,6 +234,9 @@ test.describe("state stories", () => {
     // checked, whatever the last one answered.
     await pick("right.csv", good);
     await expect(importButton).toBeDisabled();
+    // Named, so it can be picked again next week. The name lives inside the table: another table
+    // of this same database may keep one called the same thing.
+    await page.getByLabel("Save this as").fill(`weekly-${STAMP}`);
     await page.getByRole("button", { name: "Check the file" }).click();
     await expect(page.getByText("All 2 rows look ready to import.")).toBeVisible({
       timeout: 90_000,
@@ -267,6 +270,13 @@ test.describe("state stories", () => {
     await settle(page);
     await expect(page.getByText("The rows an earlier run rejected are the source.")).toBeVisible();
     await expect(page.getByRole("columnheader", { name: "email" })).toBeVisible();
+
+    // The normalizer that run saved is offered back, on the table it was saved for.
+    await page.goto(`/projects/demo/adapters/${postgres.id}/imports`);
+    await settle(page);
+    await pick("again.csv", good);
+    await page.getByLabel("Reuse a saved normalizer").selectOption({ label: `weekly-${STAMP}` });
+    await expect(page.getByLabel("Save this as")).toHaveValue(`weekly-${STAMP}`);
     expect(issues).toStrictEqual([]);
   });
   test("@story-79 a checkout of a partial state leaves the adapters it does not cover untouched and says so", async ({

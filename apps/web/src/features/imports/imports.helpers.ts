@@ -78,7 +78,7 @@ export function matchesModeFilter(
   return filter === "" || mode === filter;
 }
 
-/** The table's own name is a fine default, so naming a mapping is only her problem if she edits it. */
+/** The table's own name is a fine default, so naming a normalizer is only her problem if she wants one. */
 export function defaultMappingName(table: string): string {
   const dot = table.lastIndexOf(".");
   return dot === -1 ? table : table.slice(dot + 1);

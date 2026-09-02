@@ -160,7 +160,26 @@ describe("imports", () => {
         name: "Customers",
         columns: hashed.columns,
       })
-    ).rejects.toThrow("mapping name is taken");
+    ).rejects.toThrow("a normalizer for that table already has that name");
+  });
+
+  it("names a normalizer within its table, so two tables can each hold a weekly one", async () => {
+    const h = await createImportsHarness();
+    await h.imports.createMapping(h.harness.qa, h.adapterId, { ...MAPPING, name: "weekly" });
+    // The same name against another table of the same database. It used to be refused: the name
+    // was unique per adapter, so whichever table asked first took "weekly" for the whole database.
+    const orders = await h.imports.createMapping(h.harness.qa, h.adapterId, {
+      ...MAPPING,
+      name: "weekly",
+      target: "public.orders",
+      columns: [{ source: "Total", target: "total", transforms: [{ kind: "trim" }] }],
+      key_columns: [],
+      mode: "append",
+    });
+    expect(orders.target).toBe("public.orders");
+    expect(
+      (await h.imports.listMappings(h.adapterId)).map((one) => one.target).sort()
+    ).toStrictEqual(["public.customers", "public.orders"]);
   });
 
   it("previews an upload, dry-runs without writing, and reports row errors", async () => {

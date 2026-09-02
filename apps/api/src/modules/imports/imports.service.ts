@@ -163,8 +163,11 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
     },
     async createMapping(actor, adapterId, body) {
       const adapter = tabular(adapterId);
-      if (repo.mappingByName(adapter.id, body.name) !== null)
-        throw conflict("mapping name is taken", { name: body.name });
+      if (repo.mappingByName(adapter.id, body.target, body.name) !== null)
+        throw conflict("a normalizer for that table already has that name", {
+          name: body.name,
+          target: body.target,
+        });
       validateMapping(
         body,
         await tableOf(adapter, body.target),
@@ -188,9 +191,12 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
       if (
         patch.name !== undefined &&
         patch.name.toLowerCase() !== current.name.toLowerCase() &&
-        repo.mappingByName(adapter.id, patch.name) !== null
+        repo.mappingByName(adapter.id, next.target, patch.name) !== null
       ) {
-        throw conflict("mapping name is taken", { name: patch.name });
+        throw conflict("a normalizer for that table already has that name", {
+          name: patch.name,
+          target: next.target,
+        });
       }
       validateMapping(
         next,

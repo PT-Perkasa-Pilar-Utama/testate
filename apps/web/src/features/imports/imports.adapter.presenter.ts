@@ -25,6 +25,8 @@ import { storageModel } from "../storage/storage.model.ts";
 export type Column = { target: string; source: string; choice: Choice };
 
 export type ImportDraft = {
+  /** What this normalizer is saved as. Empty means the table's own name, which nobody picks. */
+  name: string;
   table: string;
   mode: Mapping["mode"];
   key_columns: string;
@@ -37,6 +39,12 @@ export type ImportPresenter = {
   /** Loads the preview when the source came from the URL rather than a file picker. */
   rejected: Refreshable<null>;
   storages: Refreshable<AdapterWithProject[]>;
+  /** The saved normalizers for the table now chosen, and nothing from any other table. */
+  saved: () => Mapping[];
+  /** Loads a saved normalizer's columns, key columns and mode into the draft. */
+  reuse: (id: string) => void;
+  /** Which saved normalizer this run is going through, empty for a new one. */
+  savedId: () => string;
   source: () => Source | null;
   preview: () => Preview | null;
   draft: () => ImportDraft;
@@ -59,7 +67,14 @@ export type ImportPresenter = {
   sampleUrl: (format: "csv" | "xlsx") => string;
 };
 
-const EMPTY: ImportDraft = { table: "", mode: "append", key_columns: "", sheet: "", columns: [] };
+const EMPTY: ImportDraft = {
+  name: "",
+  table: "",
+  mode: "append",
+  key_columns: "",
+  sheet: "",
+  columns: [],
+};
 
 /** File columns onto table columns by name, case-insensitive; generated columns are not ours to fill. */
 function match(fileColumns: readonly string[], table: TableSchema): Column[] {
@@ -83,6 +98,8 @@ export function createImportPresenter(
   // Created here, in the presenter's own body: the follower registers its cleanup with the
   // owner that is current at this moment, and there is none inside an effect or after an await.
   const jobs = createJobFollower();
+  // Every normalizer this adapter holds; the screen only ever offers the chosen table's.
+  const mappings = createRefreshable(() => importsModel.mappings(slug(), adapterId()));
   const initial: Source | null =
     rejectedRun === undefined ? null : { kind: "rejected", run_id: rejectedRun };
   const [source, setSource] = createSignal<Source | null>(initial);
@@ -122,11 +139,14 @@ export function createImportPresenter(
   };
   const tableOf = (name: string): TableSchema | undefined =>
     schema.value().find((candidate) => tableKey(candidate) === name);
+  /** What this run saves under: the name if one was typed, else the table's own. */
+  const nameOf = (current: ImportDraft): string =>
+    current.name.trim() === "" ? defaultMappingName(current.table) : current.name.trim();
   const wire = (): JsonObject => {
     const current = draft();
     const columns = tableOf(current.table)?.columns ?? [];
     const body: JsonObject = {
-      name: defaultMappingName(current.table),
+      name: nameOf(current),
       target: current.table,
       columns: current.columns.map((column) => ({
         source: column.source === "" ? null : column.source,
@@ -152,18 +172,27 @@ export function createImportPresenter(
    * `solid(reactivity)` rule exists to catch.
    */
   /**
-   * The mapping this run goes through, created once and updated after that.
+   * The normalizer this run goes through, resolved by name.
    *
-   * There is no name field on this screen any more, so the name is the table's and there can only
-   * be one mapping per table. A check that created a second would be refused with "mapping name
-   * is taken", which is exactly what checking a file, fixing it and checking it again does.
+   * Named within its table, so two tables of one database can each keep a "weekly". Picking a
+   * saved one sets `mappingId` and every run after that updates it in place; typing a name that
+   * table has not used yet creates one; leaving the name alone falls back to the table's own name,
+   * which is what an import that nobody wants to keep gets.
+   *
+   * By name and not by table: a table can hold several now, and the first one this list happened
+   * to return is somebody's saved work.
    */
-  const mappingFor = async (known: string, table: string, body: JsonObject): Promise<string> => {
+  const mappingFor = async (
+    known: string,
+    table: string,
+    wanted: string,
+    body: JsonObject
+  ): Promise<string> => {
     if (known !== "") {
       return (await importsModel.updateMapping(slug(), adapterId(), known, body)).id;
     }
     const existing = (await importsModel.mappings(slug(), adapterId())).find(
-      (mapping) => mapping.target === table
+      (mapping) => mapping.target === table && mapping.name.toLowerCase() === wanted.toLowerCase()
     );
     if (existing === undefined) {
       return (await importsModel.createMapping(slug(), adapterId(), body)).id;
@@ -178,7 +207,7 @@ export function createImportPresenter(
     staticBody: JsonObject,
     dryRun: boolean
   ): Promise<{ report: ImportReport; mapping: string }> => {
-    const id = await mappingFor(staticMapping, staticDraft.table, staticBody);
+    const id = await mappingFor(staticMapping, staticDraft.table, nameOf(staticDraft), staticBody);
     const job = await importsModel.run(
       slug(),
       runBody(adapterId(), id, staticSource, staticDraft, dryRun)
@@ -222,6 +251,33 @@ export function createImportPresenter(
     schema,
     rejected,
     storages,
+    saved: () => mappings.value().filter((one) => one.target === draft().table),
+    savedId: mappingId,
+    reuse: (id) => {
+      const found = mappings.value().find((one) => one.id === id);
+      if (found === undefined) {
+        setMappingId("");
+        setDraftSignal((current) => ({ ...current, name: "" }));
+        return;
+      }
+      setMappingId(found.id);
+      setReport(null);
+      // A snapshot on purpose: this reads the file that is loaded at the moment of the pick.
+      const staticFileColumns = preview()?.columns ?? [];
+      setDraftSignal((current) => ({
+        ...current,
+        name: found.name,
+        mode: found.mode,
+        key_columns: found.key_columns.join(", "),
+        // Only the columns the file actually has: a saved normalizer written for a wider file
+        // would otherwise map a column that is not there, and the check would refuse every row.
+        columns: current.columns.map((column) => {
+          const saved = found.columns.find((one) => one.target === column.target);
+          const source = saved?.source ?? "";
+          return staticFileColumns.includes(source) ? { ...column, source } : column;
+        }),
+      }));
+    },
     source,
     preview,
     draft,

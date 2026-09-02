@@ -59,7 +59,8 @@ export type ImportsRepository = {
   removeUpload(id: string): void;
   mappings(adapterId: string): Mapping[];
   mapping(id: string): Mapping | null;
-  mappingByName(adapterId: string, name: string): Mapping | null;
+  /** A normalizer is named within its table, so two tables may each hold a "weekly". */
+  mappingByName(adapterId: string, target: string, name: string): Mapping | null;
   insertMapping(mapping: NewMapping): Mapping;
   updateMapping(id: string, patch: MappingPatch, at: string): void;
   removeMapping(id: string): void;
@@ -148,7 +149,8 @@ export function createImportsRepository(db: MetadataDb): ImportsRepository {
         )
         .map(toMapping),
     mapping: (id) => oneMapping("id = ?", id),
-    mappingByName: (adapterId, name) => oneMapping("adapter_id = ? AND name = ?", adapterId, name),
+    mappingByName: (adapterId, target, name) =>
+      oneMapping("adapter_id = ? AND target = ? AND name = ?", adapterId, target, name),
     insertMapping(mapping) {
       db.query(
         `INSERT INTO import_mappings (id, adapter_id, name, target, columns, key_columns, mode, options, created_by, created_at, updated_at)

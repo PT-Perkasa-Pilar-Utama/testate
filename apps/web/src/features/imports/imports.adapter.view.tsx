@@ -199,6 +199,31 @@ export default function AdapterImportsView(props: { slug: string; id: string }):
                 <p class="text-sm text-muted">
                   {MODE_OPTIONS.find((mode) => mode.value === presenter.draft().mode)?.description}
                 </p>
+                {/* A normalizer is the saved answer to "how is this file read into this table":
+                    which column goes where, how each value is converted, what happens to a row
+                    that already exists. It is named within its table, so a weekly one for
+                    customers and a weekly one for orders can both be called weekly. */}
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <label class="grid content-start gap-1.5 text-base">
+                    <span>Reuse a saved normalizer</span>
+                    <Select
+                      options={[
+                        { value: "", label: "start fresh" },
+                        ...presenter.saved().map((one) => ({ value: one.id, label: one.name })),
+                      ]}
+                      value={presenter.savedId()}
+                      onChange={(id) => presenter.reuse(id)}
+                    />
+                  </label>
+                  <label class="grid content-start gap-1.5 text-base">
+                    <span>Save this as</span>
+                    <Input
+                      placeholder={tableKey({ schema: null, name: presenter.draft().table })}
+                      value={presenter.draft().name}
+                      onInput={(event) => presenter.setDraft({ name: event.currentTarget.value })}
+                    />
+                  </label>
+                </div>
                 {/* Story 149: the shape of a file this table would accept, so the first import is
                     not a guess. The wizard offered it and the screen that replaced the wizard
                     dropped it; the presenter never stopped answering for it. */}
