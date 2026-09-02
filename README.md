@@ -184,7 +184,7 @@ bun run dev                                 # API on :7378, dashboard on :7379
 
 ## Docs
 
-[PRD](docs/PRD.md) · [Technical specs](docs/technical-specs/_index.md) · [API specs](docs/api-specs/_index.md) · [Connecting a database](docs/CONNECTING.md) · [CI/CD](docs/CI_CD.md) · [Agent access](docs/AGENT_ACCESS.md) · [Deployment plan](docs/DEPLOYMENT_PLAN.md) · [Key rotation](docs/KEY_ROTATION.md) · [Open items](docs/OPEN_ITEMS.md) · [Security](SECURITY.md)
+[PRD](docs/PRD.md) · [OWASP checklist](docs/OWASP.md) · [Technical specs](docs/technical-specs/_index.md) · [API specs](docs/api-specs/_index.md) · [Connecting a database](docs/CONNECTING.md) · [CI/CD](docs/CI_CD.md) · [Agent access](docs/AGENT_ACCESS.md) · [Deployment plan](docs/DEPLOYMENT_PLAN.md) · [Key rotation](docs/KEY_ROTATION.md) · [Open items](docs/OPEN_ITEMS.md) · [Security](SECURITY.md)
 
 ## License
 

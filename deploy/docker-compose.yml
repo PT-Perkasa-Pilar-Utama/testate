@@ -16,6 +16,11 @@ services:
     # extra_hosts:
     #   - "host.docker.internal:host-gateway"
     read_only: true
+    # Nothing in the image needs a capability: the port is above 1024 and the process is `bun`.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     tmpfs:
       - /tmp
     # SIGTERM lets running jobs roll back; the API waits up to 30 s (spec 22 §22.4).
