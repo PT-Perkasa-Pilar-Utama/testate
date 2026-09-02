@@ -119,6 +119,32 @@ export function requireUnscoped(): MiddlewareHandler {
   };
 }
 
+/**
+ * The API reference describes every route this instance serves, so it asks who is reading.
+ *
+ * It touches no data, which is why it was open. What it does do is hand a stranger the shape of
+ * the whole surface: every path, every parameter, every error, on a box they can reach. Any signed
+ * in role may read it, because knowing the API is not a privilege here; an agent token may not,
+ * for the same reason it reaches nothing but `/mcp`.
+ *
+ * A browser gets sent to the sign-in screen rather than a JSON refusal it cannot act on. A client
+ * asking for JSON gets the refusal.
+ */
+export function requireReader(loginPath: string): MiddlewareHandler {
+  return async (c, next) => {
+    const actor = c.get("actor");
+    const wantsHtml = (c.req.header("accept") ?? "").includes("text/html");
+    if (actor === null) {
+      if (!wantsHtml) throw unauthorized();
+      const next = encodeURIComponent(new URL(c.req.url).pathname);
+      return c.redirect(`${loginPath}?next=${next}`, 302);
+    }
+    if (actor.agent) throw forbidden("agent_token_restricted");
+    await next();
+    return undefined;
+  };
+}
+
 /** The MCP endpoint accepts agent tokens only. */
 export function requireAgentToken(): MiddlewareHandler {
   return async (c, next) => {

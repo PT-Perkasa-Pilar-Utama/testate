@@ -252,7 +252,9 @@ The full REST API is available for automation; nothing here is dashboard-only. T
 
 Open <http://localhost:7378/api/v1/docs> after the quick start above. It is generated from the routes rather than written by hand, so it describes the version you are running.
 
-Both addresses answer without a token, since they describe the shape of the API and never touch your data. Put them behind your proxy if you would rather they were not public.
+Both ask who is reading. Any signed-in role may read them, because knowing the API is not a privilege here; an agent token may not, for the same reason it reaches nothing but `/mcp`. A browser with no session is sent to the sign-in screen and comes back afterwards; a client asking for JSON gets a `401`. They touch no data, but they do describe every route on a box a stranger can reach, and that is worth a session.
+
+Health is not behind this: `/api/v1/health/live` and `/api/v1/health/ready` answer with no credential, because a liveness probe has none to give.
 
 **Authentication.** Create a token under **Tokens** (or `POST /api/v1/tokens`, admin only) with kind `standard` and a role. `qa` can run checkouts, imports, and snapshots; `viewer` can only read. Send it as `Authorization: Bearer tst_<token>`. There is no cookie and no CSRF header to add; those apply to the dashboard's own session only.
 

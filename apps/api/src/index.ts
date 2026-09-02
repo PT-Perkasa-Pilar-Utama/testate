@@ -27,7 +27,7 @@ import { createEngineWiring, createStateServices, settingsDeps } from "./wiring.
 import { bootStore, lazyJobs, opsDeps, resetHandler, storageDeps } from "./wiring.store.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import { openMetadataDb } from "./lib/db/index.ts";
-import { authenticate } from "./lib/http/auth.ts";
+import { authenticate, requireReader } from "./lib/http/auth.ts";
 import { errorResponse, notFound } from "./lib/http/index.ts";
 import { createLogger } from "./lib/logger/index.ts";
 import { mountOpenApi } from "./lib/openapi.ts";
@@ -250,6 +250,13 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   app.notFound((c) => errorResponse(c, notFound("route"), c.get("event"), false));
 
   const v1 = createV1(handlers);
+  // The reference and the document it renders both ask for a session. Health does not: a liveness
+  // probe has no credential and blocking it would break every deployment that has one.
+  const reader = requireReader(
+    config.TESTATE_BASE_PATH === "/" ? "/login" : `${config.TESTATE_BASE_PATH}/login`
+  );
+  v1.use("/openapi.json", reader);
+  v1.use("/docs", reader);
   mountOpenApi(v1, VERSION);
   v1.get("/docs", Scalar({ url: `${prefix}/openapi.json` }));
   app.route(prefix, v1);

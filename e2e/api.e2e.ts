@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import { API_PORT, E2E_DIR } from "../playwright.config.ts";
 import { apiContext, bearerContext, createToken, demoAdapters, demoProjectId } from "./lib/api.ts";
+import { statePath } from "./lib/roles.ts";
 import { typedWorkbook } from "./lib/sql.ts";
 
 const STAMP = Date.now().toString(36);
@@ -22,8 +23,19 @@ test.describe("API contract", () => {
       expect.arrayContaining(["/projects", "/jobs", "/mcp"])
     );
     await context.dispose();
+    // Both ask who is reading. A browser with no session is sent to sign in rather than shown a
+    // JSON refusal; the document itself refuses in JSON, which is what a client can act on.
     await page.goto(`http://localhost:${API_PORT}/api/v1/docs`);
-    await expect(page.locator("body")).toContainText(/Testate/i, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/login\?next=/);
+    const stranger = await request.newContext();
+    expect((await stranger.get(`http://localhost:${API_PORT}/api/v1/openapi.json`)).status()).toBe(
+      401
+    );
+    // A liveness probe carries no credential and must stay reachable.
+    expect((await stranger.get(`http://localhost:${API_PORT}/api/v1/health/live`)).status()).toBe(
+      204
+    );
+    await stranger.dispose();
   });
 
   test("@story-117 every list answers one envelope, a cursor, and a documented limit", async () => {
@@ -173,4 +185,14 @@ test("@story-50 an XLSX preview reads date and number cells from their typed val
     "1234.5",
   ]);
   await qa.dispose();
+});
+
+/** The reference renders for anyone signed in; a session cookie is scoped to the host, not the port. */
+test.describe("the API reference, signed in", () => {
+  test.use({ storageState: statePath("viewer") });
+
+  test("@story-116 renders the reference for a signed-in reader", async ({ page }) => {
+    await page.goto(`http://localhost:${API_PORT}/api/v1/docs`);
+    await expect(page.locator("body")).toContainText(/Testate/i, { timeout: 15_000 });
+  });
 });
