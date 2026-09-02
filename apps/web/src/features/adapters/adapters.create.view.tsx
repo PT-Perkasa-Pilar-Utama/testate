@@ -6,7 +6,7 @@ import { adapterCreateFormSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
-import Dialog from "@/components/dialog.tsx";
+import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
@@ -113,7 +113,7 @@ export function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Eleme
   };
 
   return (
-    <Dialog
+    <FormDialog
       open={props.presenter.creating()}
       onClose={() => props.presenter.closeCreate()}
       title="New adapter"
@@ -216,6 +216,6 @@ export function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Eleme
           </Button>
         </div>
       </Form>
-    </Dialog>
+    </FormDialog>
   );
 }

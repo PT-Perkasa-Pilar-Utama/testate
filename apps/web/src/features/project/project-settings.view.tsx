@@ -10,6 +10,7 @@ import { onceSettled } from "@/lib/form.ts";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
+import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
@@ -68,7 +69,7 @@ export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element 
   );
 
   return (
-    <Dialog
+    <FormDialog
       open={props.presenter.editing()}
       onClose={() => props.presenter.closeEdit()}
       title="Edit project"
@@ -131,7 +132,7 @@ export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element 
           </Button>
         </div>
       </Form>
-    </Dialog>
+    </FormDialog>
   );
 }
 

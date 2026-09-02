@@ -9,6 +9,7 @@ import Banner from "@/components/banner.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
+import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
@@ -105,7 +106,7 @@ export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
     }
   );
   return (
-    <Dialog
+    <FormDialog
       open={props.presenter.taking()}
       onClose={() => props.presenter.close()}
       title="Take state"
@@ -157,7 +158,7 @@ export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
         </Show>
         <Actions presenter={props.presenter} submit="Take" />
       </Form>
-    </Dialog>
+    </FormDialog>
   );
 }
 
@@ -186,7 +187,7 @@ export function EditDialog(props: { presenter: StatesPresenter }): JSX.Element {
     }
   );
   return (
-    <Dialog
+    <FormDialog
       open={props.presenter.editing() !== null}
       onClose={() => props.presenter.close()}
       title={`Edit ${props.presenter.editing()?.name ?? ""}`}
@@ -199,14 +200,14 @@ export function EditDialog(props: { presenter: StatesPresenter }): JSX.Element {
         </Show>
         <Actions presenter={props.presenter} submit="Save" />
       </Form>
-    </Dialog>
+    </FormDialog>
   );
 }
 
 export function DeleteDialog(props: { presenter: StatesPresenter }): JSX.Element {
   const form = createForm({ schema: deleteStateFormSchema });
   return (
-    <Dialog
+    <FormDialog
       open={props.presenter.deleting() !== null}
       onClose={() => props.presenter.close()}
       title={`Delete ${props.presenter.deleting()?.name ?? ""}`}
@@ -225,7 +226,7 @@ export function DeleteDialog(props: { presenter: StatesPresenter }): JSX.Element
           </Button>
         </div>
       </Form>
-    </Dialog>
+    </FormDialog>
   );
 }
 

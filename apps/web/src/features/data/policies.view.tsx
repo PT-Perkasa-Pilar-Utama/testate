@@ -8,7 +8,7 @@ import { policyFormSchema } from "@testate/shared";
 import Badge from "@/components/badge.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
-import Dialog from "@/components/dialog.tsx";
+import FormDialog from "@/components/form-dialog.tsx";
 import EmptyState from "@/components/empty-state.tsx";
 import Icon from "@/components/icon.tsx";
 import Select from "@/components/select.tsx";
@@ -43,7 +43,7 @@ function PolicyDialog(props: { presenter: PoliciesPresenter }): JSX.Element {
     }
   );
   return (
-    <Dialog
+    <FormDialog
       open={props.presenter.draft() !== null}
       onClose={() => props.presenter.close()}
       title={`Mask for ${props.presenter.draft()?.table ?? ""}.${props.presenter.draft()?.column ?? ""}`}
@@ -84,7 +84,7 @@ function PolicyDialog(props: { presenter: PoliciesPresenter }): JSX.Element {
           </Button>
         </div>
       </Form>
-    </Dialog>
+    </FormDialog>
   );
 }
 

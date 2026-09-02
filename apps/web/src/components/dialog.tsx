@@ -15,8 +15,18 @@ export type DialogProps = {
   open: boolean;
   onClose: () => void;
   title: string;
-  description?: string;
-  size?: keyof typeof SIZES;
+  description?: string | undefined;
+  size?: keyof typeof SIZES | undefined;
+  /**
+   * Asked before every way out, and `false` holds the dialog open.
+   *
+   * Escape has to be answered here and nowhere else: the browser closes a `<dialog>` on Escape by
+   * itself and only the `cancel` event can stop it. By the time `close` fires the dialog is shut,
+   * so a guard hung off `onClose` would let Escape walk straight past it.
+   */
+  beforeClose?: (() => boolean) | undefined;
+  /** Called with the dialog the moment the browser opens it. */
+  onOpened?: ((dialog: HTMLDialogElement) => void) | undefined;
   children: JSX.Element;
 };
 
@@ -24,12 +34,41 @@ export type DialogProps = {
 export default function Dialog(props: DialogProps): JSX.Element {
   const [element, setElement] = createSignal<HTMLDialogElement>();
 
+  // Both handlers are taken in a compute and called from a plain variable.
+  //
+  // `dialog.close()` below runs inside an effect callback and fires the native `close` event
+  // synchronously, so the handler for it runs there too. Reading `props.onClose` at that moment is
+  // a reactive read in an effect callback, which is the mistake Solid 2 warns about; reading it
+  // here is not.
+  let close: () => void = () => undefined;
+  let ours = false;
   createEffect(
-    () => ({ open: props.open, dialog: element() }),
-    ({ open, dialog }) => {
+    () => props.onClose,
+    (handler) => {
+      close = handler;
+    }
+  );
+  // `onOpened` is read in the compute, not in the callback below. Props are reactive reads, and a
+  // read inside an effect callback is the one Solid 2 warns about: it cannot update anything from
+  // there. Taking it here hands the callback a plain function.
+  createEffect(
+    () => ({ open: props.open, dialog: element(), onOpened: props.onOpened }),
+    ({ open, dialog, onOpened }) => {
       if (dialog === undefined) return;
-      if (open && !dialog.open) dialog.showModal();
-      if (!open && dialog.open) dialog.close();
+      if (open && !dialog.open) {
+        dialog.showModal();
+        // Synchronously, not a frame later: a caller using this to arm something has to be armed
+        // before the first keystroke can reach the form, and a frame is long enough to lose one.
+        onOpened?.(dialog);
+      }
+      if (!open && dialog.open) {
+        // Ours, not the browser's: the native `close` event fires synchronously from here, and
+        // echoing it back to `onClose` calls the caller a second time for a close it asked for.
+        // The event is there to catch Escape and the browser's own dismissals.
+        ours = true;
+        dialog.close();
+        ours = false;
+      }
     }
   );
 
@@ -40,7 +79,13 @@ export default function Dialog(props: DialogProps): JSX.Element {
         "m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] overflow-y-auto rounded-lg bg-surface p-0 text-body shadow-xl ring ring-line backdrop:bg-sunken/80",
         SIZES[props.size ?? "base"],
       ]}
-      onClose={() => props.onClose()}
+      onCancel={(event) => {
+        if (props.beforeClose?.() === false) event.preventDefault();
+      }}
+      // On the next turn, not inside the event. The browser fires `close` while it is still
+      // dismissing the dialog, and a screen's own close handler writes signals: doing that from
+      // here is a flush inside the flush that is already running, which Solid 2 says is a no-op.
+      onClose={() => (ours ? undefined : queueMicrotask(close))}
     >
       <div class="flex flex-col gap-4 p-6">
         <div class="flex items-start justify-between gap-4">
@@ -56,7 +101,14 @@ export default function Dialog(props: DialogProps): JSX.Element {
               <p class="text-base text-muted">{props.description}</p>
             </Show>
           </div>
-          <Button variant="ghost" size="sm" aria-label="Close" onClick={() => props.onClose()}>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label="Close"
+            onClick={() => {
+              if (props.beforeClose?.() !== false) close();
+            }}
+          >
             ✕
           </Button>
         </div>

@@ -6,7 +6,7 @@ import { storeMigrationFormSchema } from "@testate/shared";
 import Banner from "@/components/banner.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
-import Dialog from "@/components/dialog.tsx";
+import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
@@ -31,7 +31,7 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
     }
   );
   return (
-    <Dialog
+    <FormDialog
       open={props.presenter.migrating()}
       onClose={() => props.presenter.closeMigrate()}
       title="Migrate store"
@@ -178,6 +178,6 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
           </Button>
         </div>
       </Form>
-    </Dialog>
+    </FormDialog>
   );
 }

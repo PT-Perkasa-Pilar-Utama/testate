@@ -5,7 +5,7 @@ import * as v from "valibot";
 
 import Button from "@/components/button.tsx";
 import ConfirmDialog from "@/components/confirm-dialog.tsx";
-import Dialog from "@/components/dialog.tsx";
+import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
@@ -52,7 +52,7 @@ function NameDialog(props: {
     }
   );
   return (
-    <Dialog
+    <FormDialog
       open={props.open}
       onClose={props.onClose}
       title={props.title}
@@ -84,7 +84,7 @@ function NameDialog(props: {
           </Button>
         </div>
       </Form>
-    </Dialog>
+    </FormDialog>
   );
 }
 

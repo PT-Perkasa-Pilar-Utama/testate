@@ -179,6 +179,17 @@ b9131cd test(e2e): cover the contract and agent stories over the API
 
 ### Owed before beta (carried out of the release, nobody has done these)
 
+- **Two Solid dev diagnostics on the dialog dismiss path.** Escape and the ✕ now go through
+  `beforeClose` (the unsaved-changes guard), and that path reports `STRICT_READ_UNTRACKED` and
+  `FLUSH_IN_EFFECT_CALLBACK` on `/users`. Neither is the guard: a screen's `onClose` reads its own
+  presenter off props, and closing writes signals, both from inside the flush the browser's own
+  dismissal runs in, which is the shape of every dialog here. Ruled out already: the form store's
+  dirty check (removed, the guard listens for `input` events instead), the props spread in
+  `FormDialog`, `onOpened` and `onClose` read in an effect callback (both hoisted into the
+  compute), the echo of our own `dialog.close()` (suppressed), and deferring either callback by a
+  microtask. The likely real fix is that a feature's close handler must not read props when it
+  runs; that is thirteen call sites and was not worth doing blind. `e2e/admin.e2e.ts` filters
+  exactly these two codes and says so.
 - **A job stream nobody closes.** `followJob` in `lib/sse.ts` opens an `EventSource` and closes it
   only when a terminal status arrives. Nothing ties it to the screen that opened it, so navigating
   away from a running snapshot, checkout, import or diff leaves it open, and an `EventSource` that

@@ -7,7 +7,7 @@ import { onceSettled } from "@/lib/form.ts";
 import { formatBytes } from "../states/states.format.ts";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
-import Dialog from "@/components/dialog.tsx";
+import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Slider from "@/components/slider.tsx";
@@ -62,7 +62,7 @@ export function CreateDialog(props: { presenter: ProjectsPresenter }): JSX.Eleme
   );
 
   return (
-    <Dialog
+    <FormDialog
       open={props.presenter.creating()}
       onClose={() => props.presenter.closeCreate()}
       title="New project"
@@ -136,6 +136,6 @@ export function CreateDialog(props: { presenter: ProjectsPresenter }): JSX.Eleme
           </Button>
         </div>
       </Form>
-    </Dialog>
+    </FormDialog>
   );
 }

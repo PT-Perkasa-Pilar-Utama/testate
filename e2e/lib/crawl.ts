@@ -72,7 +72,10 @@ export function watch(page: Page, issues: Issue[]): void {
     const diagnostic = message.type() === "warning" && /\[[A-Z_]{6,}\]/.test(text);
     if (message.type() !== "error" && !diagnostic) return;
     if (/Failed to load resource/.test(text)) return;
-    issues.push({ kind: "console", detail: `${where()} ${text.slice(0, 300)}` });
+    // The location too, for a diagnostic: the code names the mistake and the file names the line.
+    const at = message.location();
+    const site = at.url === "" ? "" : ` (${at.url.split("/").slice(-1)[0]}:${at.lineNumber})`;
+    issues.push({ kind: "console", detail: `${where()} ${text.slice(0, 300)}${site}` });
   });
   page.on("response", (response) => {
     if (response.status() >= 500)

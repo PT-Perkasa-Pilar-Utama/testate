@@ -9,6 +9,8 @@ export type ConfirmDialogProps = {
   /** What the action does, in the words the person needs before they answer. */
   description: string;
   confirmLabel: string;
+  /** "Cancel" unless the question makes a better word available: "Keep editing", say. */
+  cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -27,7 +29,7 @@ export default function ConfirmDialog(props: ConfirmDialogProps): JSX.Element {
     >
       <div class="flex justify-end gap-2">
         <Button variant="ghost" onClick={() => props.onCancel()}>
-          Cancel
+          {props.cancelLabel ?? "Cancel"}
         </Button>
         <Button variant="destructive" onClick={() => props.onConfirm()}>
           {props.confirmLabel}

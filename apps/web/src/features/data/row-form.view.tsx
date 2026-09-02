@@ -7,7 +7,7 @@ import { rowFormSchema } from "@testate/shared";
 import Banner from "@/components/banner.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
-import Dialog from "@/components/dialog.tsx";
+import FormDialog from "@/components/form-dialog.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
@@ -147,7 +147,7 @@ export default function RowForm(props: {
   return (
     <Show when={props.presenter.form()}>
       {(open) => (
-        <Dialog
+        <FormDialog
           open
           size="xl"
           onClose={() => props.presenter.closeForm()}
@@ -215,7 +215,7 @@ export default function RowForm(props: {
               </Button>
             </div>
           </Form>
-        </Dialog>
+        </FormDialog>
       )}
     </Show>
   );

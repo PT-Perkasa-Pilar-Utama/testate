@@ -6,7 +6,7 @@ import { createUserSchema, editUserFormSchema, resetPasswordSchema } from "@test
 import Banner from "@/components/banner.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
-import Dialog from "@/components/dialog.tsx";
+import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
@@ -25,7 +25,7 @@ export function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element 
     }
   );
   return (
-    <Dialog
+    <FormDialog
       open={props.presenter.creating()}
       onClose={() => props.presenter.closeCreate()}
       title="New user"
@@ -108,7 +108,7 @@ export function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element 
           </Button>
         </div>
       </Form>
-    </Dialog>
+    </FormDialog>
   );
 }
 
@@ -135,7 +135,7 @@ export function EditDialog(props: { presenter: UsersPresenter }): JSX.Element {
     }
   );
   return (
-    <Dialog
+    <FormDialog
       open={props.presenter.editing() !== null}
       onClose={() => props.presenter.closeEdit()}
       title={`Edit ${props.presenter.editing()?.username ?? ""}`}
@@ -182,7 +182,7 @@ export function EditDialog(props: { presenter: UsersPresenter }): JSX.Element {
           </Button>
         </div>
       </Form>
-    </Dialog>
+    </FormDialog>
   );
 }
 
@@ -197,7 +197,7 @@ export function ResetDialog(props: { presenter: UsersPresenter }): JSX.Element {
     }
   );
   return (
-    <Dialog
+    <FormDialog
       open={props.presenter.resetting() !== null}
       onClose={() => props.presenter.closeReset()}
       title={`Reset password for ${props.presenter.resetting()?.username ?? ""}`}
@@ -230,6 +230,6 @@ export function ResetDialog(props: { presenter: UsersPresenter }): JSX.Element {
           </Button>
         </div>
       </Form>
-    </Dialog>
+    </FormDialog>
   );
 }

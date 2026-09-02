@@ -7,7 +7,7 @@ import { adapterEditFormSchema } from "@testate/shared";
 import Banner from "@/components/banner.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
-import Dialog from "@/components/dialog.tsx";
+import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
@@ -75,7 +75,7 @@ export default function EditDialog(props: {
   );
 
   return (
-    <Dialog
+    <FormDialog
       open={props.presenter.editing()}
       onClose={() => props.presenter.closeEdit()}
       title={`Edit ${props.adapter.name}`}
@@ -201,6 +201,6 @@ export default function EditDialog(props: {
           </Button>
         </div>
       </Form>
-    </Dialog>
+    </FormDialog>
   );
 }
