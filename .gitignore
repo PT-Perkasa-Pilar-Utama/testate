@@ -35,3 +35,6 @@ apps/api/data/
 
 # docker-slim writes this next to the invocation
 slim.report.json
+
+# compiled binaries (scripts/binary/build-binaries.ts)
+.bin-build

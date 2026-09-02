@@ -16,7 +16,7 @@ Reset the database before every test run from [CI](#6-how-to-integrate-into-a-ci
 docker run -d --name testate -p 7378:7378 -v testate-data:/data \
   -e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
   -e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
-  ghcr.io/pt-perkasa-pilar-utama/testate:1.1.0-alpha
+  ghcr.io/pt-perkasa-pilar-utama/testate:1.0.0-beta
 ```
 
 Open <http://localhost:7378>, sign in as `admin` with that password, and add a database under **Databases**. Where to point the host is the one thing that catches people out, so read [section 3](#3-connecting-to-a-database) first. Testate makes you change that password on the first login.
@@ -29,7 +29,7 @@ That command is fine for a look. For anything you rely on, use Compose and an `.
 | Document | MongoDB                            | view, snapshot, checkout, diff, extract                |
 | Files    | Any S3-compatible store, SFTP, FTP | view, preview, download, insert, rename, delete, batch |
 
-Version 1.1.0-alpha.
+Version 1.0.0-beta.
 
 ## Why Testate
 
@@ -124,6 +124,24 @@ docker compose logs -f testate   # wait for the boot line
 Testate listens on port 7378 inside the container; `docker-compose.yml` publishes it as `7378:7378`. All state lives on the `testate-data` volume, mounted at `/data` (`metadata.db`, blobs, logs, uploads). The container filesystem is otherwise read-only.
 
 To serve Testate under a sub-path instead of the domain root, set `TESTATE_BASE_PATH=/testate` (leading slash, no trailing slash) and restart. `deploy/nginx.conf` is a matching reverse-proxy example.
+
+### Without Docker: one binary
+
+Every release carries a standalone executable for macOS on Apple silicon, Linux on x86-64 and
+Windows on x86-64, with the dashboard and the migrations inside it. Download it from the
+[releases page](https://github.com/PT-Perkasa-Pilar-Utama/testate/releases), then:
+
+```sh
+chmod +x testate-*-darwin-arm64          # macOS and Linux only
+TESTATE_DATA_DIR=./testate-data \
+TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
+TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
+./testate-*-darwin-arm64
+```
+
+It listens on port 7378 and keeps everything under `TESTATE_DATA_DIR`, which has to be set: the
+default is the image's `/data`. Every other variable in `deploy/.env.example` applies the same way.
+The dashboard and the migrations are unpacked under `<data dir>/run/app/<version>/` on every boot.
 
 ## 2. First-time setup
 

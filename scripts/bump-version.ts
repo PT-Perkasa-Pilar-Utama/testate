@@ -22,7 +22,13 @@ const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 const FIRST_VERSION = /"version": "([^"]+)"/;
 const VERSION_CONSTANT = /export const VERSION = "([^"]+)";/;
 
-type Slot = { file: string; pattern: RegExp; render: (version: string) => string };
+type Slot = {
+  file: string;
+  pattern: RegExp;
+  render: (version: string) => string;
+  /** Replace every match, for a file that prints the version more than once. */
+  all?: boolean;
+};
 
 const SLOTS: Slot[] = [
   ...MANIFESTS.map((file) => ({
@@ -34,6 +40,41 @@ const SLOTS: Slot[] = [
     file: CONSTANT,
     pattern: VERSION_CONSTANT,
     render: (version: string) => `export const VERSION = "${version}";`,
+  },
+  // What a person reads: the README's install command and status line, the homepage's eyebrow,
+  // structured data and install command, and the banner's eyebrow. These drifted for a release
+  // once because only the manifests were written.
+  {
+    file: "README.md",
+    pattern: /ghcr\.io\/pt-perkasa-pilar-utama\/testate:([^\s"'`]+)/,
+    render: (version: string) => `ghcr.io/pt-perkasa-pilar-utama/testate:${version}`,
+    all: true,
+  },
+  {
+    file: "README.md",
+    pattern: /^Version ([^\s.]+(?:\.[^\s.]+)*)\./m,
+    render: (version: string) => `Version ${version}.`,
+  },
+  {
+    file: "docs/index.html",
+    pattern: /ghcr\.io\/pt-perkasa-pilar-utama\/testate:([^\s"'`<]+)/,
+    render: (version: string) => `ghcr.io/pt-perkasa-pilar-utama/testate:${version}`,
+    all: true,
+  },
+  {
+    file: "docs/index.html",
+    pattern: /"softwareVersion": "([^"]+)"/,
+    render: (version: string) => `"softwareVersion": "${version}"`,
+  },
+  {
+    file: "docs/index.html",
+    pattern: /Self-hosted · v([^\s<]+) · MIT/,
+    render: (version: string) => `Self-hosted · v${version} · MIT`,
+  },
+  {
+    file: "docs/assets/hero.svg",
+    pattern: /SELF-HOSTED · V([^\s<]+) · MIT/,
+    render: (version: string) => `SELF-HOSTED · V${version.toUpperCase()} · MIT`,
   },
 ];
 
@@ -47,7 +88,7 @@ async function read(slot: Slot): Promise<{ text: string; version: string }> {
 async function check(): Promise<number> {
   const slots = await Promise.all(SLOTS.map(async (slot) => ({ slot, ...(await read(slot)) })));
   const root = slots[0]?.version ?? "";
-  const adrift = slots.filter((item) => item.version !== root);
+  const adrift = slots.filter((item) => item.version.toLowerCase() !== root.toLowerCase());
   for (const item of adrift) console.error(`${item.slot.file}: ${item.version}, want ${root}`);
   if (adrift.length > 0) return 1;
   console.log(`version ${root} in ${slots.length} files`);
@@ -58,7 +99,8 @@ async function write(version: string): Promise<number> {
   if (!SEMVER.test(version)) throw new Error(`not a version: ${version}`);
   for (const slot of SLOTS) {
     const { text, version: before } = await read(slot);
-    await Bun.write(`${ROOT}${slot.file}`, text.replace(slot.pattern, slot.render(version)));
+    const pattern = slot.all === true ? new RegExp(slot.pattern.source, "g") : slot.pattern;
+    await Bun.write(`${ROOT}${slot.file}`, text.replace(pattern, slot.render(version)));
     console.log(`${slot.file}: ${before} -> ${version}`);
   }
   console.log("commit these, then tag the release; the image takes its tag from package.json");

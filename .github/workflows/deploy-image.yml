@@ -270,3 +270,138 @@ jobs:
             esac
           done
           echo "manifest carries linux/amd64 and linux/arm64"
+
+  # One executable per platform, the SPA and the migrations inside it, so a machine with no Docker
+  # can run Testate from a download. Cross-compiled on one Linux runner: nothing native is inside
+  # the bundle (`*.node` stays external and ssh2 falls back to its pure-JS crypto).
+  binaries:
+    name: Build the single binaries
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          # In lockstep with ci.yml: the binaries embed this exact runtime.
+          bun-version: "1.4.0"
+
+      - run: bun install --frozen-lockfile
+
+      - name: Compile every target
+        run: bun scripts/binary/build-binaries.ts --all
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: binaries
+          path: .bin-build/testate-*
+          if-no-files-found: error
+          # .bin-build is a dot-directory; the default hidden-file filter would match nothing.
+          include-hidden-files: true
+          retention-days: 7
+
+  # Each binary boots on its own operating system before anything is published: the data
+  # directory is created, the migrations run from the unpacked copy, and the SPA is served.
+  smoke:
+    name: Boot the binary (${{ matrix.target }})
+    needs: binaries
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x64
+            suffix: ""
+          - os: macos-latest
+            target: darwin-arm64
+            suffix: ""
+          - os: windows-latest
+            target: windows-x64
+            suffix: ".exe"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: binaries
+          path: binaries
+
+      - name: Boot it and ask for the health line and the SPA
+        shell: bash
+        run: |
+          version=$(jq -r .version package.json)
+          bin="./binaries/testate-${version}-${{ matrix.target }}${{ matrix.suffix }}"
+          chmod +x "$bin"
+          mkdir -p data
+          PORT=7378 TESTATE_ENV=test TESTATE_DATA_DIR=./data \
+            TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
+            TESTATE_ADMIN_PASSWORD=binary-smoke-password-1 \
+            "$bin" > boot.log 2>&1 &
+          pid=$!
+          code=""
+          for _ in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:7378/api/v1/health/live || true)
+            [ "$code" = "204" ] && break
+            sleep 2
+          done
+          if [ "$code" != "204" ]; then
+            echo "::error::the ${{ matrix.target }} binary did not answer /health/live; it returned '$code'"
+            cat boot.log
+            exit 1
+          fi
+          curl -s http://127.0.0.1:7378/ | grep -q "<title>Testate</title>"
+          curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:7378/fonts/mona-sans.woff2 | grep -q 200
+          echo "${{ matrix.target }} booted, served the SPA and its fonts"
+          kill $pid
+
+  # The release for this version, with GitHub's own generated notes and the binaries attached.
+  # Idempotent like the image: an existing release for the version is left alone.
+  release:
+    name: Publish the release
+    needs: [merge, smoke]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: binaries
+          path: binaries
+
+      # Archives, not bare executables: a 60 MB binary gzips to a third, and the archive keeps
+      # the executable bit on macOS and Linux.
+      - name: Compress for distribution
+        run: |
+          mkdir -p dist
+          for f in binaries/testate-*; do
+            name=$(basename "$f")
+            case "$name" in
+              *.exe) (cd binaries && zip -q "../dist/${name%.exe}.zip" "$name") ;;
+              *)     tar czf "dist/${name}.tar.gz" -C binaries "$name" ;;
+            esac
+          done
+          ls -lh dist
+
+      - name: Create the release, unless it exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(jq -r .version package.json)
+          tag="v${version}"
+          if gh release view "$tag" > /dev/null 2>&1; then
+            echo "::notice::release ${tag} already exists - leaving it alone."
+            exit 0
+          fi
+          gh release create "$tag" \
+            --title "$tag" \
+            --generate-notes \
+            --target "${{ github.sha }}" \
+            dist/*
+          echo "published ${tag} with $(ls dist | wc -l) assets"

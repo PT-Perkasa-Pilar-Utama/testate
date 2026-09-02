@@ -51,6 +51,7 @@ import { createImportsHandlers } from "./modules/imports/imports.handler.ts";
 import { createV1 } from "./modules/index.ts";
 import { createJobsHandlers } from "./modules/jobs/jobs.handler.ts";
 import { mountSpa, resolveWebSource, rewriteWebAssets } from "./modules/ops/ops.basepath.ts";
+import { unpackEmbedded } from "./modules/ops/ops.embedded.ts";
 import { createOpsHandlers } from "./modules/ops/ops.handler.ts";
 import { createProjectsHandlers } from "./modules/projects/projects.handler.ts";
 import { createProjectsRepository } from "./modules/projects/projects.repository.ts";
@@ -66,6 +67,7 @@ import { createToolsService } from "./modules/tools/tools.service.ts";
 import { createUsersHandlers } from "./modules/users/users.handler.ts";
 import { createUsersRepository } from "./modules/users/users.repository.ts";
 import { createUsersService } from "./modules/users/users.service.ts";
+import { EMBEDDED } from "./embedded.ts";
 import { VERSION } from "./version.ts";
 
 export type App = {
@@ -100,12 +102,14 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   });
   const rollbackCopy = preMigrationCopy(config.TESTATE_DATA_DIR, bootId);
   const db = openMetadataDb(join(config.TESTATE_DATA_DIR, "metadata.db"));
-  // Migrations live next to this entry in both layouts: src/db/migrations and dist/db/migrations.
-  const migrationsDir = join(import.meta.dir, "db", "migrations");
+  // A compiled binary carries the migrations and the SPA inside itself and unpacks them first;
+  // the image and a source checkout read both from disk next to this entry.
+  const unpacked = await unpackEmbedded(config.TESTATE_DATA_DIR, VERSION, EMBEDDED);
+  const migrationsDir = unpacked.migrations ?? join(import.meta.dir, "db", "migrations");
   const migration = migrateOrRefuse(db, migrationsDir, config.TESTATE_DATA_DIR);
   const sealed = await sweepSealed(ring, db, config);
   const prefix = apiPrefix(config);
-  const webSource = resolveWebSource(import.meta.dir);
+  const webSource = unpacked.web ?? resolveWebSource(import.meta.dir);
   const web =
     webSource === null
       ? null

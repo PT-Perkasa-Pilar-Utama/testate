@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.0.0-beta
+
+The first beta. The number goes down from `1.1.0-alpha`: the alpha line ended at 1.1 and the
+beta line starts at 1.0, so `1.0.0-beta` sorts after every alpha in the release list and in
+`ghcr.io/pt-perkasa-pilar-utama/testate` tags is read as a name, not compared.
+
+### New
+
+**The dashboard matches the project's homepage.** Near-black ground, one raised surface, teal
+for what you can act on, the mark's green for identity, mono labels, tight headings. Every
+screen under a project starts with a breadcrumb path. Take state and Check out are the two
+solid teal buttons on the states screen.
+
+**HEAD knows when the databases have moved off it.** A write session's first change or an
+import marks it; a checkout or a snapshot clears it; "Check for changes" on the HEAD row diffs it
+against the live databases and reports whether anything moved. The badge reads "HEAD · modified"
+once it has, and Check out on that row goes quiet until then.
+
+**One binary per platform.** Each release attaches a standalone executable for macOS on Apple
+silicon, Linux on x86-64 and Windows on x86-64, with the dashboard and the migrations inside it.
+See "Without Docker: one binary" in the README.
+
+**Any S3-compatible store.** The S3 engine speaks to Amazon S3, Cloudflare R2, Google Cloud
+Storage, Backblaze B2, MinIO and anything else that speaks the protocol; the README's table says
+what to put in the endpoint field for each.
+
+**Write mode is a strip under the grid toolbar** with Insert row, the foreign-key switch and End
+write mode. The diff page's rail names each database and colours what moved, and opens on the
+first table that did. Every action that finished in silence now says so.
+
+### Fixed
+
+- Signing in from `/login` left the address bar on `/login`.
+- A succeeded job showed its last progress fraction for good, and a backup's phase read `tar`.
+- A list of one said "1 file stores". The sessions table printed `::ffff:127.0.0.1`.
+- A state created while the states list was open never appeared until a reload.
+- Two Solid diagnostics on every dialog dismissed with Escape or the ✕.
+
 ## 1.1.0-alpha
 
 ### Breaking
