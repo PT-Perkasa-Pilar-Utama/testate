@@ -1,5 +1,8 @@
 # UI rework: the plan
 
+**Finished.** This is the record of a rework that shipped, not work outstanding. Code comments
+cite it for the reasoning behind a screen's shape.
+
 Decided 2026-08-31. Supersedes nothing; this is the first rework since the SPA was built.
 
 ## Why
@@ -125,7 +128,6 @@ Both refuse in place now, and `filterNeedsValue` states the API's own rule once.
 
 ## Known, accepted
 
-- The `buttons.e2e.ts` crawler only clicks `main button:visible`, and a `<summary>` is not a button.
-  Actions that moved into a row's overflow menu (Export CSV, Extract fixture, Delete) are therefore
-  outside its reach. Every one of them has a story spec that clicks it by name, so the coverage is
-  real; the crawler's is narrower than it was.
+- ~~The `buttons.e2e.ts` crawler only clicks `main button:visible`, and a `<summary>` is not a
+  button.~~ Closed. The overflow menu became a popover opened by a real `<button>` when the row
+  menus were rebuilt, so the crawler reaches those actions again.

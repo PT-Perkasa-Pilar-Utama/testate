@@ -1,5 +1,8 @@
 # Project page rework
 
+**Finished.** Every phase in the table below landed. This is the record of why the screens are
+shaped the way they are, which code comments cite; it is not work outstanding.
+
 The project page carried five sibling tabs that were not siblings: States, Imports, Diffs,
 History, Adapters. This is the plan that replaces them, agreed in full before any code, and the
 record of what has been built.

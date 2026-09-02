@@ -1,4 +1,4 @@
-# Handover: Testate build session, 2026-08-28 to 2026-08-31
+# Handover: Testate build session, 2026-08-28 to 2026-09-02
 
 Read this first, then `CLAUDE.md`, then `docs/E2E.md`. Memory notes live in
 `~/.claude/projects/-Users-vexeee-Documents-project-testate/memory/` (auto-loaded via `MEMORY.md`).
@@ -15,11 +15,13 @@ left; `grep -rn "ponytail:" apps packages e2e scripts`).
 homepage at <https://pt-perkasa-pilar-utama.github.io/testate/> served from `docs/`, and the head of
 engineering's green light. **Beta is the next phase and a lot is expected to change.**
 
-E2E: 136 Playwright tests, ~4 min, coverage **145/145 stories covered**. `NON_UI` in
-`e2e/lib/stories.ts` is empty: what no screen shows, an API or boot test covers. The count fell
-from 150 to 144 because the UI rework cut the features six stories described
-(`docs/UI_REWORK.md`), then rose to 145 with story 151: `PATCH /users/:id` had existed, tested and
-guarded against demoting the last admin, with no screen ever calling it.
+E2E: 141 Playwright tests (135 run, 6 gated behind `SHOTS=1` and `STRESS=1`), ~4 min, coverage
+**144 of 145 stories covered**. `NON_UI` in `e2e/lib/stories.ts` is empty: what no screen shows, an
+API or boot test covers. `NO_SCREEN` holds one id, 54: saving an import mapping under a name and
+reusing it. The wizard had that field; the rework replaced the wizard with one screen per adapter
+that creates the mapping without naming it, so the API keeps named mappings and nothing in the SPA
+reaches them. The story count fell from 150 to 144 because the UI rework cut the features six
+stories described (`docs/UI_REWORK.md`), then rose to 145 with story 151.
 
 The version is `1.1.0-alpha`. The API listens on **7378** and the dev web server on **7379**;
 3000 and 5173 were abandoned because they collide with every other project on the machine. The
@@ -161,7 +163,29 @@ b9131cd test(e2e): cover the contract and agent stories over the API
 
 ## 8. In flight and next
 
+### Done 2026-09-02
+
+- **The e2e suite was green again, and the way it got there is worth reading.** Thirteen specs had
+  gone stale against the reworked screens, and two of the thirteen were the suite telling the truth
+  about the product: a diff or a restore started on one tab said "Running" for ever when read on
+  another (`refreshWhileBusy` in `lib/async.ts`), and the import screen read the query string in
+  its own body. The other eleven were selector drift, and every trap is written into `docs/E2E.md`
+  rather than only fixed.
+- **A file store does the rest of what a file browser does**: New folder, rename, and a batch
+  delete over ticked rows, on S3, SFTP and FTP, with the contract suite driving all three. `setMode`
+  used to refuse anything that was not a database, which left a file store stuck on the mode it was
+  created with while every write here checks that mode.
+- **The import screen asks before it writes.** Check the file runs the dry run and leaves the
+  report up; Import stays shut until it comes back clean, and every edit clears the report.
+- **`get_state` and `diff_summary` had no test on either side of the suite**, and `loadConfig` had
+  none of its own. Both closed.
+
 ### Owed before beta (carried out of the release, nobody has done these)
+
+- **The blob leak on project delete.** Offered twice, never taken up: deleting a project drops its
+  states but nothing sweeps the blobs they alone pinned, so the disk keeps them. `states.repository`
+  already computes orphans for a state delete; a project delete does not ask.
+
 
 - **`1.0.0-alpha` is still pullable from ghcr and cannot boot.** docker-slim dropped `/data`, so a
   first run against an empty volume refuses. Deleting a published package version needs a scope the
