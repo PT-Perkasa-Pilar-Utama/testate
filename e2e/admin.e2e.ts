@@ -258,14 +258,9 @@ test.describe("leaving a form", () => {
     await expect(asking(page)).toBeVisible();
     await asking(page).getByRole("button", { name: "Discard" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
-    // Not `toStrictEqual([])` like its neighbours, and the two exceptions are named rather than
-    // quiet. Dismissing a dialog with Escape or the ✕ is a path no spec walked before this one,
-    // and Solid 2 reports two dev-only diagnostics on it: the close handler a screen hands over
-    // reads its own presenter off props, and closing writes signals, both from inside the flush
-    // that the browser's own dismissal runs in. That is the shape of every dialog on every
-    // screen rather than anything this guard added, and it is on the handover list with what has
-    // already been ruled out. Everything else this spec would catch still fails the run.
-    const known = /STRICT_READ_UNTRACKED|FLUSH_IN_EFFECT_CALLBACK/;
-    expect(issues.filter((issue) => !known.test(issue.detail))).toStrictEqual([]);
+    // Every Solid diagnostic on this path counts: the two the dialog used to raise came from the
+    // native open and close moving focus inside an effect callback, and `dialog.tsx` now does
+    // both on the next turn.
+    expect(issues).toStrictEqual([]);
   });
 });

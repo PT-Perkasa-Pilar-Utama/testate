@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-import { apiContext, waitForState } from "./lib/api.ts";
 import { openStatesList, settle, stateRow, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
@@ -54,9 +53,6 @@ test.describe("adapter settings stories", () => {
     await page.locator("dialog[open]").getByLabel("Host").fill("localhost");
     await page.locator("dialog[open]").getByRole("button", { name: "Save adapter" }).click();
     await expect(page.getByText("init snapshot queued")).toBeVisible();
-    // The queued job inserts its state a moment later; a list opened before that has no row to
-    // follow and never refreshes, so wait for the row before going there.
-    await waitForState(await apiContext("qa"), "demo", `init-cfg-${STAMP}-2`);
     await page.goto("/projects/demo");
     await settle(page);
     await openStatesList(page);

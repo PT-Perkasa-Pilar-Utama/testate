@@ -48,7 +48,7 @@ export function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element
   return (
     <FormDialog
       open={props.presenter.creating()}
-      onClose={() => props.presenter.closeCreate()}
+      onClose={props.presenter.closeCreate}
       title="New API token"
       description="A standard token works on the REST API. An agent token reaches the MCP endpoint alone, where a Guest reads and a Tester also writes."
       size="lg"

@@ -108,7 +108,7 @@ export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
   return (
     <FormDialog
       open={props.presenter.taking()}
-      onClose={() => props.presenter.close()}
+      onClose={props.presenter.close}
       title="Take state"
       size="lg"
       description="Every database is snapshotted at one point in time. Untick one to take a partial state."
@@ -190,7 +190,7 @@ export function EditDialog(props: { presenter: StatesPresenter }): JSX.Element {
     <FormDialog
       size="lg"
       open={props.presenter.editing() !== null}
-      onClose={() => props.presenter.close()}
+      onClose={props.presenter.close}
       title={`Edit ${props.presenter.editing()?.name ?? ""}`}
       description="Init states keep their kind; CI filters on it."
     >
@@ -210,7 +210,7 @@ export function DeleteDialog(props: { presenter: StatesPresenter }): JSX.Element
   return (
     <FormDialog
       open={props.presenter.deleting() !== null}
-      onClose={() => props.presenter.close()}
+      onClose={props.presenter.close}
       title={`Delete ${props.presenter.deleting()?.name ?? ""}`}
       description="A job reclaims the storage this state holds alone. Checkout history keeps the name."
     >
@@ -235,7 +235,7 @@ export function DetailDialog(props: { presenter: StatesPresenter }): JSX.Element
   return (
     <Dialog
       open={props.presenter.detail() !== null}
-      onClose={() => props.presenter.close()}
+      onClose={props.presenter.close}
       title={props.presenter.detail()?.name ?? ""}
       description={props.presenter.detail()?.notes ?? "No notes."}
       size="xl"

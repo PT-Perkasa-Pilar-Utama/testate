@@ -20,7 +20,7 @@ export default function RevealDialog(props: { presenter: TokensPresenter }): JSX
   return (
     <Dialog
       open={created() !== null}
-      onClose={() => props.presenter.dismissCreated()}
+      onClose={props.presenter.dismissCreated}
       title={created() === null ? "Token created" : `${created()?.record.name} created`}
       size="lg"
       description="Copy it now. It will not be shown again."

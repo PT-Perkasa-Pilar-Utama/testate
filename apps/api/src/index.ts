@@ -173,6 +173,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     probe: wiring.probe,
     fileProbe: wiring.fileProbe,
     jobs,
+    states: wiring.states,
     now,
   });
   const projects = createProjectsService({

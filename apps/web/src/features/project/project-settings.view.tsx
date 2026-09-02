@@ -71,7 +71,7 @@ export function EditDialog(props: { presenter: ProjectPresenter }): JSX.Element 
   return (
     <FormDialog
       open={props.presenter.editing()}
-      onClose={() => props.presenter.closeEdit()}
+      onClose={props.presenter.closeEdit}
       title="Edit project"
       size="lg"
     >
@@ -190,7 +190,7 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
   return (
     <Dialog
       open={props.presenter.plan() !== null}
-      onClose={() => props.presenter.closeDelete()}
+      onClose={props.presenter.closeDelete}
       title={`Delete ${props.slug}`}
       description="This cannot be undone. Read what goes, then type the project's slug."
       size="lg"

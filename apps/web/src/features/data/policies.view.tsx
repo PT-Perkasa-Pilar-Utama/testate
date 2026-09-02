@@ -47,7 +47,7 @@ function PolicyDialog(props: { presenter: PoliciesPresenter }): JSX.Element {
   return (
     <FormDialog
       open={props.presenter.draft() !== null}
-      onClose={() => props.presenter.close()}
+      onClose={props.presenter.close}
       title={`Mask for ${props.presenter.draft()?.table ?? ""}.${props.presenter.draft()?.column ?? ""}`}
       size="lg"
       description="A masked column reaches Guests and agents as *** and Testers and Administrators as the real value. It applies to the grid, diffs, exports, fixtures and MCP alike."

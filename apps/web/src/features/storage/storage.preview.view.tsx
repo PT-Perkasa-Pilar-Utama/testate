@@ -59,7 +59,7 @@ export function PreviewDialog(props: { presenter: StoragePresenter }): JSX.Eleme
         <Dialog
           open
           size="xl"
-          onClose={() => props.presenter.closePreview()}
+          onClose={props.presenter.closePreview}
           title={preview().entry.name}
           description={`${formatBytes(preview().entry.size_bytes ?? 0)} · ${preview().entry.modified_at ?? ""}`}
         >

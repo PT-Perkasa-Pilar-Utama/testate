@@ -28,7 +28,7 @@ export function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element 
   return (
     <FormDialog
       open={props.presenter.creating()}
-      onClose={() => props.presenter.closeCreate()}
+      onClose={props.presenter.closeCreate}
       title="New user"
       size="lg"
       description="Hand the temporary password over out of band. The first login forces a change."
@@ -139,7 +139,7 @@ export function EditDialog(props: { presenter: UsersPresenter }): JSX.Element {
     <FormDialog
       size="lg"
       open={props.presenter.editing() !== null}
-      onClose={() => props.presenter.closeEdit()}
+      onClose={props.presenter.closeEdit}
       title={`Edit ${props.presenter.editing()?.username ?? ""}`}
       description="The username never changes; it is what the audit log records."
     >
@@ -202,7 +202,7 @@ export function ResetDialog(props: { presenter: UsersPresenter }): JSX.Element {
     <FormDialog
       size="lg"
       open={props.presenter.resetting() !== null}
-      onClose={() => props.presenter.closeReset()}
+      onClose={props.presenter.closeReset}
       title={`Reset password for ${props.presenter.resetting()?.username ?? ""}`}
       description="Every session of this user ends. The next login forces a change."
     >

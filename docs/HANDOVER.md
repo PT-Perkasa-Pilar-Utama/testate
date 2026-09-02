@@ -379,14 +379,18 @@ reads from `docs/index.html`'s palette. What a next agent needs:
   its last progress fraction (67%) for good; a backup's phase read `tar` and a deletion's `gc`; a
   footer said "1 file stores"; the sessions table printed `::ffff:127.0.0.1` and the role key; a
   row's Details, Counters and Retry wrapped onto two lines. Each is its own commit.
-- **Left open on purpose, too:** the states list does not learn about a state created after it
-  loaded unless a row is already `creating` (`refreshWhileBusy` follows rows, not the project).
-  A screen opened in the gap between "init snapshot queued" and the job inserting its row sits
-  stale, which is why `adapter.e2e.ts` now waits through the API before it navigates. A project
-  job stream, or a refresh on focus, would close it.
-- **Left open on purpose.** The two Solid diagnostics on the dialog dismiss path (§8b) are still
-  filtered in `e2e/admin.e2e.ts`: the redesign touched dialog classes only, and the thirteen-site
-  handler change is the same job it was. The `followJob` leak listed under "owed" is done: the
+- **Closed: the states list's blind spot.** An init snapshot used to create its state row inside
+  the runner, so a list opened between "init snapshot queued" and the job starting had no row to
+  follow and sat stale. `adapters.service` now inserts the init row before it queues the job, the
+  way a manual state always was (`states.service`), and `adapter.e2e.ts` no longer waits through
+  the API. The runner keeps the old `init` payload branch for a job queued by an earlier version.
+- **Closed: the two Solid diagnostics on the dialog dismiss path.** The cause was never a
+  feature's close handler. `showModal()` moves focus into the first field and `close()` blurs it,
+  synchronously, and Formisch's focus and blur handlers read and write signals; from inside the
+  dialog's effect callback those were the untracked reads and the discarded flush. `dialog.tsx`
+  now makes both native calls on the next turn, and `e2e/admin.e2e.ts` asserts an empty issue
+  list with no filter. The stack that found it: wrap `console.warn` in an `addInitScript` and
+  print `new Error().stack` for any line matching the code; `scratchpad/diag.ts` in the session. The `followJob` leak listed under "owed" is done: the
   other agent's `createJobFollower` in `lib/sse.ts` ties every stream to its owner.
 - **The homepage itself** (`docs/index.html`, `assets/site.js`) gained a placement animation, an
   agent terminal, and lost every source of scroll-time repainting; the README banner is the same
@@ -444,7 +448,7 @@ are wide tables whose `overflow-x` container may or may not be the right one; `D
 inside them are `sm:grid-cols-2` and will need checking; the diff page is a deliberate split pane;
 the ERD is an infinite canvas. The states tree indents per level and will run out of width first.
 
-### Two Solid RC diagnostics on the dialog dismiss path
+### Two Solid RC diagnostics on the dialog dismiss path (resolved 2026-09-02, see §8a)
 
 `e2e/admin.e2e.ts`, "leaving a form", filters exactly two codes and says so in a comment:
 `STRICT_READ_UNTRACKED` and `FLUSH_IN_EFFECT_CALLBACK`, both on `/users`, both raised when a dialog

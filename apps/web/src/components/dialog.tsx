@@ -60,19 +60,29 @@ export default function Dialog(props: DialogProps): JSX.Element {
     () => ({ open: props.open, dialog: element(), onOpened: props.onOpened }),
     ({ open, dialog, onOpened }) => {
       if (dialog === undefined) return;
+      // Both native calls run on the next turn, not inside this callback. `showModal()` moves
+      // focus into the first field and `close()` blurs it, synchronously, and the field's own
+      // focus and blur handlers (Formisch's) read and write signals. Done from inside an effect
+      // callback those are exactly the reads Solid 2 reports as STRICT_READ_UNTRACKED and the
+      // writes whose flush it discards as FLUSH_IN_EFFECT_CALLBACK; a microtask is still before
+      // any keystroke, so a caller arming a listener in `onOpened` loses nothing.
       if (open && !dialog.open) {
-        dialog.showModal();
-        // Synchronously, not a frame later: a caller using this to arm something has to be armed
-        // before the first keystroke can reach the form, and a frame is long enough to lose one.
-        onOpened?.(dialog);
+        queueMicrotask(() => {
+          if (dialog.open) return;
+          dialog.showModal();
+          onOpened?.(dialog);
+        });
       }
       if (!open && dialog.open) {
-        // Ours, not the browser's: the native `close` event fires synchronously from here, and
-        // echoing it back to `onClose` calls the caller a second time for a close it asked for.
-        // The event is there to catch Escape and the browser's own dismissals.
-        ours = true;
-        dialog.close();
-        ours = false;
+        queueMicrotask(() => {
+          if (!dialog.open) return;
+          // Ours, not the browser's: the native `close` event fires synchronously from here,
+          // and echoing it back to `onClose` calls the caller a second time for a close it
+          // asked for. The event is there to catch Escape and the browser's own dismissals.
+          ours = true;
+          dialog.close();
+          ours = false;
+        });
       }
     }
   );

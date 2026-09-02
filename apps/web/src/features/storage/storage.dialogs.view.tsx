@@ -99,7 +99,7 @@ export function RenameDialog(props: { presenter: StoragePresenter }): JSX.Elemen
       label="New name"
       submit="Rename"
       initial={props.presenter.renaming()?.name ?? ""}
-      onClose={() => props.presenter.cancelRename()}
+      onClose={props.presenter.cancelRename}
       onSubmit={(name) => props.presenter.rename(name)}
     />
   );
@@ -114,7 +114,7 @@ export function FolderDialog(props: { presenter: StoragePresenter }): JSX.Elemen
       label="Folder name"
       submit="Create"
       initial=""
-      onClose={() => props.presenter.cancelFolder()}
+      onClose={props.presenter.cancelFolder}
       onSubmit={(name) => props.presenter.makeFolder(name)}
     />
   );

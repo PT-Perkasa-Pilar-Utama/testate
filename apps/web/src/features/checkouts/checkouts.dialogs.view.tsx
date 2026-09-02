@@ -44,7 +44,7 @@ export function DetailDialog(props: { presenter: CheckoutsPresenter }): JSX.Elem
   return (
     <Dialog
       open={checkout() !== null}
-      onClose={() => props.presenter.close()}
+      onClose={props.presenter.close}
       title={`Checkout of ${checkout()?.state.name ?? ""}`}
       description={describe()}
       size="xl"
@@ -126,7 +126,7 @@ export function CountersDialog(props: { presenter: CheckoutsPresenter }): JSX.El
   return (
     <Dialog
       open={target() !== null}
-      onClose={() => props.presenter.close()}
+      onClose={props.presenter.close}
       title={`Counters after ${target()?.checkout.state.name ?? ""}`}
       description="Sequences and auto-increment counters reset after the rows are restored."
       size="lg"

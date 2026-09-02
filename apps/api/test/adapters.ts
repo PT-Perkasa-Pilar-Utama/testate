@@ -258,6 +258,7 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     },
     fileProbe: createScaffoldFileProbe(),
     jobs: runtime.jobs,
+    states,
     now: accounts.now,
   });
   return {

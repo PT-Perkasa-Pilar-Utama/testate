@@ -77,7 +77,7 @@ function DeleteDialog(props: { presenter: AdapterPresenter; name: string }): JSX
       {(plan) => (
         <Dialog
           open
-          onClose={() => props.presenter.closeDelete()}
+          onClose={props.presenter.closeDelete}
           title={`Delete ${props.name}`}
           description="A database adapter returns to its init state first; the adapter row goes only after that succeeds or is skipped."
         >

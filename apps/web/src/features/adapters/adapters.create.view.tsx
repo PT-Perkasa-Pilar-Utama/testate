@@ -137,7 +137,7 @@ export function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Eleme
   return (
     <FormDialog
       open={props.presenter.creating()}
-      onClose={() => props.presenter.closeCreate()}
+      onClose={props.presenter.closeCreate}
       title="New adapter"
       description="Secrets are sealed before they reach the database and never shown again."
       size="lg"

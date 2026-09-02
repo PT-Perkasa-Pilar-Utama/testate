@@ -65,7 +65,7 @@ export function CreateDialog(props: { presenter: ProjectsPresenter }): JSX.Eleme
   return (
     <FormDialog
       open={props.presenter.creating()}
-      onClose={() => props.presenter.closeCreate()}
+      onClose={props.presenter.closeCreate}
       title="New project"
       size="lg"
       description="A project groups adapters and the states taken across them."

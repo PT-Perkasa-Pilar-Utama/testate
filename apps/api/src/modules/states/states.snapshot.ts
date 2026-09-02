@@ -179,7 +179,11 @@ function assertUnder(used: number, limit: number | null, message: string, extra:
 }
 
 /** `init`, then `init-<adapter>`, then a suffixed name, so a re-created adapter never collides (05 §5.8). */
-function initName(states: StatesRepository, projectId: string, adapter: AdapterRecord): string {
+export function initName(
+  states: Pick<StatesRepository, "nameTaken">,
+  projectId: string,
+  adapter: AdapterRecord
+): string {
   const candidates = [
     "init",
     `init-${adapter.name}`,
@@ -201,7 +205,12 @@ type Target = {
   adapters: AdapterRecord[];
 };
 
-/** Init payloads create their protected state here; manual ones were created by the service (08 §8.3). */
+/**
+ * Every snapshot's state row is created by the service before the job is queued, init ones
+ * included (adapters.service `initJob`), so a list opened while the job waits has a row to follow.
+ * The `init` payload branch stays for a job queued by an earlier version and still in the
+ * metadata database when this one boots; nothing enqueues that shape any more.
+ */
 function resolveTarget(deps: SnapshotDeps, job: JobRunnerContext["job"]): Target {
   const payload = v.parse(payloadSchema, job.payload);
   if ("init" in payload) {
@@ -230,7 +239,7 @@ function resolveTarget(deps: SnapshotDeps, job: JobRunnerContext["job"]): Target
   return {
     stateId: state.id,
     name: state.name,
-    kind: state.kind === "stash" || state.kind === "diff" ? state.kind : "manual",
+    kind: state.kind,
     adapters: adapters.flatMap((a) => (a === null ? [] : [a])),
   };
 }

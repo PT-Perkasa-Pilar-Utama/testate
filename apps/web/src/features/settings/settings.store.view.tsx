@@ -34,7 +34,7 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
   return (
     <FormDialog
       open={props.presenter.migrating()}
-      onClose={() => props.presenter.closeMigrate()}
+      onClose={props.presenter.closeMigrate}
       title="Migrate store"
       size="lg"
       description="Every snapshot copies to the new store before the switch; nothing is lost if the job fails."

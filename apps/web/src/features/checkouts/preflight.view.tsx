@@ -55,7 +55,7 @@ export default function PreflightDialog(props: { presenter: PreflightPresenter }
   return (
     <Dialog
       open={props.presenter.target() !== null}
-      onClose={() => props.presenter.close()}
+      onClose={props.presenter.close}
       title={`Check out ${props.presenter.target()?.name ?? ""}`}
       description="Testate restores every included database to this state's data."
       size="xl"

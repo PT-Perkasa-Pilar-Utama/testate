@@ -78,7 +78,7 @@ export default function EditDialog(props: {
   return (
     <FormDialog
       open={props.presenter.editing()}
-      onClose={() => props.presenter.closeEdit()}
+      onClose={props.presenter.closeEdit}
       title={`Edit ${props.adapter.name}`}
       description="Renaming keeps states, normalizers, and saved queries. A new host or database takes a new init state."
       size="lg"

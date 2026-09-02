@@ -14,7 +14,7 @@ export default function FixtureDialog(props: { presenter: EditingPresenter }): J
         <Dialog
           open
           size="xl"
-          onClose={() => props.presenter.closeFixture()}
+          onClose={props.presenter.closeFixture}
           title={`Fixture (${fixture().format})`}
           description={`${fixture().rows} row(s) across ${fixture().tables.join(", ")}`}
         >

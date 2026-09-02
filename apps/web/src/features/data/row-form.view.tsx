@@ -151,7 +151,7 @@ export default function RowForm(props: {
         <FormDialog
           open
           size="xl"
-          onClose={() => props.presenter.closeForm()}
+          onClose={props.presenter.closeForm}
           title={
             open().kind === "insert"
               ? `Insert into ${props.table.name}`
