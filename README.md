@@ -52,6 +52,7 @@ Version 1.1.0-alpha.
   - [3c. A database in the cloud (managed or remote)](#3c-a-database-in-the-cloud-managed-or-remote)
 - [4. How to test the connection](#4-how-to-test-the-connection)
 - [5. How to connect an AI agent to a project](#5-how-to-connect-an-ai-agent-to-a-project)
+  - [When the token expires](#when-the-token-expires)
 - [6. How to integrate into a CI/CD pipeline](#6-how-to-integrate-into-a-cicd-pipeline)
 - [What it does not do](#what-it-does-not-do)
   - [Microservices](#microservices)
@@ -213,6 +214,28 @@ What the agent can reach: an agent token is accepted only on `/api/v1/mcp`; ever
 Every agent reads: `help`, `list_projects`, `list_adapters`, `list_tables`, `describe_table`, `page_rows`, `get_row`, `run_readonly_query`, `extract_fixture`, `list_states`, `get_state`, `diff_summary`, `list_files`, `preview_file`. A **Tester** token gets seven more: `run_write_query`, `end_write_session`, `take_snapshot`, `checkout_state`, `get_job`, `upload_file`, `delete_file`. A Guest sees them in `tools/list` and is refused with `403 role` if it calls one, which is a clearer answer than a tool that is not there.
 
 The caps hold whatever the role: 200 rows a page (1000 max), 1 MiB a result, 15 seconds a query, a byte budget per token. `run_readonly_query` runs inside a read-only transaction for every role, so a read never becomes a write by accident, and writing takes the write tool and a write session. Column policies mask sensitive values before the agent sees them and there is no unmask. Every call is audited with the tool name, an argument hash, the project, the adapter, and the outcome.
+
+### When the token expires
+
+An agent token stops working the moment it expires or an admin revokes it, and there is no refresh:
+Testate issues bearer tokens, not a session the client can renew. Every call after that answers
+`401` with `{"error": {"code": "UNAUTHORIZED"}}`, which an MCP client reports as a failure to
+connect or a tool that will not run. Nothing warns you first, so a token set to **Never** is worth a
+note wherever your team keeps its credentials: nothing else will remind you it exists.
+
+Reconnecting is issuing a new token and giving it to the client:
+
+```sh
+claude mcp remove testate
+claude mcp add --transport http testate https://testate.example.internal/api/v1/mcp --header "Authorization: Bearer tst_YOUR_NEW_TOKEN"
+```
+
+For any other client, replace the `Authorization` header in its config and restart it. Nothing on
+the Testate side needs restarting, and the old token is dead the moment it expires whether or not
+anyone deletes the row.
+
+Check a token before you blame the client: `GET /api/v1/auth/me` with the same header answers `200`
+with the token's role and scope while it is good, and `401` once it is not.
 
 Full detail: [docs/AGENT_ACCESS.md](docs/AGENT_ACCESS.md).
 

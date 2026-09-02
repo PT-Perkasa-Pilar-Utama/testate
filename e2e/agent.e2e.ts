@@ -59,6 +59,24 @@ test.describe("agent access over MCP", () => {
     await admin.dispose();
   });
 
+  test("a token answers for itself until it is revoked, and then answers 401 everywhere", async () => {
+    const admin = await apiContext("admin");
+    const { mcp, tokenId } = await agentSession(admin, "checker");
+    // The one route an agent token may ask about itself, and the one the README tells a person to
+    // try before blaming their client. Everything else is fenced off, which is the other half.
+    expect((await mcp.get("auth/me")).status()).toBe(200);
+    expect((await mcp.get("projects")).status()).toBe(403);
+
+    await admin.delete(`tokens/${tokenId}`);
+    // Revoked and expired fail the same way: there is no refresh, so reconnecting is a new token.
+    expect((await mcp.get("auth/me")).status()).toBe(401);
+    expect(
+      (await mcp.post("mcp", { data: { jsonrpc: "2.0", id: 1, method: "ping" } })).status()
+    ).toBe(401);
+    await mcp.dispose();
+    await admin.dispose();
+  });
+
   test("@story-136 an agent extracts a fixture as SQL and as JSON", async () => {
     const admin = await apiContext("admin");
     const { mcp, tokenId } = await agentSession(admin, "fixture");
