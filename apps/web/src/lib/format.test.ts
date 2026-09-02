@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { formatWhen, toDateInput } from "./format.ts";
+import { counted, formatWhen, toDateInput } from "./format.ts";
 
 describe("when something happened", () => {
   test("day, month, year, and the clock down to the second", () => {
@@ -23,5 +23,14 @@ describe("when something happened", () => {
 
   test("a date input wants the day alone", () => {
     expect(toDateInput("2026-08-30T03:46:56.037Z")).toBe("2026-08-30");
+  });
+});
+
+describe("counted", () => {
+  test("singular for one, plural otherwise, including the -ies nouns", () => {
+    expect(counted(1, "file stores")).toBe("1 file store");
+    expect(counted(2, "file stores")).toBe("2 file stores");
+    expect(counted(1, "entries")).toBe("1 entry");
+    expect(counted(0, "entries")).toBe("0 entries");
   });
 });

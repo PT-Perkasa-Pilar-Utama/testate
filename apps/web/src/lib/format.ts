@@ -31,3 +31,14 @@ export function formatWhen(iso: string): string {
 export function toDateInput(iso: string): string {
   return iso.slice(0, 10);
 }
+
+/**
+ * "1 project", "2 projects", "1 entry", "3 entries". Every footer passed the plural and printed
+ * "1 file stores" the day a list held one thing.
+ */
+export function counted(count: number, plural: string): string {
+  if (count !== 1) return `${count} ${plural}`;
+  if (plural.endsWith("ies")) return `1 ${plural.slice(0, -3)}y`;
+  if (plural.endsWith("s")) return `1 ${plural.slice(0, -1)}`;
+  return `1 ${plural}`;
+}
