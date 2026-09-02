@@ -23,14 +23,39 @@ const base = (process.argv[2] ?? "http://localhost:7378").replace(/\/$/, "");
  */
 async function bootstrapPassword(): Promise<string> {
   const fromEnv = Bun.env["TESTATE_ADMIN_PASSWORD"] ?? "";
-  if (fromEnv !== "") return fromEnv;
+  if (fromEnv !== "") {
+    process.stdout.write("bootstrap password: from TESTATE_ADMIN_PASSWORD\n");
+    return fromEnv;
+  }
   const file = Bun.file(new URL("../.env", import.meta.url));
   const text = (await file.exists()) ? await file.text() : "";
   const line = /^TESTATE_ADMIN_PASSWORD=(.+)$/m.exec(text)?.[1]?.trim() ?? "";
   if (line === "")
     throw new Error("no TESTATE_ADMIN_PASSWORD in the environment or in apps/api/.env");
+  process.stdout.write("bootstrap password: from apps/api/.env\n");
   return line;
 }
+
+/**
+ * `bun run dev` takes a while to answer, and a seed started in a second terminal a moment after
+ * it used to die on a refused connection before the first request. Up to a minute of patience.
+ */
+async function waitForApi(): Promise<void> {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    const alive = await fetch(`${base}/api/v1/health/live`).then(
+      (r) => r.ok,
+      () => false
+    );
+    if (alive) return;
+    if (attempt === 0) process.stdout.write(`waiting for the API at ${base} ...\n`);
+    await Bun.sleep(1000);
+  }
+  throw new Error(
+    `nothing answered at ${base}/api/v1/health/live in 60 seconds; is bun run dev up?`
+  );
+}
+
+await waitForApi();
 const bootstrap = await bootstrapPassword();
 
 const FINAL = {
