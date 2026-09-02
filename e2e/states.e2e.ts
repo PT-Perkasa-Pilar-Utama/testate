@@ -115,7 +115,7 @@ test.describe("state stories", () => {
     await expect(stateRow(page, "stash").first()).toBeVisible();
     // The checkout put the databases on this state, and both the row and the header say so.
     await expect(row.getByText("HEAD", { exact: true })).toBeVisible();
-    await expect(page.getByText("seeded-baseline", { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("meter", { name: "Quota" })).toBeVisible();
     // A write Testate never saw: straight into the engine, past the API. This is the one place
     // the suite touches the shared `shop` on purpose; a private database has no HEAD to drift from.
     runSql("shop", [
