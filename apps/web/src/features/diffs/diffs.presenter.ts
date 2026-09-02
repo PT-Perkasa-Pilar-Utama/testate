@@ -8,7 +8,7 @@ import { DIFF_STATUS_LABEL } from "@/lib/labels.ts";
 import { createTableView } from "@/lib/table.ts";
 import type { TableView } from "@/lib/table.ts";
 import type { Refreshable } from "@/lib/async.ts";
-import { followJob } from "@/lib/sse.ts";
+import { createJobFollower } from "@/lib/sse.ts";
 import { statesModel } from "../states/states.model.ts";
 import { diffsModel } from "./diffs.model.ts";
 
@@ -115,6 +115,9 @@ function messageOf(cause: unknown): string {
 }
 
 export function createDiffsPresenter(slug: () => string): DiffsPresenter {
+  // Created here, in the presenter's own body: the follower registers its cleanup with the
+  // owner that is current at this moment, and there is none inside an effect or after an await.
+  const jobs = createJobFollower();
   const diffs = createRefreshable(() => diffsModel.list(slug()));
   // A comparison started on the States tab is followed by that screen, not this one. Opening
   // Activity while it runs used to show "Running" until the page was reloaded.
@@ -168,7 +171,7 @@ export function createDiffsPresenter(slug: () => string): DiffsPresenter {
         setCreating(false);
         diffs.refresh();
         showToast(`Comparing ${diff.base.name} with ${targetLabel(diff.target)}`, "info");
-        followJob(job, () => diffs.refresh());
+        jobs.follow(job, () => diffs.refresh());
       } catch (cause: unknown) {
         setError(messageOf(cause));
       }

@@ -13,7 +13,7 @@ import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createPaged, createRefreshable } from "@/lib/async.ts";
 import type { Paged, Refreshable } from "@/lib/async.ts";
-import { followJob } from "@/lib/sse.ts";
+import { createJobFollower } from "@/lib/sse.ts";
 import { adaptersModel } from "../adapters/adapters.model.ts";
 import { diffsModel } from "../diffs/diffs.model.ts";
 import { LIVE } from "../diffs/diffs.presenter.ts";
@@ -102,6 +102,9 @@ export function createStatesPresenter(
   slug: () => string,
   onChanged: () => void = () => undefined
 ): StatesPresenter {
+  // Created here, in the presenter's own body: the follower registers its cleanup with the
+  // owner that is current at this moment, and there is none inside an effect or after an await.
+  const jobs = createJobFollower();
   const [showStashes, setShowStashes] = createSignal(false);
   const states = createPaged((cursor) => statesModel.page(slug(), showStashes(), cursor));
   const tree = createRefreshable(() => statesModel.tree(slug()));
@@ -208,7 +211,7 @@ export function createStatesPresenter(
         close();
         refreshAll();
         showToast(`Snapshot ${state.name} queued`, "info");
-        followJob(job, (done) => {
+        jobs.follow(job, (done) => {
           showToast(
             done.status === "succeeded"
               ? `State ${state.name} is ready`
@@ -245,7 +248,7 @@ export function createStatesPresenter(
         const job = await statesModel.remove(staticSlug, staticTarget.id);
         close();
         showToast(`Deleting ${staticTarget.name}`, "info");
-        followJob(job, refreshAll);
+        jobs.follow(job, refreshAll);
       });
     },
     archiveUrl: (state) => statesModel.archiveUrl(slug(), state.id),

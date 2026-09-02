@@ -4,7 +4,7 @@ import type { Preflight, SchemaDrift, State } from "@testate/shared";
 import { humanMessage } from "@/lib/api-error.ts";
 import { EMPTY_MODE_LABEL, FK_HANDLING_LABEL } from "@/lib/labels.ts";
 import { showToast } from "@/lib/toast.ts";
-import { followJob } from "@/lib/sse.ts";
+import { createJobFollower } from "@/lib/sse.ts";
 import { checkoutsModel } from "./checkouts.model.ts";
 
 export type PreflightAdapter = Preflight["adapters"][number];
@@ -70,6 +70,9 @@ export function createPreflightPresenter(
   slug: () => string,
   onQueued: () => void
 ): PreflightPresenter {
+  // Created here, in the presenter's own body: the follower registers its cleanup with the
+  // owner that is current at this moment, and there is none inside an effect or after an await.
+  const jobs = createJobFollower();
   const [target, setTarget] = createSignal<State | null>(null);
   const [preflight, setPreflight] = createSignal<Preflight | null>(null);
   const [force, setForceSignal] = createSignal(false);
@@ -135,7 +138,7 @@ export function createPreflightPresenter(
         close();
         showToast(`Checkout of ${staticState.name} queued`, "info");
         onQueued();
-        followJob(job, (done) => {
+        jobs.follow(job, (done) => {
           showToast(
             done.status === "succeeded"
               ? `Checked out ${staticState.name}`

@@ -8,7 +8,7 @@ import { createTableControls } from "@/lib/table.ts";
 import type { TableControls } from "@/lib/table.ts";
 import type { Paged } from "@/lib/async.ts";
 import { CHECKOUT_PURPOSE_LABEL, JOB_STATUS_LABEL } from "@/lib/labels.ts";
-import { followJob } from "@/lib/sse.ts";
+import { createJobFollower } from "@/lib/sse.ts";
 import { checkoutsModel } from "./checkouts.model.ts";
 
 export type CheckoutSort = "state" | "status" | "actor" | "created_at";
@@ -137,6 +137,9 @@ export function createCheckoutsPresenter(
   slug: () => string,
   onChanged: () => void = () => undefined
 ): CheckoutsPresenter {
+  // Created here, in the presenter's own body: the follower registers its cleanup with the
+  // owner that is current at this moment, and there is none inside an effect or after an await.
+  const jobs = createJobFollower();
   const controls = createTableControls<CheckoutSort>();
   const [filters, setFiltersSignal] = createSignal<CheckoutFilters>(EMPTY_FILTERS);
   const checkouts = createPaged(
@@ -185,7 +188,7 @@ export function createCheckoutsPresenter(
         const { job } = await checkoutsModel.retry(staticSlug, checkout.id);
         showToast(`Retrying ${checkout.state.name} on the failed adapters`, "info");
         refreshAll();
-        followJob(job, refreshAll);
+        jobs.follow(job, refreshAll);
       });
     },
     terminate: (checkout, adapter) => {

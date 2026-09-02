@@ -12,7 +12,7 @@ import type {
 import { humanMessage } from "@/lib/api-error.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
-import { followJob } from "@/lib/sse.ts";
+import { createJobFollower } from "@/lib/sse.ts";
 import { adapterModel } from "../adapter/adapter.model.ts";
 import { AUTO, isNullable, toTransforms } from "./imports.columns.ts";
 import type { Choice } from "./imports.columns.ts";
@@ -80,6 +80,9 @@ export function createImportPresenter(
   /** A run whose rejected rows are the source, from `?rejected=` on the way in. */
   rejectedRun?: string
 ): ImportPresenter {
+  // Created here, in the presenter's own body: the follower registers its cleanup with the
+  // owner that is current at this moment, and there is none inside an effect or after an await.
+  const jobs = createJobFollower();
   const initial: Source | null =
     rejectedRun === undefined ? null : { kind: "rejected", run_id: rejectedRun };
   const [source, setSource] = createSignal<Source | null>(initial);
@@ -180,9 +183,10 @@ export function createImportPresenter(
       slug(),
       runBody(adapterId(), id, staticSource, staticDraft, dryRun)
     );
-    await new Promise<void>((resolve) => {
-      followJob(job, () => resolve());
-    });
+    // `settle`, not `follow`: this awaits the job while both buttons say busy, and a stream that
+    // never reaches a terminal event would leave the screen that way with nothing saying why.
+    // Leaving the screen settles it too.
+    await jobs.settle(job);
     const found = (await importsModel.list(slug())).find((row) => row.job_id === job.id);
     if (found === undefined) throw new Error("the import run was not recorded");
     return { report: await importsModel.report(slug(), found.id), mapping: id };

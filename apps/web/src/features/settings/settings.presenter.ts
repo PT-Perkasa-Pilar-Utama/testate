@@ -11,7 +11,7 @@ import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
-import { followJob } from "@/lib/sse.ts";
+import { createJobFollower } from "@/lib/sse.ts";
 import { settingsModel } from "./settings.model.ts";
 
 export const SECTIONS = ["retention", "limits", "quota"] as const;
@@ -109,6 +109,9 @@ export function migrationBody(driver: "local" | "s3", s3: S3Draft): JsonObject {
 export const MIGRATE_BLANK: StoreMigrationFormInput = { driver: "s3", ...EMPTY_S3 };
 
 export function createSettingsPresenter(): SettingsPresenter {
+  // Created here, in the presenter's own body: the follower registers its cleanup with the
+  // owner that is current at this moment, and there is none inside an effect or after an await.
+  const jobs = createJobFollower();
   const settings = createRefreshable(() => settingsModel.get());
   const health = createRefreshable(() => settingsModel.health());
   const [drafts, setDrafts] = createSignal(new Map<string, string>());
@@ -187,7 +190,7 @@ export function createSettingsPresenter(): SettingsPresenter {
           const job = await settingsModel.migrate(staticBody);
           setMigrating(false);
           showToast("Store migration queued; snapshots copy to the new store", "info");
-          followJob(job, (done) => {
+          jobs.follow(job, (done) => {
             showToast(
               `Store migration ${done.status}`,
               done.status === "succeeded" ? "success" : "error"
@@ -207,7 +210,7 @@ export function createSettingsPresenter(): SettingsPresenter {
       return attempt(async () => {
         const job = await settingsModel.backup(staticBody);
         setBackupJob(job);
-        followJob(job, (done) => {
+        jobs.follow(job, (done) => {
           setBackupJob(done);
           showToast(`Backup ${done.status}`, done.status === "succeeded" ? "success" : "error");
         });

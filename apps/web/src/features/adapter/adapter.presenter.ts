@@ -5,7 +5,7 @@ import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { navigate } from "@/lib/router.ts";
-import { followJob } from "@/lib/sse.ts";
+import { createJobFollower } from "@/lib/sse.ts";
 import { adaptersModel } from "../adapters/adapters.model.ts";
 import type { AdapterDeletionPlan } from "../adapters/adapters.model.ts";
 import { describeOutcome } from "../adapters/adapters.presenter.ts";
@@ -51,6 +51,9 @@ async function loadDetail(slug: string, adapter: Adapter): Promise<AdapterDetail
 }
 
 export function createAdapterPresenter(slug: () => string, id: () => string): AdapterPresenter {
+  // Created here, in the presenter's own body: the follower registers its cleanup with the
+  // owner that is current at this moment, and there is none inside an effect or after an await.
+  const jobs = createJobFollower();
   const adapter = createRefreshable(() => adaptersModel.get(slug(), id()));
   const detail = createRefreshable(() => loadDetail(slug(), adapter.value()));
   const [plan, setPlan] = createSignal<AdapterDeletionPlan | null>(null);
@@ -133,7 +136,7 @@ export function createAdapterPresenter(slug: () => string, id: () => string): Ad
         showToast("Deletion job queued; the database returns to its init state first", "info");
         // The project page opens on States (UI_REWORK phase 2); send the admin back to the tab
         // they were just working in, not the tester's front door.
-        followJob(job, (done) => {
+        jobs.follow(job, (done) => {
           showToast(
             `Adapter deletion ${done.status}`,
             done.status === "succeeded" ? "success" : "error"
