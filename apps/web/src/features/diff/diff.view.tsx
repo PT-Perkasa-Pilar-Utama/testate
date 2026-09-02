@@ -173,9 +173,9 @@ export default function DiffView(props: { slug: string; id: string }): JSX.Eleme
   // Open on the first table that moved rather than on "pick one": a diff page that lands on an
   // instruction is a page that made the reader do the one thing it already knew to do.
   createEffect(
-    () => presenter.diff.value(),
-    (diff) => {
-      if (presenter.target() !== null) return;
+    () => ({ diff: presenter.diff.value(), target: presenter.target() }),
+    ({ diff, target }) => {
+      if (target !== null) return;
       for (const adapter of diff.adapters) {
         const table = adapter.tables.find((t) => t.added + t.removed + t.changed > 0);
         if (table === undefined) continue;
