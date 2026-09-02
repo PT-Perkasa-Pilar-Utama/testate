@@ -319,20 +319,34 @@ startScene().catch((err) => {
 // Scroll: the masthead solidifies, the hero copy drifts, background layers lag
 const masthead = document.querySelector(".masthead");
 const copy = document.querySelector(".hero .copy");
-const layers = [...document.querySelectorAll(".parallax")];
+const layers = [...document.querySelectorAll(".parallax")].map((el) => ({ el, mid: 0, speed: Number(el.dataset.speed || 60) }));
+// Band positions are read once per resize, not once per scroll: a layout read on every scroll
+// event is what makes a page feel heavy
+function measure() {
+  for (const l of layers) {
+    const r = l.el.parentElement.getBoundingClientRect();
+    l.mid = r.top + window.scrollY + r.height / 2;
+  }
+}
+let solid = false;
 function onScroll() {
   const y = window.scrollY;
-  masthead.classList.toggle("solid", y > 24);
-  if (reduced) return;
+  if (y > 24 !== solid) {
+    solid = y > 24;
+    masthead.classList.toggle("solid", solid);
+  }
+  if (reduced || y > innerHeight * 3) return;
   copy.style.transform = `translateY(${y * 0.22}px)`;
   copy.style.opacity = String(Math.max(0, 1 - y / (innerHeight * 0.7)));
-  for (const el of layers) {
-    const r = el.parentElement.getBoundingClientRect();
-    const rel = (r.top + r.height / 2 - innerHeight / 2) / innerHeight;
-    el.style.transform = `translateY(${rel * -Number(el.dataset.speed || 60)}px)`;
+  for (const l of layers) {
+    const rel = (l.mid - y - innerHeight / 2) / innerHeight;
+    if (Math.abs(rel) < 1.2) l.el.style.transform = `translateY(${rel * -l.speed}px)`;
   }
 }
 addEventListener("scroll", onScroll, { passive: true });
+addEventListener("resize", () => { measure(); onScroll(); });
+addEventListener("load", measure);
+measure();
 onScroll();
 
 // Reveal on entry
@@ -497,3 +511,18 @@ new IntersectionObserver(
   { threshold: 0.35 }
 ).observe(term);
 replay.addEventListener("click", playTerminal);
+
+// The placement diagram is SMIL, which Chromium keeps stepping on the main thread even when it
+// is off screen, and every step repaints the document. It runs only while it is in view.
+const placement = document.querySelector(".placement");
+if (placement) {
+  placement.pauseAnimations();
+  if (!reduced) {
+    new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) placement.unpauseAnimations();
+      else placement.pauseAnimations();
+    }).observe(placement);
+  } else {
+    placement.setCurrentTime(9);
+  }
+}

@@ -134,9 +134,7 @@ code {
 }
 
 .masthead.solid {
-  background: rgba(5, 7, 10, 0.72);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  background: rgba(5, 7, 10, 0.94);
   border-bottom-color: var(--line);
 }
 
