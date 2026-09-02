@@ -58,8 +58,11 @@ for (const target of targets) {
   console.log(`removed ${relative(ROOT, target)}`);
 }
 
-/** Runs a step with its output held back, printed only when the step fails; one line otherwise. */
-async function step(label: string, command: string[]): Promise<string> {
+/**
+ * Runs a step with its output held back, printed only when the step fails; one line otherwise.
+ * With `attempts` above one a failure is retried that many times before it is reported.
+ */
+async function step(label: string, command: string[], attempts = 1): Promise<string> {
   const proc = Bun.spawn(command, { cwd: ROOT, stdout: "pipe", stderr: "pipe" });
   const [out, err, code] = await Promise.all([
     new Response(proc.stdout).text(),
@@ -67,6 +70,7 @@ async function step(label: string, command: string[]): Promise<string> {
     proc.exited,
   ]);
   if (code !== 0) {
+    if (attempts > 1) return step(label, command, attempts - 1);
     process.stdout.write(out + err);
     throw new Error(`${label}: ${command.slice(0, 2).join(" ")} exited ${code}`);
   }
@@ -87,14 +91,14 @@ if (args.includes("--engines") && !dryRun) {
     "--volumes",
     "--remove-orphans",
   ]);
-  await step("engines up and healthy", [
-    ...compose,
-    "up",
-    "-d",
-    "--wait",
-    "--quiet-pull",
-    ...services,
-  ]);
+  // The ftp image's first start often dies and Docker restarts it, and `--wait` counts that
+  // restart as a failure although the container is healthy a moment later. A second wait on the
+  // running stack answers in seconds, which is what CI does too.
+  await step(
+    "engines up and healthy",
+    [...compose, "up", "-d", "--wait", "--quiet-pull", ...services],
+    2
+  );
   await step("MinIO bucket created", [...compose, "run", "--rm", "minio-init"]);
   await step("demo schema created by the contract suites", ["bun", "run", "contract"]);
 }
