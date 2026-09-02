@@ -42,7 +42,9 @@ export default defineConfig({
     { name: "coverage", testMatch: /coverage\.e2e\.ts/ },
     { name: "routes", testMatch: /routes\.e2e\.ts/ },
     // Contract and agent stories talk to the API only; nothing they touch is shared state.
-    { name: "api", testMatch: /(api|agent)\.e2e\.ts/ },
+    // Anchored: `(api|agent)\.e2e\.ts` also matched `state-api.e2e.ts`, which then ran a second
+    // time here, in the first phase, taking states and checking them out beside the UI stories.
+    { name: "api", testMatch: /\/(api|agent)\.e2e\.ts$/ },
 
     // Sorting and searching, before any spec adds accounts the counts here would not expect.
     { name: "tables", testMatch: /tables\.e2e\.ts/, dependencies: ["routes"] },
@@ -52,7 +54,7 @@ export default defineConfig({
       dependencies: ["routes"],
     },
     // Checkouts restore the demo databases; nothing else may edit them meanwhile.
-    { name: "states", testMatch: /states\.e2e\.ts/, dependencies: ["flows"] },
+    { name: "states", testMatch: /states(-viewer)?\.e2e\.ts/, dependencies: ["flows"] },
     // The API-only state stories hold the same adapters; they run between the two UI phases.
     { name: "state-api", testMatch: /state-api\.e2e\.ts/, dependencies: ["states"] },
     { name: "adapter", testMatch: /adapter\.e2e\.ts/, dependencies: ["state-api"] },
@@ -61,10 +63,13 @@ export default defineConfig({
     { name: "screens", testMatch: /screens\.e2e\.ts/, dependencies: ["state-api"] },
     // The reactive-loop hunt: skipped unless STRESS=1, and it wants the data a full run leaves.
     { name: "stress", testMatch: /stress\.e2e\.ts/, dependencies: ["state-api"] },
-    // Boot stories spawn API processes of their own; run them last so they never starve a browser.
+    // Playwright runs projects in phases: a project starts when every project of the phase before
+    // it has finished, not only the ones it depends on. These two used to sit in the crawl's
+    // previous phase, and their 45 seconds held the crawl at the gate. They run beside boot now.
     // The only spec that drives the built bundle; the rest drive Vite, and a reactive loop can
     // exist in one and not the other. It reads the seeded demo, so it waits for the UI phases.
-    { name: "bundle", testMatch: /bundle\.e2e\.ts/, dependencies: ["state-api"] },
+    { name: "bundle", testMatch: /bundle\.e2e\.ts/, dependencies: ["crawl"] },
+    // Boot stories spawn API processes of their own; run them last so they never starve a crawl.
     {
       name: "boot",
       testMatch: /(boot|engine|types|session|storage)\.e2e\.ts/,

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { adapterScreens, apiContext, demoAdapters } from "./lib/api.ts";
+import { adapterScreens, apiContext, representativeAdapters, waitForJob } from "./lib/api.ts";
 import { countApi, over, settle } from "./lib/crawl.ts";
 import { SCREENS, statePath } from "./lib/roles.ts";
 import { API_PORT } from "../playwright.config.ts";
@@ -22,19 +22,41 @@ import { API_PORT } from "../playwright.config.ts";
 const LIMIT = 3;
 const IDLE_MS = 1_200;
 
-/** Every screen behind an id, found the way a person finds them: from what the instance holds. */
+/**
+ * A diff of the seeded baseline against live, made here and waited out. The states spec deletes
+ * the diff it makes, so a run reached this point with no diff at all, and the one page that had
+ * shipped a reactive loop before went unwalked.
+ */
+async function freshDiffPath(): Promise<string> {
+  const context = await apiContext("admin");
+  const states: { data: { id: string; name: string }[] } = await (
+    await context.get("projects/demo/states?limit=200")
+  ).json();
+  const baseline = states.data.find((state) => state.name === "seeded-baseline");
+  if (baseline === undefined) throw new Error("the seed left no seeded-baseline state");
+  const started = await context.post("projects/demo/diffs", {
+    data: { base_state_id: baseline.id, target: "live" },
+  });
+  if (started.status() !== 202)
+    throw new Error(`diff: ${started.status()} ${await started.text()}`);
+  const body: { data: { diff: { id: string }; job: { id: string } } } = await started.json();
+  await waitForJob(context, body.data.job.id);
+  await context.dispose();
+  return `/projects/demo/diffs/${body.data.diff.id}`;
+}
+
+/**
+ * Every screen behind an id, found the way a person finds them: from what the instance holds.
+ * One adapter per tier and mode, as in the crawl: the screens are the tier's, not the engine's.
+ */
 async function deepPaths(): Promise<string[]> {
   const paths = ["/", "/storage"];
-  for (const adapter of await demoAdapters("admin")) {
+  for (const adapter of await representativeAdapters("admin")) {
     const base = `/projects/demo/adapters/${adapter.id}`;
     paths.push(base, ...(await adapterScreens(adapter, "admin")));
     if (adapter.tier === "tabular") paths.push(`${base}/imports`, `${base}/masks`);
   }
-  const context = await apiContext("admin");
-  const response = await context.get("projects/demo/diffs");
-  const body: { data: { id: string }[] } = await response.json();
-  await context.dispose();
-  paths.push(...body.data.slice(0, 1).map((diff) => `/projects/demo/diffs/${diff.id}`));
+  paths.push(await freshDiffPath());
   return paths;
 }
 
@@ -72,6 +94,7 @@ test.describe("the production bundle", () => {
     // A seed with no adapters, or none holding files, would make this pass by walking nothing.
     expect(paths.length).toBeGreaterThan(4);
     expect(paths.filter((path) => path.endsWith("/files"))).not.toStrictEqual([]);
+    expect(paths.filter((path) => path.includes("/diffs/"))).not.toStrictEqual([]);
     const faults: string[] = [];
     for (const path of paths) faults.push(...(await faultsOn(page, counts, path)));
     expect(faults).toStrictEqual([]);

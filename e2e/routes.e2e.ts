@@ -197,7 +197,7 @@ for (const role of ROLES) {
   test.describe(`${role}: adapter screens`, () => {
     test.use({ storageState: statePath(role) });
 
-    test("@story-12 @story-35 @story-94 @story-106 adapter, query, policies, grid, and files screens render", async ({
+    test("@story-35 @story-94 @story-106 adapter, query, policies, grid, and files screens render", async ({
       page,
     }) => {
       const issues: Issue[] = [];

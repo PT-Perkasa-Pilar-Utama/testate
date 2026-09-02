@@ -7,7 +7,14 @@ import { API_PORT, E2E_DIR } from "../../playwright.config.ts";
 import { PASSWORDS, USERNAMES } from "./roles.ts";
 import type { Role } from "./roles.ts";
 
-export type AdapterRow = { id: string; name: string; kind: string; tier: string; engine: string };
+export type AdapterRow = {
+  id: string;
+  name: string;
+  kind: string;
+  tier: string;
+  engine: string;
+  mode: string;
+};
 
 /** The demo project's adapters straight from the API, so specs address screens by id. */
 export async function demoAdapters(role: Role = "viewer"): Promise<AdapterRow[]> {
@@ -24,6 +31,21 @@ export async function demoAdapters(role: Role = "viewer"): Promise<AdapterRow[]>
   const body: { data: AdapterRow[] } = await response.json();
   await context.dispose();
   return body.data;
+}
+
+/**
+ * One adapter per kind, tier, and mode. The screens are one component per tier, whichever engine
+ * sits behind them, and `routes.e2e.ts` already loads every engine's screens once per role. A
+ * crawl over all of them clicked the same table screen on four engines, a third of its time.
+ * Mode is part of the key because a read-only file store hides the controls a sandbox one shows.
+ */
+export async function representativeAdapters(role: Role = "viewer"): Promise<AdapterRow[]> {
+  const seen = new Map<string, AdapterRow>();
+  for (const adapter of await demoAdapters(role)) {
+    const key = `${adapter.kind}:${adapter.tier}:${adapter.mode}`;
+    if (!seen.has(key)) seen.set(key, adapter);
+  }
+  return [...seen.values()];
 }
 
 /** One seeded adapter by engine or kind; a missing one is a seed failure, not a test branch. */

@@ -69,7 +69,7 @@ apart on what a checkout does.
 
 10. As a QA engineer, I want to create a project with a name and a slug, so that each system under test has its own space.
 11. As a QA engineer, I want to create many projects, so that I can test more than one system from one Testate.
-12. As a viewer, I want the project overview to show HEAD, the latest jobs, the adapters, and quota usage, so that I see the state of the system at a glance.
+12. As a viewer, I want the project page to show HEAD, whether the databases have moved off it, quota usage, and tabs for adapters, states, and activity, so that I see the state of the system at a glance.
 13. As an admin, I want to delete a project by typing its slug, and have Testate return every database adapter to its init state first, so that a retired system's databases are left as Testate found them.
 14. As an admin, I want a deletion plan that shows, per adapter, whether Testate will restore, force-restore over drift, or skip (read-only, unreachable, or removed), and lets me choose per adapter, so that deletion never surprises me.
 15. As an admin, I want the project to stay in place when any planned restore fails, with HEAD unknown on the failed adapters and a retry, so that a failed cleanup is visible, not silent.
@@ -160,6 +160,7 @@ apart on what a checkout does.
 85. As a QA engineer, I want a checkout that waits on a lock held by the application to fail after a timeout and name the blocking sessions, with the option to terminate them when Testate's privileges allow, so that a forgotten open transaction does not hang the pipeline.
 86. As a QA engineer, I want Testate to refuse a second job on the same adapter while one runs, so that two checkouts never interleave.
 87. As a viewer, I want a checkout history per project with who, when, from which state, and the per-adapter result, so that I can explain the data I see.
+152. As a QA engineer, I want HEAD marked as modified when a write session, an import, or a check I ask for finds the databases moved off it, so that I know whether the state I am on is still the state in the database.
 
 ### Diff
 
@@ -171,7 +172,7 @@ apart on what a checkout does.
 
 ### Storage adapters
 
-93. As a QA engineer, I want to add an S3 bucket (including S3-compatible endpoints), an SFTP server, or an FTP server as a read-only adapter, so that I can inspect files the application produced.
+93. As a QA engineer, I want to add an S3 bucket (or any S3-compatible store), an SFTP server, or an FTP server as a storage adapter, read-only by default, and in sandbox mode make folders, upload, rename, and delete files one at a time or as a batch, so that I can inspect the files the application produced and stage the ones it will read.
 94. As a viewer, I want to browse folders, see size and modified time, and filter by name, so that I find the export I am looking for.
 95. As a viewer, I want to preview text, JSON, CSV, images, and PDF files up to a size cap, so that I do not download everything.
 96. As a viewer, I want to download a file, so that I can inspect it locally.
@@ -230,6 +231,7 @@ apart on what a checkout does.
 137. As an admin, I want every agent tool call audited with the tool name and target, so that agent access is reviewable.
 138. As an admin, I want masked columns to stay masked for agents with no way to unmask, so that an agent never copies a secret into a prompt or a file.
 139. As an admin, I want agent tokens refused on every non-MCP route and standard tokens refused on MCP, so that the two access paths cannot be confused.
+153. As a developer, I want an agent token with the qa role to let the agent change rows through a write session that stashes first, and an agent token with the viewer role to be refused every write tool, so that an agent prepares a test environment under the same rules a person has.
 
 ### Editing, policies, and fixtures (Tabular tier)
 

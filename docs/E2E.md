@@ -31,7 +31,7 @@ starts its ephemeral range at 49152, which is why this only ever failed in CI.
 | `routes`    | `e2e/routes.e2e.ts`                                              | Each screen renders or refuses per role; sidebar matches the role     |
 | `api`       | `e2e/api.e2e.ts`, `agent.e2e.ts`                                 | Contract, token, and MCP stories over `request`; no browser           |
 | `flows`     | `e2e/flows.e2e.ts`, `stories`, `gaps`, `admin`, `jobs`           | One test per user story the dashboard can act on                      |
-| `states`    | `e2e/states.e2e.ts`                                              | Snapshot, checkout, and diff stories; serial, alone, after flows      |
+| `states`    | `e2e/states.e2e.ts`, `states-viewer`                             | Snapshot, checkout, and diff stories; serial, alone, after flows      |
 | `state-api` | `e2e/state-api.e2e.ts`                                           | State and job stories with no control of their own; holds the adapters |
 | `adapter`   | `e2e/adapter.e2e.ts`                                             | Adapter settings and deletion (init snapshot, restore)                |
 | `crawl`     | `e2e/buttons.e2e.ts`                                             | Clicks every visible control per role; no 5xx, no console error       |
@@ -42,6 +42,18 @@ starts its ephemeral range at 49152, which is why this only ever failed in CI.
 
 Projects run in that order (`dependencies`), tests inside a project run on 3 workers.
 `e2e/setup.ts` seeds `dev` once and saves one storage state per role under `.e2e/state`.
+
+Playwright runs projects in phases: a project starts when every project of the phase before it
+has finished, not only the ones it depends on. A project with a short dependency chain still waits
+for the longest project of the previous phase, which is why `bundle` depends on `crawl` although it
+reads nothing the crawl leaves: in the crawl's previous phase it held the crawl at the gate for its
+own 45 seconds. Put a new project in the phase where it costs the least wall clock, not the
+earliest one its data allows.
+
+The crawl and the bundle walk one adapter per kind, tier, and mode (`representativeAdapters` in
+`e2e/lib/api.ts`): the screens are the tier's, not the engine's, and `routes.e2e.ts` renders every
+engine's screens once per role. A crawl over every engine spent a third of its time clicking the
+same table screen four times.
 
 ## Instances of their own
 
@@ -60,9 +72,11 @@ the browser projects starve the crawl. Rules that keep it honest:
 ## Story tags
 
 Put `@story-N` in the test title. `.e2e/coverage.md` lists each PRD story as `covered`,
-`no-screen`, `api`, or `uncovered`. 142 of the 144 stories in `docs/PRD.md` are `covered`, and
-both exception lists in `e2e/lib/stories.ts` are empty. Add an id back only when a story truly
-cannot be exercised.
+`no-screen`, `api`, or `uncovered`. `e2e/coverage.e2e.ts` pins the story count, so a story added
+to `docs/PRD.md` fails the run until the count moves with it, and both exception lists in
+`e2e/lib/stories.ts` are empty. Add an id back only when a story truly cannot be exercised. A tag
+belongs on the test that proves the story: a story tagged on a test that merely passes through
+its screen is coverage on paper.
 
 - A screen under a project carries a breadcrumb path. `getByText(slug, { exact: true })` on a
   project page found two matches until the crumb switched to the project's name; when a crumb and
@@ -71,6 +85,10 @@ cannot be exercised.
 ## Rules
 
 - Never wipe data in `playwright.config.ts`; it runs in every worker.
+- Nothing writes to the shared `shop` database behind the API's back, with one exception: the HEAD
+  drift test in `states.e2e.ts` runs an `UPDATE` on it through `runSql`, because a write Testate
+  never saw is the thing that story tests. Everything else that needs DDL or a broken restore
+  takes a private database (`createDatabase`).
 - The Vite proxy targets `127.0.0.1`; Node resolves `localhost` to `::1`.
 - The crawler skips `Sign out`, `Disable`, `Revoke`, `Delete`, and other destructive labels
   (`SKIP` in `e2e/lib/crawl.ts`); story tests cover those on purpose.

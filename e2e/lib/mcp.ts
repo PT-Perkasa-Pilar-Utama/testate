@@ -4,7 +4,7 @@ export type ToolArg = string | number | boolean | null | ToolArg[] | { [key: str
 export type ToolArgs = { [key: string]: ToolArg };
 
 type RpcReply = {
-  result?: { content?: { text: string }[]; tools?: { name: string }[] };
+  result?: { content?: { text: string }[]; tools?: { name: string }[]; isError?: boolean };
   error?: { code: number; message: string };
 };
 
@@ -33,6 +33,9 @@ export async function callTool<T>(
   if (failure !== undefined) throw new Error(`${name}: ${failure.code} ${failure.message}`);
   const text = reply.result?.content?.[0]?.text;
   if (text === undefined) throw new Error(`${name}: no content in the reply`);
+  // A tool's own failure is a result with `isError`, not a protocol error (18 §18.4); a refusal
+  // that came back as a parsed body used to read as success.
+  if (reply.result?.isError === true) throw new Error(`${name}: ${text}`);
   return JSON.parse(text);
 }
 

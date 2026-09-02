@@ -123,9 +123,10 @@ services:
       - "21210:21"
       - "21100-21110:21100-21110"
     # The image's supervisor quits if vsftpd is not up in time, which it often is not on a cold
-    # stack starting eight containers at once. It always survives the next attempt, so let Docker
-    # make that attempt instead of leaving the suite to find a dead container.
-    restart: on-failure
+    # stack starting eight containers at once, and it has been seen leaving with exit code 0, which
+    # `on-failure` never restarts. It always survives the next attempt, so let Docker make that
+    # attempt instead of leaving the suite to find a dead container.
+    restart: always
     # Without this `up --wait` only waits for "running", and a container that dies a moment later
     # still counts as started. That is how a dead ftp reached the test run.
     healthcheck:

@@ -96,10 +96,16 @@ jobs:
         with:
           bun-version: "1.4.0"
       - run: bun install --frozen-lockfile
+      # A second `up --wait` when the first fails: the ftp container has exited cleanly a moment
+      # after coming healthy, which fails the wait even though Docker restarts it, and on a running
+      # stack the retry answers in seconds.
       - name: start the compose engines
         run: |
-          docker compose -f deploy/compose.engines.yml up -d --wait \
-            postgres postgres-old mysql mariadb mongo minio sftp ftp
+          up() {
+            docker compose -f deploy/compose.engines.yml up -d --wait \
+              postgres postgres-old mysql mariadb mongo minio sftp ftp
+          }
+          up || { sleep 5; up; }
       - name: create the MinIO bucket
         run: docker compose -f deploy/compose.engines.yml run --rm minio-init
       - run: bun run contract
@@ -119,10 +125,16 @@ jobs:
         with:
           bun-version: "1.4.0"
       - run: bun install --frozen-lockfile
+      # A second `up --wait` when the first fails: the ftp container has exited cleanly a moment
+      # after coming healthy, which fails the wait even though Docker restarts it, and on a running
+      # stack the retry answers in seconds.
       - name: start the compose engines
         run: |
-          docker compose -f deploy/compose.engines.yml up -d --wait \
-            postgres postgres-old mysql mariadb mongo minio sftp ftp
+          up() {
+            docker compose -f deploy/compose.engines.yml up -d --wait \
+              postgres postgres-old mysql mariadb mongo minio sftp ftp
+          }
+          up || { sleep 5; up; }
       # `--wait` fails on a container that exits, however cleanly, so the one-shot bucket
       # creation runs on its own and answers with its own exit code.
       - name: create the MinIO bucket

@@ -5,6 +5,7 @@ import { demoAdapter, firstTable } from "./lib/api.ts";
 import { openStatesList, rowMenu, settle, stateRow, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
+import { runSql } from "./lib/sql.ts";
 
 const STAMP = Date.now().toString(36);
 
@@ -84,7 +85,7 @@ test.describe("state stories", () => {
     expect(issues).toStrictEqual([]);
   });
 
-  test("@story-75 @story-76 @story-77 @story-82 @story-84 @story-87 checks out the seeded baseline after a preflight and sees the stash and history", async ({
+  test("@story-12 @story-75 @story-76 @story-77 @story-82 @story-84 @story-87 @story-152 checks out the seeded baseline, sees the stash and history, and is told when the databases move off HEAD", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -112,6 +113,20 @@ test.describe("state stories", () => {
     await openStatesList(page);
     await page.getByRole("switch", { name: "Show stashes" }).click();
     await expect(stateRow(page, "stash").first()).toBeVisible();
+    // The checkout put the databases on this state, and both the row and the header say so.
+    await expect(row.getByText("HEAD", { exact: true })).toBeVisible();
+    await expect(page.getByText("seeded-baseline", { exact: true }).first()).toBeVisible();
+    // A write Testate never saw: straight into the engine, past the API. This is the one place
+    // the suite touches the shared `shop` on purpose; a private database has no HEAD to drift from.
+    runSql("shop", [
+      "UPDATE contract.customers SET balance = balance + 1 WHERE id = (SELECT min(id) FROM contract.customers)",
+    ]);
+    await (await rowMenu(row)).getByRole("button", { name: "Check for changes" }).click();
+    await expect(page.getByText("The databases have changed since seeded-baseline.")).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect(row.getByText("HEAD · modified")).toBeVisible();
+    await expect(page.getByText("seeded-baseline · modified")).toBeVisible();
     expect(issues).toStrictEqual([]);
   });
 
@@ -185,8 +200,10 @@ test.describe("state stories", () => {
     const exported = await page.request.get(String(csv));
     expect(exported.status()).toBe(200);
     expect(exported.headers()["content-type"]).toContain("text/csv");
+    // One fewer, not none: the drift check two tests up left a live comparison of its own.
+    const before = await page.locator("tr", { hasText: "live database" }).count();
     await menu.getByRole("button", { name: "Delete" }).click();
-    await expect(page.locator("tr", { hasText: "live database" })).toHaveCount(0);
+    await expect(page.locator("tr", { hasText: "live database" })).toHaveCount(before - 1);
     expect(issues).toStrictEqual([]);
   });
   test("@story-49 @story-52 @story-53 @story-54 @story-55 @story-56 @story-57 @story-58 @story-59 @story-60 @story-149 checks a file before importing it, saves the normalizer, and re-imports what the run rejected", async ({
@@ -321,23 +338,5 @@ test.describe("state stories", () => {
     }).toPass({ timeout: 90_000 });
     await expect(stateRow(page, name)).toHaveCount(0, { timeout: 60_000 });
     expect(issues).toStrictEqual([]);
-  });
-});
-
-test.describe("viewer state stories", () => {
-  test.use({ storageState: statePath("viewer") });
-
-  test("@story-66 a viewer lists states with size and author but gets no state actions", async ({
-    page,
-  }) => {
-    await page.goto("/projects/demo");
-    await settle(page);
-    await openStatesList(page);
-    await expect(stateRow(page, "seeded-baseline")).toBeVisible();
-    // The footer counts the rows it is showing, so a wrong or missing count fails here.
-    const rows = await page.getByRole("list", { name: "States" }).locator("li").count();
-    await expect(page.getByText(new RegExp(`^${rows} states( so far)?$`))).toBeVisible();
-    await expect(page.getByRole("button", { name: "Take state" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Check out" })).toHaveCount(0);
   });
 });

@@ -2,14 +2,18 @@ import { expect, test } from "@playwright/test";
 
 import {
   apiContext,
-  demoAdapter,
+  bearerContext,
   blobCount,
+  createToken,
+  demoAdapter,
+  demoProjectId,
   refusedOf,
   stateHashes,
   takeState,
   waitForIdle,
   waitForJob,
 } from "./lib/api.ts";
+import { callTool } from "./lib/mcp.ts";
 
 const STAMP = Date.now().toString(36);
 
@@ -145,5 +149,46 @@ test.describe("state and job contract stories", () => {
     expect(body.data.checkout.status).toBe("succeeded");
     expect(body.data.checkout.state.name).toBe(`api-take-${STAMP}`);
     await qa.dispose();
+  });
+
+  // Here and not in agent.e2e.ts: that spec runs in the first phase beside the UI write session
+  // on the same adapter, and two write sessions race story 86's one job per adapter.
+  test("@story-153 a tester agent writes through a stashed session; a viewer agent is refused", async () => {
+    test.setTimeout(180_000);
+    const admin = await apiContext("admin");
+    const postgres = await demoAdapter({ engine: "postgres" });
+    await waitForIdle(admin, postgres.id);
+    const scope = { kind: "agent" as const, project_ids: [await demoProjectId(admin)] };
+    const tester = await createToken(admin, {
+      ...scope,
+      name: `agent-tester-${STAMP}`,
+      role: "qa",
+    });
+    const viewer = await createToken(admin, { ...scope, name: `agent-viewer-${STAMP}` });
+    const target = { project: "demo", adapter: postgres.id };
+    const sql = `insert into contract.customers (email) values ('agent-${STAMP}@e2e.test')`;
+
+    const reader = await bearerContext(viewer.token);
+    await expect(callTool(reader, "run_write_query", { ...target, sql })).rejects.toThrow(/role/);
+    await reader.dispose();
+
+    const writer = await bearerContext(tester.token);
+    const written: { write_session_id: string } = await callTool(writer, "run_write_query", {
+      ...target,
+      sql,
+    });
+    expect(written.write_session_id).not.toBe("");
+    const ended: { ended: string | null; stash_state_id: string | null } = await callTool(
+      writer,
+      "end_write_session",
+      target
+    );
+    expect(ended.ended).toBe(written.write_session_id);
+    expect(ended.stash_state_id).not.toBeNull();
+    await writer.dispose();
+
+    await admin.delete(`tokens/${tester.record.id}`);
+    await admin.delete(`tokens/${viewer.record.id}`);
+    await admin.dispose();
   });
 });
