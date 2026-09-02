@@ -182,6 +182,16 @@ b9131cd test(e2e): cover the contract and agent stories over the API
 
 ### Owed before beta (carried out of the release, nobody has done these)
 
+- **A job stream nobody closes.** `followJob` in `lib/sse.ts` opens an `EventSource` and closes it
+  only when a terminal status arrives. Nothing ties it to the screen that opened it, so navigating
+  away from a running snapshot, checkout, import or diff leaves it open, and an `EventSource` that
+  errors reconnects by itself. The sharp end is
+  `imports.adapter.presenter.ts`: `await new Promise((resolve) => followJob(job, resolve))` never
+  settles if the stream never reaches a terminal event, which leaves `busy()` true and both buttons
+  disabled with nothing on screen saying why. That path is busier now that every check runs a job.
+  The fix is an owner-aware follower built where the presenter is constructed, not inside
+  `lib/sse.ts`, where there is no owner to register a cleanup with. Found by a review sweep on
+  2026-09-02, not yet done.
 - **The blob leak on project delete.** Offered twice, never taken up: deleting a project drops its
   states but nothing sweeps the blobs they alone pinned, so the disk keeps them. `states.repository`
   already computes orphans for a state delete; a project delete does not ask.

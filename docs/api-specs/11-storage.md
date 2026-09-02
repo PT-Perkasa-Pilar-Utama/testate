@@ -26,6 +26,18 @@ Module: `storage` ([../technical-specs/05-module-definitions.md §5.11](../techn
 
 **Purpose.** Delete one file. **Access.** `qa`, and the adapter must be in `sandbox` mode. **Input.** Query: `path` required. **Behavior.** Files only; a directory is refused rather than emptied, because recursive delete means something different on each of the three protocols. Audit `file.deleted`. Testate keeps no copy. **Output.** `204`. **Errors.** `ADAPTER_READ_ONLY`, `VALIDATION_ERROR` (the path is a directory), `NOT_FOUND`, as 11.1.
 
-## 11.7 `POST .../host-key/accept`
+## 11.7 `PATCH .../entries`
+
+**Purpose.** Rename a file, which is also how it moves to another folder. **Access.** `qa`, and the adapter must be in `sandbox` mode. **Input.** Body: `path` and `to`, both whole paths. **Behavior.** S3 copies the key inside the store and drops the old one; SFTP and FTP use their own rename. Folders above `to` are made. A directory is refused for the same reason 11.6 refuses one, and a `to` that already holds something is refused rather than overwritten: the caller cannot see what is there, and a rename that lands on a file destroys it with nothing to undo it from. Audit `file.renamed` with `to` in the details. **Output.** `200` entry, at its new path. **Errors.** `ADAPTER_READ_ONLY`, `CONFLICT` (something is already at `to`), `VALIDATION_ERROR` (either path is a directory or names the root), `NOT_FOUND`, as 11.1.
+
+## 11.8 `POST .../entries/directory`
+
+**Purpose.** Make an empty folder. **Access.** `qa`, and the adapter must be in `sandbox` mode. **Input.** Body: `path` required. **Behavior.** Uploading already makes the folders above the file it writes, so this is only for the folder made before the file exists. SFTP and FTP make a real directory. S3 has none, and the usual `folder/` marker cannot be written through Bun's client, which drops the trailing slash: it writes a zero-byte `.keep` object inside the folder instead, which every S3 tool reads as a folder. The listing hides that object; `stat` and 11.9 ask for it. Audit `folder.created`. **Output.** `201` entry, `kind: "directory"`. **Errors.** `ADAPTER_READ_ONLY`, `CONFLICT` (something is already there), `VALIDATION_ERROR` (the path names the root), as 11.1.
+
+## 11.9 `DELETE .../entries/directory`
+
+**Purpose.** Remove a folder with nothing in it. **Access.** `qa`, and the adapter must be in `sandbox` mode. **Input.** Query: `path` required. **Behavior.** A folder that still holds anything is refused; emptying it is the caller's to do, one file at a time, for the same reason 11.6 refuses a recursive delete. Audit `folder.deleted`. **Output.** `204`. **Errors.** `ADAPTER_READ_ONLY`, `CONFLICT` (the folder is not empty), `NOT_FOUND`, as 11.1.
+
+## 11.10 `POST .../host-key/accept`
 
 **Purpose.** Accept a new SFTP host key after a change (story 97). **Access.** `qa`. **Input.** Body: `fingerprint` required (the one reported in the `CONFLICT`). **Behavior.** Replace the row in `known_host_keys`; audit `host_key.accepted`. **Output.** `204`. **Errors.** `VALIDATION_ERROR` (fingerprint does not match the server's current key), `NOT_FOUND`. **Traceability.** Story 97.
