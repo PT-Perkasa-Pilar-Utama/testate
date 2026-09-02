@@ -13,3 +13,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # One pull request for every action, not one per action: CodeQL's init, analyze and
+    # upload-sarif have to move together, and three separate bumps each failed the others' checks.
+    groups:
+      actions:
+        patterns: ["*"]
