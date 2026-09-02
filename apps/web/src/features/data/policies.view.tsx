@@ -161,7 +161,7 @@ function PolicyCell(props: {
  * everywhere one could leave the database. A required function decides what a value passes through
  * on the way in, and it covers forms, grid edits and import normalizers but not raw SQL, which spec
  * 24 admits out loud. One screen doing both taught neither. The enforcement of required functions
- * stays in the API; only the screen stopped offering them (docs/PROJECT_REWORK.md).
+ * stays in the API; only the screen stopped offering them.
  */
 export default function PoliciesView(props: { slug: string; id: string }): JSX.Element {
   const presenter = createPoliciesPresenter(

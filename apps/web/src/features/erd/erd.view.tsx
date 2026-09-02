@@ -114,7 +114,7 @@ function TableBox(props: {
  *
  * No dragging and nothing stored: a saved position goes stale the moment a column is added, and
  * the layout is cheap enough to recompute. Pan with a drag, zoom with the wheel, click a table to
- * see it and one hop (docs/PROJECT_REWORK.md).
+ * see it and one hop.
  */
 export default function Erd(props: { tables: readonly TableSchema[] }): JSX.Element {
   const [focus, setFocus] = createSignal<string | null>(null);

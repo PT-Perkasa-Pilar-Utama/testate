@@ -129,7 +129,7 @@ function PreviewRows(props: { presenter: ImportPresenter }): JSX.Element {
  * The adapter is in the URL, so the database question is already answered; what is left is the
  * file, the table, what happens to the rows, and a column panel that stays shut while every column
  * matched. The four-step wizard this replaces asked a data engineer's questions of a tester
- * (docs/PROJECT_REWORK.md).
+ *.
  */
 export default function AdapterImportsView(props: { slug: string; id: string }): JSX.Element {
   // Read once, on purpose. Which run's rejected rows this screen is fixing is decided when it

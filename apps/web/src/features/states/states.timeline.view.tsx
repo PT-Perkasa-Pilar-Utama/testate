@@ -69,7 +69,7 @@ function Meta(props: { state: StateListItem }): JSX.Element {
       <span aria-hidden="true">·</span>
       <span class="whitespace-nowrap tabular-nums">{formatWhen(props.state.created_at)}</span>
       {/* What this state produced. A checkout and a diff are events that reference a state, so the
-          state is where the count belongs (docs/PROJECT_REWORK.md). */}
+          state is where the count belongs. */}
       <Show when={eventsLabel(props.state) !== ""}>
         <span aria-hidden="true">·</span>
         <span class="whitespace-nowrap">{eventsLabel(props.state)}</span>
@@ -78,7 +78,7 @@ function Meta(props: { state: StateListItem }): JSX.Element {
   );
 }
 
-/** HEAD reads plainly only while the databases are known to hold it (docs/PROJECT_REWORK.md). */
+/** HEAD reads plainly only while the databases are known to hold it. */
 function headLabel(unknown: boolean, dirty: boolean): string {
   if (unknown) return "HEAD, unverified";
   return dirty ? "HEAD · modified" : "HEAD";
@@ -125,7 +125,7 @@ function TimelineRow(props: TimelineRowProps): JSX.Element {
             <Show when={props.head}>
               {/* A checkout that failed part way leaves head_status 'unknown': the databases hold
                   some of this state and some of whatever came before, and saying HEAD flat would
-                  be a claim nobody checked (docs/PROJECT_REWORK.md). */}
+                  be a claim nobody checked. */}
               <Badge variant={headTone(props.headUnknown === true, props.headDirty === true)}>
                 {headLabel(props.headUnknown === true, props.headDirty === true)}
               </Badge>

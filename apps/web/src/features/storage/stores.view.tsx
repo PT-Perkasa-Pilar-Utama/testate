@@ -44,7 +44,7 @@ function StoreRow(props: { store: AdapterWithProject }): JSX.Element {
  * A file store is not a project primitive: a snapshot lists database adapters only, so a store
  * never enters a state, never gets checked out and never appears in a diff. It still belongs to a
  * project, which is why the project is a column rather than the route
- * (docs/PROJECT_REWORK.md).
+ *.
  */
 export default function StoresView(): JSX.Element {
   const stores = createRefreshable(() => storageModel.stores());

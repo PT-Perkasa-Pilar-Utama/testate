@@ -220,7 +220,7 @@ test.describe("state stories", () => {
     const postgres = await demoAdapter({ engine: "postgres" });
     const table = await firstTable(postgres.id);
     // Importing belongs to the database it writes into, so it is that adapter's own screen now
-    // and no longer a wizard over the project (docs/PROJECT_REWORK.md).
+    // and no longer a wizard over the project.
     await page.goto(`/projects/demo/adapters/${postgres.id}/imports`);
     await settle(page);
     const pick = async (name: string, body: string): Promise<void> => {

@@ -150,7 +150,7 @@ export default function StatesView(props: {
         </div>
       </div>
       {/* Two ticked states are a comparison waiting to be asked for, which is where the New diff
-          dialog used to ask the same question with two selects (docs/PROJECT_REWORK.md). */}
+          dialog used to ask the same question with two selects. */}
       <Show when={presenter.selected().length > 0}>
         <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-fill px-4 py-2.5 ring ring-line">
           <span class="text-base text-body">

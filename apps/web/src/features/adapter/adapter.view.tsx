@@ -135,7 +135,7 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
               {(schema) => (
                 <div class="grid gap-3">
                   {/* The same shape States uses for List and Tree: one set of data, two ways to
-                      read it (docs/PROJECT_REWORK.md). */}
+                      read it. */}
                   <Tabs
                     items={TABLE_VIEWS}
                     value={tableView()}

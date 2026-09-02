@@ -17,7 +17,7 @@ function Node(props: { node: StateTreeNode; onOpen: (node: StateTreeNode) => voi
   return (
     <li class="grid gap-1.5">
       {/* A button, not a paragraph. The tree drew a name and a badge and did nothing when you
-          pressed it, which is why it read as decoration (docs/PROJECT_REWORK.md). */}
+          pressed it, which is why it read as decoration. */}
       <button
         type="button"
         class="flex w-full cursor-pointer items-start gap-2 rounded-md p-1 text-left hover:bg-hover"

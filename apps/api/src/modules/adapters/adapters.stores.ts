@@ -8,7 +8,7 @@ import type { AdapterRecord } from "./adapters.repository.ts";
  * Every adapter of one kind across the projects a caller may see.
  *
  * A file store is not a project primitive: it never enters a state and never gets checked out
- * (docs/PROJECT_REWORK.md), so its screen lists the whole instance and names the owning project on
+ *, so its screen lists the whole instance and names the owning project on
  * each row. The scope is still the caller's, so a project-scoped token sees only its own.
  */
 export function listByKind(

@@ -162,7 +162,7 @@ function RowPair(props: {
  * It was a dialog over a list, which is the wrong shape for a comparison: the rows are wide, there
  * are two of everything, and a person reads down a table rather than across a modal. No API work:
  * `GET /diffs/:id/rows` already answers with before, after and the columns that changed
- * (docs/PROJECT_REWORK.md).
+ *.
  */
 export default function DiffView(props: { slug: string; id: string }): JSX.Element {
   const presenter = createDiffPresenter(

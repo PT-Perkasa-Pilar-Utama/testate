@@ -24,7 +24,7 @@ export const adaptersModel = {
   /** Hosts the API can reach from where it runs; the browser cannot work these out itself. */
   hosts: (): Promise<HostSuggestion[]> =>
     apiClient.get("/adapter-hosts", { schema: v.array(hostSuggestionSchema) }),
-  /** Databases only: a file store lives on its own screen (docs/PROJECT_REWORK.md). */
+  /** Databases only: a file store lives on its own screen. */
   list: (slug: string): Promise<Adapter[]> =>
     apiClient.get(base(slug), { schema: v.array(adapterSchema), query: { kind: "database" } }),
   get: (slug: string, id: string): Promise<Adapter> =>

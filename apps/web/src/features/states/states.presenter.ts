@@ -117,7 +117,7 @@ export function createStatesPresenter(
     (await adaptersModel.list(slug())).filter((adapter) => adapter.kind === "database")
   );
   // Tree first: `parent_state_id` is the whole git analogy, and a stash hanging off the state it
-  // protected is the thing a person came to see. List is the escape hatch (docs/PROJECT_REWORK.md).
+  // protected is the thing a person came to see. List is the escape hatch.
   const [view, setView] = createSignal<StatesView>("tree");
   const [taking, setTaking] = createSignal(false);
   const [editing, setEditing] = createSignal<State | null>(null);

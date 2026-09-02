@@ -132,7 +132,7 @@ function ColumnCard(props: {
  *
  * Auto covers most files: the engine parses `2026-01-31` into a date column by itself. The panel
  * opens itself when a column did not match by name, because that is the case a person has to
- * answer before pressing Import (docs/PROJECT_REWORK.md).
+ * answer before pressing Import.
  */
 export default function ColumnPanel(props: { presenter: ImportPresenter }): JSX.Element {
   const [open, setOpen] = createSignal(false);

@@ -42,7 +42,7 @@ function take(source: readonly string[], from: number, to: number, side: Line["s
  * Line by line, not character by character: a changed cell is usually a whole value or a JSON
  * document, and a character diff of a UUID is noise. Lines that match on both sides are shown
  * once, which is what makes a one-field change in a large document readable
- * (docs/PROJECT_REWORK.md).
+ *.
  */
 export function unified(before: JsonValue, after: JsonValue): Line[] {
   const left = pretty(before).split("\n");

@@ -68,8 +68,7 @@ function DiffRow(props: { presenter: DiffsPresenter; diff: Diff; slug: string })
       <Cell>{formatWhen(props.diff.expires_at)}</Cell>
       <Cell pinned>
         <div class="flex items-center justify-end gap-1">
-          {/* A page, not a dialog: a comparison is wide and has two of everything
-              (docs/PROJECT_REWORK.md). */}
+          {/* A page, not a dialog: a comparison is wide and has two of everything. */}
           <Show
             when={props.diff.status === "ready"}
             fallback={
@@ -120,7 +119,7 @@ export default function DiffsView(props: { slug: string; onChanged?: () => void 
           onInput={(value) => presenter.table.setQuery(value)}
         />
         {/* No New diff here: a diff is two states, and the place to pick two states is the
-            States tab, where ticking two offers Compare (docs/PROJECT_REWORK.md). */}
+            States tab, where ticking two offers Compare. */}
       </div>
       <Loading fallback={<Pending>Loading diffs...</Pending>}>
         <Table>

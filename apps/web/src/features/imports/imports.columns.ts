@@ -6,7 +6,7 @@ import type { ColumnSchema, Transform } from "@testate/shared";
  * The wire takes a list of transforms and always has; this is the shorter question a person can
  * answer about a column, and `toTransforms` turns it back into that list. The old form asked for a
  * single transform out of seven wire names, which is the engine's vocabulary rather than anyone
- * else's (docs/PROJECT_REWORK.md).
+ * else's.
  */
 export type Choice =
   | { kind: "auto" }

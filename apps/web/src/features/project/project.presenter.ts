@@ -34,7 +34,7 @@ const DEFAULT_TAB: ProjectTab = "states";
  *
  * Checkouts, diffs and import runs are all the same kind of thing: an event with a job, a status
  * and a link back to the states it touched. A link somebody bookmarked or a test wrote still
- * lands on the right screen (docs/PROJECT_REWORK.md).
+ * lands on the right screen.
  */
 const MOVED = new Map<string, ProjectTab>([
   ["checkouts", "activity"],

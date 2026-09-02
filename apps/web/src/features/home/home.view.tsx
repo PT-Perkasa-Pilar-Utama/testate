@@ -67,7 +67,7 @@ function Instance(props: { presenter: HomePresenter }): JSX.Element {
  * It was two lines of marketing copy. Each role now gets what it can act on: a Guest reads state,
  * a Tester sees its own work moving, an Administrator sees the instance. Nothing here is fetched
  * for a role that would be refused it, which is decided when the presenter is built rather than
- * when a card renders (docs/PROJECT_REWORK.md).
+ * when a card renders.
  */
 export default function HomeView(): JSX.Element {
   const presenter = createHomePresenter(() => new Date());

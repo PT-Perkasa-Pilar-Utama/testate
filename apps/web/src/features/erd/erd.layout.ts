@@ -102,7 +102,7 @@ function boxColumns(table: TableSchema): BoxBody {
  * Boxes and edges, laid out left to right by foreign-key depth.
  *
  * Recomputed every time from the schema, so nothing is stored and nothing goes stale when a column
- * is added (docs/PROJECT_REWORK.md).
+ * is added.
  */
 export function layout(tables: readonly TableSchema[]): Diagram {
   const layer = layersOf(tables);

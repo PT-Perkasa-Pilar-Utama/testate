@@ -41,7 +41,7 @@ function Section(props: {
  * job, a status, and a link back to the states it touched. The schema says so already, in
  * `states.stash_reason IN ('checkout', 'import', 'write-session')`. They used to be three sibling
  * tabs beside States, which put an event next to the thing it is an event about
- * (docs/PROJECT_REWORK.md).
+ *.
  *
  * The chips filter which list is on screen rather than merging the three. Each keeps its own
  * cursor and its own endpoint, which is what makes this cost no API work; one interleaved feed

@@ -168,7 +168,7 @@ test.describe("qa gap stories", () => {
     const postgres = await demoAdapter({ engine: "postgres" });
     const table = await tableNamed(postgres.id, "customers");
     // Importing belongs to the database it writes into, so the screen hangs off that adapter now
-    // and no longer opens as a wizard over the project (docs/PROJECT_REWORK.md).
+    // and no longer opens as a wizard over the project.
     await page.goto(`/projects/demo/adapters/${postgres.id}/imports`);
     await settle(page);
     await page.getByText("Or take one from a file store").click();

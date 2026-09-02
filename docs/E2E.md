@@ -106,3 +106,15 @@ its screen is coverage on paper.
 - A filter panel opens from a `Filters` toggle. Four empty boxes over every list was a row of the
   page spent on nothing, so nothing filterable shows its filters until asked.
 - Iterate with `bunx playwright test --project=<name> --no-deps`; the full chain is for the gate.
+
+## Debugging
+
+- Never edit `apps/web` while a browser chain runs: Vite hot-reloads into the crawl. Never
+  `pkill -f vite`, the suite's own dev server matches; kill by the PID you saved.
+- Reproduce an API bug against an instance on the suite's data, then sign in as `admin` /
+  `admin-final-password-1` (writes need the `X-Testate-Request: 1` header):
+  `PORT=7380 TESTATE_ENV=development TESTATE_DATA_DIR=.e2e/data TESTATE_SECRETS_ACTIVE_KEY=$(cat .e2e/key.txt) TESTATE_ADMIN_PASSWORD=admin-password-1234 bun apps/api/src/index.ts`
+- A Solid diagnostic with no stack: wrap `console.warn` in a Playwright `addInitScript` and print
+  `new Error().stack` for the matching code. That is how the dialog diagnostics were found.
+- `bun test` from the repo root transpiles JSX with the React runtime; when CI disagrees with a
+  green local gate, suspect resolution before logic.
