@@ -160,6 +160,14 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
                 <Button type="submit" variant="primary" disabled={presenter.busy()}>
                   {presenter.busy() ? "Running..." : "Run (read-only)"}
                 </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  title="Fill the console with a query against the first table"
+                  onClick={() => void presenter.sample()}
+                >
+                  Sample
+                </Button>
                 <RowCapField presenter={presenter} />
               </div>
               <div class="flex flex-wrap items-center gap-2">

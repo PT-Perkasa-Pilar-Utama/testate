@@ -6,6 +6,7 @@ import * as v from "valibot";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
+import { adapterModel } from "../adapter/adapter.model.ts";
 import { adaptersModel } from "../adapters/adapters.model.ts";
 import { dataModel } from "./data.model.ts";
 import type { HistoryRow, RunningQuery, SavedQuery } from "./data.model.ts";
@@ -29,6 +30,8 @@ export type QueryPresenter = {
   isMongo: () => boolean;
   sql: () => string;
   setSql: (text: string) => void;
+  /** Fills the console with a query against the adapter's first table or collection. */
+  sample: () => Promise<void>;
   mongo: () => MongoDraft;
   setMongo: (patch: Partial<MongoDraft>) => void;
   rowCap: () => string;
@@ -167,6 +170,22 @@ export function createQueryPresenter(slug: () => string, id: () => string): Quer
   const request = (): QueryRequest => buildRequest(isMongo(), sql(), mongo(), rowCap());
   return {
     adapter,
+    sample: async () => {
+      const staticSlug = slug();
+      const staticId = id();
+      await attempt(async () => {
+        const schema = await adapterModel.schema(staticSlug, staticId);
+        const first = schema.tables[0];
+        if (first === undefined) throw new Error("This adapter has no tables to sample yet.");
+        const name = first.schema === null ? first.name : `${first.schema}.${first.name}`;
+        if (adapter.value().engine === "mongodb") {
+          setMongoSignal({ ...EMPTY_MONGO, collection: first.name, filter: "{}" });
+        } else {
+          setSql(`SELECT *\nFROM ${name}\nORDER BY 1\nLIMIT 20`);
+        }
+      });
+    },
+
     isMongo,
     sql,
     setSql,
