@@ -19,6 +19,7 @@ import {
   countersSummary,
   hasFailure,
   outcomeSummary,
+  undoable,
   skippedSummary,
 } from "./checkouts.presenter.ts";
 import type { CheckoutsPresenter } from "./checkouts.presenter.ts";
@@ -41,7 +42,11 @@ function tookLine(adapter: Checkout["adapters"][number]): string {
 }
 
 /** Per-adapter outcome of one checkout: result, rows, timing, and what was left out (story 80). */
-export function DetailDialog(props: { presenter: CheckoutsPresenter }): JSX.Element {
+export function DetailDialog(props: {
+  presenter: CheckoutsPresenter;
+  /** Checks out the stash this checkout took first; the view owns the preflight. */
+  onUndo: (checkout: Checkout) => void;
+}): JSX.Element {
   const checkout = (): ReturnType<CheckoutsPresenter["detail"]> => props.presenter.detail();
   /** The description line, kept out of the JSX attribute so narrowing `checkout()` works once. */
   const describe = (): string => {
@@ -61,7 +66,20 @@ export function DetailDialog(props: { presenter: CheckoutsPresenter }): JSX.Elem
         {(loaded) => (
           <div class="grid gap-4">
             <Show when={outcomeSummary(loaded()) !== ""}>
-              <Banner variant="alert">{outcomeSummary(loaded())}</Banner>
+              <Banner variant="alert">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <span>{outcomeSummary(loaded())}</span>
+                  <Show when={hasRole("qa") && undoable(loaded())}>
+                    <Button
+                      size="sm"
+                      variant="accent-outline"
+                      onClick={() => props.onUndo(loaded())}
+                    >
+                      Put every database back
+                    </Button>
+                  </Show>
+                </div>
+              </Banner>
             </Show>
             {/* No strategy column: how a restore empties a table and handles keys is answered
                 before the confirm, on the preflight. After the fact a tester needs the result. */}

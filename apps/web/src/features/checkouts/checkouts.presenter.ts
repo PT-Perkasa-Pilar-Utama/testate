@@ -86,12 +86,27 @@ export function adaptersSummary(checkout: Checkout): string {
 export function outcomeSummary(checkout: Checkout): string {
   const restored = checkout.adapters.filter((adapter) => adapter.result === "restored").length;
   const total = checkout.adapters.length;
+  const back =
+    checkout.stash_state_id === null
+      ? ""
+      : " Put back returns every database to how it was before this restore.";
   if (checkout.status === "partial")
-    return `${restored} of ${total} databases restored. The rest still hold the old data. Retry restores only the ones that failed.`;
-  if (checkout.status === "failed") return "Nothing was restored. Retry runs it again.";
+    return `${restored} of ${total} databases restored. The rest still hold the old data. Retry restores only the ones that failed.${back}`;
+  if (checkout.status === "failed") return `Nothing was restored. Retry runs it again.${back}`;
   if (checkout.status === "interrupted")
-    return "The server stopped while this ran. Retry restores the databases it did not finish.";
+    return `The server stopped while this ran. Retry restores the databases it did not finish.${back}`;
   return "";
+}
+
+/**
+ * A checkout that left the databases in doubt, with the stash it took first still there: the way
+ * back is one checkout of that stash, and the button that offers it needs no word explained.
+ */
+export function undoable(checkout: Checkout): boolean {
+  return (
+    checkout.stash_state_id !== null &&
+    ["partial", "failed", "interrupted"].includes(checkout.status)
+  );
 }
 
 export function retriable(checkout: Checkout): boolean {

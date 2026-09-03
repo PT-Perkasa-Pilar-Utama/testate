@@ -79,7 +79,9 @@ export default defineConfig({
   globalSetup: "./e2e/setup.ts",
   outputDir: join(E2E_DIR, "results"),
   fullyParallel: true,
-  workers: 3,
+  // A laptop runs five engines, Vite, the API and Chromium beside this; two tabs at a time keeps
+  // it usable. A CI runner has the cores and nothing else to do.
+  workers: process.env.CI === undefined ? 2 : 4,
   retries: 0,
   timeout: 60_000,
   reporter: [["list"], ["html", { outputFolder: join(E2E_DIR, "report"), open: "never" }]],

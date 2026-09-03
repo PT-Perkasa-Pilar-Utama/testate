@@ -38,6 +38,7 @@
     "complete-check": "bun run type-check && bun run lint && bun run fmt && bun test --parallel && bun run build && bun run check:classes && bun run check:contrast",
     "prepare": "lefthook install",
     "e2e": "playwright test",
+    "e2e:quick": "playwright test --project=routes --project=flows --project=states",
     "check:classes": "bun scripts/check-theme-tokens.ts",
     "check:contrast": "bun scripts/check-contrast.ts"
   },

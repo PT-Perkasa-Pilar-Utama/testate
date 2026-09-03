@@ -8,7 +8,6 @@ import Badge from "@/components/badge.tsx";
 import Pending from "@/components/pending.tsx";
 import Button from "@/components/button.tsx";
 import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
-import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import LoadMore from "@/components/load-more.tsx";
 import Select from "@/components/select.tsx";
@@ -25,8 +24,11 @@ import {
 } from "@/components/table.tsx";
 import { activeFilterCount } from "@/lib/table.ts";
 import { CHECKOUT_PURPOSE_LABEL, JOB_STATUS_LABEL } from "@/lib/labels.ts";
-import { hasRole } from "@/lib/session.ts";
 import { subscribeJob } from "@/lib/sse.ts";
+import { createPreflightPresenter } from "./preflight.presenter.ts";
+import PreflightDialog from "./preflight.view.tsx";
+import { statesModel } from "../states/states.model.ts";
+import RecoveryActions from "./checkouts.actions.view.tsx";
 import { CountersDialog, DetailDialog } from "./checkouts.dialogs.view.tsx";
 
 /**
@@ -37,11 +39,8 @@ import {
   CHECKOUT_PURPOSE_FILTER_OPTIONS,
   CHECKOUT_STATUS_FILTER_OPTIONS,
   adaptersSummary,
-  blockedAdapters,
   createCheckoutsPresenter,
   outcomeLine,
-  retriable,
-  retryBlockedReason,
 } from "./checkouts.presenter.ts";
 import type { CheckoutsPresenter } from "./checkouts.presenter.ts";
 
@@ -83,42 +82,6 @@ function Outcome(props: { checkout: Checkout }): JSX.Element {
   );
 }
 
-/**
- * The three recovery actions this screen exists for. Terminate blockers used to live only inside
- * the Details dialog, one adapter at a time; a failed restore now clears it from the row it landed
- * on, and the dialog keeps its own copy for the moment someone is already in there reading why.
- */
-function RecoveryActions(props: {
-  presenter: CheckoutsPresenter;
-  checkout: Checkout;
-}): JSX.Element {
-  return (
-    <Show when={hasRole("qa")}>
-      <Button
-        size="sm"
-        variant="secondary"
-        disabled={!retriable(props.checkout)}
-        title={retryBlockedReason(props.checkout)}
-        onClick={() => void props.presenter.retry(props.checkout)}
-      >
-        Retry
-      </Button>
-      <For each={blockedAdapters(props.checkout)}>
-        {(adapter) => (
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={() => void props.presenter.terminate(props.checkout, adapter)}
-          >
-            <Icon name="ban" class="h-3 w-3" />
-            Terminate blockers
-          </Button>
-        )}
-      </For>
-    </Show>
-  );
-}
-
 /** Search text or a picked filter narrows the list; an empty result under either reads as "no
  *  matches", not as "no restores yet". */
 function isFiltered(presenter: CheckoutsPresenter): boolean {
@@ -149,6 +112,21 @@ export default function CheckoutsView(props: {
     () => props.onChanged?.()
   );
   const [open, setOpen] = createSignal(false);
+  // Putting back is a checkout of the stash, through the same preflight as any other checkout.
+  const preflight = createPreflightPresenter(
+    () => props.slug,
+    () => {
+      presenter.refresh();
+      props.onChanged?.();
+    }
+  );
+  const undo = async (checkout: Checkout): Promise<void> => {
+    const staticSlug = props.slug;
+    const stash = checkout.stash_state_id;
+    if (stash === null) return;
+    presenter.close();
+    await preflight.open(await statesModel.get(staticSlug, stash));
+  };
   return (
     <div class="grid gap-3">
       <div class="flex flex-wrap items-center justify-end gap-2">
@@ -276,7 +254,11 @@ export default function CheckoutsView(props: {
                         >
                           Counters
                         </Button>
-                        <RecoveryActions presenter={presenter} checkout={checkout} />
+                        <RecoveryActions
+                          presenter={presenter}
+                          checkout={checkout}
+                          onUndo={(target) => void undo(target)}
+                        />
                       </div>
                     </Cell>
                   </Row>
@@ -293,8 +275,9 @@ export default function CheckoutsView(props: {
         >
           <LoadMore when={presenter.hasMore()} onMore={() => presenter.loadMore()} />
         </TableFooter>
-        <DetailDialog presenter={presenter} />
+        <DetailDialog presenter={presenter} onUndo={(target) => void undo(target)} />
         <CountersDialog presenter={presenter} />
+        <PreflightDialog presenter={preflight} />
       </Loading>
     </div>
   );
