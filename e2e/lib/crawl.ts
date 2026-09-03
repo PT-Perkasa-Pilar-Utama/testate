@@ -44,8 +44,12 @@ const SKIP = new Set([
   "Protect",
   "Unprotect",
 ]);
-/** Dialogs whose submit destroys shared demo data: cancelled after the form is exercised. */
-const DESTRUCTIVE = /delete|remove|reset|revoke|return to init/i;
+/**
+ * Dialogs whose submit destroys shared demo data, or reaches out to a host that does not exist:
+ * a New adapter filled with sample text asks the API to probe "e2e1071", which answers 502
+ * ADAPTER_UNREACHABLE, honestly. Cancelled after the form is exercised.
+ */
+const DESTRUCTIVE = /delete|remove|reset|revoke|return to init|new (storage )?adapter/i;
 const MAX_CLICKS = 60;
 const CLICK_TIMEOUT = 3_000;
 const SAMPLE = new Map([
@@ -83,11 +87,26 @@ export function watch(page: Page, issues: Issue[]): void {
     issues.push({ kind: "console", detail: `${where()} ${text.slice(0, 300)}${site}` });
   });
   page.on("response", (response) => {
-    if (response.status() >= 500)
-      issues.push({ kind: "http5xx", detail: `${response.status()} ${response.url()}` });
+    if (response.status() >= 500) void recordFailure(response, where(), issues);
     if (process.env["E2E_NET"] === "1" && response.url().includes("/api/v1/"))
       void logResponse(response);
   });
+}
+
+/**
+ * A 5xx is the app's when it carries the API's error envelope, which every error answer does,
+ * an internal one included (`errorResponse`, lib/http/errors.ts). One without it came from the
+ * Vite dev proxy, which answers 502 on a socket Bun closed under it; the API serves the built
+ * dashboard itself, so that path does not exist in production. It is printed, not counted.
+ */
+async function recordFailure(response: Response, page: string, issues: Issue[]): Promise<void> {
+  const text = await response.text().catch(() => "");
+  const detail = `${page} ${response.status()} ${response.url()}`;
+  if (/"error"\s*:\s*\{[^}]*"code"/.test(text)) {
+    issues.push({ kind: "http5xx", detail });
+    return;
+  }
+  process.stdout.write(`dev proxy answered ${detail} with no API envelope: ${text.slice(0, 80)}\n`);
 }
 
 async function logResponse(response: Response): Promise<void> {
@@ -207,6 +226,10 @@ export async function crawl(page: Page, path: string, seed: number): Promise<Cli
   for (let index = 0; index < total; index += 1) {
     // Reload only when the last click left the screen or changed it: most clicks are cheap toggles.
     if (at() !== path) {
+      // Let the page a click landed on finish loading before leaving it. Leaving mid-load aborts
+      // its requests, and the dev proxy then answers the next page's first request with a 502
+      // on the socket Bun closed under it: a proxy artefact, not the app, but it fails the crawl.
+      await settle(page);
       await page.goto(path);
       await settle(page);
     }

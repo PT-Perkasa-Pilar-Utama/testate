@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { For, Loading } from "solid-js";
+import { For, Loading, Show, createSignal } from "solid-js";
 
 import Breadcrumbs from "@/components/breadcrumbs.tsx";
 import Icon from "@/components/icon.tsx";
@@ -8,32 +8,46 @@ import { createRefreshable } from "@/lib/async.ts";
 import { engineLabel } from "@/lib/labels.ts";
 import { adaptersModel } from "../adapters/adapters.model.ts";
 
-/** The project's other adapters, one click away: the crumb carries a switcher beside the name. */
-function Switcher(props: { slug: string; id: string }): JSX.Element {
+/** The list itself, fetched on first open and not before: a crumb on every screen must cost nothing. */
+function Others(props: { slug: string; id: string }): JSX.Element {
   const adapters = createRefreshable(() => adaptersModel.list(props.slug));
   const others = () => adapters.value().filter((adapter) => adapter.id !== props.id);
   return (
-    <Loading fallback={<span />}>
-      {/* A fixed box: the menu's own trigger is full-width, which in a crumb is the whole row. */}
-      <span class="inline-flex w-4 shrink-0 items-center">
-        <Menu
-          label="Switch adapter"
-          trigger={<Icon name="chevrons-up-down" class="h-3 w-3" />}
-          panelClass="min-w-56"
-        >
-          <For each={others()}>
-            {(adapter) => (
-              <MenuLink href={`/projects/${props.slug}/adapters/${adapter.id}`}>
-                <span class="flex min-w-0 items-center gap-1.5">
-                  <span class="min-w-0 truncate">{adapter.name}</span>
-                  <span class="shrink-0 text-muted">({engineLabel(adapter.engine)})</span>
-                </span>
-              </MenuLink>
-            )}
-          </For>
-        </Menu>
-      </span>
+    <Loading fallback={<span class="px-3 py-1.5 text-sm text-muted">Listing...</span>}>
+      <For each={others()}>
+        {(adapter) => (
+          <MenuLink href={`/projects/${props.slug}/adapters/${adapter.id}`}>
+            <span class="flex min-w-0 items-center gap-1.5">
+              <span class="min-w-0 truncate">{adapter.name}</span>
+              <span class="shrink-0 text-muted">({engineLabel(adapter.engine)})</span>
+            </span>
+          </MenuLink>
+        )}
+      </For>
     </Loading>
+  );
+}
+
+/** The project's other adapters, one click away: the crumb carries a switcher beside the name. */
+function Switcher(props: { slug: string; id: string }): JSX.Element {
+  const [wanted, setWanted] = createSignal(false);
+  return (
+    // A fixed box: the menu's own trigger is full-width, which in a crumb is the whole row.
+    <span class="inline-flex w-4 shrink-0 items-center">
+      <Menu
+        label="Switch adapter"
+        trigger={
+          <span onClick={() => setWanted(true)}>
+            <Icon name="chevrons-up-down" class="h-3 w-3" />
+          </span>
+        }
+        panelClass="min-w-56"
+      >
+        <Show when={wanted()}>
+          <Others slug={props.slug} id={props.id} />
+        </Show>
+      </Menu>
+    </span>
   );
 }
 
