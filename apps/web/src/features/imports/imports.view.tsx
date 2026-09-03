@@ -5,7 +5,7 @@ import { For, Loading, Show } from "solid-js";
 import Badge from "@/components/badge.tsx";
 import Pending from "@/components/pending.tsx";
 import Button, { buttonClass } from "@/components/button.tsx";
-import Dialog, { DialogActions } from "@/components/dialog.tsx";
+import Dialog from "@/components/dialog.tsx";
 import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
 import Select from "@/components/select.tsx";
 import {
@@ -36,7 +36,7 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
   const presenter = createImportsPresenter(() => props.slug);
   return (
     <div class="grid gap-3">
-      <DialogActions>
+      <div class="flex flex-wrap items-center justify-end gap-2">
         <TableSearch
           placeholder="Search imports..."
           value={presenter.table.query()}
@@ -47,7 +47,7 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
           active={presenter.activeFilters()}
           onToggle={() => presenter.toggleFilters()}
         />
-      </DialogActions>
+      </div>
       <FilterPanel open={presenter.filtersOpen()}>
         <FilterField label="What happens">
           <Select
