@@ -117,7 +117,7 @@ apart on what a checkout does.
 
 49. As a QA engineer, I want to upload a CSV or XLSX file and see a preview with detected columns and a sheet selector, so that I know the file parsed correctly.
 50. As a QA engineer, I want XLSX date and number cells read from their typed value, so that spreadsheet dates do not need a format string.
-51. As a QA engineer, I want to pick a file from a storage adapter as the import source, so that files the application produced can go straight in.
+51. As a QA engineer, I want to pick a file from a storage adapter as the import source, so that files the application produced can go straight in. *Dropped from the screen on 2026-09-03: the import form takes an uploaded file only. The API's `storage` source stays for automation.*
 52. As a QA engineer, I want to create a normalizer from file columns to the columns of one table of a Tabular adapter, so that the import is explicit.
 53. As a QA engineer, I want transforms in a normalizer (trim, empty to null, number with locale, date with format, boolean word list, constant, generated id, current time, JSON parse, hash), so that files from business users load without a script and a policed column gets its required function.
 54. As a QA engineer, I want to save a normalizer per adapter and table and reuse it, so that the weekly import is one click.

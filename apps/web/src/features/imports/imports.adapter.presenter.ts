@@ -1,7 +1,6 @@
 import { createSignal } from "solid-js";
 import { showToast } from "@/lib/toast.ts";
 import type {
-  AdapterWithProject,
   ImportReport,
   JsonObject,
   JsonValue,
@@ -20,7 +19,6 @@ import type { Choice } from "./imports.columns.ts";
 import { defaultNormalizerName, runBody, sourceBody, tableKey } from "./imports.helpers.ts";
 import type { Source } from "./imports.helpers.ts";
 import { importsModel } from "./imports.model.ts";
-import { storageModel } from "../storage/storage.model.ts";
 
 /** One file column as the screen holds it: where it goes, and how it is read. */
 export type Column = { target: string; source: string; choice: Choice };
@@ -39,7 +37,6 @@ export type ImportPresenter = {
   schema: Refreshable<TableSchema[]>;
   /** Loads the preview when the source came from the URL rather than a file picker. */
   rejected: Refreshable<null>;
-  storages: Refreshable<AdapterWithProject[]>;
   /** The saved normalizers for the table now chosen, and nothing from any other table. */
   saved: () => Normalizer[];
   /** Loads a saved normalizer's columns, key columns and mode into the draft. */
@@ -55,7 +52,6 @@ export type ImportPresenter = {
   /** How many columns the file filled by name, out of the ones the table wants. */
   matched: () => { filled: number; total: number };
   upload: (file: File) => Promise<void>;
-  useStorage: (adapterId: string, path: string) => Promise<void>;
   setSheet: (sheet: string) => Promise<void>;
   setTable: (table: string) => void;
   setDraft: (patch: Partial<ImportDraft>) => void;
@@ -118,9 +114,6 @@ export function createImportPresenter(
   });
   const schema = createRefreshable(
     async () => (await adapterModel.schema(slug(), adapterId())).tables
-  );
-  const storages = createRefreshable(async () =>
-    (await storageModel.stores()).filter((store) => store.project_slug === slug())
   );
   const guarded = async (task: () => Promise<void>): Promise<void> => {
     setBusy(true);
@@ -252,7 +245,6 @@ export function createImportPresenter(
   return {
     schema,
     rejected,
-    storages,
     saved: () => normalizers.value().filter((one) => one.target === draft().table),
     savedId: normalizerId,
     reuse: (id) => {
@@ -297,13 +289,6 @@ export function createImportPresenter(
       guarded(async () => {
         const uploaded = await importsModel.upload(slug(), file);
         const next: Source = { kind: "upload", upload_id: uploaded.upload_id };
-        setSource(next);
-        setReport(null);
-        await loadPreview(next, "");
-      }),
-    useStorage: (storageId, path) =>
-      guarded(async () => {
-        const next: Source = { kind: "storage", adapter_id: storageId, path };
         setSource(next);
         setReport(null);
         await loadPreview(next, "");

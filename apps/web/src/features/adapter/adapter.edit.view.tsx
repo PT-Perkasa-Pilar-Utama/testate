@@ -12,7 +12,6 @@ import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
-import InputArea from "@/components/input-area.tsx";
 import Select from "@/components/select.tsx";
 import { RESTORE_MODE_LABEL } from "@/lib/labels.ts";
 import { ENGINE_FORMS } from "../adapters/adapters.fields.ts";
@@ -91,63 +90,86 @@ export default function EditDialog(props: {
       open={props.presenter.editing()}
       onClose={props.presenter.closeEdit}
       title={`Edit ${props.adapter.name}`}
-      description="Renaming keeps states, normalizers, and saved queries. A new host or database takes a new init state."
+      description="A new name keeps everything. A new host or database takes a new init state."
       size="lg"
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.save(input)}>
-        <Field of={form} path={["name"]}>
-          {(field) => (
-            <label class="grid content-start gap-1.5 text-base">
-              <FieldLabel required={true}>Name</FieldLabel>
-              <Input
-                {...field.props}
-                required
-                maxlength="80"
-                value={field.input}
-                variant={field.errors ? "error" : "default"}
-                aria-invalid={field.errors ? "true" : undefined}
-              />
-              <FieldError message={field.errors?.[0]} />
-            </label>
-          )}
-        </Field>
-        <Show when={props.adapter.kind === "database"}>
-          <Field of={form} path={["excluded_tables"]}>
+        {/* Two columns throughout: the dialog used to stack every field and put Save below a
+            scroll. What belongs together sits side by side, and the whole form is one screen. */}
+        <div class="grid gap-3 sm:grid-cols-2">
+          <Field of={form} path={["name"]}>
             {(field) => (
               <label class="grid content-start gap-1.5 text-base">
-                <FieldLabel required={false}>Excluded tables</FieldLabel>
-                <InputArea
+                <FieldLabel required={true}>Name</FieldLabel>
+                <Input
                   {...field.props}
-                  rows="2"
-                  placeholder="audit_log, sessions"
+                  required
+                  maxlength="80"
                   value={field.input}
                   variant={field.errors ? "error" : "default"}
                   aria-invalid={field.errors ? "true" : undefined}
                 />
-                <Hint>Comma separated. Migration tables are excluded by default.</Hint>
                 <FieldError message={field.errors?.[0]} />
               </label>
             )}
           </Field>
-          <Show when={props.adapter.engine === "postgres"}>
-            <Field of={form} path={["schemas"]}>
+          <Show when={props.adapter.kind === "database"}>
+            <Field of={form} path={["lock_timeout_ms"]}>
               {(field) => (
                 <label class="grid content-start gap-1.5 text-base">
-                  <FieldLabel required={false}>Schemas</FieldLabel>
+                  <FieldLabel required={false}>Lock timeout</FieldLabel>
                   <Input
                     {...field.props}
-                    placeholder="public"
+                    type="number"
+                    min="1000"
+                    max="600000"
                     value={field.input}
                     variant={field.errors ? "error" : "default"}
                     aria-invalid={field.errors ? "true" : undefined}
                   />
-                  <Hint>Comma separated. Empty means every schema that is not the system's.</Hint>
+                  <Hint>Milliseconds a restore waits for a table lock.</Hint>
                   <FieldError message={field.errors?.[0]} />
                 </label>
               )}
             </Field>
           </Show>
+        </div>
+        <Show when={props.adapter.kind === "database"}>
           <div class="grid gap-3 sm:grid-cols-2">
+            <Field of={form} path={["excluded_tables"]}>
+              {(field) => (
+                <label class="grid content-start gap-1.5 text-base">
+                  <FieldLabel required={false}>Excluded tables</FieldLabel>
+                  <Input
+                    {...field.props}
+                    placeholder="audit_log, sessions"
+                    value={field.input}
+                    variant={field.errors ? "error" : "default"}
+                    aria-invalid={field.errors ? "true" : undefined}
+                  />
+                  <Hint>Comma separated. Migration tables are always excluded.</Hint>
+                  <FieldError message={field.errors?.[0]} />
+                </label>
+              )}
+            </Field>
+            <Show when={props.adapter.engine === "postgres"}>
+              <Field of={form} path={["schemas"]}>
+                {(field) => (
+                  <label class="grid content-start gap-1.5 text-base">
+                    <FieldLabel required={false}>Schemas</FieldLabel>
+                    <Input
+                      {...field.props}
+                      placeholder="public"
+                      value={field.input}
+                      variant={field.errors ? "error" : "default"}
+                      aria-invalid={field.errors ? "true" : undefined}
+                    />
+                    <Hint>Comma separated. Empty means every schema but the system's.</Hint>
+                    <FieldError message={field.errors?.[0]} />
+                  </label>
+                )}
+              </Field>
+            </Show>
             {/* A choice with one option is not a choice: the select appears once a second mode is
                 offered (see RESTORE_OPTIONS); until then the form keeps the value it was given. */}
             <Show when={RESTORE_OPTIONS.length > 1}>
@@ -165,24 +187,6 @@ export default function EditDialog(props: {
                 )}
               </Field>
             </Show>
-            <Field of={form} path={["lock_timeout_ms"]}>
-              {(field) => (
-                <label class="grid content-start gap-1.5 text-base">
-                  <FieldLabel required={false}>Lock timeout</FieldLabel>
-                  <Input
-                    {...field.props}
-                    type="number"
-                    min="1000"
-                    max="600000"
-                    value={field.input}
-                    variant={field.errors ? "error" : "default"}
-                    aria-invalid={field.errors ? "true" : undefined}
-                  />
-                  <Hint>Milliseconds a restore waits for a table lock before it gives up.</Hint>
-                  <FieldError message={field.errors?.[0]} />
-                </label>
-              )}
-            </Field>
           </div>
         </Show>
         <div class="grid gap-3 sm:grid-cols-2">
@@ -195,18 +199,16 @@ export default function EditDialog(props: {
             prefix="secret"
             hint="Blank keeps the one on record."
           />
-        </div>
-        <Show when={props.adapter.kind === "database"}>
-          <div class="grid gap-3 sm:grid-cols-2">
+          <Show when={props.adapter.kind === "database"}>
             <Fields
               presenter={props.presenter}
               fields={engineForm().secrets}
               prefix="readonly"
               labelPrefix="Read-only"
-              hint="Optional. A second credential, used for read-only sessions only."
+              hint="For read-only sessions. Blank keeps the one on record."
             />
-          </div>
-        </Show>
+          </Show>
+        </div>
         <Banner variant="secondary">
           Testate seals secrets before storage. It never shows them again.
         </Banner>

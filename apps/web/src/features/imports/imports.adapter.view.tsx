@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
-import { Errored, For, Loading, Show, createSignal, untrack } from "solid-js";
+import { Errored, For, Loading, Show, untrack } from "solid-js";
 
-import AdapterCrumb from "@/features/adapter/adapter.crumb.view.tsx";
+import AdapterBreadcrumbs from "@/features/adapter/adapter.crumb.view.tsx";
 import Banner from "@/components/banner.tsx";
 import Pending from "@/components/pending.tsx";
 import Button from "@/components/button.tsx";
@@ -24,10 +24,8 @@ import ColumnPanel from "./imports.normalizer.panel.tsx";
 import { createImportPresenter } from "./imports.adapter.presenter.ts";
 import type { ImportPresenter } from "./imports.adapter.presenter.ts";
 
-/** Drop a file, or name one that already sits in a file store. */
+/** The file to import. */
 function SourceRow(props: { presenter: ImportPresenter }): JSX.Element {
-  const [storeId, setStoreId] = createSignal("");
-  const [path, setPath] = createSignal("");
   return (
     <div class="grid gap-3">
       <label class="grid content-start gap-1.5 text-base">
@@ -44,40 +42,6 @@ function SourceRow(props: { presenter: ImportPresenter }): JSX.Element {
           }}
         />
       </label>
-      <Show when={props.presenter.storages.value().length > 0}>
-        <details class="text-sm text-muted">
-          <summary class="cursor-pointer">Or take one from a file store</summary>
-          <div class="mt-2 grid gap-3 sm:grid-cols-[1fr_2fr_auto] sm:items-end">
-            <label class="grid gap-1.5">
-              <span>File store</span>
-              <Select
-                options={[
-                  { value: "", label: "choose a store" },
-                  ...props.presenter.storages.value().map((s) => ({ value: s.id, label: s.name })),
-                ]}
-                value={storeId()}
-                onChange={(id) => setStoreId(id)}
-              />
-            </label>
-            <label class="grid gap-1.5">
-              <span>Path</span>
-              <Input
-                placeholder="imports/customers.csv"
-                value={path()}
-                onInput={(event) => setPath(event.currentTarget.value)}
-              />
-            </label>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={storeId() === "" || path().trim() === "" || props.presenter.busy()}
-              onClick={() => void props.presenter.useStorage(storeId(), path().trim())}
-            >
-              Load
-            </Button>
-          </div>
-        </details>
-      </Show>
     </div>
   );
 }
@@ -153,14 +117,15 @@ export default function AdapterImportsView(props: { slug: string; id: string }):
     importBlockedReason(presenter.draft(), presenter.preview() !== null, presenter.report());
   return (
     <section class="grid gap-4">
+      <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf="import a file" />
       <div class="grid gap-1.5">
         <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-heading">
           <Icon name="upload" class="h-4 w-4 text-muted" />
-          <AdapterCrumb slug={props.slug} id={props.id} /> / import a file
+          Import a file
         </h2>
         <p class="max-w-prose text-sm text-muted">
-          A CSV or an Excel file into one table of this database. A real run stashes the adapter
-          first, so a bad file stays reversible.
+          A CSV or an Excel file into one table. Testate stashes the database first, so the import
+          can be undone.
         </p>
       </div>
       <Errored fallback={(error) => <Banner variant="error">{String(error())}</Banner>}>

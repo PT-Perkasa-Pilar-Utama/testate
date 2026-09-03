@@ -160,37 +160,6 @@ test.describe("qa gap stories", () => {
     await page.getByRole("switch", { name: "Write mode" }).click();
     expect(issues).toStrictEqual([]);
   });
-  test("@story-51 an import reads its file straight from a file store", async ({ page }) => {
-    test.setTimeout(120_000);
-    const issues: Issue[] = [];
-    watch(page, issues);
-    const storage = await demoAdapter({ kind: "storage" });
-    const postgres = await demoAdapter({ engine: "postgres" });
-    const table = await tableNamed(postgres.id, "customers");
-    // Importing belongs to the database it writes into, so the screen hangs off that adapter now
-    // and no longer opens as a wizard over the project.
-    await page.goto(`/projects/demo/adapters/${postgres.id}/imports`);
-    await settle(page);
-    await page.getByText("Or take one from a file store").click();
-    await page.getByLabel("File store").selectOption({ label: storage.name });
-    await page.getByLabel("Path").fill("imports/customers.csv");
-    await page.getByRole("button", { name: "Load" }).click();
-    // The story is the source, not the write: the file store answered and the file parsed into
-    // columns a normalizer can be built on. What an import then does to a table is story 50's.
-    await expect(page.getByRole("columnheader", { name: "email" })).toBeVisible({
-      timeout: 60_000,
-    });
-    await expect(page.getByText("The first rows of the file.")).toBeVisible();
-    // Anchored, not exact: the select is inside its label, so its accessible name is the label
-    // plus every option under it ("Tablechoose a table..."). A bare "Table" also matches the
-    // "What happens" select, whose options talk about adding rows to the table.
-    await page.getByLabel(/^Table/).selectOption(table);
-    // Import itself stays shut until the check answers; the file store's part is done when the
-    // screen can run that check.
-    await expect(page.getByRole("button", { name: "Check the file" })).toBeEnabled();
-    await expect(page.getByRole("button", { name: "Import", exact: true })).toBeDisabled();
-    expect(issues).toStrictEqual([]);
-  });
   test("@story-140 the grid lists foreign keys and an FK cell links to the referenced row", async ({
     page,
   }) => {
