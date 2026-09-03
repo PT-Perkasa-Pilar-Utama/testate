@@ -62,6 +62,9 @@ function FieldInput(props: {
           value={props.presenter.values()[key()] ?? ""}
           onInput={(event) => props.presenter.setValue(key(), event.currentTarget.value)}
         />
+        <Show when={props.field.hint}>
+          {(text) => <span class="text-xs text-muted">{text()}</span>}
+        </Show>
         {/* Only under Host, and only what the API can actually reach from where it runs. The browser
           cannot work its own address out, and the address that matters is the server's anyway:
           the engine dials from there, not from this tab. */}

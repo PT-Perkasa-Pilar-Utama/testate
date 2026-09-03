@@ -227,9 +227,7 @@ export default function JobsView(): JSX.Element {
               </SortColumn>
               <Head>Progress</Head>
               <Head>Error</Head>
-              <SortColumn view={presenter.table} column="actor">
-                By
-              </SortColumn>
+              <Head>By</Head>
               <SortColumn view={presenter.table} column="created_at">
                 Created
               </SortColumn>

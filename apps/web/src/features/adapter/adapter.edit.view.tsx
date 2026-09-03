@@ -59,7 +59,7 @@ function Fields(props: {
               props.presenter.setValue(`${props.prefix}.${field.key}`, event.currentTarget.value)
             }
           />
-          <Show when={props.hint}>{(text) => <Hint>{text()}</Hint>}</Show>
+          <Show when={props.hint ?? field.hint}>{(text) => <Hint>{text()}</Hint>}</Show>
         </label>
       )}
     </For>

@@ -16,6 +16,8 @@ export type Field = {
   type: FieldType;
   required?: boolean;
   placeholder?: string;
+  /** One sentence under the field, for a rule an example cannot carry. */
+  hint?: string;
 };
 
 export type EngineForm = { kind: AdapterKind; label: string; config: Field[]; secrets: Field[] };
@@ -67,7 +69,8 @@ export const ENGINE_FORMS = {
         // B2, Wasabi, Ceph. Leave it empty for Amazon's own S3.
         label: "Endpoint",
         type: "url",
-        placeholder: "empty for Amazon S3, else https://<account>.r2.cloudflarestorage.com",
+        placeholder: "https://s3.example.internal:9000",
+        hint: "Leave empty for Amazon S3. Every other store needs its address.",
       },
       {
         key: "virtual_hosted",

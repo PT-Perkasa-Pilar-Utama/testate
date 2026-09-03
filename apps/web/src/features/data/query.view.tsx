@@ -171,15 +171,18 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
                 <RowCapField presenter={presenter} />
               </div>
               <div class="flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => void presenter.exportAs("csv")}
-                >
-                  <Icon name="download" class="h-3.5 w-3.5" />
-                  Export CSV
-                </Button>
+                {/* Documents nest; a CSV of them would flatten what the answer is. JSON only. */}
+                <Show when={!presenter.isMongo()}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => void presenter.exportAs("csv")}
+                  >
+                    <Icon name="download" class="h-3.5 w-3.5" />
+                    Export CSV
+                  </Button>
+                </Show>
                 <Button
                   type="button"
                   size="sm"

@@ -24,7 +24,9 @@ export default function Meter(props: MeterProps): JSX.Element {
     <div class="flex w-full flex-col gap-1">
       <Show when={props.label !== undefined || props.detail !== undefined}>
         <div class="flex items-center justify-between gap-2 text-xs text-muted">
-          <span>{props.label}</span>
+          <span class="min-w-0 truncate" title={props.label}>
+            {props.label}
+          </span>
           <span class="tabular-nums">{props.detail}</span>
         </div>
       </Show>
