@@ -37,21 +37,27 @@ function RowActions(props: { presenter: GridPresenter; row: JsonObject }): JSX.E
             Edit
           </Button>
         </Show>
-        <Show when={canFixture() || canWrite()}>
+        {/* Out front, not in the overflow: a fixture is what a tester takes from a row most,
+            after an edit, and a menu hid it well enough that nobody found it. */}
+        <Show when={canFixture()}>
+          <Button
+            size="sm"
+            variant="outline"
+            title="Extract this row and its related rows as a fixture"
+            onClick={() =>
+              void props.presenter.editing.fixtureFor(row(), {
+                depth: 2,
+                direction: "parents",
+                format: "sql",
+              })
+            }
+          >
+            <Icon name="file-down" class="h-3 w-3" />
+            Fixture
+          </Button>
+        </Show>
+        <Show when={canWrite()}>
           <Menu label="Row actions">
-            <Show when={canFixture()}>
-              <MenuItem
-                onClick={() =>
-                  void props.presenter.editing.fixtureFor(row(), {
-                    depth: 2,
-                    direction: "parents",
-                    format: "sql",
-                  })
-                }
-              >
-                Extract fixture
-              </MenuItem>
-            </Show>
             <Show when={canWrite()}>
               <MenuItem danger onClick={() => void props.presenter.editing.remove(row())}>
                 Delete row

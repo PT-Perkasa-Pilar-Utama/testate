@@ -127,7 +127,7 @@ test.describe("qa stories", () => {
     await expect(mine).toHaveCount(before + 2);
     const row = page.locator("main tbody tr", { hasText: uuidV7 }).first();
     // Fixture and Delete moved into the row's overflow menu; Edit is the only action left plain.
-    await (await rowMenu(row)).getByRole("button", { name: "Extract fixture" }).click();
+    await row.getByRole("button", { name: "Fixture" }).click();
     await expect(page.locator("dialog[open]").getByText(/INSERT INTO/)).toBeVisible();
     await page.locator("dialog[open]").getByText("Close", { exact: true }).click();
     // Wait for each delete to land before clicking the next: the grid reloads between them.
@@ -199,7 +199,7 @@ test.describe("viewer stories", () => {
     // Fixture extraction lives in the row's overflow menu now; a viewer still has it, unlike write mode.
     const row = dataRows(page).first();
     await rowMenu(row);
-    await expect(row.getByRole("button", { name: "Extract fixture" })).toBeVisible();
+    await expect(row.getByRole("button", { name: "Fixture" })).toBeVisible();
   });
 });
 
