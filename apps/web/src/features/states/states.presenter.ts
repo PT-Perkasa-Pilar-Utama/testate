@@ -40,6 +40,8 @@ export type StatesPresenter = Paged<StateListItem> & {
   openDetail: (state: State) => Promise<void>;
   /** The same dialog from a tree node, which carries an id and not the whole state. */
   openDetailById: (id: string) => Promise<void>;
+  /** The whole state behind a tree node: from the loaded list when it is there, else fetched. */
+  byId: (id: string) => Promise<State>;
   close: () => void;
   take: (input: StateDraftInput) => Promise<void>;
   save: (input: StateDraftInput) => Promise<void>;
@@ -249,6 +251,10 @@ export function createStatesPresenter(
     },
     openDetail: (state) => openById(state.id),
     openDetailById: (id) => openById(id),
+    byId: (id) => {
+      const loaded = states.value().find((state) => state.id === id);
+      return loaded === undefined ? statesModel.get(slug(), id) : Promise.resolve(loaded);
+    },
     close,
     take: (input) => {
       const staticSlug = slug();
