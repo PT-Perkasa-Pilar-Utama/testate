@@ -39,11 +39,32 @@ function AdapterRow(props: { adapter: PreflightAdapter; force: boolean }): JSX.E
           <p class="text-muted text-sm">{preview()}</p>
         </Show>
       </Cell>
-      <Cell>
-        {strategyLine(props.adapter)}
-        <p class="text-muted text-sm">{props.adapter.locking_notice}</p>
-      </Cell>
     </Row>
+  );
+}
+
+/**
+ * How each database is put back, folded away. Stories 82 and 84 promise the strategy and the
+ * locking behaviour before the confirm; most checkouts do not need them read, so they open on
+ * request instead of taking a column of the table.
+ */
+function Strategies(props: { adapters: PreflightAdapter[] }): JSX.Element {
+  return (
+    <details class="rounded-lg ring ring-line">
+      <summary class="cursor-pointer px-3 py-2 text-sm text-muted">
+        How each database is restored
+      </summary>
+      <ul class="grid gap-2 px-3 pb-3 text-sm">
+        <For each={props.adapters}>
+          {(adapter) => (
+            <li>
+              <span class="font-medium">{adapter.name}</span>: {strategyLine(adapter)}
+              <p class="text-muted">{adapter.locking_notice}</p>
+            </li>
+          )}
+        </For>
+      </ul>
+    </details>
   );
 }
 
@@ -58,7 +79,7 @@ export default function PreflightDialog(props: { presenter: PreflightPresenter }
       onClose={props.presenter.close}
       title={`Check out ${props.presenter.target()?.name ?? ""}`}
       description="Testate restores every included database to this state's data."
-      size="xl"
+      size="lg"
     >
       <form class="grid gap-4" onSubmit={onSubmit}>
         <Show when={props.presenter.preflight()} fallback={<p>Checking schemas...</p>}>
@@ -74,7 +95,6 @@ export default function PreflightDialog(props: { presenter: PreflightPresenter }
                   <tr>
                     <Head>Database</Head>
                     <Head>Schema</Head>
-                    <Head>Restore</Head>
                   </tr>
                 </thead>
                 <tbody>
@@ -83,6 +103,7 @@ export default function PreflightDialog(props: { presenter: PreflightPresenter }
                   </For>
                 </tbody>
               </Table>
+              <Strategies adapters={preflight().adapters} />
             </>
           )}
         </Show>

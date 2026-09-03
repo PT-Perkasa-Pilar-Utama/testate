@@ -98,6 +98,8 @@ test.describe("state stories", () => {
     await row.getByRole("button", { name: "Check out" }).click();
     const dialog = page.locator("dialog[open]");
     await expect(dialog.getByText("schema matches").first()).toBeVisible({ timeout: 30_000 });
+    // Folded away by default (story 84 promises it before the confirm, not in the way of it).
+    await dialog.getByText("How each database is restored").click();
     await expect(dialog.getByText(/atomic/).first()).toBeVisible();
     await expect(dialog.getByText("A stash state is taken first")).toBeVisible();
     await dialog.getByRole("button", { name: "Check out" }).click();
