@@ -6,13 +6,14 @@ import Button from "./button.tsx";
 // Size strings for the native <dialog>; it is never conditionally rendered.
 /**
  * Three widths, chosen by what the dialog holds, never per screen: `base` for a question and its
- * two buttons, `lg` for a form, `xl` for something to read (a report, a preview, a row). `sm` is
+ * two buttons, `lg` for a form (wide enough for two columns of labelled fields), `xl` for
+ * something to read (a report, a preview, a row). `sm` is
  * for nothing yet.
  */
 const SIZES = {
   sm: "sm:w-80",
   base: "sm:w-[26rem]",
-  lg: "sm:w-[32rem]",
+  lg: "sm:w-[40rem]",
   xl: "sm:w-[48rem]",
 } as const;
 
