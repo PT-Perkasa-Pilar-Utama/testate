@@ -86,6 +86,8 @@ test.describe("admin gap stories", () => {
     await page.getByRole("button", { name: "Create", exact: true }).click();
     await page.getByRole("link", { name: `Gone ${STAMP}` }).click();
     await settle(page);
+    // Edit and Delete sit behind the project's gear now, beside Take state.
+    await page.getByRole("button", { name: "Project settings" }).click();
     await page.getByRole("button", { name: "Edit" }).click();
     // The quota is a ladder now: step 1 is 1 GiB, step 0 leaves the project on the instance default.
     await page.locator("dialog[open]").getByLabel("Snapshot quota").fill("1");
@@ -97,6 +99,7 @@ test.describe("admin gap stories", () => {
       "aria-valuemax",
       "1073741824"
     );
+    await page.getByRole("button", { name: "Project settings" }).click();
     await page.getByRole("button", { name: "Delete" }).click();
     const plan = page.locator("dialog[open]");
     // The modal says what goes before it takes the slug: the restore, what the delete takes with

@@ -6,6 +6,7 @@ import Pending from "@/components/pending.tsx";
 import Breadcrumbs from "@/components/breadcrumbs.tsx";
 import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
+import { Menu, MenuItem } from "@/components/menu.tsx";
 import Meter from "@/components/meter.tsx";
 import Tabs from "@/components/tabs.tsx";
 import { hasRole } from "@/lib/session.ts";
@@ -80,15 +81,17 @@ function ProjectHeader(props: {
               Take state
             </Button>
           </Show>
+          {/* Settings behind a gear: Edit and Delete are rare, and beside the product's verb they
+              read as three equals. */}
           <Show when={hasRole("qa")}>
-            <Button size="sm" variant="secondary" onClick={() => props.presenter.openEdit()}>
-              Edit
-            </Button>
-          </Show>
-          <Show when={hasRole("admin")}>
-            <Button size="sm" variant="outline" onClick={() => void props.presenter.openDelete()}>
-              Delete
-            </Button>
+            <Menu label="Project settings" trigger={<Icon name="settings" class="h-4 w-4" />}>
+              <MenuItem onClick={() => props.presenter.openEdit()}>Edit</MenuItem>
+              <Show when={hasRole("admin")}>
+                <MenuItem danger onClick={() => void props.presenter.openDelete()}>
+                  Delete
+                </MenuItem>
+              </Show>
+            </Menu>
           </Show>
         </div>
       </div>
