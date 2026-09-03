@@ -227,6 +227,20 @@ describe.skipIf(!(await reachable()))("mongodb engine (contract)", () => {
       cursor: cursorOf(page),
     });
     expect(next.rows.map((row) => decodeRow(row)["_id"])).toEqual([{ $numberInt: "1" }]);
+    // Typed by what the text reads as: the grid shows these three as plain text.
+    const typed = async (column: string, value: string): Promise<number> =>
+      (
+        await engine.pageRows(conn, {
+          table: { schema: null, name: "customers" },
+          limit: 10,
+          order: "asc",
+          filters: [{ column, op: "eq", value }],
+        })
+      ).rows.length;
+    expect(await typed("_id", "65f000000000000000000001")).toBe(1);
+    expect(await typed("big", "9007199254740993")).toBe(1);
+    expect(await typed("joined", "1970-01-01T00:00:00.000Z")).toBe(1);
+    expect(await typed("email", "a@x.io")).toBe(1);
     const opts = {
       mode: "read" as const,
       rowCap: 2,

@@ -1,3 +1,4 @@
+import { BSON } from "mongodb";
 import type { Document, Filter, Sort } from "mongodb";
 import { mongoOperationSchema } from "@testate/shared";
 import type { JsonObject, JsonValue } from "@testate/shared";
@@ -166,30 +167,47 @@ export async function cancelQuery(handle: MongoHandle, queryId: string): Promise
   await handle.db.admin().command({ killOp: 1, op: target.opid });
 }
 
-/** Grid filters arrive as text; numbers and booleans compare as such, everything else as a string. */
-function coerce(text: string): JsonValue {
-  if (/^-?\d+(\.\d+)?$/.test(text)) return Number(text);
-  if (text === "true" || text === "false") return text === "true";
-  return text;
+type BsonValue = JsonValue | BSON.ObjectId | BSON.Long | Date;
+
+/**
+ * Grid filters arrive as text, and the grid shows an ObjectId, a Long, and a Date as plain text,
+ * so a person types back what they see. Every form the text can mean is matched, the typed one
+ * first: a string never equals an ObjectId in a Mongo comparison.
+ */
+function forms(text: string): BsonValue[] {
+  if (/^[0-9a-f]{24}$/i.test(text)) return [new BSON.ObjectId(text), text];
+  if (/^-?\d+$/.test(text) && !Number.isSafeInteger(Number(text)))
+    return [BSON.Long.fromString(text), text];
+  if (/^-?\d+(\.\d+)?$/.test(text)) return [Number(text)];
+  if (text === "true" || text === "false") return [text === "true"];
+  if (/^\d{4}-\d{2}-\d{2}(T[\d:.]+Z?)?$/.test(text) && !Number.isNaN(Date.parse(text)))
+    return [new Date(text), text];
+  return [text];
 }
 
-const COMPARISONS = { ne: "$ne", lt: "$lt", le: "$lte", gt: "$gt", ge: "$gte" } as const;
+function anyOf(column: string, values: BsonValue[], negated: boolean): Document {
+  if (values.length === 1 && !negated) return { [column]: values[0] };
+  return { [column]: { [negated ? "$nin" : "$in"]: values } };
+}
+
+const COMPARISONS = { lt: "$lt", le: "$lte", gt: "$gt", ge: "$gte" } as const;
 
 function filterOf(filter: RowFilter): Document {
-  const value: JsonValue = coerce(filter.value);
   switch (filter.op) {
     case "eq":
-      return { [filter.column]: value };
+      return anyOf(filter.column, forms(filter.value), false);
+    case "ne":
+      return anyOf(filter.column, forms(filter.value), true);
     case "like":
       return { [filter.column]: { $regex: filter.value.replaceAll("%", ".*"), $options: "i" } };
     case "in":
-      return { [filter.column]: { $in: filter.value.split(",").map(coerce) } };
+      return anyOf(filter.column, filter.value.split(",").flatMap(forms), false);
     case "null":
       return { [filter.column]: null };
     case "notnull":
       return { [filter.column]: { $ne: null } };
     default:
-      return { [filter.column]: { [COMPARISONS[filter.op]]: value } };
+      return { [filter.column]: { [COMPARISONS[filter.op]]: forms(filter.value)[0] } };
   }
 }
 

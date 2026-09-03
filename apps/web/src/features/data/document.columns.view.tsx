@@ -38,7 +38,10 @@ export function Column(props: {
   );
 }
 
-/** A row in a column: what it is called, and a chevron when it opens the next column. */
+/**
+ * A row in a column: what it is called, and a chevron when it opens the next column. A row that
+ * opens nothing is plain text, so a key or a value can be selected and copied.
+ */
 export function Item(props: {
   label: string;
   selected: boolean;
@@ -49,26 +52,41 @@ export function Item(props: {
   detail?: JSX.Element;
 }): JSX.Element {
   return (
-    <button
-      type="button"
-      class={[
-        "flex w-full items-center gap-2 border-l-2 px-3 py-1.5 text-left text-sm hover:bg-fill",
-        props.selected
-          ? "border-accent bg-accent/15 font-medium text-heading"
-          : "border-transparent text-body",
-        props.mono === true ? "font-mono" : "",
-      ]}
-      aria-current={props.selected ? "true" : undefined}
-      onClick={() => props.onClick()}
+    <Show
+      when={props.opens}
+      fallback={
+        <div
+          class={[
+            "flex w-full items-center gap-2 border-l-2 border-transparent px-3 py-1.5 text-sm select-text",
+            props.mono === true ? "font-mono" : "",
+          ]}
+        >
+          <span class="min-w-0 flex-1 break-all">
+            {props.label}
+            {props.detail}
+          </span>
+        </div>
+      }
     >
-      <span class="min-w-0 flex-1 truncate">
-        {props.label}
-        {props.detail}
-      </span>
-      <Show when={props.opens}>
+      <button
+        type="button"
+        class={[
+          "flex w-full items-center gap-2 border-l-2 px-3 py-1.5 text-left text-sm hover:bg-fill",
+          props.selected
+            ? "border-accent bg-accent/15 font-medium text-heading"
+            : "border-transparent text-body",
+          props.mono === true ? "font-mono" : "",
+        ]}
+        aria-current={props.selected ? "true" : undefined}
+        onClick={() => props.onClick()}
+      >
+        <span class="min-w-0 flex-1 truncate">
+          {props.label}
+          {props.detail}
+        </span>
         <Icon name="chevron-right" class="h-3.5 w-3.5 shrink-0 text-muted" />
-      </Show>
-    </button>
+      </button>
+    </Show>
   );
 }
 
