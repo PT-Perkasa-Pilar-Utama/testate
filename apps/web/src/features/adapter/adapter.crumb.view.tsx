@@ -1,7 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { For, Loading, Show, createSignal } from "solid-js";
 
-import BackLink from "@/components/back-link.tsx";
 import Breadcrumbs from "@/components/breadcrumbs.tsx";
 import Icon from "@/components/icon.tsx";
 import { Menu, MenuLink } from "@/components/menu.tsx";
@@ -90,8 +89,6 @@ export default function AdapterBreadcrumbs(props: {
   id: string;
   /** The current screen. Absent on the adapter page itself, where the adapter is the page. */
   leaf?: JSX.Element;
-  /** An arrow before the crumb, back to the adapter, for a screen with no title to carry it. */
-  back?: string | undefined;
 }): JSX.Element {
   const adapter = createRefreshable(async () => {
     const found = await adaptersModel.get(props.slug, props.id);
@@ -104,7 +101,6 @@ export default function AdapterBreadcrumbs(props: {
   );
   return (
     <span class="flex items-center gap-1">
-      <Show when={props.back}>{(label) => <BackLink to={base()} label={label()} />}</Show>
       <Breadcrumbs
         items={[
           { label: "Projects", href: "/projects" },

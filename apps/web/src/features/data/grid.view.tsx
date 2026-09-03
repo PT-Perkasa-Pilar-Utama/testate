@@ -7,6 +7,7 @@ import Pending from "@/components/pending.tsx";
 import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
 import { Menu, MenuItem } from "@/components/menu.tsx";
+import BackLink from "@/components/back-link.tsx";
 import { navigate } from "@/lib/router.ts";
 import { Cell, EmptyRow, Head, Row, Table, TableToolbar } from "@/components/table.tsx";
 import FixtureDialog from "./fixture.view.tsx";
@@ -77,6 +78,8 @@ export default function GridView(props: { slug: string; id: string; table: strin
     () => props.id,
     () => props.table
   );
+  const adapterPath = (): string =>
+    `/projects/${encodeURIComponent(props.slug)}/adapters/${encodeURIComponent(props.id)}`;
   /** The open table as a one-item list, so `<For>` can key the row form on it. */
   const openTable = (): TableSchema[] => {
     const found = presenter.table();
@@ -84,13 +87,21 @@ export default function GridView(props: { slug: string; id: string; table: strin
   };
   return (
     <section class="grid gap-4">
-      <AdapterBreadcrumbs
-        slug={props.slug}
-        id={props.id}
-        leaf={props.table}
-        back="Back to the database"
-      />
+      <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf={props.table} />
       <Loading fallback={<Pending>Loading rows...</Pending>}>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-heading">
+            <BackLink to={adapterPath()} label="Back to the database" />
+            <Icon
+              name={presenter.adapter.value().tier === "document" ? "folder" : "table"}
+              class="h-4 w-4 text-muted"
+            />
+            <code>{props.table}</code>
+          </h2>
+          <Show when={presenter.adapter.value().tier !== "document"}>
+            <ForeignKeys presenter={presenter} />
+          </Show>
+        </div>
         <Show
           when={presenter.adapter.value().tier !== "document"}
           fallback={
@@ -100,20 +111,11 @@ export default function GridView(props: { slug: string; id: string; table: strin
               id={props.id}
               table={props.table}
               onCollection={(name) =>
-                navigate(
-                  `/projects/${encodeURIComponent(props.slug)}/adapters/${encodeURIComponent(props.id)}/tables/${encodeURIComponent(name)}`
-                )
+                navigate(`${adapterPath()}/tables/${encodeURIComponent(name)}`)
               }
             />
           }
         >
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-heading">
-              <Icon name="table" class="h-4 w-4 text-muted" />
-              <code>{props.table}</code>
-            </h2>
-            <ForeignKeys presenter={presenter} />
-          </div>
           <GridTable presenter={presenter} openTable={openTable} />
         </Show>
       </Loading>
@@ -160,12 +162,12 @@ function GridTable(props: {
                     class="cursor-pointer font-medium hover:underline"
                     onClick={() => props.presenter.toggleSort(column.name)}
                   >
-                    {column.name}
+                    <span class="font-semibold text-heading">{column.name}</span>
                     <Show when={props.presenter.sort() === column.name}>
                       {props.presenter.order() === "asc" ? " ↑" : " ↓"}
                     </Show>
                   </button>
-                  <span class="ml-1.5 text-[11px] text-muted">{column.type}</span>
+                  <span class="ml-1.5 text-[11px] font-normal text-inactive">{column.type}</span>
                 </Head>
               )}
             </For>

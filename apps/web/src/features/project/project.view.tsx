@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { Loading, Match, Show, Switch } from "solid-js";
+import { Loading, Match, Show, Switch, createSignal } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
 import Pending from "@/components/pending.tsx";
@@ -55,6 +55,13 @@ function ProjectHeader(props: {
   states: StatesPresenter;
 }): JSX.Element {
   const project = () => props.presenter.overview.value().project;
+  // The shutter: a flash over the button for the length of one blink, then the dialog.
+  const [snapping, setSnapping] = createSignal(false);
+  const snap = (): void => {
+    setSnapping(true);
+    setTimeout(() => setSnapping(false), 450);
+    props.states.openTake();
+  };
   const banner = () => props.presenter.overview.value().banner;
   const badge = () => headBadge(project().head);
   return (
@@ -76,9 +83,9 @@ function ProjectHeader(props: {
           {/* The product's own verb, on every tab: a state is of the project, not of a tab. It
               waits for a database to exist, since there is nothing to take before one. */}
           <Show when={hasRole("qa") && props.states.databases.value().length > 0}>
-            <span class="orbit">
-              <Button size="lg" variant="accent" onClick={() => props.states.openTake()}>
-                <Icon name="camera" class="h-5 w-5" />
+            <span class={["orbit", snapping() ? "shutter" : ""]}>
+              <Button size="lg" variant="accent" onClick={() => snap()}>
+                <Icon name="camera" class="aim h-5 w-5" />
                 Take state
               </Button>
             </span>

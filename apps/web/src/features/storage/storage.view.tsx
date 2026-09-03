@@ -1,6 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { formatWhen } from "@/lib/format.ts";
 import AdapterBreadcrumbs from "@/features/adapter/adapter.crumb.view.tsx";
+import BackLink from "@/components/back-link.tsx";
 import { Errored, For, Loading, Show, createSignal } from "solid-js";
 import type { Entry } from "@testate/shared";
 
@@ -23,6 +24,7 @@ function PathBar(props: { presenter: StoragePresenter; slug: string; id: string 
   const atRoot = (): boolean => props.presenter.path() === "";
   return (
     <div class="flex flex-wrap items-center gap-1.5 text-base">
+      <BackLink to={`/projects/${props.slug}/adapters/${props.id}`} label="Back to the store" />
       <Button
         size="xs"
         variant="ghost"
@@ -210,7 +212,7 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
   return (
     <section class="grid gap-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf="files" back="Back to the store" />
+        <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf="files" />
         <PathBar presenter={presenter} slug={props.slug} id={props.id} />
         <div class="flex flex-wrap items-center gap-2">
           <TableSearch
