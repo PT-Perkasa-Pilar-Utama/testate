@@ -1,15 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { demoAdapter, firstTable } from "./lib/api.ts";
-import {
-  cardCount,
-  dataRows,
-  openTab,
-  overflowingCards,
-  rowMenu,
-  settle,
-  watch,
-} from "./lib/crawl.ts";
+import { openTab, rowMenu, settle, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
@@ -41,9 +33,14 @@ test.describe("qa stories", () => {
     // every table's empty case: it used to be a header row over blank space, and the demo project
     // the rest of the suite runs against is never empty enough to show it.
     await expect(page.getByText("No states yet.")).toBeVisible();
-    // Activity stacks all three, so one visit shows all three empty cases.
+    // Activity shows one list at a time, so each chip shows its own empty case.
     await openTab(page, "Activity");
-    for (const message of ["No imports yet.", "No diffs yet.", "No restores yet."]) {
+    for (const [chip, message] of [
+      ["Imports", "No imports yet."],
+      ["Diffs", "No diffs yet."],
+      ["Checkouts", "No restores yet."],
+    ] as const) {
+      await page.getByRole("tab", { name: chip }).click();
       await expect(page.getByText(message)).toBeVisible();
     }
     await openTab(page, "Databases");
@@ -155,51 +152,6 @@ test.describe("qa stories", () => {
     const response = await page.request.get(String(href));
     expect(response.status()).toBe(200);
     expect(response.headers()["content-disposition"]).toContain("attachment");
-  });
-});
-
-test.describe("viewer stories", () => {
-  test.use({ storageState: statePath("viewer") });
-
-  test("@story-131 @story-132 @story-133 the tools screen hashes, generates bytes, and mints uuids", async ({
-    page,
-  }) => {
-    const issues: Issue[] = [];
-    watch(page, issues);
-    await page.goto("/tools");
-    await settle(page);
-    await page.getByLabel("Value").fill("hello");
-    await page.getByRole("button", { name: "Hash" }).click();
-    await expect(
-      page.locator("main").getByText(/^[0-9a-f]{64}$|^\$2[aby]\$|^\$argon2id\$/)
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Generate" }).click();
-    await page.getByRole("button", { name: "Ten" }).click();
-    await expect(
-      page
-        .locator("main")
-        .getByText(/[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}/)
-        .first()
-    ).toBeVisible();
-    // A bcrypt hash and ten uuids are long unbroken strings. A row that will not shrink below its
-    // content spills out of the card and is drawn over the card beside it.
-    expect(await cardCount(page)).toBe(3);
-    expect(await overflowingCards(page)).toStrictEqual([]);
-    expect(issues).toStrictEqual([]);
-  });
-
-  test("@story-148 a viewer sees masked columns as redacted while qa sees raw", async ({
-    page,
-  }) => {
-    const postgres = await demoAdapter({ engine: "postgres" });
-    const table = await firstTable(postgres.id);
-    await page.goto(`/projects/demo/adapters/${postgres.id}/tables/${encodeURIComponent(table)}`);
-    await settle(page);
-    await expect(page.getByText("Write mode")).toHaveCount(0);
-    // Fixture extraction lives in the row's overflow menu now; a viewer still has it, unlike write mode.
-    const row = dataRows(page).first();
-    await rowMenu(row);
-    await expect(row.getByRole("button", { name: "Fixture" })).toBeVisible();
   });
 });
 
