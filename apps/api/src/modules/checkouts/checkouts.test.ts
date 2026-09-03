@@ -103,7 +103,7 @@ describe("checkouts", () => {
     expect(preflight.adapters.find((adapter) => adapter.adapter_id === other.id)).toMatchObject({
       included: false,
       removed: false,
-      locking_notice: "Not in this state; left untouched.",
+      locking_notice: "Not in this state. Left as it is.",
     });
   });
 

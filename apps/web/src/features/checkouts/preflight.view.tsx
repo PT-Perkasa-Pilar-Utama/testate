@@ -16,7 +16,7 @@ function AdapterRow(props: { adapter: PreflightAdapter; force: boolean }): JSX.E
   const preview = (): string => {
     const forced = props.adapter.force_preview;
     if (forced === undefined) return "";
-    return `${forced.skipped_tables.length} tables and ${forced.skipped_columns.length} columns skipped, ${forced.defaulted_columns.length} defaulted`;
+    return `Skips ${forced.skipped_tables.length} tables and ${forced.skipped_columns.length} columns. Fills ${forced.defaulted_columns.length} columns with defaults.`;
   };
   return (
     <Row>
@@ -52,7 +52,7 @@ function Strategies(props: { adapters: PreflightAdapter[] }): JSX.Element {
   return (
     <details class="rounded-lg ring ring-line">
       <summary class="cursor-pointer px-3 py-2 text-sm text-muted">
-        How each database is restored
+        Restore method per database
       </summary>
       <ul class="grid gap-2 px-3 pb-3 text-sm">
         <For each={props.adapters}>
@@ -87,7 +87,7 @@ export default function PreflightDialog(props: { presenter: PreflightPresenter }
             <>
               <Show when={preflight().stash_will_be_taken}>
                 <Banner variant="default">
-                  A stash state is taken first, so this checkout is reversible.
+                  A stash state is taken first. You can put the databases back.
                 </Banner>
               </Show>
               <Table>
@@ -119,15 +119,14 @@ export default function PreflightDialog(props: { presenter: PreflightPresenter }
           ]}
         >
           <Switch
-            label="Force: restore what both sides share"
+            label="Force past schema drift"
             checked={props.presenter.force()}
             disabled={props.presenter.busy()}
             onChange={(next) => void props.presenter.setForce(next)}
           />
           <p class="text-sm text-muted">
-            Force restores only the tables and columns that exist in both this state and the live
-            database. Anything on just one side is skipped and listed after the restore, never
-            restored or deleted.
+            Restores only the tables and columns that exist in both the state and the live database.
+            Skips the rest and lists them after the restore. Deletes nothing.
           </p>
         </div>
         <Show when={props.presenter.error()}>
@@ -135,9 +134,7 @@ export default function PreflightDialog(props: { presenter: PreflightPresenter }
         </Show>
         <div class="flex flex-wrap items-center justify-between gap-3">
           <Show when={!props.presenter.busy() && props.presenter.blocked()} fallback={<span />}>
-            <p class="text-sm text-warning-fg">
-              Schema drift is blocking this checkout. Turn on Force above to continue.
-            </p>
+            <p class="text-sm text-warning-fg">The schema drifted. Turn on Force to continue.</p>
           </Show>
           <div class="ml-auto flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => props.presenter.close()}>

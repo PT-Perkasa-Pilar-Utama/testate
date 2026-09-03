@@ -23,7 +23,7 @@ Checkout object:
 
 **Behavior.** Resolve the state; for each adapter in the state: probe, introspect, `diffSchema`, `selectRestoreStrategy`; include atomicity and locking notice; removed adapters reported `included: false, removed: true`.
 
-**Output.** `200 { "data": { "state": {...}, "stash_will_be_taken": true, "adapters": [ { "adapter_id", "name", "engine", "included": true, "removed": false, "drift": { "changed": true, "tables": { "added": [], "removed": [] }, "columns": { "added": [ { "table": "public.orders", "column": "channel" } ], "removed": [], "type_changed": [], "nullability_changed": [] } }, "strategy": {...}, "atomic": true, "locking_notice": "Restored tables take an exclusive lock for the duration.", "force_preview": { "skipped_tables": [], "skipped_columns": [], "defaulted_columns": [ { "table": "public.orders", "column": "channel" } ] } } ] } }`.
+**Output.** `200 { "data": { "state": {...}, "stash_will_be_taken": true, "adapters": [ { "adapter_id", "name", "engine", "included": true, "removed": false, "drift": { "changed": true, "tables": { "added": [], "removed": [] }, "columns": { "added": [ { "table": "public.orders", "column": "channel" } ], "removed": [], "type_changed": [], "nullability_changed": [] } }, "strategy": {...}, "atomic": true, "locking_notice": "Locks each table while it restores it.", "force_preview": { "skipped_tables": [], "skipped_columns": [], "defaulted_columns": [ { "table": "public.orders", "column": "channel" } ] } } ] } }`.
 
 **Errors.** `NOT_FOUND` (state), `VALIDATION_ERROR` (both or neither state fields), `ADAPTER_UNREACHABLE`. **Traceability.** Stories 77, 78, 79, 82, 84.
 
