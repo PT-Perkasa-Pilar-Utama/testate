@@ -27,7 +27,9 @@ export default function FixtureDialog(props: { presenter: EditingPresenter }): J
                 <Badge variant="secondary">masked: {fixture().masked_columns.join(", ")}</Badge>
               </Show>
             </div>
-            <pre class="max-h-96 overflow-auto rounded-lg bg-fill p-3 text-xs">
+            {/* Wrapped, not scrolled sideways: a fixture is read, and a statement a screen wide
+                was a scrollbar to drag to see the end of a row. */}
+            <pre class="max-h-96 overflow-y-auto rounded-lg bg-fill p-3 text-xs whitespace-pre-wrap break-all">
               {fixture().content}
             </pre>
             <DialogActions>

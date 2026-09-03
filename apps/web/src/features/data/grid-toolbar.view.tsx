@@ -136,22 +136,33 @@ export function WriteStrip(props: { presenter: GridPresenter }): JSX.Element {
               <span class="font-medium">Write mode is on.</span>{" "}
               <span class="text-muted">
                 {open().stash_state_id === null
-                  ? "The first change stashes this table, so every edit is reversible."
-                  : "This table was stashed before the first change, so every edit is reversible."}
+                  ? "Edits go to the live database. The first one stashes this table, so you can put it back."
+                  : "Edits go to the live database. It was stashed before the first one, so you can put it back."}
               </span>
             </span>
           </p>
           <div class="flex flex-wrap items-center gap-3">
-            <Switch
-              label={`Foreign-key checks (${open().fk_checks_mapping})`}
-              checked={open().foreign_key_checks}
-              onChange={(on) => void props.presenter.editing.setForeignKeyChecks(on)}
-            />
+            {/* The switch says which way it is, and the engine's own statement only when the
+                checks are off: that is the moment a person wants to know what was sent. */}
+            <div class="grid gap-0.5">
+              <Switch
+                label={
+                  open().foreign_key_checks ? "Foreign-key checks on" : "Foreign-key checks off"
+                }
+                checked={open().foreign_key_checks}
+                onChange={(on) => void props.presenter.editing.setForeignKeyChecks(on)}
+              />
+              <span class="text-xs text-muted">
+                {open().foreign_key_checks
+                  ? "Rows must reference rows that exist."
+                  : `Rows may be inserted in any order (${open().fk_checks_mapping}).`}
+              </span>
+            </div>
             <Button size="sm" variant="accent" onClick={() => props.presenter.editing.openInsert()}>
               <Icon name="plus" class="h-3.5 w-3.5" />
               Insert row
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => void props.presenter.editing.end()}>
+            <Button size="sm" variant="outline" onClick={() => void props.presenter.editing.end()}>
               End write mode
             </Button>
           </div>
