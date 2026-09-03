@@ -1,5 +1,5 @@
-import { documentId, fieldLines } from "./document.presenter.ts";
-import type { FieldLine } from "./document.presenter.ts";
+import { at, documentId, entriesOf, fitting } from "./document.presenter.ts";
+import type { Entry } from "./document.presenter.ts";
 import { describe, expect, test } from "bun:test";
 import type { TableSchema } from "@testate/shared";
 
@@ -25,9 +25,9 @@ const MONGO = {
   pipeline: "[]",
 };
 
-/** A field line as one string, indented by depth; a container has no text. */
-function shown(line: FieldLine): string {
-  return `${"  ".repeat(line.depth)}${line.key}: ${line.text ?? ""}`;
+/** A field as one string: its text, or its kind when it is a container. */
+function shown(field: Entry): string {
+  return `${field.key}: ${field.text ?? field.kind}`;
 }
 
 describe("data feature", () => {
@@ -44,24 +44,28 @@ describe("data feature", () => {
     expect(cellText({ a: 1 })).toBe('{"a":1}');
   });
 
-  test("a document flattens to key: value lines, nested fields indented, strings quoted", () => {
-    const lines = fieldLines({
+  test("a document lists one level of fields, and a path walks into nested ones", () => {
+    const document = {
       _id: { $oid: "65f000000000000000000001" },
       total: { $numberDouble: "20.5" },
       tags: ["x"],
       customer: { name: "Ann", active: false },
       note: null,
-    });
-    expect(lines.map(shown)).toStrictEqual([
-      '_id: "65f000000000000000000001"',
+    };
+    expect(entriesOf(document).map(shown)).toStrictEqual([
+      "_id: 65f000000000000000000001",
       "total: 20.5",
-      "tags: ",
-      '  0: "x"',
-      "customer: ",
-      '  name: "Ann"',
-      "  active: false",
+      "tags: array",
+      "customer: object",
       "note: NULL",
     ]);
+    expect(entriesOf(at(document, ["customer"])).map(shown)).toStrictEqual([
+      'name: "Ann"',
+      "active: false",
+    ]);
+    expect(entriesOf(at(document, ["tags"])).map(shown)).toStrictEqual(['0: "x"']);
+    expect(at(document, ["customer", "missing"])).toBeNull();
+    expect(fitting(document, ["customer", "missing", "deeper"])).toStrictEqual(["customer"]);
     expect(documentId({ _id: { $numberInt: "7" } })).toBe("7");
   });
 

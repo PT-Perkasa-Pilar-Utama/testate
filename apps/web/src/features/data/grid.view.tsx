@@ -10,7 +10,7 @@ import { Menu, MenuItem } from "@/components/menu.tsx";
 import { Cell, EmptyRow, Head, Row, Table, TableToolbar } from "@/components/table.tsx";
 import FixtureDialog from "./fixture.view.tsx";
 import { NUMERIC_TYPE, cellText, createGridPresenter } from "./grid.presenter.ts";
-import DocumentView from "./document.view.tsx";
+import DocumentBrowser from "./document.view.tsx";
 import { ExportLinks, FilterBar, Pager, WriteControls, WriteStrip } from "./grid-toolbar.view.tsx";
 import type { GridPresenter } from "./grid.presenter.ts";
 import { FkCell, ForeignKeys } from "./grid-cells.view.tsx";
@@ -78,18 +78,25 @@ export default function GridView(props: { slug: string; id: string; table: strin
   return (
     <section class="grid gap-4">
       <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf={props.table} />
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-heading">
-          <Icon name="table" class="h-4 w-4 text-muted" />
-          <code>{props.table}</code>
-        </h2>
-        <ForeignKeys presenter={presenter} />
-      </div>
       <Loading fallback={<Pending>Loading rows...</Pending>}>
         <Show
           when={presenter.adapter.value().tier !== "document"}
-          fallback={<DocumentView presenter={presenter} />}
+          fallback={
+            <DocumentBrowser
+              presenter={presenter}
+              slug={props.slug}
+              id={props.id}
+              table={props.table}
+            />
+          }
         >
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-heading">
+              <Icon name="table" class="h-4 w-4 text-muted" />
+              <code>{props.table}</code>
+            </h2>
+            <ForeignKeys presenter={presenter} />
+          </div>
           <GridTable presenter={presenter} openTable={openTable} />
         </Show>
       </Loading>

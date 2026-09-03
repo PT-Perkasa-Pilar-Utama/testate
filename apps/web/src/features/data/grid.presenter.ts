@@ -58,6 +58,8 @@ export type GridPresenter = {
   first: () => void;
   /** The linked grid for an FK cell, or null for a plain cell (story 140). */
   linkFor: (column: string, value: JsonValue) => string | null;
+  /** Every table or collection of the adapter, so a browser can move between them. */
+  collections: () => string[];
 };
 
 /**
@@ -192,6 +194,7 @@ export function createGridPresenter(
     page,
     adapter,
     table,
+    collections: () => schema.value().tables.map(qualifiedName),
     exportUrl,
     editing,
     editable: () => editableReason() === null,

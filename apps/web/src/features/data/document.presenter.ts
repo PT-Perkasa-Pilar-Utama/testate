@@ -1,70 +1,72 @@
 import type { JsonObject, JsonValue } from "@testate/shared";
+import { jsonValueSchema } from "@testate/shared";
 import * as v from "valibot";
 
 import { plain } from "@/lib/plain-value.ts";
 import { cellText } from "./grid.presenter.ts";
 
-/** One line of a document as a person reads it: a key, its value, and how deep it sits. */
-export type FieldLine = {
+/** One field of a container as a person reads it. A container has no text; it opens a column. */
+export type Entry = {
   key: string;
-  depth: number;
-  /** The value as text; a container has none, its children follow it. */
   text: string | null;
   kind: "value" | "object" | "array";
 };
 
-const objectSchema = v.record(v.string(), v.unknown());
+const container = v.record(v.string(), jsonValueSchema);
 
 function valueText(value: JsonValue): string {
-  if (v.is(v.string(), value)) return JSON.stringify(value);
-  return cellText(value);
-}
-
-function push(lines: FieldLine[], key: string, value: JsonValue, depth: number): void {
-  if (Array.isArray(value)) {
-    lines.push({ key, depth, text: null, kind: "array" });
-    value.forEach((item, index) => push(lines, String(index), item, depth + 1));
-    return;
-  }
-  if (v.is(objectSchema, value)) {
-    lines.push({ key, depth, text: null, kind: "object" });
-    for (const [child, inner] of Object.entries(value)) {
-      push(
-        lines,
-        child,
-        v.parse(
-          v.custom<JsonValue>(() => true),
-          inner
-        ),
-        depth + 1
-      );
-    }
-    return;
-  }
-  lines.push({ key, depth, text: valueText(value), kind: "value" });
+  return v.is(v.string(), value) ? JSON.stringify(value) : cellText(value);
 }
 
 /**
- * A document flattened for display, the way a document store's own console lays it out: one
- * line per field, nested fields indented under their parent, Extended JSON unwrapped first so
- * an id is its hex and a number its digits. Strings keep their quotes, so "10" and 10 differ.
+ * A typed wrapper (`{"$oid": ...}`, `{"$numberLong": ...}`, `{"$date": ...}`) reads bare, the
+ * way its console shows it; a real string keeps its quotes, so "10" and 10 and a Long 10 differ.
  */
-export function fieldLines(document: JsonObject): FieldLine[] {
-  const lines: FieldLine[] = [];
-  const shown = plain(document);
-  if (!v.is(objectSchema, shown)) return lines;
-  for (const [key, value] of Object.entries(shown)) {
-    push(
-      lines,
-      key,
-      v.parse(
-        v.custom<JsonValue>(() => true),
-        value
-      ),
-      0
-    );
+function entry(key: string, value: JsonValue): Entry {
+  if (Array.isArray(value)) return { key, text: null, kind: "array" };
+  if (v.is(container, value)) {
+    const shown = plain(value);
+    const unwrapped = !Array.isArray(shown) && !v.is(container, shown);
+    return unwrapped
+      ? { key, text: cellText(shown), kind: "value" }
+      : { key, text: null, kind: "object" };
   }
-  return lines;
+  return { key, text: valueText(value), kind: "value" };
+}
+
+/** The fields of one container, one level deep, a nested object or array left for the next column. */
+export function entriesOf(value: JsonValue): Entry[] {
+  if (Array.isArray(value)) return value.map((item, index) => entry(String(index), item));
+  if (!v.is(container, value)) return [];
+  return Object.entries(value).map(([key, inner]) => entry(key, inner ?? null));
+}
+
+/** The container a path of keys leads to, or null when the path no longer fits the document. */
+export function at(document: JsonObject, path: string[]): JsonValue | null {
+  let current: JsonValue = document;
+  for (const key of path) {
+    if (Array.isArray(current)) {
+      const index = Number(key);
+      const item: JsonValue | undefined = current[index];
+      if (item === undefined) return null;
+      current = item;
+    } else if (v.is(container, current)) {
+      const item: JsonValue | undefined = current[key];
+      if (item === undefined) return null;
+      current = item;
+    } else return null;
+  }
+  return current;
+}
+
+/** The opened path, cut where it stops fitting the document it is now applied to. */
+export function fitting(document: JsonObject, wanted: string[]): string[] {
+  const kept: string[] = [];
+  for (const key of wanted) {
+    if (at(document, [...kept, key]) === null) break;
+    kept.push(key);
+  }
+  return kept;
 }
 
 /** What a document is called in the list: its `_id`, plain. */
