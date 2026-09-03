@@ -12,8 +12,14 @@ starting a fresh stack:
 docker compose -f deploy/compose.engines.yml up -d --wait
 docker compose -f deploy/compose.engines.yml run --rm minio-init
 bun run contract        # creates the schema the demo adapters read
-bun run e2e
+bun run e2e             # everything, the way CI runs it
+bun run e2e:quick       # routes, flows and states only: the screens most changes touch
 ```
+
+How many Chromium tabs run at once is read off the machine at start (`e2e/lib/capacity.ts`): on
+CI one per core, four at most; at home half the cores, one fewer when the load average says the
+engines and Vite are already busy, two at most under 12 GiB, never fewer than one. The first line
+the run prints says what it chose and why. `E2E_WORKERS=1 bun run e2e` overrides it.
 
 Each suite drops and recreates its own schema, so repeating it is harmless. A long-lived stack
 already holds the schema, which is why this only bites a fresh checkout or CI.

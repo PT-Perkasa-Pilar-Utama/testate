@@ -2,7 +2,7 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "types": ["node", "@playwright/test"],
+    "types": ["node", "@playwright/test", "bun"],
     "noEmit": true
   },
   "include": ["../e2e/**/*.ts", "../playwright.config.ts"]

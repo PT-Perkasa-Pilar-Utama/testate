@@ -1,7 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { availableParallelism, loadavg, totalmem } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "@playwright/test";
+
+import { describeCapacity, workersFor } from "./e2e/lib/capacity.ts";
 
 /**
  * End-to-end suite over the real API, Vite dev server, and the compose engines. `bun run e2e`.
@@ -9,6 +12,16 @@ import { defineConfig } from "@playwright/test";
  * signs in each role once (storage state per role under `.e2e/`).
  */
 export const E2E_DIR = fileURLToPath(new URL(".e2e", import.meta.url));
+
+const CAPACITY = {
+  cpus: availableParallelism(),
+  load1: loadavg()[0] ?? 0,
+  totalGiB: totalmem() / 2 ** 30,
+  ci: process.env.CI !== undefined,
+  override: process.env.E2E_WORKERS,
+};
+const WORKERS = workersFor(CAPACITY);
+process.stdout.write(`${describeCapacity(CAPACITY, WORKERS)}\n`);
 /**
  * Not the dev server's 7378/7379. The suite spawns an API and a Vite of its own, and Playwright
  * refuses to start when the port is taken, so running `bun run e2e` beside `bun run dev` used to
@@ -79,9 +92,10 @@ export default defineConfig({
   globalSetup: "./e2e/setup.ts",
   outputDir: join(E2E_DIR, "results"),
   fullyParallel: true,
-  // A laptop runs five engines, Vite, the API and Chromium beside this; two tabs at a time keeps
-  // it usable. A CI runner has the cores and nothing else to do.
-  workers: process.env.CI === undefined ? 2 : 4,
+  // Read off the machine at start, not fixed: a laptop already running five engines, Vite and the
+  // API gets fewer tabs than an idle CI runner. `E2E_WORKERS` overrides the rule; the line printed
+  // at start says what was chosen and why (e2e/lib/capacity.ts).
+  workers: WORKERS,
   retries: 0,
   timeout: 60_000,
   reporter: [["list"], ["html", { outputFolder: join(E2E_DIR, "report"), open: "never" }]],
