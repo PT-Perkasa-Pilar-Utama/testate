@@ -204,7 +204,7 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
                 </Show>
               }
             >
-              {(result) => <ResultTable result={result()} />}
+              {(result) => <ResultTable result={result()} documents={presenter.isMongo()} />}
             </Show>
           </form>
           <SidePanel presenter={presenter} />

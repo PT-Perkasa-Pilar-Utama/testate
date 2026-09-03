@@ -88,6 +88,9 @@ test.describe("qa stories", () => {
     await page.getByRole("button", { name: "Run (read-only)" }).click();
     await expect(page.getByText(/\d+ row\(s\)/)).toBeVisible();
     await expect(page.getByText(/read-only credential|application filter only/)).toBeVisible();
+    // Documents come back as the JSON they are, not as a table of columns.
+    await expect(page.locator("main pre")).toContainText('"_id"');
+    await expect(page.locator("main table")).toHaveCount(0);
     await page.goto(`/projects/demo/adapters/${mongo.id}`);
     await settle(page);
     await expect(page.getByRole("heading", { name: "Collections" })).toBeVisible();

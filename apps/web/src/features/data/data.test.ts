@@ -14,6 +14,7 @@ import {
 } from "./grid.presenter.ts";
 import { editsFor, pkOf, toFormValue, valuesOf } from "./editing.presenter.ts";
 import { NONE, policyBody } from "./policies.presenter.ts";
+import { tokensOf } from "@/lib/json-tokens.ts";
 import { buildRequest, mongoSample } from "./query.presenter.ts";
 
 const MONGO = {
@@ -264,5 +265,30 @@ describe("the grid's numeric columns", () => {
   test("leaves everything else alone", () => {
     const others = ["text", "varchar(255)", "uuid", "jsonb", "timestamptz", "boolean", "bytea"];
     expect(others.filter((type) => NUMERIC_TYPE.test(type))).toEqual([]);
+  });
+});
+
+describe("the JSON view", () => {
+  test("cuts pretty JSON into keys, strings, numbers, and literals", () => {
+    const text = JSON.stringify({ a: "x", n: 1.5, t: true, z: null }, null, 2);
+    const kinds = tokensOf(text)
+      .filter((token) => token.kind !== "plain")
+      .map((token) => `${token.kind}:${token.text}`);
+    expect(kinds).toEqual([
+      'key:"a"',
+      'string:"x"',
+      'key:"n"',
+      "number:1.5",
+      'key:"t"',
+      "literal:true",
+      'key:"z"',
+      "literal:null",
+    ]);
+    // Every character survives: the tokens joined are the text.
+    expect(
+      tokensOf(text)
+        .map((token) => token.text)
+        .join("")
+    ).toBe(text);
   });
 });

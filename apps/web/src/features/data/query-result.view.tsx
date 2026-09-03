@@ -6,6 +6,8 @@ import Badge from "@/components/badge.tsx";
 import Icon from "@/components/icon.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import EmptyState from "@/components/empty-state.tsx";
+import JsonView from "@/components/json-view.tsx";
+import { plain } from "@/lib/plain-value.ts";
 import { cellText } from "./grid.presenter.ts";
 
 const ENFORCEMENT_VARIANT = {
@@ -19,8 +21,14 @@ const ENFORCEMENT_TEXT = {
   filter: "application filter only",
 } as const;
 
-/** The console's output: what ran, how it was kept read-only, and the rows it answered with. */
-export default function ResultTable(props: { result: QueryResult }): JSX.Element {
+/**
+ * The console's output: what ran, how it was kept read-only, and the rows it answered with. A
+ * document store's answer is documents, shown as the JSON they are, not squeezed into columns.
+ */
+export default function ResultTable(props: {
+  result: QueryResult;
+  documents: boolean;
+}): JSX.Element {
   return (
     <div class="grid gap-2">
       <div class="flex flex-wrap items-center gap-2 text-xs">
@@ -56,26 +64,35 @@ export default function ResultTable(props: { result: QueryResult }): JSX.Element
       >
         {/* Bounded: 500 rows must not push the editor and the Run button off the top of the page. */}
         <div class="max-h-[60vh] overflow-auto rounded-lg">
-          <Table>
-            <thead>
-              <tr>
-                <For each={props.result.columns}>
-                  {(column) => <Head identifier>{column.name}</Head>}
+          <Show
+            when={!props.documents}
+            fallback={
+              <div class="rounded-lg bg-sunken px-4 py-3 ring ring-line">
+                <JsonView value={props.result.rows.map(plain)} />
+              </div>
+            }
+          >
+            <Table>
+              <thead>
+                <tr>
+                  <For each={props.result.columns}>
+                    {(column) => <Head identifier>{column.name}</Head>}
+                  </For>
+                </tr>
+              </thead>
+              <tbody>
+                <For each={props.result.rows}>
+                  {(row) => (
+                    <Row>
+                      <For each={props.result.columns}>
+                        {(column) => <Cell>{cellText(row[column.name])}</Cell>}
+                      </For>
+                    </Row>
+                  )}
                 </For>
-              </tr>
-            </thead>
-            <tbody>
-              <For each={props.result.rows}>
-                {(row) => (
-                  <Row>
-                    <For each={props.result.columns}>
-                      {(column) => <Cell>{cellText(row[column.name])}</Cell>}
-                    </For>
-                  </Row>
-                )}
-              </For>
-            </tbody>
-          </Table>
+              </tbody>
+            </Table>
+          </Show>
         </div>
       </Show>
     </div>
