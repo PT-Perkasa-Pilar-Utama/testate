@@ -10,6 +10,7 @@ import type { PoliciesRepository } from "../data/data.policies.ts";
 import type { EnqueueInput, JobsService } from "../jobs/jobs.service.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import type { StatesRepository } from "../states/states.repository.ts";
+import { discardDiff } from "./diffs.job.ts";
 import type { DiffAdapterSummary, DiffsRepository } from "./diffs.repository.ts";
 import { createRowsCache } from "../../lib/cache/rows-cache.ts";
 import { collectPage, maskDiffRows, tableKeyOf } from "./diffs.rows.ts";
@@ -117,6 +118,7 @@ export function createDiffsService(deps: DiffsDeps): DiffsService {
       summaries.push({
         adapter_id: entry.adapter_id,
         name: entry.adapter_name,
+        engine: entry.engine,
         compared: onTarget,
       });
     }
@@ -131,18 +133,7 @@ export function createDiffsService(deps: DiffsDeps): DiffsService {
       throw new AppError("QUOTA_EXCEEDED", "the project is at its storage quota");
     }
   };
-  const deleteDiff = async (id: string): Promise<void> => {
-    const hashes = repo.blobsOf(id);
-    const liveState = repo.liveStateOf(id);
-    repo.remove(id);
-    if (liveState !== null) {
-      const removal = deps.states.remove(liveState);
-      hashes.push(...removal.orphans);
-    }
-    const orphans = deps.states.unpinnedOrphans(hashes);
-    for (const hash of orphans) await deps.blobs.delete(hash);
-    deps.states.forgetBlobs(orphans);
-  };
+  const deleteDiff = (id: string): Promise<void> => discardDiff({ ...deps, diffs: repo }, id);
   const tableRows = async function* (
     diff: Diff,
     adapterId: string,

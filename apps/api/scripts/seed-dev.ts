@@ -21,6 +21,8 @@
  */
 import * as v from "valibot";
 
+import { applyRefundStory } from "./seed-changes.ts";
+
 function say(line: string): void {
   process.stdout.write(`${line}\n`);
 }
@@ -221,18 +223,34 @@ admin = await rotate("admin", FINAL.admin, bootstrap);
 const qa = await rotate("qa-user", TEMP.qa, FINAL.qa);
 await rotate("viewer-user", TEMP.viewer, FINAL.viewer);
 
-// 3. What the suite leaves behind: named states, a checkout, a diff, a saved query.
+// 3. What the suite leaves behind: named states either side of a story, a checkout, two diffs
+//    with rows in them, a saved query.
 await takeState(qa, "checkout-flow-baseline", ["release-2.4"]);
+say(`refund story written to: ${(await applyRefundStory(say)).join(", ")}`);
 await takeState(qa, "after-the-failed-refund", ["bug-4182"]);
 const states = await ids(qa, "projects/demo/states");
 const baseline = states.find((state) => state.name === "seeded-baseline");
-if (baseline === undefined) throw new Error("the seed left no seeded-baseline state");
+const before = states.find((state) => state.name === "checkout-flow-baseline");
+const after = states.find((state) => state.name === "after-the-failed-refund");
+if (baseline === undefined || before === undefined || after === undefined)
+  throw new Error("the seed left a state behind");
+const story = await expectOk(
+  await call(qa, "POST", "projects/demo/diffs", {
+    base_state_id: before.id,
+    target: { state_id: after.id },
+  }),
+  "diff"
+);
+say(
+  `diff checkout-flow-baseline vs after-the-failed-refund: ${await waitForJob(qa, v.parse(startedSchema, await story.json()).data.job.id)}`
+);
+// HEAD stays on the story's end, so the live databases show it and the live diff has rows.
 const checkout = await expectOk(
-  await call(qa, "POST", "projects/demo/checkouts", { state_id: baseline.id }),
+  await call(qa, "POST", "projects/demo/checkouts", { state_id: after.id }),
   "checkout"
 );
 say(
-  `checkout of seeded-baseline: ${await waitForJob(qa, v.parse(startedSchema, await checkout.json()).data.job.id)}`
+  `checkout of after-the-failed-refund: ${await waitForJob(qa, v.parse(startedSchema, await checkout.json()).data.job.id)}`
 );
 const diff = await expectOk(
   await call(qa, "POST", "projects/demo/diffs", { base_state_id: baseline.id, target: "live" }),

@@ -36,6 +36,8 @@ export const diffSchema = v.object({
     v.object({
       adapter_id: idSchema,
       name: v.string(),
+      /** The engine at the base state, so a document store's changes read as documents. */
+      engine: v.string(),
       compared: v.boolean(),
       tables: v.array(diffTableSchema),
     })

@@ -12,6 +12,7 @@ export const DIFF_MOCK: Diff = {
     {
       adapter_id: ADAPTER_ID,
       name: "orders-db",
+      engine: "postgres",
       compared: true,
       tables: [
         {

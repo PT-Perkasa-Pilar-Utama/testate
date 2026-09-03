@@ -160,6 +160,23 @@ async function snapshotLive(
   return stateId;
 }
 
+/**
+ * Removes a diff with its rows, and the hidden live snapshot a live diff took, and the blobs
+ * nothing else references (20 §20.1). A delete and a comparison that found nothing both end here.
+ */
+export async function discardDiff(
+  deps: Pick<DiffJobDeps, "diffs" | "states" | "blobs">,
+  id: string
+): Promise<void> {
+  const hashes = deps.diffs.blobsOf(id);
+  const liveState = deps.diffs.liveStateOf(id);
+  deps.diffs.remove(id);
+  if (liveState !== null) hashes.push(...deps.states.remove(liveState).orphans);
+  const orphans = deps.states.unpinnedOrphans(hashes);
+  for (const hash of orphans) await deps.blobs.delete(hash);
+  deps.states.forgetBlobs(orphans);
+}
+
 function settleHead(
   deps: DiffJobDeps,
   projectId: string,
@@ -210,11 +227,15 @@ export function createDiffRunner(deps: DiffJobDeps): JobRunner {
         done += 1;
         progress({ phase: "merge", done, total: payload.adapter_ids.length });
       }
+      const moved = deps.diffs.hasChanges(payload.diff_id);
       deps.diffs.finish(payload.diff_id, "ready");
       // A diff of HEAD against the live databases is the one way an outside write can be seen, so
       // it settles the question either way: rows moved, or the databases still hold the state.
       if (payload.target_state_id === null) settleHead(deps, projectId, payload);
-      return { status: "succeeded", result: { diff_id: payload.diff_id, adapters: done } };
+      // A comparison that found nothing is not kept: the answer is the one word, and a page of
+      // identical tables is a page nobody opens twice. The job's result carries the word.
+      if (!moved) await discardDiff(deps, payload.diff_id);
+      return { status: "succeeded", result: { diff_id: payload.diff_id, adapters: done, moved } };
     } catch (cause: unknown) {
       deps.diffs.finish(payload.diff_id, "failed");
       throw cause;

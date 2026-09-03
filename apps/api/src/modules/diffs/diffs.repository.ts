@@ -26,7 +26,12 @@ export type DiffTableRow = {
 };
 
 /** Which adapters the diff covers; `compared: false` marks adapters on one side only (20 §20.1). */
-export type DiffAdapterSummary = { adapter_id: string; name: string; compared: boolean };
+export type DiffAdapterSummary = {
+  adapter_id: string;
+  name: string;
+  engine: string;
+  compared: boolean;
+};
 
 export type DiffsRepository = {
   insert(diff: NewDiff, adapters: DiffAdapterSummary[]): void;
@@ -75,7 +80,13 @@ const tableRow = v.object({
 });
 
 const summarySchema = v.array(
-  v.object({ adapter_id: v.string(), name: v.string(), compared: v.boolean() })
+  v.object({
+    adapter_id: v.string(),
+    name: v.string(),
+    // Rows written before the engine travelled with the summary read as an unknown engine.
+    engine: v.optional(v.string(), ""),
+    compared: v.boolean(),
+  })
 );
 
 const SELECT = `

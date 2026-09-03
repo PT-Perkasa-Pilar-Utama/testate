@@ -135,6 +135,9 @@ describe("diffs", () => {
     });
     expect(paged.next_cursor).toBe("2");
     expect((await h.diffs.list("shop", 10)).map((item) => item.id)).toEqual([diff.id]);
+    h.harness.advance(400 * 24 * 60 * 60 * 1000);
+    expect(await h.diffs.expire()).toBe(1);
+    await expect(h.diffs.get("shop", diff.id)).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
   it("a table keyed one way and then the other says so instead of inventing rows", async () => {
@@ -164,10 +167,9 @@ describe("diffs", () => {
 
   it("a diff of HEAD against live settles whether the databases moved off it", async () => {
     const h = await createHarness();
-    await settled(
-      h,
-      await h.diffs.create(h.harness.qa, "shop", "init", "live", undefined, TEST_META)
-    );
+    // Nothing moved, so no diff is kept; the job still settled HEAD as clean.
+    const still = await h.diffs.create(h.harness.qa, "shop", "init", "live", undefined, TEST_META);
+    await h.harness.runtime.jobs.wait(null, still.job.id, 5);
     expect(h.harness.projectsRepo.bySlug("shop")?.head.dirty).toBe(false);
     h.harness.databases.get("shop")?.set("public.orders", []);
     await settled(
@@ -238,7 +240,7 @@ describe("diffs", () => {
     expect(exported[0]?.after?.["email"]).toBe("changed@x.io");
   });
 
-  it("refuses states that share no adapter and expires old diffs with their blobs", async () => {
+  it("refuses states that share no adapter, and keeps no diff that found nothing", async () => {
     const h = await createHarness();
     await expect(
       h.diffs.create(
@@ -250,13 +252,21 @@ describe("diffs", () => {
         TEST_META
       )
     ).rejects.toThrow("share no adapter");
-    const diff = await settled(
-      h,
-      await h.diffs.create(h.harness.qa, "shop", "init", { state_id: "init" }, undefined, TEST_META)
+    // A state against itself moves nothing: the job says so, and the diff is gone with its blobs.
+    const started = await h.diffs.create(
+      h.harness.qa,
+      "shop",
+      "init",
+      { state_id: "init" },
+      undefined,
+      TEST_META
     );
-    expect(diff.adapters[0]?.tables.every((table) => table.unchanged)).toBe(true);
-    h.harness.advance(400 * 24 * 60 * 60 * 1000);
-    expect(await h.diffs.expire()).toBe(1);
-    await expect(h.diffs.get("shop", diff.id)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    const job = await h.harness.runtime.jobs.wait(null, started.job.id, 5);
+    expect(job.error).toBeNull();
+    expect(job.result?.["moved"]).toBe(false);
+    await expect(h.diffs.get("shop", started.diff.id)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    expect((await h.diffs.list("shop", 10)).map((item) => item.id)).toEqual([]);
   });
 });

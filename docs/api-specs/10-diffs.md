@@ -10,7 +10,7 @@ Module: `diffs` ([../technical-specs/05-module-definitions.md §5.10](../technic
 
 **Input.** Body: `base_state_id` required; `target` required: `{ "state_id" }` or `"live"`; `adapter_ids` optional.
 
-**Behavior.** Enqueue job `diff`; a live target first takes a hidden `diff` state for the adapters (claims them, `JOB_IN_PROGRESS`, counts against quota); merge per table per [20 §20.3](../technical-specs/20-diff-engine.md); results stored as blobs; `expires_at` from `retention.diff_days`. Audit `diff.created`.
+**Behavior.** Enqueue job `diff`; a live target first takes a hidden `diff` state for the adapters (claims them, `JOB_IN_PROGRESS`, counts against quota); merge per table per [20 §20.3](../technical-specs/20-diff-engine.md); results stored as blobs; `expires_at` from `retention.diff_days`. Audit `diff.created`. A comparison that finds no row and no schema change is discarded when its job ends, hidden live snapshot included; the job's `result.moved` is `false` and the diff answers `NOT_FOUND`.
 
 **Output.** `202 { "data": { "diff": { "id", "status": "running", ... }, "job": {...} } }`. **Errors.** `NOT_FOUND`, `CONFLICT` (no shared adapter), `QUOTA_EXCEEDED`, `JOB_IN_PROGRESS`, `VALIDATION_ERROR`. **Traceability.** Stories 88, 89.
 
