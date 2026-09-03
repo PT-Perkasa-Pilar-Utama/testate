@@ -1,9 +1,9 @@
 import type { JSX } from "@solidjs/web";
 import { Show } from "solid-js";
 
+import BackLink from "@/components/back-link.tsx";
 import Icon from "@/components/icon.tsx";
 import type { IconName } from "@/components/icon.tsx";
-import { href, navigate } from "@/lib/router.ts";
 import AdapterBreadcrumbs from "./adapter.crumb.view.tsx";
 
 /**
@@ -25,18 +25,7 @@ export default function SubScreen(props: {
       <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf={props.leaf} />
       <div class="grid gap-1.5">
         <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-heading">
-          <a
-            class="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted hover:bg-hover hover:text-heading"
-            href={href(back())}
-            aria-label="Back to the database"
-            title="Back to the database"
-            onClick={(event) => {
-              event.preventDefault();
-              navigate(back());
-            }}
-          >
-            <Icon name="chevron-left" class="h-4 w-4" />
-          </a>
+          <BackLink to={back()} label="Back to the database" />
           <Icon name={props.icon} class="h-4 w-4 text-muted" />
           {props.title}
         </h2>

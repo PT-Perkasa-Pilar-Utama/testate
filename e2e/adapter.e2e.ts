@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { openStatesList, rowMenu, settle, stateRow, watch } from "./lib/crawl.ts";
+import { openStatesList, settle, stateRow, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
@@ -13,7 +13,7 @@ const STAMP = Date.now().toString(36);
  * the adapter: the init job adds the entry after the adapter is saved. Back on the list after.
  */
 async function initHolds(page: Page, name: string): Promise<void> {
-  await (await rowMenu(stateRow(page, "init"))).getByRole("link", { name: "Details" }).click();
+  await stateRow(page, "init").getByRole("link", { name: "init", exact: true }).click();
   await expect(async () => {
     await page.reload();
     await settle(page);

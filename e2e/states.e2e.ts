@@ -71,7 +71,7 @@ test.describe("state stories", () => {
         .getByText(`${name}-renamed`, { exact: true })
     ).toBeVisible();
     await page.getByRole("tab", { name: "List" }).click();
-    await (await rowMenu(renamed)).getByRole("link", { name: "Details" }).click();
+    await renamed.getByRole("link", { name: `${name}-renamed` }).click();
     await expect(page.getByRole("heading", { name: `${name}-renamed` })).toBeVisible();
     await page.getByRole("button", { name: /shop-mongo/ }).click();
     await expect(page.locator("main")).toContainText("read at different moments");

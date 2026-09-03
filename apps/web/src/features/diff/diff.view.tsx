@@ -153,6 +153,10 @@ export default function DiffView(props: { slug: string; id: string }): JSX.Eleme
             ]}
           />
           <PageHeader
+            back={{
+              to: `/projects/${props.slug}?tab=activity&show=diffs`,
+              label: "Back to Activity",
+            }}
             eyebrow="Comparison"
             title={`${presenter.diff.value().base.name} → ${targetName(presenter.diff.value())}`}
             description={`Made ${formatWhen(presenter.diff.value().created_at)}. Kept until ${formatWhen(presenter.diff.value().expires_at)}.`}

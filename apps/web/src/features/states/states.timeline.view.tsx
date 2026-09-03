@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import { href, navigate } from "@/lib/router.ts";
 import { For, Show } from "solid-js";
 import type { StateListItem } from "@testate/shared";
 
@@ -7,7 +8,7 @@ import Icon from "@/components/icon.tsx";
 import { Truncated } from "@/components/table.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { STATE_KIND_LABEL, STATE_STATUS_LABEL } from "@/lib/labels.ts";
-import { adapterSummary, eventsLabel, formatBytes } from "./states.format.ts";
+import { adapterSummary, eventsLabel, formatBytes, statePath } from "./states.format.ts";
 
 const DOT_BASE = "z-10 mt-1 h-3.5 w-3.5 shrink-0 rounded-full ring-4 ring-surface";
 /** HEAD is the mark's own green, filled, the way the head node reads on the logo. */
@@ -98,6 +99,8 @@ function headTone(unknown: boolean, dirty: boolean): "warning" | "success" {
 
 export type TimelineRowProps = {
   state: StateListItem;
+  /** The state's own page; the name is the link to it. */
+  href: string;
   head: boolean;
   headUnknown?: boolean | undefined;
   headDirty?: boolean | undefined;
@@ -135,15 +138,21 @@ function TimelineRow(props: TimelineRowProps): JSX.Element {
       <div class="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div class="grid min-w-0 gap-1">
           <div class="flex flex-wrap items-center gap-2">
-            <Truncated
+            <a
               class={
                 props.state.kind === "stash"
-                  ? "max-w-[20rem] font-medium text-muted italic"
-                  : "max-w-[20rem] font-medium text-heading"
+                  ? "max-w-[20rem] truncate font-medium text-muted italic hover:underline"
+                  : "max-w-[20rem] truncate font-medium text-heading hover:underline"
               }
+              href={href(props.href)}
+              title={props.state.name}
+              onClick={(event) => {
+                event.preventDefault();
+                navigate(props.href);
+              }}
             >
               {props.state.name}
-            </Truncated>
+            </a>
             <Show when={props.head}>
               {/* A checkout that failed part way leaves head_status 'unknown': the databases hold
                   some of this state and some of whatever came before, and saying HEAD flat would
@@ -185,6 +194,7 @@ function TimelineRow(props: TimelineRowProps): JSX.Element {
 
 export type TimelineProps = {
   states: readonly StateListItem[];
+  slug: string;
   /** The state the databases are on right now; null when the project has never been restored. */
   headStateId: string | null;
   /** A failed restore leaves HEAD unknown; the badge says so rather than claiming the state. */
@@ -215,12 +225,13 @@ export default function Timeline(props: TimelineProps): JSX.Element {
       }
     >
       <ul
-        class="grid max-h-[36rem] overflow-y-auto rounded-lg bg-surface px-5 py-4 ring ring-line"
+        class="grid max-h-[36rem] min-h-[20rem] overflow-y-auto rounded-lg bg-surface px-5 py-4 ring ring-line"
         aria-label="States"
       >
         <For each={props.states}>
           {(state) => (
             <TimelineRow
+              href={statePath(props.slug, state.id)}
               state={state}
               head={state.id === props.headStateId}
               headUnknown={props.headUnknown === true}

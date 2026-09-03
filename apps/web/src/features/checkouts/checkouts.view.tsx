@@ -249,7 +249,7 @@ export default function CheckoutsView(props: {
                       <Outcome checkout={checkout} />
                     </Cell>
                     <Cell>
-                      <span class="inline-flex flex-wrap gap-1">
+                      <span class="inline-flex max-w-[22rem] flex-wrap gap-1">
                         <For each={checkout.adapters}>
                           {(adapter) => (
                             <Badge variant={ROW_RESULT_VARIANT[adapter.result]}>
@@ -272,14 +272,14 @@ export default function CheckoutsView(props: {
                       <div class="flex justify-end gap-1 whitespace-nowrap">
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="outline"
                           onClick={() => presenter.openDetail(checkout)}
                         >
                           Details
                         </Button>
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="outline"
                           onClick={() => void presenter.openCounters(checkout)}
                         >
                           Counters

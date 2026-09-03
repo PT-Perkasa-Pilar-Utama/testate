@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { Show } from "solid-js";
+import { Show, createSignal } from "solid-js";
 
 import Icon from "./icon.tsx";
 
@@ -22,19 +22,39 @@ export default function FieldLabel(props: {
   /** One sentence for a rule the name cannot carry, behind a (?) beside it. */
   help?: string | undefined;
 }): JSX.Element {
+  const [open, setOpen] = createSignal(false);
   return (
-    <span class="flex items-center gap-1.5">
+    <span class="flex flex-wrap items-center gap-1.5">
       {props.children}
       <Show when={props.help}>
         {(text) => (
-          <span
-            class="inline-flex cursor-help text-muted"
-            title={text()}
-            aria-label={text()}
-            role="img"
-          >
-            <Icon name="circle-question-mark" class="h-3.5 w-3.5" />
-          </span>
+          <>
+            {/* Not a <button>: a label names the first labelable element inside it, and a button
+                before the input would take the name away from the input. A span with the role
+                keeps the label on the control and still opens on click, Enter, or Space. */}
+            <span
+              role="button"
+              tabindex="0"
+              class="inline-flex cursor-pointer text-muted hover:text-heading"
+              title={text()}
+              aria-label={open() ? "Hide the hint" : "Show the hint"}
+              aria-expanded={open() ? "true" : "false"}
+              onClick={(event) => {
+                event.preventDefault();
+                setOpen((value) => !value);
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") return;
+                event.preventDefault();
+                setOpen((value) => !value);
+              }}
+            >
+              <Icon name="circle-question-mark" class="h-3.5 w-3.5" />
+            </span>
+            <Show when={open()}>
+              <span class="basis-full text-xs font-normal text-muted">{text()}</span>
+            </Show>
+          </>
         )}
       </Show>
       <Show

@@ -1,4 +1,6 @@
 import type { JSX } from "@solidjs/web";
+
+import BackLink from "./back-link.tsx";
 import { Show, children } from "solid-js";
 
 /**
@@ -26,6 +28,8 @@ export function Eyebrow(props: { children: JSX.Element; class?: string }): JSX.E
  */
 export default function PageHeader(props: {
   title: string;
+  /** Where the arrow before the title goes; absent on a top-level screen. */
+  back?: { to: string; label: string } | undefined;
   description?: string;
   /** The small mono line over the title: what kind of thing this screen is, or where it sits. */
   eyebrow?: string;
@@ -42,7 +46,12 @@ export default function PageHeader(props: {
         <Show when={props.eyebrow}>
           <Eyebrow>{props.eyebrow}</Eyebrow>
         </Show>
-        <h2 class="text-2xl font-semibold tracking-tight text-heading">{props.title}</h2>
+        <h2 class="flex items-center gap-2 text-2xl font-semibold tracking-tight text-heading">
+          <Show when={props.back}>
+            {(back) => <BackLink to={back().to} label={back().label} />}
+          </Show>
+          {props.title}
+        </h2>
         <Show when={props.description}>
           <p class="text-muted">{props.description}</p>
         </Show>

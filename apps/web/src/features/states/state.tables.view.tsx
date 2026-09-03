@@ -81,6 +81,51 @@ export function DatabaseRail(props: { presenter: StatePresenter }): JSX.Element 
   );
 }
 
+/** A document store's collections, the way its own console lists things: a key, then what it holds. */
+function CollectionPairs(props: {
+  presenter: StatePresenter;
+  adapter: DetailAdapter;
+  onDiff: (table: DetailTable) => void;
+}): JSX.Element {
+  return (
+    <ul
+      class="grid gap-1 rounded-lg bg-surface py-1 font-mono text-sm ring ring-line"
+      aria-label="Collections"
+    >
+      <For
+        each={props.presenter.tables()}
+        fallback={<li class="px-3 py-4 font-sans text-muted">Nothing matches.</li>}
+      >
+        {(table) => (
+          <li class="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1.5">
+            <span class="text-accent">{table.name}:</span>
+            <span class="text-body">
+              {table.rows} {rowsNoun(props.adapter, table.rows)} · {formatBytes(table.bytes)}
+            </span>
+            <Show when={table.change}>
+              {(change) => (
+                <Show
+                  when={change() !== "same"}
+                  fallback={<Badge variant={CHANGE_VARIANT[change()]}>{change()}</Badge>}
+                >
+                  <button
+                    type="button"
+                    class="cursor-pointer"
+                    title="Open the comparison with the parent"
+                    onClick={() => props.onDiff(table)}
+                  >
+                    <Badge variant={CHANGE_VARIANT[change()]}>{change()} →</Badge>
+                  </button>
+                </Show>
+              )}
+            </Show>
+          </li>
+        )}
+      </For>
+    </ul>
+  );
+}
+
 /** The picked database: what it is, what went wrong reading it, and its tables to search. */
 export function TablesPane(props: {
   presenter: StatePresenter;
@@ -136,64 +181,74 @@ export function TablesPane(props: {
           variant="segmented"
         />
       </div>
-      <Table>
-        <thead>
-          <tr>
-            <Head>{noun(a(), 1)}</Head>
-            <Head>Against parent</Head>
-            <Head numeric>{a().engine === "mongodb" ? "Documents" : "Rows"}</Head>
-            <Head numeric>Size</Head>
-          </tr>
-        </thead>
-        <tbody>
-          <For
-            each={props.presenter.tables()}
-            fallback={
-              <tr>
-                <td colspan={4} class="px-3 py-4 text-sm text-muted">
-                  Nothing matches.
-                </td>
-              </tr>
-            }
-          >
-            {(table) => (
-              <Row>
-                <Cell>
-                  <span class="flex items-center gap-2">
-                    <code class="min-w-0 truncate">{qualifiedTable(table)}</code>
-                    <Show when={table.warnings.length > 0}>
-                      <span title={table.warnings.map((warning) => warning.message).join(" ")}>
-                        <Icon name="triangle-alert" class="h-3.5 w-3.5 shrink-0 text-warning-fg" />
-                      </span>
-                    </Show>
-                  </span>
-                </Cell>
-                <Cell>
-                  <Show when={table.change}>
-                    {(change) => (
-                      <Show
-                        when={change() !== "same"}
-                        fallback={<Badge variant={CHANGE_VARIANT[change()]}>{change()}</Badge>}
-                      >
-                        <button
-                          type="button"
-                          class="cursor-pointer"
-                          title="Open the comparison with the parent"
-                          onClick={() => props.onDiff(table)}
-                        >
-                          <Badge variant={CHANGE_VARIANT[change()]}>{change()} →</Badge>
-                        </button>
+      <Show
+        when={a().engine !== "mongodb"}
+        fallback={
+          <CollectionPairs presenter={props.presenter} adapter={a()} onDiff={props.onDiff} />
+        }
+      >
+        <Table>
+          <thead>
+            <tr>
+              <Head>{noun(a(), 1)}</Head>
+              <Head>Against parent</Head>
+              <Head numeric>{a().engine === "mongodb" ? "Documents" : "Rows"}</Head>
+              <Head numeric>Size</Head>
+            </tr>
+          </thead>
+          <tbody>
+            <For
+              each={props.presenter.tables()}
+              fallback={
+                <tr>
+                  <td colspan={4} class="px-3 py-4 text-sm text-muted">
+                    Nothing matches.
+                  </td>
+                </tr>
+              }
+            >
+              {(table) => (
+                <Row>
+                  <Cell>
+                    <span class="flex items-center gap-2">
+                      <code class="min-w-0 truncate">{qualifiedTable(table)}</code>
+                      <Show when={table.warnings.length > 0}>
+                        <span title={table.warnings.map((warning) => warning.message).join(" ")}>
+                          <Icon
+                            name="triangle-alert"
+                            class="h-3.5 w-3.5 shrink-0 text-warning-fg"
+                          />
+                        </span>
                       </Show>
-                    )}
-                  </Show>
-                </Cell>
-                <Cell numeric>{table.rows}</Cell>
-                <Cell numeric>{formatBytes(table.bytes)}</Cell>
-              </Row>
-            )}
-          </For>
-        </tbody>
-      </Table>
+                    </span>
+                  </Cell>
+                  <Cell>
+                    <Show when={table.change}>
+                      {(change) => (
+                        <Show
+                          when={change() !== "same"}
+                          fallback={<Badge variant={CHANGE_VARIANT[change()]}>{change()}</Badge>}
+                        >
+                          <button
+                            type="button"
+                            class="cursor-pointer"
+                            title="Open the comparison with the parent"
+                            onClick={() => props.onDiff(table)}
+                          >
+                            <Badge variant={CHANGE_VARIANT[change()]}>{change()} →</Badge>
+                          </button>
+                        </Show>
+                      )}
+                    </Show>
+                  </Cell>
+                  <Cell numeric>{table.rows}</Cell>
+                  <Cell numeric>{formatBytes(table.bytes)}</Cell>
+                </Row>
+              )}
+            </For>
+          </tbody>
+        </Table>
+      </Show>
     </div>
   );
 }

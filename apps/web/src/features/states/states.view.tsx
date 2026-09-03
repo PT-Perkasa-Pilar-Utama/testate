@@ -39,18 +39,7 @@ function RowActions(props: {
 }): JSX.Element {
   return (
     <div class="flex items-center justify-end gap-1">
-      <Show
-        when={hasRole("qa")}
-        fallback={
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => navigate(statePath(props.slug, props.state.id))}
-          >
-            Details
-          </Button>
-        }
-      >
+      <Show when={hasRole("qa")}>
         {/* Quiet on the state the databases already hold, solid on every other: the button says
             where you are as well as where you can go. Never disabled, because an outside write
             Testate has not seen yet is exactly when a tester reaches for it. */}
@@ -70,9 +59,6 @@ function RowActions(props: {
       {/* A stash is Testate's own safety net, taken before a restore or a write; it is read,
           downloaded and checked out, never renamed, protected or deleted by hand. */}
       <Menu label={`Actions for ${props.state.name}`}>
-        <Show when={hasRole("qa")}>
-          <MenuLink href={statePath(props.slug, props.state.id)}>Details</MenuLink>
-        </Show>
         <Show when={hasRole("qa") && props.head && props.state.kind !== "stash"}>
           <MenuItem onClick={() => void props.presenter.checkDrift(props.state)}>
             Check for changes
@@ -209,6 +195,7 @@ export default function StatesView(props: {
         </Show>
         <Show when={presenter.view() === "list"}>
           <Timeline
+            slug={props.slug}
             states={presenter.value()}
             headStateId={props.headStateId ?? null}
             headUnknown={props.headUnknown === true}

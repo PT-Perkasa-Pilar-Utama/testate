@@ -171,6 +171,10 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
       <Loading fallback={<Pending>Loading adapter...</Pending>}>
         <AdapterBreadcrumbs slug={props.slug} id={props.id} />
         <PageHeader
+          back={{
+            to: `/projects/${encodeURIComponent(props.slug)}?tab=adapters`,
+            label: "Back to the project",
+          }}
           eyebrow="Database"
           title={presenter.adapter.value().name}
           actions={<AdminActions presenter={presenter} adapter={presenter.adapter.value()} />}

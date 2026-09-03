@@ -26,7 +26,7 @@ import { countsLabel, createImportsPresenter } from "./imports.presenter.ts";
 import type { ImportModeFilter } from "./imports.presenter.ts";
 import ReportPanel from "./imports.report.view.tsx";
 
-const LINK = buttonClass("ghost", "sm");
+const LINK = buttonClass("outline", "sm");
 const MODE_FILTER_OPTIONS: { value: ImportModeFilter; label: string }[] = [
   { value: "", label: "All" },
   ...IMPORT_MODE_OPTIONS,
@@ -113,7 +113,7 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
                       <div class="flex flex-wrap justify-end gap-1">
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="outline"
                           disabled={run.counts === null}
                           onClick={() => void presenter.openReport(run)}
                         >

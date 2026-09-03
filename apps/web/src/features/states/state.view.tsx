@@ -237,6 +237,7 @@ export default function StateView(props: { slug: string; id: string }): JSX.Elem
             ]}
           />
           <PageHeader
+            back={{ to: `${projectPath()}?tab=states`, label: "Back to the states" }}
             eyebrow={STATE_KIND_LABEL[presenter.detail.value().kind]}
             title={presenter.detail.value().name}
             description={presenter.detail.value().notes ?? "No notes."}

@@ -210,7 +210,7 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
   return (
     <section class="grid gap-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf="files" />
+        <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf="files" back="Back to the store" />
         <PathBar presenter={presenter} slug={props.slug} id={props.id} />
         <div class="flex flex-wrap items-center gap-2">
           <TableSearch
