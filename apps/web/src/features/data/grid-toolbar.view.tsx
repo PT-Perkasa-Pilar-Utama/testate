@@ -9,7 +9,7 @@ import Select from "@/components/select.tsx";
 import Switch from "@/components/switch.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { FILTER_OP_LABEL } from "@/lib/labels.ts";
-import { FILTER_OPS, filterNeedsValue } from "./grid.presenter.ts";
+import { FILTER_OPS, PAGE_SIZES, filterNeedsValue } from "./grid.presenter.ts";
 import type { Filter, FilterOp, GridPresenter } from "./grid.presenter.ts";
 
 const OP_OPTIONS = FILTER_OPS.map((op) => ({ value: op, label: FILTER_OP_LABEL[op] }));
@@ -198,5 +198,55 @@ export function ExportLinks(props: { presenter: GridPresenter }): JSX.Element {
         Export JSON
       </a>
     </>
+  );
+}
+
+const SIZE_OPTIONS = PAGE_SIZES.map((size) => ({ value: size, label: `${size} rows` }));
+export function Pager(props: { presenter: GridPresenter; noun?: string | undefined }): JSX.Element {
+  const page = (): ReturnType<GridPresenter["page"]["value"]>["page"] =>
+    props.presenter.page.value().page;
+  return (
+    <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
+      <div class="flex flex-wrap items-center gap-2">
+        <span>
+          {props.presenter.page.value().data.length} {props.noun ?? "rows"} on this page
+        </span>
+        <Badge variant="secondary">{page().kind} paging</Badge>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <Select
+          size="sm"
+          class="w-28!"
+          aria-label="Rows per page"
+          options={SIZE_OPTIONS}
+          value={props.presenter.limit()}
+          onChange={(size) => props.presenter.setLimit(size)}
+        />
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={props.presenter.depth() === 0}
+          onClick={() => props.presenter.first()}
+        >
+          First
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={props.presenter.depth() === 0}
+          onClick={() => props.presenter.previous()}
+        >
+          Previous
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={page().next_cursor === null}
+          onClick={() => props.presenter.next()}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
   );
 }

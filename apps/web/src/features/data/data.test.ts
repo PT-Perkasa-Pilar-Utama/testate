@@ -1,3 +1,5 @@
+import { documentId, fieldLines } from "./document.presenter.ts";
+import type { FieldLine } from "./document.presenter.ts";
 import { describe, expect, test } from "bun:test";
 import type { TableSchema } from "@testate/shared";
 
@@ -23,6 +25,11 @@ const MONGO = {
   pipeline: "[]",
 };
 
+/** A field line as one string, indented by depth; a container has no text. */
+function shown(line: FieldLine): string {
+  return `${"  ".repeat(line.depth)}${line.key}: ${line.text ?? ""}`;
+}
+
 describe("data feature", () => {
   test("filters serialize as column:op:value and cells render null and JSON", () => {
     expect(filterText({ column: "status", op: "like", value: "pa%" })).toBe("status:like:pa%");
@@ -35,6 +42,27 @@ describe("data feature", () => {
     expect(cellText(null)).toBe("NULL");
     expect(cellText("x")).toBe("x");
     expect(cellText({ a: 1 })).toBe('{"a":1}');
+  });
+
+  test("a document flattens to key: value lines, nested fields indented, strings quoted", () => {
+    const lines = fieldLines({
+      _id: { $oid: "65f000000000000000000001" },
+      total: { $numberDouble: "20.5" },
+      tags: ["x"],
+      customer: { name: "Ann", active: false },
+      note: null,
+    });
+    expect(lines.map(shown)).toStrictEqual([
+      '_id: "65f000000000000000000001"',
+      "total: 20.5",
+      "tags: ",
+      '  0: "x"',
+      "customer: ",
+      '  name: "Ann"',
+      "  active: false",
+      "note: NULL",
+    ]);
+    expect(documentId({ _id: { $numberInt: "7" } })).toBe("7");
   });
 
   test("a document store's Extended JSON reads as plain values in a cell", () => {

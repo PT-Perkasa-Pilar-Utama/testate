@@ -16,13 +16,16 @@ import { formatBytes } from "../states/states.format.ts";
  * Everything else on the page (status, connection identity) is context for this decision, so it
  * sits above it and the buttons that make it stay grouped and legible.
  */
+function junctionHeading(tier: Adapter["tier"]): string {
+  if (tier === "files") return "Files";
+  return tier === "document" ? "Collections" : "Tables";
+}
+
 export function JunctionToolbar(props: { adapter: Adapter; base: string }): JSX.Element {
   const a = (): Adapter => props.adapter;
   return (
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h3 class="text-lg font-semibold tracking-tight text-heading">
-        {a().tier === "files" ? "Files" : "Tables"}
-      </h3>
+      <h3 class="text-lg font-semibold tracking-tight text-heading">{junctionHeading(a().tier)}</h3>
       <div class="flex flex-wrap items-center gap-2">
         <Show when={a().kind === "database"}>
           <Button size="sm" variant="secondary" onClick={() => navigate(`${props.base}/query`)}>
@@ -58,7 +61,12 @@ function qualified(table: { schema: string | null; name: string }): string {
   return table.schema === null ? table.name : `${table.schema}.${table.name}`;
 }
 
-export function TablesView(props: { schema: Introspection; base: string }): JSX.Element {
+export function TablesView(props: {
+  schema: Introspection;
+  base: string;
+  /** A document store: collections and fields, no primary key to speak of. */
+  documents?: boolean | undefined;
+}): JSX.Element {
   const tablePath = (name: string): string => `${props.base}/tables/${encodeURIComponent(name)}`;
   const open = (event: MouseEvent, name: string): void => {
     event.preventDefault();
@@ -68,10 +76,12 @@ export function TablesView(props: { schema: Introspection; base: string }): JSX.
     <Table>
       <thead>
         <tr>
-          <Head>Table</Head>
-          <Head numeric>Rows (est.)</Head>
-          <Head numeric>Columns</Head>
-          <Head>Primary key</Head>
+          <Head>{props.documents === true ? "Collection" : "Table"}</Head>
+          <Head numeric>{props.documents === true ? "Documents (est.)" : "Rows (est.)"}</Head>
+          <Head numeric>{props.documents === true ? "Fields" : "Columns"}</Head>
+          <Show when={props.documents !== true}>
+            <Head>Primary key</Head>
+          </Show>
         </tr>
       </thead>
       <tbody>
@@ -100,9 +110,11 @@ export function TablesView(props: { schema: Introspection; base: string }): JSX.
                 </Cell>
                 <Cell numeric>{table.row_estimate}</Cell>
                 <Cell numeric>{table.columns.length}</Cell>
-                <Cell>
-                  <Truncated>{table.primary_key?.join(", ") ?? "none"}</Truncated>
-                </Cell>
+                <Show when={props.documents !== true}>
+                  <Cell>
+                    <Truncated>{table.primary_key?.join(", ") ?? "none"}</Truncated>
+                  </Cell>
+                </Show>
               </Row>
             )}
           </For>

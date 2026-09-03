@@ -88,10 +88,19 @@ test.describe("qa stories", () => {
     await page.getByRole("button", { name: "Run (read-only)" }).click();
     await expect(page.getByText(/\d+ row\(s\)/)).toBeVisible();
     await expect(page.getByText(/read-only credential|application filter only/)).toBeVisible();
+    await page.goto(`/projects/demo/adapters/${mongo.id}`);
+    await settle(page);
+    await expect(page.getByRole("heading", { name: "Collections" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Diagram" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Import a file" })).toHaveCount(0);
     const table = await firstTable(mongo.id);
     await page.goto(`/projects/demo/adapters/${mongo.id}/tables/${encodeURIComponent(table)}`);
     await settle(page);
     await expect(page.getByText("Write mode")).toHaveCount(0);
+    await expect(page.getByText("Editing needs the Tabular tier.")).toHaveCount(0);
+    const fields = page.getByRole("region", { name: "Fields of the document" });
+    await expect(fields).toContainText("_id:");
+    await expect(fields).not.toContainText("$oid");
     expect(issues).toStrictEqual([]);
   });
 
