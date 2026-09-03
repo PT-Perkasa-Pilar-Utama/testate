@@ -72,10 +72,27 @@ export const stateListItemSchema = v.object({
 });
 export type StateListItem = v.InferOutput<typeof stateListItemSchema>;
 
+/**
+ * A table against the parent state's manifest: the same blob, a different one, or new. Null when
+ * the state has no parent to compare with. A table the parent had and this state lacks is named
+ * in the adapter's `removed_tables`.
+ */
+export const tableChangeSchema = v.picklist(["same", "changed", "added"]);
+export type TableChange = v.InferOutput<typeof tableChangeSchema>;
+export const detailTableSchema = v.object({
+  ...manifestTableSchema.entries,
+  change: v.nullable(tableChangeSchema),
+});
+export type DetailTable = v.InferOutput<typeof detailTableSchema>;
+
 export const stateDetailSchema = v.object({
   ...stateSchema.entries,
   adapters: v.array(
-    v.object({ ...stateAdapterSchema.entries, tables: v.array(manifestTableSchema) })
+    v.object({
+      ...stateAdapterSchema.entries,
+      tables: v.array(detailTableSchema),
+      removed_tables: v.array(v.string()),
+    })
   ),
 });
 export type StateDetail = v.InferOutput<typeof stateDetailSchema>;

@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import type { Head, ManifestTable, State, StateDetail } from "@testate/shared";
+import type { DetailTable, Head, State, StateDetail } from "@testate/shared";
 
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
@@ -8,7 +8,7 @@ import { matchingTables } from "./states.format.ts";
 import { statesModel } from "./states.model.ts";
 
 export type DetailAdapter = StateDetail["adapters"][number];
-export type TableSort = "name" | "rows";
+export type TableSort = "changes" | "name" | "rows";
 
 export type StatePresenter = {
   detail: Refreshable<StateDetail>;
@@ -24,7 +24,7 @@ export type StatePresenter = {
   sort: () => TableSort;
   setSort: (sort: TableSort) => void;
   /** The picked database's tables, searched and sorted. */
-  tables: () => ManifestTable[];
+  tables: () => DetailTable[];
   isHead: () => boolean;
   refresh: () => void;
 };
@@ -33,12 +33,29 @@ export function qualifiedTable(table: { schema: string | null; name: string }): 
   return table.schema === null ? table.name : `${table.schema}.${table.name}`;
 }
 
-/** By name, or the biggest first; a tie on rows falls back to the name so the order is stable. */
-export function sortTables(tables: readonly ManifestTable[], sort: TableSort): ManifestTable[] {
-  const byName = (a: ManifestTable, b: ManifestTable): number =>
+const CHANGE_RANK = { changed: 0, added: 1, same: 2 } as const;
+
+/**
+ * What moved first, or by name, or the biggest first; every tie falls back to the name so the
+ * order is stable.
+ */
+export function sortTables(tables: readonly DetailTable[], sort: TableSort): DetailTable[] {
+  const byName = (a: DetailTable, b: DetailTable): number =>
     qualifiedTable(a).localeCompare(qualifiedTable(b));
-  return [...tables].sort((a, b) =>
-    sort === "rows" ? b.rows - a.rows || byName(a, b) : byName(a, b)
+  const rank = (table: DetailTable): number =>
+    table.change === null ? 3 : CHANGE_RANK[table.change];
+  return [...tables].sort((a, b) => {
+    if (sort === "rows") return b.rows - a.rows || byName(a, b);
+    if (sort === "changes") return rank(a) - rank(b) || byName(a, b);
+    return byName(a, b);
+  });
+}
+
+/** How many tables moved against the parent, the ones it lost included. */
+export function changedCount(adapter: DetailAdapter): number {
+  return (
+    adapter.tables.filter((table) => table.change === "changed" || table.change === "added")
+      .length + adapter.removed_tables.length
   );
 }
 
@@ -77,7 +94,7 @@ export function createStatePresenter(slug: () => string, id: () => string): Stat
   const initial = fromSearch(window.location.search);
   const [pickedId, setPickedId] = createSignal<string | null>(initial.db);
   const [needle, setNeedleSignal] = createSignal(initial.q);
-  const [sort, setSort] = createSignal<TableSort>("name");
+  const [sort, setSort] = createSignal<TableSort>("changes");
   const remember = (db: string | null, q: string): void => {
     window.history.replaceState(
       window.history.state,

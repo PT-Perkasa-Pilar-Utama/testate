@@ -1,4 +1,11 @@
-import type { State, StateAdapter, StateDetail } from "@testate/shared";
+import type {
+  DetailTable,
+  ManifestTable,
+  State,
+  StateAdapter,
+  StateDetail,
+  TableChange,
+} from "@testate/shared";
 import {
   engineWarningSchema,
   manifestTableSchema,
@@ -113,12 +120,58 @@ export function toState(row: StateRow, adapters: AdapterRow[]): State {
   };
 }
 
-export function toStateDetail(row: StateRow, adapters: AdapterRow[]): StateDetail {
+function tablesOf(row: AdapterRow): ManifestTable[] {
+  return v.parse(v.array(manifestTableSchema), JSON.parse(row.tables));
+}
+
+const key = (table: { schema: string | null; name: string }): string =>
+  table.schema === null ? table.name : `${table.schema}.${table.name}`;
+
+/** What a state's tables did against its parent's, per adapter. */
+export type Compared = { tables: DetailTable[]; removed_tables: string[] };
+
+function changeOf(hash: string | undefined, mine: string): TableChange {
+  if (hash === undefined) return "added";
+  return hash === mine ? "same" : "changed";
+}
+
+/**
+ * Each table against the parent's manifest of the same adapter: the same blob hash is the same
+ * rows, a different one is a change, no counterpart is an addition. Null across the board when
+ * there is no parent; every table added when the parent never held this adapter.
+ */
+export function changesAgainst(tables: ManifestTable[], parent: ManifestTable[] | null): Compared {
+  if (parent === null) {
+    return { tables: tables.map((t) => ({ ...t, change: null })), removed_tables: [] };
+  }
+  const before = new Map(parent.map((table) => [key(table), table.blob_hash]));
+  const mine = new Set(tables.map(key));
+  return {
+    tables: tables.map((table) => ({
+      ...table,
+      change: changeOf(before.get(key(table)), table.blob_hash),
+    })),
+    removed_tables: parent.map(key).filter((name) => !mine.has(name)),
+  };
+}
+
+/** The parent's tables for one adapter: null with no parent, empty when it never held the adapter. */
+function parentTables(parent: AdapterRow[] | null, adapterId: string): ManifestTable[] | null {
+  if (parent === null) return null;
+  const counterpart = parent.find((item) => item.adapter_id === adapterId);
+  return counterpart === undefined ? [] : tablesOf(counterpart);
+}
+
+export function toStateDetail(
+  row: StateRow,
+  adapters: AdapterRow[],
+  parent: AdapterRow[] | null
+): StateDetail {
   return {
     ...toState(row, adapters),
     adapters: adapters.map((adapter) => ({
       ...toStateAdapter(adapter),
-      tables: v.parse(v.array(manifestTableSchema), JSON.parse(adapter.tables)),
+      ...changesAgainst(tablesOf(adapter), parentTables(parent, adapter.adapter_id)),
     })),
   };
 }

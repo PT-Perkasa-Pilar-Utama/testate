@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { eventsLabel } from "./states.format.ts";
 
-import type { Preflight, State, StateAdapter } from "@testate/shared";
+import type { DetailTable, Preflight, State, StateAdapter } from "@testate/shared";
 
 import {
   canCheckout,
@@ -10,6 +10,7 @@ import {
   driftSummary,
   strategyLine,
 } from "../checkouts/preflight.presenter.ts";
+import { sortTables } from "./state.presenter.ts";
 import { adapterSummary, sortLabel } from "./states.format.ts";
 import {
   checkoutBlockedReason,
@@ -174,5 +175,31 @@ describe("what a state produced", () => {
     expect(eventsLabel({ checkout_count: 3, diff_count: 0 })).toBe("restored 3 times");
     expect(eventsLabel({ checkout_count: 0, diff_count: 1 })).toBe("in 1 diff");
     expect(eventsLabel({ checkout_count: 2, diff_count: 4 })).toBe("restored 2 times, in 4 diffs");
+  });
+});
+
+describe("the state page's table order", () => {
+  const table = (name: string, change: DetailTable["change"], rows = 1): DetailTable => ({
+    schema: null,
+    name,
+    rows,
+    bytes: 1,
+    blob_hash: name,
+    sort: "primary-key",
+    warnings: [],
+    change,
+  });
+  test("changes first: changed, then added, then same, each by name", () => {
+    const tables = [
+      table("z", "same"),
+      table("m", "added"),
+      table("b", "changed"),
+      table("a", "same"),
+    ];
+    expect(sortTables(tables, "changes").map((t) => t.name)).toEqual(["b", "m", "a", "z"]);
+    expect(sortTables(tables, "name").map((t) => t.name)).toEqual(["a", "b", "m", "z"]);
+    expect(
+      sortTables([table("x", null, 2), table("y", null, 9)], "rows").map((t) => t.name)
+    ).toEqual(["y", "x"]);
   });
 });

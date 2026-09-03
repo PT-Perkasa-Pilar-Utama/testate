@@ -8,14 +8,17 @@ import Input from "@/components/input.tsx";
 import Tabs from "@/components/tabs.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { engineLabel } from "@/lib/labels.ts";
-import { qualifiedTable, troubled } from "./state.presenter.ts";
+import { changedCount, qualifiedTable, troubled } from "./state.presenter.ts";
 import type { DetailAdapter, StatePresenter } from "./state.presenter.ts";
 import { formatBytes } from "./states.format.ts";
 
 const SORTS = [
+  { id: "changes", label: "Changes" },
   { id: "name", label: "Name" },
   { id: "rows", label: "Rows" },
 ] as const;
+
+const CHANGE_VARIANT = { changed: "warning", added: "success", same: "secondary" } as const;
 
 function noun(adapter: DetailAdapter, count: number): string {
   const one = adapter.engine === "mongodb" ? "collection" : "table";
@@ -52,7 +55,17 @@ export function DatabaseRail(props: { presenter: StatePresenter }): JSX.Element 
             <Show when={troubled(adapter)}>
               <Icon name="triangle-alert" class="h-3.5 w-3.5 shrink-0 text-warning-fg" />
             </Show>
-            <span class="shrink-0 font-mono text-xs tabular-nums">{adapter.tables.length}</span>
+            {/* What moved against the parent, when anything did; else how many tables. */}
+            <Show
+              when={changedCount(adapter) > 0}
+              fallback={
+                <span class="shrink-0 font-mono text-xs tabular-nums">{adapter.tables.length}</span>
+              }
+            >
+              <span class="shrink-0 font-mono text-xs text-warning-fg tabular-nums">
+                ~{changedCount(adapter)}
+              </span>
+            </Show>
           </button>
         )}
       </For>
@@ -89,6 +102,12 @@ export function TablesPane(props: {
             .join(" ")}
         </Banner>
       </Show>
+      <Show when={a().removed_tables.length > 0}>
+        <p class="text-sm text-muted">
+          Not here any more, the parent had {a().removed_tables.length === 1 ? "it" : "them"}:{" "}
+          <code>{a().removed_tables.join(", ")}</code>
+        </p>
+      </Show>
       <div class="flex flex-wrap items-center justify-between gap-2">
         <Input
           ref={props.searchRef}
@@ -111,6 +130,7 @@ export function TablesPane(props: {
         <thead>
           <tr>
             <Head>{noun(a(), 1)}</Head>
+            <Head>Against parent</Head>
             <Head numeric>Rows</Head>
             <Head numeric>Size</Head>
           </tr>
@@ -120,7 +140,7 @@ export function TablesPane(props: {
             each={props.presenter.tables()}
             fallback={
               <tr>
-                <td colspan={3} class="px-3 py-4 text-sm text-muted">
+                <td colspan={4} class="px-3 py-4 text-sm text-muted">
                   Nothing matches.
                 </td>
               </tr>
@@ -137,6 +157,11 @@ export function TablesPane(props: {
                       </span>
                     </Show>
                   </span>
+                </Cell>
+                <Cell>
+                  <Show when={table.change}>
+                    {(change) => <Badge variant={CHANGE_VARIANT[change()]}>{change()}</Badge>}
+                  </Show>
                 </Cell>
                 <Cell numeric>{table.rows}</Cell>
                 <Cell numeric>{formatBytes(table.bytes)}</Cell>

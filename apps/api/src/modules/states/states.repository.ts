@@ -201,7 +201,15 @@ function createStateRows(db: MetadataDb): StateRows {
     },
     detail(projectId, idOrName) {
       const row = oneRow(projectId, idOrName);
-      return row === null ? null : toStateDetail(row, adaptersOf([row.id]).get(row.id) ?? []);
+      if (row === null) return null;
+      // The parent's manifests ride along in the same query: the detail says what changed.
+      const parentId = row.parent_state_id;
+      const byState = adaptersOf(parentId === null ? [row.id] : [row.id, parentId]);
+      return toStateDetail(
+        row,
+        byState.get(row.id) ?? [],
+        parentId === null ? null : (byState.get(parentId) ?? [])
+      );
     },
     update(id, patch, at) {
       const sets: string[] = ["updated_at = ?"];
