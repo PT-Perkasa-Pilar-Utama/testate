@@ -3,6 +3,7 @@ import type { Checkout, Counters } from "@testate/shared";
 
 import { checkoutsQuery } from "./checkouts.model.ts";
 import {
+  adaptersSummary,
   blockedAdapters,
   blockingSessions,
   countersSummary,
@@ -173,5 +174,22 @@ describe("checkoutsQuery", () => {
         purpose: "return_to_init",
       }
     );
+  });
+});
+
+describe("the checkouts list's databases line", () => {
+  test("counts each outcome, in the order they appear", () => {
+    const one = (name: string, result: Checkout["adapters"][number]["result"]) => ({
+      ...ADAPTER,
+      adapter_id: name,
+      name,
+      result,
+    });
+    expect(
+      adaptersSummary({ ...CHECKOUT, adapters: [one("a", "restored"), one("b", "restored")] })
+    ).toBe("2 restored");
+    expect(
+      adaptersSummary({ ...CHECKOUT, adapters: [one("a", "restored"), one("b", "skipped")] })
+    ).toBe("1 restored, 1 skipped");
   });
 });

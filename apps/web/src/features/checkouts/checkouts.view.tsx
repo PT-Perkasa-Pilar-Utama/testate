@@ -24,23 +24,19 @@ import {
   Truncated,
 } from "@/components/table.tsx";
 import { activeFilterCount } from "@/lib/table.ts";
-import { CHECKOUT_PURPOSE_LABEL, CHECKOUT_RESULT_LABEL, JOB_STATUS_LABEL } from "@/lib/labels.ts";
+import { CHECKOUT_PURPOSE_LABEL, JOB_STATUS_LABEL } from "@/lib/labels.ts";
 import { hasRole } from "@/lib/session.ts";
 import { subscribeJob } from "@/lib/sse.ts";
-import { CountersDialog, DetailDialog, RESULT_VARIANT } from "./checkouts.dialogs.view.tsx";
+import { CountersDialog, DetailDialog } from "./checkouts.dialogs.view.tsx";
 
 /**
  * In the list, a database that restored is the expected case and reads plain; only a doubt or a
  * failure takes a colour. Four green pills per row made the one red one hard to find.
  */
-const ROW_RESULT_VARIANT = {
-  ...RESULT_VARIANT,
-  restored: "outline",
-  skipped: "outline",
-} as const;
 import {
   CHECKOUT_PURPOSE_FILTER_OPTIONS,
   CHECKOUT_STATUS_FILTER_OPTIONS,
+  adaptersSummary,
   blockedAdapters,
   createCheckoutsPresenter,
   outcomeLine,
@@ -248,21 +244,17 @@ export default function CheckoutsView(props: {
                     <Cell wrap>
                       <Outcome checkout={checkout} />
                     </Cell>
-                    <Cell>
-                      <span class="inline-flex max-w-[22rem] flex-wrap gap-1">
-                        <For each={checkout.adapters}>
-                          {(adapter) => (
-                            <Badge variant={ROW_RESULT_VARIANT[adapter.result]}>
-                              <span class="block max-w-[8rem] truncate" title={adapter.name}>
-                                {adapter.name}
-                              </span>
-                              <span class="shrink-0">
-                                : {CHECKOUT_RESULT_LABEL[adapter.result]}
-                              </span>
-                            </Badge>
-                          )}
-                        </For>
-                      </span>
+                    <Cell class="whitespace-nowrap">
+                      {/* One line, and the names behind it: a chip per database took half the
+                          table, and what each one did is the Details dialog's first table. */}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        title="Which databases, and what happened to each"
+                        onClick={() => presenter.openDetail(checkout)}
+                      >
+                        {adaptersSummary(checkout)}
+                      </Button>
                     </Cell>
                     <Cell class="whitespace-nowrap">
                       <Truncated class="max-w-[10rem]">{checkout.actor.label}</Truncated>

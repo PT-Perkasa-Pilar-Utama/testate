@@ -1,4 +1,5 @@
 import { createSignal } from "solid-js";
+import { CHECKOUT_RESULT_LABEL } from "@/lib/labels.ts";
 import * as v from "valibot";
 import type { Checkout, Counters } from "@testate/shared";
 
@@ -67,6 +68,16 @@ export type CheckoutsPresenter = Paged<Checkout> & {
 
 /** Mirrors the API: only these per-adapter results can be retried (13 §13.4). */
 const RETRIABLE = new Set(["rolled_back", "unknown", "counters_failed", "pending"]);
+
+/** "4 restored", or "3 restored, 1 skipped": the row's one line for what happened per database. */
+export function adaptersSummary(checkout: Checkout): string {
+  const counts = new Map<Checkout["adapters"][number]["result"], number>();
+  for (const adapter of checkout.adapters)
+    counts.set(adapter.result, (counts.get(adapter.result) ?? 0) + 1);
+  return [...counts.entries()]
+    .map(([result, n]) => `${n} ${CHECKOUT_RESULT_LABEL[result].toLowerCase()}`)
+    .join(", ");
+}
 
 export function retriable(checkout: Checkout): boolean {
   return (

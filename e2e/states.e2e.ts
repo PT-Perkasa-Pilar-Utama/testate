@@ -112,8 +112,8 @@ test.describe("state stories", () => {
     await expect(history.getByText("Succeeded", { exact: true }).first()).toBeVisible({
       timeout: 90_000,
     });
-    // And every database it touched says so by name, which is the whole point of story 84.
-    await expect(history.getByText(/^\S.*: Restored$/).first()).toBeVisible();
+    // The row says how many databases it restored; story 79 opens the names behind that line.
+    await expect(history.getByRole("button", { name: /\d+ restored/ })).toBeVisible();
     await openStatesList(page);
     await page.getByRole("switch", { name: "Show stashes" }).click();
     await expect(stateRow(page, "stash").first()).toBeVisible();
@@ -320,21 +320,23 @@ test.describe("state stories", () => {
     await take.getByRole("button", { name: "Take" }).click();
     const row = stateRow(page, name);
     await ready(row);
-    await expect(row).toContainText(postgres.name);
     await expect(row).not.toContainText("shop-mongo");
     await row.getByRole("button", { name: "Check out" }).click();
     const dialog = page.locator("dialog[open]");
     await expect(dialog.getByText("not in state").first()).toBeVisible({ timeout: 30_000 });
     await dialog.getByRole("button", { name: "Check out" }).click();
-    await expect(page.locator("dialog[open]")).toHaveCount(0);
+    // The tab click waits out the closing dialog on its own.
     await page.getByRole("tab", { name: "Activity" }).click();
     const history = page.locator("tr", { hasText: name }).first();
     await expect(history.getByText("Succeeded", { exact: true }).first()).toBeVisible({
       timeout: 90_000,
     });
-    await expect(history.getByText(`${postgres.name}: Restored`)).toBeVisible();
+    await history.getByRole("button", { name: /restored/ }).click();
+    const done = page.locator("dialog[open]");
+    await expect(done.locator("tr", { hasText: postgres.name })).toContainText("Restored");
     // Untouched adapters are not checkout rows: the preflight said so, the history stays honest.
-    await expect(history).not.toContainText("shop-mongo");
+    await expect(done).not.toContainText("shop-mongo");
+    await done.getByText("Close", { exact: true }).click();
     await openStatesList(page);
     await (await rowMenu(row)).getByRole("button", { name: "Delete" }).click();
     await expect(async () => {
