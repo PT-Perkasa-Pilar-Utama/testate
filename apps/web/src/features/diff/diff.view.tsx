@@ -195,7 +195,7 @@ export default function DiffView(props: { slug: string; id: string }): JSX.Eleme
             items={[
               { label: "Projects", href: "/projects" },
               { label: props.slug, href: `/projects/${props.slug}` },
-              { label: "activity", href: `/projects/${props.slug}?tab=activity` },
+              { label: "activity", href: `/projects/${props.slug}?tab=activity&show=diffs` },
               { label: "diff" },
             ]}
           />

@@ -270,6 +270,7 @@ test.describe("state stories", () => {
     await page.goto("/projects/demo");
     await settle(page);
     await page.getByRole("tab", { name: "Activity" }).click();
+    await page.getByRole("tab", { name: "Imports" }).click();
     const run = page
       .locator("main tbody tr", { hasText: "Imported 1 row. 1 row was rejected." })
       .first();

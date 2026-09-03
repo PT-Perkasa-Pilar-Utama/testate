@@ -30,8 +30,16 @@ const CHIP_IDS: readonly Chip[] = CHIPS.map((chip) => chip.id);
  * was dropped as confusing. The chip a person left it on is where it reopens.
  */
 export default function ActivityView(props: { slug: string; onChanged: () => void }): JSX.Element {
+  // `?show=diffs` names a chip: a comparison just started lands on the list it lands in. Without
+  // it, the chip this browser left the screen on.
+  // Read once, from the address itself: this mounts anew with the tab, so nothing tracks it.
+  const asked = CHIP_IDS.find(
+    (id) => id === new URLSearchParams(window.location.search).get("show")
+  );
+  // A chip the address named is one the person is now on, so it is remembered like a click.
+  if (asked !== undefined) remember("activity-tab", asked);
   const [chip, setChipSignal] = createSignal<Chip>(
-    remembered("activity-tab", CHIP_IDS, "checkouts")
+    asked ?? remembered("activity-tab", CHIP_IDS, "checkouts")
   );
   const setChip = (next: Chip): void => {
     remember("activity-tab", next);
