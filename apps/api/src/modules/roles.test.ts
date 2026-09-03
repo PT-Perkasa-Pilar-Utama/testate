@@ -112,7 +112,7 @@ const MATRIX: [string, string, Role][] = [
   ["GET", `${P}/adapters`, "viewer"],
   ["POST", `${P}/adapters`, "qa"],
   ["PATCH", A, "qa"],
-  ["POST", `${A}/mode`, "qa"],
+  ["POST", `${A}/mode`, "admin"],
   ["GET", "/storage-adapters", "viewer"],
   ["GET", `${P}/states`, "viewer"],
   ["POST", `${P}/states`, "qa"],

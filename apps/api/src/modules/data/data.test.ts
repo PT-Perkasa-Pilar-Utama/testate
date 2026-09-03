@@ -159,7 +159,7 @@ describe("data", () => {
 
   it("refuses write sessions on read-only adapters and tabular-only operations elsewhere", async () => {
     const h = await createDataHarness();
-    await h.harness.adapters.setMode(h.harness.qa, "shop", h.adapterId, "read_only", TEST_META);
+    await h.harness.adapters.setMode(h.harness.admin, "shop", h.adapterId, "read_only", TEST_META);
     await expect(
       h.data.startWriteSession(h.harness.qa, h.adapterId, true, TEST_META)
     ).rejects.toMatchObject({

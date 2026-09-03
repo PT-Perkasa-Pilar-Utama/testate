@@ -62,7 +62,7 @@ export function createAdaptersRouter(h: AdaptersHandlers): Hono {
   );
   router.post(
     `${P}/:id/mode`,
-    requireRole("qa"),
+    requireRole("admin"),
     describe("adapters", "Tighten or loosen the mode", adapterSchema),
     h.setMode
   );

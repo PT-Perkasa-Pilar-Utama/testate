@@ -46,11 +46,11 @@ function AdminActions(props: { presenter: AdapterPresenter; adapter: Adapter }):
         >
           Retest
         </Button>
-        <Show when={a().kind === "database" && a().mode === "sandbox"}>
+        <Show when={hasRole("admin") && a().kind === "database" && a().mode === "sandbox"}>
           <Button
             size="sm"
             variant="outline"
-            title="Refuse restores, imports and write sessions on this database; only an admin can allow them again"
+            title="Refuse restores, imports and write sessions on this database"
             onClick={() => void props.presenter.setMode("read_only")}
           >
             Make read-only
@@ -143,17 +143,28 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
                 <div class="grid gap-3">
                   {/* The same shape States uses for List and Tree: one set of data, two ways to
                       read it. */}
-                  <Tabs
-                    items={TABLE_VIEWS}
-                    value={tableView()}
-                    onChange={(next) => setTableView(next)}
-                    label="How to show the tables"
-                    variant="segmented"
-                  />
-                  <Show when={tableView() === "list"}>
-                    <TablesView schema={schema()} base={base()} />
+                  {/* A diagram is drawn from foreign keys, which a document store has none of. */}
+                  <Show when={presenter.adapter.value().tier === "tabular"}>
+                    <Tabs
+                      items={TABLE_VIEWS}
+                      value={tableView()}
+                      onChange={(next) => setTableView(next)}
+                      label="How to show the tables"
+                      variant="segmented"
+                    />
                   </Show>
-                  <Show when={tableView() === "diagram"}>
+                  <Show
+                    when={tableView() === "list" || presenter.adapter.value().tier !== "tabular"}
+                  >
+                    <TablesView
+                      schema={schema()}
+                      base={base()}
+                      documents={presenter.adapter.value().tier === "document"}
+                    />
+                  </Show>
+                  <Show
+                    when={tableView() === "diagram" && presenter.adapter.value().tier === "tabular"}
+                  >
                     <Erd tables={schema().tables} />
                   </Show>
                 </div>

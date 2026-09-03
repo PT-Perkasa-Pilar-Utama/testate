@@ -273,7 +273,9 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
     },
     /**
      * A file store has a mode too, and it means the same thing there as it does on a database:
-     * `read_only` refuses every write, and only an admin loosens one.
+     * `read_only` refuses every write. A tester picks the mode when the adapter is created; every
+     * change after that is an admin's, in either direction, so the mode a database was protected
+     * with is not something a tester's session or token can undo or reshuffle.
      *
      * This used to refuse anything that was not a database, which left a file store stuck on
      * whatever mode it was created with. Uploading, deleting and renaming a file all check the
@@ -283,7 +285,7 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
      */
     async setMode(actor, slug, id, mode, meta) {
       const adapter = find(projectOf(slug).id, id);
-      if (mode === "sandbox" && actor.role !== "admin") throw forbidden("loosening requires admin");
+      if (actor.role !== "admin") throw forbidden("changing the mode requires admin");
       repo.setMode(id, mode, nowIso());
       const ended = mode === "read_only" ? repo.endWriteSessions(id, nowIso()) : 0;
       record(

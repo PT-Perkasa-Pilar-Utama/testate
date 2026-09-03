@@ -130,10 +130,14 @@ describe("adapters", () => {
     await expect(adapters.list("nope", {})).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
-  it("lets qa tighten and only admin loosen, on a file store as much as on a database", async () => {
+  it("lets only an admin change the mode, on a file store as much as on a database", async () => {
     const { adapters, qa, admin } = await createAdaptersHarness();
     const { adapter } = await adapters.create(qa, "shop", PG, TEST_META);
-    const tightened = await adapters.setMode(qa, "shop", adapter.id, "read_only", TEST_META);
+    // A tester picks the mode at creation and never again: tightening used to be theirs too.
+    await expect(
+      adapters.setMode(qa, "shop", adapter.id, "read_only", TEST_META)
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    const tightened = await adapters.setMode(admin, "shop", adapter.id, "read_only", TEST_META);
     expect(tightened.mode).toBe("read_only");
     await expect(
       adapters.setMode(qa, "shop", adapter.id, "sandbox", TEST_META)
@@ -145,9 +149,9 @@ describe("adapters", () => {
     // changeable. It used to be refused here, which left a store stuck on whatever it was made
     // with: one made read-only could never be written to and one made sandbox never protected.
     const s3 = await adapters.create(qa, "shop", S3, TEST_META);
-    expect((await adapters.setMode(qa, "shop", s3.adapter.id, "read_only", TEST_META)).mode).toBe(
-      "read_only"
-    );
+    expect(
+      (await adapters.setMode(admin, "shop", s3.adapter.id, "read_only", TEST_META)).mode
+    ).toBe("read_only");
     await expect(
       adapters.setMode(qa, "shop", s3.adapter.id, "sandbox", TEST_META)
     ).rejects.toMatchObject({ code: "FORBIDDEN" });

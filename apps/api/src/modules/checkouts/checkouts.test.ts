@@ -138,7 +138,7 @@ describe("checkouts", () => {
   it("refuses read-only adapters and states that are not ready", async () => {
     const h = await createCheckoutsHarness();
     const adapter = await createSettled(h.harness, PG);
-    await h.harness.adapters.setMode(h.harness.qa, "shop", adapter.id, "read_only", TEST_META);
+    await h.harness.adapters.setMode(h.harness.admin, "shop", adapter.id, "read_only", TEST_META);
     await expect(checkoutInit(h)).rejects.toMatchObject({ code: "ADAPTER_READ_ONLY" });
     await expect(
       h.checkouts.create(h.harness.qa, "shop", { state_name: "missing", force: false }, TEST_META)

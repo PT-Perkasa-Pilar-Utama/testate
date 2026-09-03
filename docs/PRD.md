@@ -81,8 +81,8 @@ apart on what a checkout does.
 18. As a QA engineer, I want to test a draft connection before I save it, and re-test a saved adapter after I change its credentials, so that I find typos immediately.
 19. As a QA engineer, I want the connection test to report the engine version, the privileges Testate has, the restore strategy those privileges allow, table count, and approximate size, so that I know what Testate can and cannot do on this database.
 20. As a QA engineer, I want Testate to refuse an engine below its minimum version and name the minimum, so that I do not discover version gaps mid-checkout.
-21. As a QA engineer, I want to set a new adapter to `sandbox` or `read-only`, and to tighten it to `read-only` later, so that a UAT database that must not be touched is browsable but safe.
-22. As an admin, I want to be the only role that can loosen an adapter from `read-only` to `sandbox`, with its own audit event, so that a mis-click or a compromised token cannot unprotect a database.
+21. As a QA engineer, I want to set a new adapter to `sandbox` or `read-only` when I create it, so that a UAT database that must not be touched is browsable but safe.
+22. As an admin, I want to be the only role that changes an adapter's mode after it exists, with loosening as its own audit event, so that a mis-click or a compromised token cannot unprotect a database, and a tester cannot reshuffle what an admin protected.
 23. As a QA engineer, I want to add an optional read-only credential to an adapter, so that read-only sessions on MongoDB use a database role that cannot write.
 24. As a QA engineer, I want to exclude tables from snapshots and checkouts, so that migration bookkeeping tables and audit tables stay as they are.
 25. As a QA engineer, I want Testate to exclude common migration tables by default, so that the application's migration tool keeps its own history.
@@ -107,7 +107,7 @@ apart on what a checkout does.
 41. As a QA engineer, I want Testate to stash on the first write of a write session, so that every hand-made change is reversible.
 42. As a QA engineer, I want to edit, insert, and delete rows inline in the grid during a write session, so that small data fixes take seconds.
 43. As a viewer, I want to run MongoDB find and aggregate operations from JSON forms, so that I can inspect collections without a shell.
-44. As a viewer, I want MongoDB adapters to expose find and aggregate only, with no write forms and no import, so that the Document tier stays view, state, diff, and extract.
+44. As a viewer, I want a MongoDB collection shown as documents with their fields, the way its own console shows them, with find and aggregate only, no write forms, no import and no diagram, so that the Document tier stays view, state, diff, and extract.
 45. As any user, I want to save queries per adapter with a name, so that the team reuses them.
 46. As any user, I want a history of my queries with duration and row count, so that I can rerun yesterday's check.
 47. As any user, I want to export a result as CSV or JSON, so that I can attach it to a bug report.

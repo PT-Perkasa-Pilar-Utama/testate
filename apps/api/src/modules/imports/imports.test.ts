@@ -276,7 +276,7 @@ describe("imports", () => {
     expect(h.harness.databases.get("shop")?.get("public.customers")).toEqual([
       { id: 1, email: "z@x.io" },
     ]);
-    await h.harness.adapters.setMode(h.harness.qa, "shop", h.adapterId, "read_only", TEST_META);
+    await h.harness.adapters.setMode(h.harness.admin, "shop", h.adapterId, "read_only", TEST_META);
     await expect(
       h.imports.run(
         h.harness.qa,
