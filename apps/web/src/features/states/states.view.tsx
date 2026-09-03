@@ -14,6 +14,7 @@ import { navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { createPreflightPresenter } from "../checkouts/preflight.presenter.ts";
 import PreflightDialog from "../checkouts/preflight.view.tsx";
+import CompareDialog from "./states.compare.view.tsx";
 import { DeleteDialog, DetailDialog, EditDialog, TakeDialog } from "./states.dialogs.view.tsx";
 import { checkoutBlockedReason, createStatesPresenter } from "./states.presenter.ts";
 import Timeline from "./states.timeline.view.tsx";
@@ -133,8 +134,11 @@ export default function StatesView(props: {
           variant="segmented"
         />
         <div class="flex items-center gap-4">
-          <Show when={hasRole("qa") && presenter.view() === "list"}>
-            <span class="text-xs text-muted">Tick a dot to compare</span>
+          <Show when={hasRole("qa")}>
+            <Button variant="secondary" onClick={() => presenter.openCompare()}>
+              <Icon name="git-compare" class="h-4 w-4" />
+              Compare
+            </Button>
           </Show>
           <Switch
             label="Show stashes"
@@ -210,6 +214,10 @@ export default function StatesView(props: {
         </Show>
       </Loading>
       <TakeDialog presenter={presenter} />
+      <CompareDialog
+        presenter={presenter}
+        onDone={() => navigate(`/projects/${encodeURIComponent(props.slug)}?tab=activity`)}
+      />
       <EditDialog presenter={presenter} />
       <DeleteDialog presenter={presenter} />
       <DetailDialog presenter={presenter} />
