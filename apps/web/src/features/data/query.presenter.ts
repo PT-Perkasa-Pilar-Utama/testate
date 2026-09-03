@@ -1,5 +1,12 @@
 import { createSignal } from "solid-js";
-import type { Adapter, JsonObject, JsonValue, QueryRequest, QueryResult } from "@testate/shared";
+import type {
+  Adapter,
+  JsonObject,
+  JsonValue,
+  QueryRequest,
+  QueryResult,
+  TableSchema,
+} from "@testate/shared";
 import { jsonObjectSchema, mongoOperationSchema } from "@testate/shared";
 import * as v from "valibot";
 
@@ -46,6 +53,8 @@ export type QueryPresenter = {
   setSaveName: (name: string) => void;
   save: () => Promise<void>;
   load: (query: SavedQuery) => void;
+  /** A past run back in the editor, SQL text or the Mongo operation it stored as JSON. */
+  loadHistory: (row: HistoryRow) => void;
   removeSaved: (id: string) => Promise<void>;
   history: Refreshable<HistoryRow[]>;
   running: Refreshable<RunningQuery[]>;
@@ -103,6 +112,39 @@ export function buildRequest(
 }
 
 type Draft = { sql: string; mongo: MongoDraft };
+
+/**
+ * A find and an aggregate over the collection's own fields, every box filled, so the form shows
+ * what each one takes. `_id` is never the field picked: it is in every document and says nothing.
+ */
+export function mongoSample(collection: TableSchema): MongoDraft {
+  const names = collection.columns.map((column) => column.name).filter((name) => name !== "_id");
+  const first = names[0] ?? "_id";
+  const second = names[1] ?? first;
+  const json = (value: JsonValue): string => JSON.stringify(value, null, 2);
+  return {
+    op: "find",
+    collection: collection.name,
+    filter: json({ [first]: { $exists: true } }),
+    projection: JSON.stringify({ _id: 1, [first]: 1, [second]: 1 }),
+    sort: JSON.stringify({ [first]: 1 }),
+    pipeline: json([
+      { $match: { [first]: { $exists: true } } },
+      { $group: { _id: `$${first}`, count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 20 },
+    ]),
+  };
+}
+
+/** History keeps a Mongo run as its operation's JSON and a SQL run as its text. */
+function draftOfText(text: string): Draft {
+  try {
+    return draftOf({ mongo: v.parse(jsonObjectSchema, JSON.parse(text)) });
+  } catch {
+    return { sql: text, mongo: EMPTY_MONGO };
+  }
+}
 
 function draftOf(body: JsonObject): Draft {
   const text = v.safeParse(v.string(), body["text"]);
@@ -179,7 +221,7 @@ export function createQueryPresenter(slug: () => string, id: () => string): Quer
         if (first === undefined) throw new Error("This adapter has no tables to sample yet.");
         const name = first.schema === null ? first.name : `${first.schema}.${first.name}`;
         if (adapter.value().engine === "mongodb") {
-          setMongoSignal({ ...EMPTY_MONGO, collection: first.name, filter: "{}" });
+          setMongoSignal(mongoSample(first));
         } else {
           setSql(`SELECT *\nFROM ${name}\nORDER BY 1\nLIMIT 20`);
         }
@@ -250,6 +292,11 @@ export function createQueryPresenter(slug: () => string, id: () => string): Quer
     },
     load: (query) => {
       const draft = draftOf(query.body);
+      setSql(draft.sql);
+      setMongoSignal(draft.mongo);
+    },
+    loadHistory: (row) => {
+      const draft = draftOfText(row.query_text);
       setSql(draft.sql);
       setMongoSignal(draft.mongo);
     },

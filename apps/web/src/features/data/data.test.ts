@@ -14,7 +14,7 @@ import {
 } from "./grid.presenter.ts";
 import { editsFor, pkOf, toFormValue, valuesOf } from "./editing.presenter.ts";
 import { NONE, policyBody } from "./policies.presenter.ts";
-import { buildRequest } from "./query.presenter.ts";
+import { buildRequest, mongoSample } from "./query.presenter.ts";
 
 const MONGO = {
   op: "find" as const,
@@ -29,6 +29,16 @@ const MONGO = {
 function shown(field: Entry): string {
   return `${field.key}: ${field.text ?? field.kind}`;
 }
+
+const column = (name: string, type: string): TableSchema["columns"][number] => ({
+  name,
+  type,
+  nullable: true,
+  has_default: false,
+  generated: false,
+  identity: false,
+  policy: { required_function: null, mask: null },
+});
 
 describe("data feature", () => {
   test("filters serialize as column:op:value and cells render null and JSON", () => {
@@ -136,6 +146,32 @@ describe("data feature", () => {
     ]);
   });
 
+  test("the Mongo sample fills every box from the collection's own fields and parses", () => {
+    const customers: TableSchema = {
+      schema: null,
+      name: "customers",
+      kind: "table",
+      row_estimate: 0,
+      columns: [column("_id", "objectId"), column("email", "string"), column("balance", "long")],
+      primary_key: ["_id"],
+      foreign_keys_out: [],
+      foreign_keys_in: [],
+      unique: [],
+      unsupported: [],
+      excluded: false,
+      display_column: null,
+    };
+    const draft = mongoSample(customers);
+    expect(draft.collection).toBe("customers");
+    expect(JSON.parse(draft.filter)).toEqual({ email: { $exists: true } });
+    expect(JSON.parse(draft.projection)).toEqual({ _id: 1, email: 1, balance: 1 });
+    expect(JSON.parse(draft.sort)).toEqual({ email: 1 });
+    expect(JSON.parse(draft.pipeline)).toHaveLength(4);
+    // Both operations the form offers go through the request builder as they are.
+    expect(buildRequest(true, "", draft, "20").mongo?.op).toBe("find");
+    expect(buildRequest(true, "", { ...draft, op: "aggregate" }, "20").mongo?.op).toBe("aggregate");
+  });
+
   test("buildRequest sends SQL text or a parsed mongo operation with the row cap", () => {
     expect(buildRequest(false, "SELECT 1", MONGO, "50")).toEqual({
       dialect: "sql",
@@ -171,15 +207,6 @@ describe("data feature", () => {
       kind: "function",
       name: "hash_bcrypt",
       input: "pw",
-    });
-    const column = (name: string, type: string): TableSchema["columns"][number] => ({
-      name,
-      type,
-      nullable: true,
-      has_default: false,
-      generated: false,
-      identity: false,
-      policy: { required_function: null, mask: null },
     });
     const table: TableSchema = {
       schema: "public",

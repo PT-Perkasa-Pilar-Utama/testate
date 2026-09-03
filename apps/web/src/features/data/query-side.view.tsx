@@ -81,7 +81,14 @@ export default function SidePanel(props: { presenter: QueryPresenter }): JSX.Ele
             <For each={props.presenter.history.value()}>
               {(row) => (
                 <li class="grid gap-0.5 border-b border-line py-1">
-                  <code class="truncate">{row.query_text}</code>
+                  <button
+                    type="button"
+                    class="cursor-pointer text-left hover:underline"
+                    title="Load into the editor"
+                    onClick={() => props.presenter.loadHistory(row)}
+                  >
+                    <code class="block truncate">{row.query_text}</code>
+                  </button>
                   <span class="text-xs text-muted">
                     {formatWhen(row.created_at)} · {row.duration_ms ?? "?"} ms ·{" "}
                     {row.row_count ?? "?"} rows
