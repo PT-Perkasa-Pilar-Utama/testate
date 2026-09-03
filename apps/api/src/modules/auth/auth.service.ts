@@ -1,7 +1,8 @@
 import type { Actor, LoginInput, LoginResponse, Me } from "@testate/shared";
+import { passwordWeakness } from "@testate/shared";
 
 import type { ActorResolver, RequestMeta, Resolved } from "../../lib/http/auth.ts";
-import { forbidden, notFound, rateLimited, unauthorized } from "../../lib/http/index.ts";
+import { AppError, forbidden, notFound, rateLimited, unauthorized } from "../../lib/http/index.ts";
 import { randomSecret, sha256 } from "../../lib/password/index.ts";
 import type { PasswordHasher } from "../../lib/password/index.ts";
 import type { AuditService } from "../audit/audit.service.ts";
@@ -239,6 +240,10 @@ export function createAuthService(deps: AuthDeps): AuthService {
     async changePassword(actor, current, next, sessionToken, meta) {
       const user = requireUser(actor);
       if (!(await password.verify(current, user.password_hash))) throw unauthorized();
+      // The schema refuses the common list at the door; this is the same rule on the service, for
+      // a caller that did not come through the handler.
+      const weak = passwordWeakness(next);
+      if (weak !== null) throw new AppError("VALIDATION_ERROR", weak, { field: "next" });
       users.setPassword(user.id, await password.hash(next), false, nowIso());
       const keep = sessionToken === undefined ? null : repo.sessionByHash(sha256(sessionToken));
       const revoked =

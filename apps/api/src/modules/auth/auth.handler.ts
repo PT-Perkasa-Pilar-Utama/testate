@@ -9,7 +9,7 @@ import {
 import * as v from "valibot";
 import { nextCursor } from "../../lib/db/keyset.ts";
 
-import { SESSION_COOKIE, currentActor, requestMeta } from "../../lib/http/auth.ts";
+import { currentActor, requestMeta, sessionCookieName } from "../../lib/http/auth.ts";
 import { createRateLimiter } from "../../lib/http/ratelimit.ts";
 import {
   AppError,
@@ -106,6 +106,7 @@ export function createAuthHandlers(
   options: AuthHandlerOptions
 ): AuthHandlers {
   const cookiePath = options.basePath === "/" ? "/" : options.basePath;
+  const cookieName = sessionCookieName(options.secureCookies, options.basePath);
   const meta = (c: Parameters<Handler>[0]): ReturnType<typeof requestMeta> =>
     requestMeta(c, options.trustProxy);
   const guesses = createRateLimiter(options.now);
@@ -138,7 +139,7 @@ export function createAuthHandlers(
           c.get("event").add("op", { login_failed: true, login_already_limited: alreadyLimited });
           throw cause;
         });
-      setCookie(c, SESSION_COOKIE, sessionToken, {
+      setCookie(c, cookieName, sessionToken, {
         httpOnly: true,
         sameSite: "Strict",
         secure: options.secureCookies,
@@ -153,9 +154,9 @@ export function createAuthHandlers(
       return ok(c, response);
     },
     logout: async (c) => {
-      const token = getCookie(c, SESSION_COOKIE);
+      const token = getCookie(c, cookieName);
       if (token !== undefined) await service.logout(token, c.get("actor"), meta(c));
-      deleteCookie(c, SESSION_COOKIE, { path: cookiePath });
+      deleteCookie(c, cookieName, { path: cookiePath });
       return c.body(null, 204);
     },
     me: async (c) =>
@@ -176,13 +177,13 @@ export function createAuthHandlers(
         currentActor(c),
         input.current,
         input.next,
-        getCookie(c, SESSION_COOKIE),
+        getCookie(c, cookieName),
         meta(c)
       );
       return c.body(null, 204);
     },
     sessions: async (c) =>
-      okPage(c, await service.sessions(currentActor(c), getCookie(c, SESSION_COOKIE)), null, 50),
+      okPage(c, await service.sessions(currentActor(c), getCookie(c, cookieName)), null, 50),
     revokeSession: async (c) => {
       await service.revokeSession(currentActor(c), param(c, "id"));
       return c.body(null, 204);

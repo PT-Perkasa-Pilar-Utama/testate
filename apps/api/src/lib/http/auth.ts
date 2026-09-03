@@ -6,6 +6,15 @@ import type { Actor, Role } from "@testate/shared";
 import { forbidden, unauthorized } from "./errors.ts";
 
 export const SESSION_COOKIE = "testate_session";
+
+/**
+ * `__Host-` when the browser can hold it to that: a secure cookie set from the root path with no
+ * domain, which no subdomain and no other path can overwrite. A sub-path deploy sets the cookie
+ * on that path, which the prefix forbids, and a plain-HTTP dev instance cannot mark it secure.
+ */
+export function sessionCookieName(secure: boolean, basePath: string): string {
+  return secure && basePath === "/" ? `__Host-${SESSION_COOKIE}` : SESSION_COOKIE;
+}
 export const CSRF_HEADER = "x-testate-request";
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const RANK = { viewer: 0, qa: 1, admin: 2 } as const satisfies Record<Role, number>;
@@ -31,12 +40,16 @@ export type RequestMeta = {
   idempotency_key?: string;
 };
 
-async function resolve(c: Context, resolver: ActorResolver): Promise<Resolved | null> {
+async function resolve(
+  c: Context,
+  resolver: ActorResolver,
+  cookieName: string
+): Promise<Resolved | null> {
   const bearer = c.req.header("authorization");
   if (bearer !== undefined) {
     return bearer.startsWith("Bearer ") ? resolver.fromBearer(bearer.slice(7)) : null;
   }
-  const cookie = getCookie(c, SESSION_COOKIE);
+  const cookie = getCookie(c, cookieName);
   return cookie === undefined ? null : resolver.fromSession(cookie);
 }
 
@@ -51,10 +64,13 @@ function recordActor(c: Context, actor: Actor, viaBearer: boolean): void {
 }
 
 /** Sets `actor` on the context from the cookie session or the bearer token; never rejects here. */
-export function authenticate(resolver: ActorResolver): MiddlewareHandler {
+export function authenticate(
+  resolver: ActorResolver,
+  cookieName: string = SESSION_COOKIE
+): MiddlewareHandler {
   return async (c, next) => {
     const viaBearer = c.req.header("authorization") !== undefined;
-    const resolved = await resolve(c, resolver);
+    const resolved = await resolve(c, resolver, cookieName);
     c.set("actor", resolved?.actor ?? null);
     c.set("authKind", viaBearer ? "bearer" : "session");
     c.set("passwordChangeRequired", resolved?.mustChangePassword ?? false);

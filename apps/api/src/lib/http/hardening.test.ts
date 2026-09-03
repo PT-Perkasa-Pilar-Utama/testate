@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { Hono } from "hono";
 
 import { errorResponse } from "./errors.ts";
-import { bodyLimits, securityHeaders } from "./hardening.ts";
+import { anonymousLimit, bodyLimits, securityHeaders } from "./hardening.ts";
 
 const PREFIX = "/api/v1";
 const MIB = 1024 * 1024;
@@ -59,6 +59,45 @@ describe("security headers (07 §7.5)", () => {
     );
     // DENY here would blank every image and PDF preview: the frame is the dashboard's own.
     expect(res.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+  });
+});
+
+const SOMEONE = { kind: "user", id: "u", label: "u", role: "admin", agent: false } as const;
+
+describe("anonymous budget (07 §7.5)", () => {
+  function guarded(): Hono {
+    const a = new Hono();
+    a.onError((cause, c) => errorResponse(c, cause, undefined, false));
+    a.use("*", async (c, next) => {
+      c.set("actor", c.req.header("x-actor") === undefined ? null : SOMEONE);
+      await next();
+    });
+    a.use(
+      `${PREFIX}/*`,
+      anonymousLimit({ anonymousPerMinute: 2, trustProxy: false, now: () => new Date() })
+    );
+    a.get(`${PREFIX}/health/live`, (c) => c.body(null, 204));
+    a.get(`${PREFIX}/thing`, (c) => c.json({ ok: true }));
+    return a;
+  }
+
+  it("lets a stranger in twice, then answers 429 with Retry-After", async () => {
+    const a = guarded();
+    expect((await a.request(`${PREFIX}/thing`)).status).toBe(200);
+    expect((await a.request(`${PREFIX}/thing`)).status).toBe(200);
+    const third = await a.request(`${PREFIX}/thing`);
+    expect(third.status).toBe(429);
+    expect(third.headers.get("retry-after")).not.toBeNull();
+  });
+
+  it("never charges a signed-in caller or a liveness probe", async () => {
+    const a = guarded();
+    for (const _ of [1, 2, 3, 4]) {
+      expect((await a.request(`${PREFIX}/health/live`)).status).toBe(204);
+      expect((await a.request(`${PREFIX}/thing`, { headers: { "x-actor": "1" } })).status).toBe(
+        200
+      );
+    }
   });
 });
 

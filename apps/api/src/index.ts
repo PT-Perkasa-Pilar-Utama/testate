@@ -27,8 +27,8 @@ import { createEngineWiring, createStateServices, settingsDeps } from "./wiring.
 import { bootStore, lazyJobs, opsDeps, resetHandler, storageDeps } from "./wiring.store.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import { openMetadataDb } from "./lib/db/index.ts";
-import { authenticate, requireReader } from "./lib/http/auth.ts";
-import { errorResponse, installHardening, notFound } from "./lib/http/index.ts";
+import { requireReader } from "./lib/http/auth.ts";
+import { errorResponse, hardeningFor, installHardening, notFound } from "./lib/http/index.ts";
 import { createLogger } from "./lib/logger/index.ts";
 import { mountOpenApi } from "./lib/openapi.ts";
 import { createPasswordHasher } from "./lib/password/index.ts";
@@ -250,12 +250,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
 
   const app = new Hono();
   app.use("*", logger.middleware());
-  installHardening(app, {
-    hsts: config.TESTATE_TRUST_PROXY,
-    apiPrefix: prefix,
-    uploadBytes: config.TESTATE_MAX_UPLOAD_MB * 1024 * 1024,
-  });
-  app.use("*", authenticate(auth));
+  installHardening(app, hardeningFor(config, prefix, auth, now));
   app.onError((cause, c) => errorResponse(c, cause, c.get("event"), config.TESTATE_LOG_STACKS));
   app.notFound((c) => errorResponse(c, notFound("route"), c.get("event"), false));
 

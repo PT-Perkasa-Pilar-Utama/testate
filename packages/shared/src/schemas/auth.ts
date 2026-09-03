@@ -5,6 +5,66 @@ import { actorSchema, idSchema, timestampSchema } from "./common.ts";
 
 export const PASSWORD_MIN_LENGTH = 12;
 
+/**
+ * The passwords a first guess tries, twelve characters or longer (the floor rejects the rest):
+ * the top of every breach list. Not a breach lookup, which an offline instance cannot make, but
+ * the part of one that catches most of what the lookup would (ASVS 2.1.7).
+ */
+export const COMMON_PASSWORDS: ReadonlySet<string> = new Set([
+  "password1234",
+  "password12345",
+  "password123456",
+  "passwordpassword",
+  "123456789012",
+  "1234567890123",
+  "12345678901234",
+  "qwertyuiop12",
+  "qwertyuiopas",
+  "qwerty123456",
+  "iloveyou1234",
+  "administrator",
+  "adminadmin123",
+  "letmein12345",
+  "welcome12345",
+  "welcome123456",
+  "changeme1234",
+  "change-me-now-1234",
+  "trustno1trustno1",
+  "abcdefghijkl",
+  "abc123abc123",
+  "111111111111",
+  "000000000000",
+  "aaaaaaaaaaaa",
+  "monkey123456",
+  "dragon123456",
+  "football1234",
+  "baseball1234",
+  "sunshine1234",
+  "princess1234",
+  "superman1234",
+  "michael12345",
+  "computer1234",
+  "internet1234",
+  "testate12345",
+  "testtesttest",
+  "passw0rd1234",
+  "p@ssword1234",
+  "p@ssw0rd1234",
+  "secret123456",
+]);
+
+/**
+ * A password nobody should be able to keep: on the common list. The username is deliberately not
+ * a rule: the bootstrap account is called `admin`, and refusing every password with that word in
+ * it would refuse the one an operator put in `TESTATE_ADMIN_PASSWORD` the moment they tried to
+ * set it back.
+ */
+export function passwordWeakness(next: string): string | null {
+  return COMMON_PASSWORDS.has(next.toLowerCase())
+    ? "That password is on every guess list. Choose another."
+    : null;
+}
+
 // The messages are the ones a person reads, on the sign-in form and in the API's 400 alike, so
 // they are written here once rather than left as valibot's "Invalid length: Expected >=1".
 export const loginSchema = v.object({
@@ -51,7 +111,11 @@ export const changePasswordSchema = v.pipe(
         PASSWORD_MIN_LENGTH,
         `A new password needs at least ${PASSWORD_MIN_LENGTH} characters.`
       ),
-      v.maxLength(1024, "That password is too long to be one of ours.")
+      v.maxLength(1024, "That password is too long to be one of ours."),
+      v.check(
+        (next) => !COMMON_PASSWORDS.has(next.toLowerCase()),
+        "That password is on every guess list. Choose another."
+      )
     ),
   }),
   // Forwarded to "next" so the message lands under the field a person needs to change, rather

@@ -2,7 +2,10 @@ import type { Hono, MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { secureHeaders } from "hono/secure-headers";
 
-import { AppError } from "./errors.ts";
+import { authenticate, requestMeta, sessionCookieName } from "./auth.ts";
+import type { ActorResolver } from "./auth.ts";
+import { AppError, rateLimited } from "./errors.ts";
+import { createRateLimiter } from "./ratelimit.ts";
 
 /** A policy as directive → sources, rendered the way the header wants it. */
 function policy(directives: { [directive: string]: string[] }): string {
@@ -91,9 +94,47 @@ export function securityHeaders(options: HeaderOptions): MiddlewareHandler {
   };
 }
 
-export type HardeningOptions = HeaderOptions & { uploadBytes: number };
+export type HardeningOptions = HeaderOptions & {
+  uploadBytes: number;
+  /** Sets `actor`; the anonymous budget below reads it, so it is installed here, in order. */
+  authenticate: MiddlewareHandler;
+  anonymousPerMinute: number;
+  trustProxy: boolean;
+  now: () => Date;
+};
 
-/** Both middlewares on the app, ahead of authentication, with the limits 07 §7.5 names. */
+export type HardeningConfig = {
+  TESTATE_TRUST_PROXY: boolean;
+  TESTATE_BASE_PATH: string;
+  TESTATE_MAX_UPLOAD_MB: number;
+};
+
+/**
+ * The options from the instance's config: HSTS and the secure cookie both follow the proxy flag,
+ * the cookie's `__Host-` prefix follows the base path, and strangers get 120 requests a minute
+ * per address, enough for a sign-in page and a probe, not for a scan.
+ */
+export function hardeningFor(
+  config: HardeningConfig,
+  apiPrefix: string,
+  resolver: ActorResolver,
+  now: () => Date
+): HardeningOptions {
+  return {
+    hsts: config.TESTATE_TRUST_PROXY,
+    apiPrefix,
+    uploadBytes: config.TESTATE_MAX_UPLOAD_MB * 1024 * 1024,
+    authenticate: authenticate(
+      resolver,
+      sessionCookieName(config.TESTATE_TRUST_PROXY, config.TESTATE_BASE_PATH)
+    ),
+    anonymousPerMinute: 120,
+    trustProxy: config.TESTATE_TRUST_PROXY,
+    now,
+  };
+}
+
+/** Every request middleware 07 §7.5 names, in the order they depend on each other. */
 export function installHardening(app: Hono, options: HardeningOptions): void {
   const mib = 1024 * 1024;
   app.use("*", securityHeaders(options));
@@ -102,6 +143,30 @@ export function installHardening(app: Hono, options: HardeningOptions): void {
     // A mebibyte over the upload cap, for the multipart boundary and the fields beside the file.
     bodyLimits({ json: mib, mcp: 2 * mib, upload: options.uploadBytes + mib })
   );
+  app.use("*", options.authenticate);
+  app.use(`${options.apiPrefix}/*`, anonymousLimit(options));
+}
+
+export type AnonymousLimit = { anonymousPerMinute: number; trustProxy: boolean; now: () => Date };
+
+/**
+ * Requests that carry no credential share one sliding-minute budget per client address (07
+ * §7.5). Login already charges failures per address; this covers everything else a stranger can
+ * reach: the surface a scanner walks, a route guessed at, a token tried at random. Health stays
+ * out of it, because a liveness probe has no credential and must never be told to wait.
+ */
+export function anonymousLimit(options: AnonymousLimit): MiddlewareHandler {
+  const limiter = createRateLimiter(options.now);
+  return async (c, next) => {
+    const anonymous = c.get("actor") === null;
+    const probe = /\/health(\/|$)/.test(c.req.path);
+    if (anonymous && !probe) {
+      const address = requestMeta(c, options.trustProxy).ip ?? "unknown";
+      const wait = limiter.hit(address, options.anonymousPerMinute);
+      if (wait !== null) throw rateLimited(wait);
+    }
+    await next();
+  };
 }
 
 export type BodyLimits = {

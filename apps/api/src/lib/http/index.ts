@@ -95,4 +95,10 @@ export function parseParams<TSchema extends v.GenericSchema>(
   return parseAt(schema, c.req.param(), "params");
 }
 export { firstQuery } from "./query.ts";
-export { bodyLimits, installHardening, securityHeaders } from "./hardening.ts";
+export {
+  anonymousLimit,
+  bodyLimits,
+  hardeningFor,
+  installHardening,
+  securityHeaders,
+} from "./hardening.ts";
