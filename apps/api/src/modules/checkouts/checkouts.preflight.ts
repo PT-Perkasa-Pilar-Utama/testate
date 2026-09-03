@@ -11,9 +11,9 @@ import { toAppError } from "./checkouts.restore.ts";
 type PreflightAdapter = Preflight["adapters"][number];
 
 const LOCKING = {
-  table: "Restored tables take an exclusive lock for the duration.",
-  row: "Rows lock as they are replaced; readers may see a partial restore.",
-  "per-operation": "Each collection is replaced on its own; no atomicity across collections.",
+  table: "Locks each table while it restores it.",
+  row: "Locks rows as it replaces them. Other readers can see a half-restored table.",
+  "per-operation": "Replaces each collection on its own. No restore is atomic across collections.",
 } as const;
 
 /** One adapter of the state against its live schema: drift, strategy, force preview (09 §9.1). */
@@ -84,7 +84,7 @@ function untouched(adapter: AdapterRecord): PreflightAdapter {
     drift: null,
     strategy: UNTOUCHED_STRATEGY,
     atomic: false,
-    locking_notice: "Not in this state; left untouched.",
+    locking_notice: "Not in this state. Left as it is.",
   };
 }
 

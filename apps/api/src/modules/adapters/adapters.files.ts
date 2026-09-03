@@ -97,7 +97,7 @@ function untrustedAware(source: FileSource, untrusted: () => boolean): FileSourc
       if (untrusted() && cause instanceof AppError && cause.code === "CONFLICT") {
         throw new AppError(
           "CONFLICT",
-          "the SFTP host key is not trusted yet; a user must browse first",
+          "the SFTP host key is not trusted yet: a user must browse first",
           {
             reason: "host_key_untrusted",
             details: cause.details?.["details"] ?? {},

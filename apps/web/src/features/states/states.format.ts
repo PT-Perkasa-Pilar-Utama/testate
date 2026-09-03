@@ -24,11 +24,11 @@ export function sortLabel(sort: ManifestTable["sort"]): string {
 }
 
 const CONSISTENCY_LABEL = {
-  snapshot: "consistent snapshot",
-  best_effort: "best effort",
+  snapshot: "",
+  best_effort: "read at different moments",
 } as const satisfies Record<StateAdapter["consistency"], string>;
 
-/** "best_effort" -> "best effort"; a person never typed the underscore. */
+/** "snapshot" says nothing; a normal read needs no badge. "best_effort" names the trade-off. */
 /** The tables whose qualified name holds the text, case-insensitively; all of them for none. */
 export function matchingTables<T extends { schema: string | null; name: string }>(
   tables: readonly T[],

@@ -192,7 +192,7 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
       open={props.presenter.plan() !== null}
       onClose={props.presenter.closeDelete}
       title={`Delete ${props.slug}`}
-      description="This cannot be undone. Read what goes, then type the project's slug."
+      description="This cannot be undone. Read what goes. Type the project's slug."
       size="lg"
     >
       <Show when={props.presenter.plan()}>
@@ -204,7 +204,9 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
           >
             <Banner variant="alert">
               <div class="grid gap-1">
-                <p>Each database below is put back to its starting point, nothing saved first.</p>
+                <p>
+                  Each database below returns to its starting point. Testate saves nothing first.
+                </p>
                 <p>The project and everything in it is gone for good.</p>
               </div>
             </Banner>

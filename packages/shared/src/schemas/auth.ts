@@ -76,7 +76,7 @@ export const loginSchema = v.object({
   password: v.pipe(
     v.string(),
     v.minLength(1, "Enter your password."),
-    v.maxLength(1024, "That password is too long to be one of ours.")
+    v.maxLength(1024, "A password has at most 1024 characters.")
   ),
 });
 export type LoginInput = v.InferOutput<typeof loginSchema>;
@@ -111,7 +111,7 @@ export const changePasswordSchema = v.pipe(
         PASSWORD_MIN_LENGTH,
         `A new password needs at least ${PASSWORD_MIN_LENGTH} characters.`
       ),
-      v.maxLength(1024, "That password is too long to be one of ours."),
+      v.maxLength(1024, "A password has at most 1024 characters."),
       v.check(
         (next) => !COMMON_PASSWORDS.has(next.toLowerCase()),
         "That password is on every guess list. Choose another."

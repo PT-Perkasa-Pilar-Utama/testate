@@ -41,9 +41,9 @@ function AdapterSection(props: { adapter: DetailAdapter; open: boolean }): JSX.E
           {props.adapter.tables.length} {documents() ? "collections" : "tables"} ·{" "}
           {props.adapter.row_count} rows · {formatBytes(props.adapter.byte_count)}
         </span>
-        <Badge variant={props.adapter.consistency === "snapshot" ? "success" : "warning"}>
-          {consistencyLabel(props.adapter.consistency)}
-        </Badge>
+        <Show when={props.adapter.consistency !== "snapshot"}>
+          <Badge variant="warning">{consistencyLabel(props.adapter.consistency)}</Badge>
+        </Show>
         <Show when={props.adapter.warnings.length > 0}>
           <Icon name="triangle-alert" class="h-3.5 w-3.5 text-warning-fg" />
         </Show>

@@ -189,7 +189,7 @@ export function createSettingsPresenter(): SettingsPresenter {
         try {
           const job = await settingsModel.migrate(staticBody);
           setMigrating(false);
-          showToast("Store migration queued; snapshots copy to the new store", "info");
+          showToast("Store migration queued. Snapshots copy to the new store.", "info");
           jobs.follow(job, (done) => {
             showToast(
               `Store migration ${done.status}`,

@@ -21,7 +21,7 @@ export default function ChangePasswordView(): JSX.Element {
     <section class="mx-auto grid w-full max-w-[340px] gap-6 pt-16">
       <div class="grid justify-items-center gap-2 text-center">
         <span class="text-2xl font-semibold tracking-tight text-heading">Testate</span>
-        <p class="text-muted">Your password was set by an administrator</p>
+        <p class="text-muted">An administrator set your password.</p>
       </div>
       <LayerCard class="grid gap-4 px-6 py-5">
         <h1 class="text-lg font-semibold tracking-tight text-heading">Choose a new password</h1>

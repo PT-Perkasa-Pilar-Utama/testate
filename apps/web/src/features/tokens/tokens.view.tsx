@@ -68,7 +68,7 @@ export default function TokensView(): JSX.Element {
       <PageHeader
         eyebrow="Admin"
         title="API tokens"
-        description="Personal tokens act as their role on the REST API; agent tokens reach the MCP endpoint alone, where a Guest reads and a Tester also writes."
+        description="Personal tokens act as their role on the REST API. Agent tokens reach only the MCP endpoint. A Guest reads there. A Tester also writes."
         actions={
           <>
             <TableSearch

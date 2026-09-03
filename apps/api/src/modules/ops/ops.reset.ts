@@ -72,7 +72,7 @@ export function createResetHandler(deps: ResetDeps): Handler {
     const body = await parseBody(c, resetStateSchema);
     if (deps.jobsRunning()) throw new AppError("JOB_IN_PROGRESS", "reset needs an idle instance");
     if (deps.bootstrap === null) {
-      throw conflict("TESTATE_ADMIN_PASSWORD must be set so the reset can recreate the admin");
+      throw conflict("TESTATE_ADMIN_PASSWORD must be set: the reset recreates the admin from it");
     }
     return ok(
       c,

@@ -157,7 +157,7 @@ export default function RowForm(props: {
               ? `Insert into ${props.table.name}`
               : `Edit row in ${props.table.name}`
           }
-          description="Functions run on the server; a policed column takes its function, never plain text."
+          description="Functions run on the server. A policed column takes its function, not plain text."
         >
           <Form
             of={form}

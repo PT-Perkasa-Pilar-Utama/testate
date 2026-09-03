@@ -198,7 +198,7 @@ export function createEditingPresenter(
       return attempt(async () => {
         const opened = await editingModel.startSession(staticSlug, staticId, true);
         setSession(opened);
-        showToast("Write session open; raw SQL in this session is not policed", "info");
+        showToast("Write session open. This session does not police raw SQL.", "info");
       });
     },
     end: () => {

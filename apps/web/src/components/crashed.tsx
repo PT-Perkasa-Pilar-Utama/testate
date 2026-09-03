@@ -29,7 +29,7 @@ export default function Crashed(props: {
       <Banner variant="error">
         <div class="grid gap-1">
           <p class="font-medium">This screen stopped working.</p>
-          <p>Retrying often clears it. If it keeps happening, the report below says what broke.</p>
+          <p>Retry often fixes it. The report below says what broke.</p>
         </div>
       </Banner>
       <details class="text-sm text-muted">

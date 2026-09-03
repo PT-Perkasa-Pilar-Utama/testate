@@ -220,11 +220,11 @@ export default function Erd(props: { tables: readonly TableSchema[] }): JSX.Elem
       </div>
       <p class="text-sm text-muted">
         Drag to move, scroll to zoom, click a table to see it and everything one foreign key away. A
-        filled dot is part of the primary key, a hollow one points at another table, and a
+        filled dot is part of the primary key. A hollow one points at another table. A
         <span class="font-mono"> *</span> means the column cannot be null.
         <Show when={big() && focus() === null}>
           {" "}
-          This schema has {props.tables.length} tables, which is too many to draw at once; pick one
+          This schema has {props.tables.length} tables. That is too many to draw at once. Pick one
           to start from.
         </Show>
       </p>

@@ -72,8 +72,10 @@ test.describe("state stories", () => {
     ).toBeVisible();
     await page.getByRole("tab", { name: "List" }).click();
     await (await rowMenu(renamed)).getByRole("button", { name: "Details" }).click();
-    // The details fold each database into one line: engine, tables, rows, size, and how it was read.
-    await expect(page.locator("dialog[open]")).toContainText(/consistent snapshot|best effort/);
+    // The details fold each database into one line: engine, tables, rows, size, and how it was
+    // read. A snapshot read says nothing; mongodb here is standalone, so it reads at different
+    // moments and that trade-off shows.
+    await expect(page.locator("dialog[open]")).toContainText("read at different moments");
     await page.locator("dialog[open]").getByText("Close", { exact: true }).click();
     await (await rowMenu(renamed)).getByRole("button", { name: "Delete" }).click();
     // One job per adapter (story 86): a parallel checkout or snapshot makes the first submit refuse.
@@ -99,7 +101,7 @@ test.describe("state stories", () => {
     const dialog = page.locator("dialog[open]");
     await expect(dialog.getByText("schema matches").first()).toBeVisible({ timeout: 30_000 });
     // Folded away by default (story 84 promises it before the confirm, not in the way of it).
-    await dialog.getByText("How each database is restored").click();
+    await dialog.getByText("Restore method per database").click();
     await expect(dialog.getByText(/atomic/).first()).toBeVisible();
     await expect(dialog.getByText("A stash state is taken first")).toBeVisible();
     await dialog.getByRole("button", { name: "Check out" }).click();

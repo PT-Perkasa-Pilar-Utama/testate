@@ -95,7 +95,7 @@ export function RenameDialog(props: { presenter: StoragePresenter }): JSX.Elemen
     <NameDialog
       open={props.presenter.renaming() !== null}
       title={`Rename ${props.presenter.renaming()?.name ?? ""}`}
-      description="The file stays in this folder. Renaming it is done on the store itself."
+      description="The file stays in this folder. This changes the name on the store itself."
       label="New name"
       submit="Rename"
       initial={props.presenter.renaming()?.name ?? ""}
@@ -110,7 +110,7 @@ export function FolderDialog(props: { presenter: StoragePresenter }): JSX.Elemen
     <NameDialog
       open={props.presenter.addingFolder()}
       title="New folder"
-      description="An empty folder here. Uploading into a folder that is not there yet makes it anyway."
+      description="An empty folder here. An upload into a missing folder creates it anyway."
       label="Folder name"
       submit="Create"
       initial=""
@@ -146,7 +146,7 @@ export function DeleteDialogs(props: { presenter: StoragePresenter }): JSX.Eleme
         description={
           count() === 0
             ? "Nothing is selected."
-            : `${count() === 1 ? "This entry is" : `These ${count()} entries are`} removed from the store itself. Testate keeps no copy of them, and a folder with anything in it is left alone.`
+            : `${count() === 1 ? "This entry is" : `These ${count()} entries are`} removed from the store itself. Testate keeps no copy of them. A folder with anything in it is left alone.`
         }
         confirmLabel="Delete"
         onCancel={() => props.presenter.cancelBatch()}

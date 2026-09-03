@@ -269,7 +269,7 @@ export default function DiffView(props: { slug: string; id: string }): JSX.Eleme
                         </table>
                       </div>
                       <p class="text-sm text-muted">
-                        A tinted cell changed; click one to read the value in full. The first 100
+                        A tinted cell changed. Click one to read the value in full. The first 100
                         rows, masked to your role.
                       </p>
                     </Show>

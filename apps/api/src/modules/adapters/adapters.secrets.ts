@@ -35,7 +35,7 @@ export async function openSecrets(
       JSON.parse(await open(ring, sealed, aadFor("adapters", column, id)))
     );
   } catch {
-    throw conflict("this adapter's secrets cannot be read with the current key; re-enter them", {
+    throw conflict("this adapter's secrets cannot be read with the current key: re-enter them", {
       adapter_id: id,
     });
   }

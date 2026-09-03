@@ -124,8 +124,8 @@ function emptyTable(row: v.InferOutput<typeof tableRow>, excluded: TableRef[]): 
  * only its oid, so restoring the column would point at content the state never took (14 §14.1).
  */
 const UNSUPPORTED_TYPES = new Map([
-  ["oid", "large object content lives outside the table; the state stores the reference only"],
-  ["lo", "large object content lives outside the table; the state stores the reference only"],
+  ["oid", "large object content lives outside the table: the state stores only the reference"],
+  ["lo", "large object content lives outside the table: the state stores only the reference"],
 ]);
 
 function markUnsupported(table: TableSchema): void {

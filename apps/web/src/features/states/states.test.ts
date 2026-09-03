@@ -143,8 +143,8 @@ describe("states feature", () => {
   test("sort and consistency read as words, not the API's punctuation (labels pass)", () => {
     expect(sortLabel("primary-key")).toBe("primary key order");
     expect(sortLabel("row-hash")).toBe("row hash order");
-    expect(consistencyLabel("snapshot")).toBe("consistent snapshot");
-    expect(consistencyLabel("best_effort")).toBe("best effort");
+    expect(consistencyLabel("snapshot")).toBe("");
+    expect(consistencyLabel("best_effort")).toBe("read at different moments");
   });
 
   test("the timeline names the databases a state covers and folds the rest into a count", () => {

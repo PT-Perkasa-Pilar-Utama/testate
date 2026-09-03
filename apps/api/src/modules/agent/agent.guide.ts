@@ -19,33 +19,33 @@ export const TOOL_DESCRIPTIONS = new Map<string, string>(
     list_projects:
       "The projects this token may see. A project owns the databases behind one system under test. Start here, then use its slug everywhere else.",
     list_adapters:
-      "The databases, file stores and REST targets in a project. `kind` says which; only `database` adapters hold tables.",
+      "The databases, file stores and REST targets in a project. `kind` says which. Only `database` adapters hold tables.",
     list_tables:
-      "Table names in one database adapter, with row counts where the engine reports them cheaply. Cheaper than describe_table; use it to find the name you want.",
+      "Table names in one database adapter, with row counts where the engine reports them cheaply. Cheaper than describe_table. Use it to find the name you want.",
     describe_table:
-      "One table's columns, types, primary key and foreign keys. Read this before page_rows so you know what you can filter and sort on.",
+      "One table's columns, types, primary key and foreign keys. Read this before page_rows: it says what you can filter and sort on.",
     page_rows:
       "A page of rows, newest cursor last. Pass `cursor` from the previous reply to continue. Masked columns arrive already masked.",
     get_row:
       "One row by primary key. Use it after page_rows when you want a single record rather than a page.",
     run_readonly_query:
-      "A SELECT against the adapter, in a read-only transaction. Anything that writes is refused by the database, not by a filter, so do not try to work around it.",
+      "A SELECT against the adapter, in a read-only transaction. The database refuses a write, not a filter. Do not try to work around it.",
     extract_fixture:
       "One row and the rows it references, as SQL or JSON, following foreign keys up to three hops. Use it to reproduce a bug on another database.",
     list_states:
       "The snapshots taken of a project. A state is data only, taken across every database in the project at one moment.",
-    get_state: "One state's tables and row counts, so you can see what it holds before diffing it.",
+    get_state: "One state's tables and row counts. Read it before diffing the state.",
     diff_summary:
       "What changed between two states, or between a state and the live database, per table. Ask for the diff you need rather than paging both sides yourself.",
     list_files: "Entries in a file adapter (S3, SFTP, FTP). Directories first, then files.",
     preview_file:
       "The head of one file from a file adapter, as text. Binary content is refused rather than mangled.",
     run_write_query:
-      "An INSERT, UPDATE or DELETE against a sandbox adapter. The first write of a session stashes the adapter first, so there is something to go back to. Tester tokens only.",
+      "An INSERT, UPDATE or DELETE against a sandbox adapter. The first write of a session stashes the adapter first. You can go back to it. Tester tokens only.",
     end_write_session:
       "Closes your write session on an adapter. The next write opens a new one and takes a new stash. Tester tokens only.",
     take_snapshot:
-      "Keeps the data of every database in the project as a named state, so you can put it back later. Tester tokens only.",
+      "Keeps the data of every database in the project as a named state. Restore it later with checkout_state. Tester tokens only.",
     checkout_state:
       "Restores a state over the live databases. This overwrites data. Pass `force` only after reading what the refusal said. Tester tokens only.",
     get_job:
@@ -60,17 +60,17 @@ export const TOOL_DESCRIPTIONS = new Map<string, string>(
 /** Two paragraphs, and which one you get is the role on your token. */
 const READER = `You are connected read-only. You can look at anything in scope and change nothing.`;
 const TESTER = `Your token has the tester role. You can read anything in scope, write to sandbox
-adapters, take a state and put one back. Everything you change is somebody's test environment, so
-say what you are about to do before you do it.`;
+adapters, take a state and put one back. Everything you change is somebody's test environment. Say
+what you are about to do before you do it.`;
 
-const READER_LIMITS = `- **No writes.** There is no tool that inserts, updates, deletes, restores or snapshots. \`run_readonly_query\` runs inside a read-only transaction, so the database refuses a write even if you construct one.`;
+const READER_LIMITS = `- **No writes.** There is no tool that inserts, updates, deletes, restores or snapshots. \`run_readonly_query\` runs inside a read-only transaction. The database refuses a write even if you construct one.`;
 const TESTER_LIMITS = `- **Writes go to sandbox adapters only.** A read-only adapter refuses every write tool, database or file store, and no argument overrides that.
 - **A file delete is final.** A database write stashes first and a state can be checked out again. A file store has neither: what you delete there is gone.
 - **You cannot administer.** No tool creates a token, changes a setting, or touches a user. That is a person's job.`;
 
-const TESTER_ORDER = `5. \`run_write_query\` changes rows. The first one stashes the adapter, so a mistake is recoverable.
-6. \`take_snapshot\` keeps the result. \`checkout_state\` puts an earlier one back. Both answer with a job; poll \`get_job\` when it is still running.
-7. \`upload_file\` and \`delete_file\` change a file store. Nothing stashes a file store, so a delete there is final.`;
+const TESTER_ORDER = `5. \`run_write_query\` changes rows. The first one stashes the adapter. A mistake is recoverable.
+6. \`take_snapshot\` keeps the result. \`checkout_state\` puts an earlier one back. Both answer with a job. Poll \`get_job\` when it is still running.
+7. \`upload_file\` and \`delete_file\` change a file store. Nothing stashes a file store. A delete there is final.`;
 
 /**
  * The guide itself. Markdown, because every agent reads it, and short, because an agent pays for
@@ -118,7 +118,7 @@ ${tester ? TESTER_LIMITS : READER_LIMITS}
 | foreign-key hops in extract_fixture | 3 |
 
 A reply that would exceed the byte budget is truncated with a cursor rather than dropped. A query
-past the time budget is cancelled and refused, so prefer a filter over a wide scan.
+past the time budget is cancelled and refused. Prefer a filter over a wide scan.
 
 ## Every call is audited
 
@@ -129,10 +129,10 @@ it touched, and whether it succeeded. Assume a person reads it.
 
 ${
   tester
-    ? `You can reset a database, which means you can also destroy a day of somebody's work. Name the
-project and the state before you check one out.`
+    ? `You can reset a database. This can destroy a day of somebody's work. Name the project and
+the state before you check one out.`
     : `You cannot reset a database. If the data you need is not there, say which project and state a
-person should check out, and let them run it.`
+person should check out. Let them run it.`
 }
 `;
 }

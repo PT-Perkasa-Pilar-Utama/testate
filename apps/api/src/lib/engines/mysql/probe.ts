@@ -81,7 +81,7 @@ export async function probe(sql: SQL): Promise<ProbeResult> {
     table_count: tables.length,
     size_estimate_bytes: Number(size),
     atomicity_notice:
-      "Restores run in one InnoDB transaction; restored tables are locked to writers for the duration. Non-InnoDB tables restore outside it.",
+      "MySQL restores as one InnoDB transaction. Locks each table to writers while it restores it. Restores non-InnoDB tables outside the transaction.",
     warnings: tables
       .filter((table) => table.unsupported.length > 0)
       .map((table) => ({

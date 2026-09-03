@@ -78,7 +78,7 @@ export const PREFLIGHT_MOCK: Preflight = {
       },
       strategy: PROBE_MOCK.strategy,
       atomic: true,
-      locking_notice: "Restored tables take an exclusive lock for the duration.",
+      locking_notice: "Locks each table while it restores it.",
       force_preview: {
         skipped_tables: [],
         skipped_columns: [],

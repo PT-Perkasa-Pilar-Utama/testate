@@ -56,9 +56,9 @@ export type AdaptersPresenter = Refreshable<Adapter[]> & {
 
 /** A probe outcome as one line for the test banner. */
 const ENFORCEMENT = {
-  transaction: "a read-only transaction",
-  credential: "the read-only credential",
-  filter: "an application filter",
+  transaction: "A read-only transaction",
+  credential: "The read-only credential",
+  filter: "An application filter",
 } as const;
 
 /** The probe's outcome as a sentence a person can act on, not a row of enum values. */
@@ -67,7 +67,8 @@ export function describeOutcome(outcome: ProbeOutcome): string {
   const engine = `${engineLabel(outcome.dialect)} ${outcome.version}`;
   const tables = outcome.table_count === 1 ? "1 table" : `${outcome.table_count} tables`;
   const restore = EMPTY_MODE_LABEL[outcome.strategy.emptyMode];
-  return `${engine} answers: ${tables}. Restores empty a table by ${restore}; read-only sessions are held by ${ENFORCEMENT[outcome.read_only_enforcement]}.`;
+  const enforcement = ENFORCEMENT[outcome.read_only_enforcement];
+  return `${engine} answers: ${tables}. Restores empty a table by ${restore}. ${enforcement} keeps sessions read-only.`;
 }
 
 /** The probe's warnings, one line each; a shared database is the one that costs a tester's work. */

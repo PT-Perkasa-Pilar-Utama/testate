@@ -31,7 +31,7 @@ function version(): string {
  */
 export function reportBody(where: string, detail: string): string {
   return [
-    "<!-- Please add what you were doing, and check the details below before submitting. -->",
+    "<!-- Add what you were doing. Check the details below before submitting. -->",
     "",
     "## What I was doing",
     "",

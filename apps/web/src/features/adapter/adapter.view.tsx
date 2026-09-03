@@ -86,7 +86,7 @@ function DeleteDialog(props: { presenter: AdapterPresenter; name: string }): JSX
           open
           onClose={props.presenter.closeDelete}
           title={`Delete ${props.name}`}
-          description="A database adapter returns to its init state first; the adapter row goes only after that succeeds or is skipped."
+          description="A database adapter returns to its init state first. The adapter row goes only after that succeeds or is skipped."
         >
           <form class="grid gap-4" onSubmit={onSubmit}>
             <Banner variant="alert">

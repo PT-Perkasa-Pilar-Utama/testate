@@ -56,7 +56,7 @@ export default function FormDialog(props: DialogProps): JSX.Element {
       <ConfirmDialog
         open={asking()}
         title="Discard changes?"
-        description="What you have typed here is not saved anywhere yet."
+        description="Testate has not saved what you typed here yet."
         confirmLabel="Discard"
         cancelLabel="Keep editing"
         onCancel={() => setAsking(false)}

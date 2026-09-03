@@ -224,7 +224,7 @@ export default function CheckoutsView(props: {
                 <EmptyRow>
                   <Show
                     when={isFiltered(presenter)}
-                    fallback="No restores yet. This tab is the record of past restores and the place to retry a failed one. To start a restore, open the States tab and press Check out on a state."
+                    fallback="No restores yet. This tab is the record of past restores and the place to retry a failed one. Open the States tab and press Check out on a state to start one."
                   >
                     No restore matches your search or filters.
                   </Show>

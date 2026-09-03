@@ -37,7 +37,7 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
       onClose={props.presenter.closeMigrate}
       title="Migrate store"
       size="lg"
-      description="Every snapshot copies to the new store before the switch; nothing is lost if the job fails."
+      description="Every snapshot copies to the new store before the switch. Nothing is lost if the job fails."
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.migrate(input)}>
         <Field of={form} path={["driver"]}>
@@ -165,7 +165,9 @@ export function MigrateDialog(props: { presenter: SettingsPresenter }): JSX.Elem
               />
             )}
           </Field>
-          <Banner variant="secondary">Keys are sealed at rest and never shown again.</Banner>
+          <Banner variant="secondary">
+            Testate seals keys at rest. It never shows them again.
+          </Banner>
         </Show>
         <Show when={props.presenter.migrateError()}>
           {(message) => <Banner variant="error">{message()}</Banner>}

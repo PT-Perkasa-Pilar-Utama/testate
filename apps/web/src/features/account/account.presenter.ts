@@ -31,7 +31,7 @@ export function createAccountPresenter(): AccountPresenter {
     changePassword: async (input) => {
       await password.submit(input);
       if (password.error() !== null) return false;
-      showToast("Password changed; other sessions were signed out", "success");
+      showToast("Password changed. Other sessions were signed out.", "success");
       sessions.refresh();
       return true;
     },
