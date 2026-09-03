@@ -29,6 +29,19 @@ const CONSISTENCY_LABEL = {
 } as const satisfies Record<StateAdapter["consistency"], string>;
 
 /** "best_effort" -> "best effort"; a person never typed the underscore. */
+/** The tables whose qualified name holds the text, case-insensitively; all of them for none. */
+export function matchingTables<T extends { schema: string | null; name: string }>(
+  tables: readonly T[],
+  wanted: string
+): T[] {
+  const needle = wanted.trim().toLowerCase();
+  return tables.filter((table) =>
+    (table.schema === null ? table.name : `${table.schema}.${table.name}`)
+      .toLowerCase()
+      .includes(needle)
+  );
+}
+
 export function consistencyLabel(consistency: StateAdapter["consistency"]): string {
   return CONSISTENCY_LABEL[consistency];
 }

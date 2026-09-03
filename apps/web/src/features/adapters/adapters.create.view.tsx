@@ -96,6 +96,14 @@ function FieldInput(props: {
 export function CreateDialog(props: {
   presenter: AdaptersPresenter;
   kind?: "database" | "storage" | undefined;
+  /** Offered when the dialog is not already inside a project: the Storage screen's case. */
+  project?:
+    | {
+        options: { value: string; label: string }[];
+        value: string;
+        onChange: (slug: string) => void;
+      }
+    | undefined;
 }): JSX.Element {
   const storage = (): boolean => props.kind === "storage";
   const firstEngine = (): Engine => (storage() ? "s3" : "postgres");
@@ -162,6 +170,18 @@ export function CreateDialog(props: {
       size="lg"
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.create(input)}>
+        <Show when={props.project}>
+          {(project) => (
+            <label class="grid content-start gap-1.5 text-base">
+              <FieldLabel required={true}>Project</FieldLabel>
+              <Select
+                options={project().options}
+                value={project().value}
+                onChange={(slug) => project().onChange(slug)}
+              />
+            </label>
+          )}
+        </Show>
         <Show when={!storage()}>
           <label class="grid content-start gap-1.5 text-base">
             <FieldLabel required={false}>Connection URL</FieldLabel>

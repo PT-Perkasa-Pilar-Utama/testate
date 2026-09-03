@@ -8,15 +8,13 @@ import type { StateDraftInput } from "@testate/shared";
 import Banner from "@/components/banner.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
-import Dialog, { DialogActions } from "@/components/dialog.tsx";
+import { DialogActions } from "@/components/dialog.tsx";
+import { engineLabel } from "@/lib/labels.ts";
 import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import InputArea from "@/components/input-area.tsx";
-import { Cell, Head, Row, Table, Truncated } from "@/components/table.tsx";
-import { engineLabel } from "@/lib/labels.ts";
-import { consistencyLabel, formatBytes, sortLabel } from "./states.format.ts";
 import type { StatesPresenter } from "./states.presenter.ts";
 
 const EMPTY_DRAFT: StateDraftInput = { name: "", notes: "", tags: "", adapter_ids: [] };
@@ -228,81 +226,5 @@ export function DeleteDialog(props: { presenter: StatesPresenter }): JSX.Element
         </DialogActions>
       </Form>
     </FormDialog>
-  );
-}
-
-export function DetailDialog(props: { presenter: StatesPresenter }): JSX.Element {
-  return (
-    <Dialog
-      open={props.presenter.detail() !== null}
-      onClose={props.presenter.close}
-      title={props.presenter.detail()?.name ?? ""}
-      description={props.presenter.detail()?.notes ?? "No notes."}
-      size="xl"
-    >
-      <Show when={props.presenter.detail()}>
-        {(detail) => (
-          <div class="grid gap-4">
-            <For each={detail().adapters}>
-              {(adapter) => (
-                <section class="grid gap-2">
-                  <h3 class="font-medium">
-                    <span
-                      class="inline-block max-w-[24rem] truncate align-bottom"
-                      title={adapter.adapter_name}
-                    >
-                      {adapter.adapter_name}
-                    </span>{" "}
-                    <span class="text-muted">
-                      {engineLabel(adapter.engine)} {adapter.engine_version} ·{" "}
-                      {consistencyLabel(adapter.consistency)} · {adapter.row_count} rows ·{" "}
-                      {formatBytes(adapter.byte_count)}
-                    </span>
-                  </h3>
-                  <Show when={adapter.warnings.length > 0}>
-                    <Banner variant="alert">
-                      {adapter.warnings.map((warning) => warning.message).join(" · ")}
-                    </Banner>
-                  </Show>
-                  <Table>
-                    <thead>
-                      <tr>
-                        <Head>Table</Head>
-                        <Head>Rows</Head>
-                        <Head>Size</Head>
-                        <Head>Sort</Head>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <For each={adapter.tables}>
-                        {(table) => (
-                          <Row>
-                            <Cell>
-                              <Truncated class="max-w-[20rem]">
-                                {table.schema === null
-                                  ? table.name
-                                  : `${table.schema}.${table.name}`}
-                              </Truncated>
-                            </Cell>
-                            <Cell>{table.rows}</Cell>
-                            <Cell>{formatBytes(table.bytes)}</Cell>
-                            <Cell>{sortLabel(table.sort)}</Cell>
-                          </Row>
-                        )}
-                      </For>
-                    </tbody>
-                  </Table>
-                </section>
-              )}
-            </For>
-            <div class="flex justify-end">
-              <Button type="button" variant="ghost" onClick={() => props.presenter.close()}>
-                Close
-              </Button>
-            </div>
-          </div>
-        )}
-      </Show>
-    </Dialog>
   );
 }

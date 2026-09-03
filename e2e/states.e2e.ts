@@ -72,8 +72,8 @@ test.describe("state stories", () => {
     ).toBeVisible();
     await page.getByRole("tab", { name: "List" }).click();
     await (await rowMenu(renamed)).getByRole("button", { name: "Details" }).click();
-    // The manifest says how a table was walked in words now, not in the API's own punctuation.
-    await expect(page.locator("dialog[open]").getByText("primary key order").first()).toBeVisible();
+    // The details fold each database into one line: engine, tables, rows, size, and how it was read.
+    await expect(page.locator("dialog[open]")).toContainText(/consistent snapshot|best effort/);
     await page.locator("dialog[open]").getByText("Close", { exact: true }).click();
     await (await rowMenu(renamed)).getByRole("button", { name: "Delete" }).click();
     // One job per adapter (story 86): a parallel checkout or snapshot makes the first submit refuse.

@@ -6,13 +6,12 @@ import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
 import EmptyState from "@/components/empty-state.tsx";
 import PageHeader from "@/components/page-header.tsx";
-import { Cell, EmptyRow, Head, Row, Table, TableFooter } from "@/components/table.tsx";
+import { Cell, Head, Row, Table, TableFooter } from "@/components/table.tsx";
 import { createRefreshable } from "@/lib/async.ts";
 import { ADAPTER_MODE_LABEL, ADAPTER_STATUS_LABEL, ENGINE_LABEL } from "@/lib/labels.ts";
 import { href } from "@/lib/router.ts";
 import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
-import Select from "@/components/select.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { CreateDialog } from "../adapters/adapters.create.view.tsx";
 import { createAdaptersPresenter } from "../adapters/adapters.presenter.ts";
@@ -20,44 +19,53 @@ import { projectsModel } from "../projects/projects.model.ts";
 import { storageModel } from "./storage.model.ts";
 
 /**
- * A storage adapter belongs to a project, so making one here starts with picking the project;
- * the dialog itself is the adapters' own, told to offer the storage engines. Keyed on the slug
- * by the <For> around it, so a change of project builds a presenter for that project.
+ * One button, and the project is picked inside the dialog: a select beside the button was a
+ * second control to understand before the first, and with a hundred projects it was the wrong
+ * one to leave open on the page. The presenter's slug is the signal, so the dialog follows the
+ * pick without being rebuilt.
  */
-function StoreCreator(props: { slug: string; onCreated: () => void }): JSX.Element {
-  const presenter = createAdaptersPresenter(
-    () => props.slug,
-    () => props.onCreated()
-  );
-  return (
-    <>
-      <Button variant="primary" onClick={() => presenter.openCreate()}>
-        <Icon name="plus" class="h-4 w-4" />
-        New storage adapter
-      </Button>
-      <CreateDialog presenter={presenter} kind="storage" />
-    </>
-  );
-}
-
 function NewStore(props: { onCreated: () => void }): JSX.Element {
   const projects = createRefreshable(() => projectsModel.list());
   const [picked, setPicked] = createSignal("");
   const slug = (): string => picked() || (projects.value()[0]?.slug ?? "");
+  const presenter = createAdaptersPresenter(slug, () => props.onCreated());
   const options = () =>
     projects.value().map((project) => ({ value: project.slug, label: project.name }));
   return (
     <Loading fallback={<span />}>
-      <Show when={slug() !== ""}>
-        <div class="flex items-center gap-2">
-          <Select aria-label="Project" options={options()} value={slug()} onChange={setPicked} />
-          <For each={[slug()]}>
-            {(current) => <StoreCreator slug={current} onCreated={() => props.onCreated()} />}
-          </For>
-        </div>
-      </Show>
+      <Button
+        variant="primary"
+        disabled={options().length === 0}
+        title={options().length === 0 ? "Create a project first" : undefined}
+        onClick={() => presenter.openCreate()}
+      >
+        <Icon name="plus" class="h-4 w-4" />
+        New storage adapter
+      </Button>
+      <CreateDialog
+        presenter={presenter}
+        kind="storage"
+        project={{ options: options(), value: slug(), onChange: setPicked }}
+      />
     </Loading>
   );
+}
+
+/** Stores by project, each project once, in the order the projects list them. */
+function byProject(
+  stores: AdapterWithProject[]
+): { slug: string; name: string; stores: AdapterWithProject[] }[] {
+  const groups = new Map<string, { slug: string; name: string; stores: AdapterWithProject[] }>();
+  for (const store of stores) {
+    const group = groups.get(store.project_slug) ?? {
+      slug: store.project_slug,
+      name: store.project_name,
+      stores: [],
+    };
+    group.stores.push(store);
+    groups.set(store.project_slug, group);
+  }
+  return [...groups.values()];
 }
 
 const TONE = { ok: "success", error: "error", disabled: "warning" } as const;
@@ -70,11 +78,6 @@ function StoreRow(props: { store: AdapterWithProject }): JSX.Element {
       <Cell>
         <a class="font-medium hover:underline" href={href(path())}>
           {props.store.name}
-        </a>
-      </Cell>
-      <Cell>
-        <a class="text-muted hover:underline" href={href(`/projects/${props.store.project_slug}`)}>
-          {props.store.project_name}
         </a>
       </Cell>
       <Cell>{ENGINE_LABEL[props.store.engine]}</Cell>
@@ -114,29 +117,37 @@ export default function StoresView(): JSX.Element {
             when={stores.value().length > 0}
             fallback={
               <EmptyState icon="folder" title="No file stores yet">
-                Pick a project above and add one; it appears here and under that project.
+                Add one with the button above; it appears here under its project.
               </EmptyState>
             }
           >
-            <Table>
-              <thead>
-                <tr>
-                  <Head>Name</Head>
-                  <Head>Project</Head>
-                  <Head>Engine</Head>
-                  <Head>Mode</Head>
-                  <Head>Status</Head>
-                </tr>
-              </thead>
-              <tbody>
-                <Show
-                  when={stores.value().length > 0}
-                  fallback={<EmptyRow>Nothing here.</EmptyRow>}
-                >
-                  <For each={stores.value()}>{(store) => <StoreRow store={store} />}</For>
-                </Show>
-              </tbody>
-            </Table>
+            <div class="grid gap-5">
+              <For each={byProject(stores.value())}>
+                {(group) => (
+                  <section class="grid gap-2">
+                    <h3 class="flex items-baseline gap-2 text-sm font-medium text-heading">
+                      <a class="hover:underline" href={href(`/projects/${group.slug}`)}>
+                        {group.name}
+                      </a>
+                      <span class="text-xs text-muted">{group.stores.length}</span>
+                    </h3>
+                    <Table>
+                      <thead>
+                        <tr>
+                          <Head>Name</Head>
+                          <Head>Engine</Head>
+                          <Head>Mode</Head>
+                          <Head>Status</Head>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <For each={group.stores}>{(store) => <StoreRow store={store} />}</For>
+                      </tbody>
+                    </Table>
+                  </section>
+                )}
+              </For>
+            </div>
             <TableFooter shown={stores.value().length} noun="file stores" hasMore={false} />
           </Show>
         </Loading>
