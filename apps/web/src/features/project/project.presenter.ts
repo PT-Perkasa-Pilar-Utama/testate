@@ -3,6 +3,7 @@ import type { JsonObject, Project, ProjectDefaults, ProjectDraft } from "@testat
 
 import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
+import { remember, remembered } from "@/lib/remembered.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { navigate, search } from "@/lib/router.ts";
@@ -26,7 +27,8 @@ export const PROJECT_TABS = [
 ] as const;
 export type ProjectTab = (typeof PROJECT_TABS)[number]["id"];
 
-const TAB_IDS: readonly string[] = PROJECT_TABS.map((tab) => tab.id);
+const TAB_IDS_TYPED: readonly ProjectTab[] = PROJECT_TABS.map((tab) => tab.id);
+const TAB_IDS: readonly string[] = TAB_IDS_TYPED;
 const DEFAULT_TAB: ProjectTab = "states";
 
 /**
@@ -102,13 +104,17 @@ export function createProjectPresenter(slug: () => string): ProjectPresenter {
    */
   const tab = (): ProjectTab => {
     const wanted = new URLSearchParams(search()).get("tab") ?? "";
-    if (!TAB_IDS.includes(wanted)) return MOVED.get(wanted) ?? DEFAULT_TAB;
+    // No tab in the address: the one this browser left a project on, else the default.
+    if (!TAB_IDS.includes(wanted))
+      return MOVED.get(wanted) ?? remembered("project-tab", TAB_IDS_TYPED, DEFAULT_TAB);
     // SAFETY: the membership test above narrows `wanted` to one of the literal ids.
     return wanted as ProjectTab;
   };
   // Pushed, not replaced, so Back walks the tabs instead of leaving the project.
-  const setTab = (next: ProjectTab): void =>
+  const setTab = (next: ProjectTab): void => {
+    remember("project-tab", next);
     navigate(`/projects/${encodeURIComponent(slug())}?tab=${next}`);
+  };
   const [editing, setEditing] = createSignal(false);
   const [quota, setQuota] = createSignal(0);
   const defaults = createRefreshable(() => projectsModel.defaults());

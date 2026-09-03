@@ -12,6 +12,7 @@ import type {
 import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createPaged, createRefreshable } from "@/lib/async.ts";
+import { remember, remembered } from "@/lib/remembered.ts";
 import type { Paged, Refreshable } from "@/lib/async.ts";
 import { createJobFollower } from "@/lib/sse.ts";
 import { adaptersModel } from "../adapters/adapters.model.ts";
@@ -56,6 +57,11 @@ export type StatesPresenter = Paged<StateListItem> & {
    * imports it cannot be tested outside a browser; where to go next is the view's answer anyway.
    */
   compare: () => Promise<boolean>;
+  /** The Compare dialog: a base state and a target, the live databases or another state. */
+  comparing: () => boolean;
+  openCompare: () => void;
+  closeCompare: () => void;
+  compareWith: (base: string, target: string | null) => Promise<boolean>;
   /**
    * Diffs HEAD against the live databases, which is the one way an outside write can be seen, and
    * says what it found. The project's HEAD badge follows through `onChanged`.
@@ -118,7 +124,13 @@ export function createStatesPresenter(
   );
   // Tree first: `parent_state_id` is the whole git analogy, and a stash hanging off the state it
   // protected is the thing a person came to see. List is the escape hatch.
-  const [view, setView] = createSignal<StatesView>("tree");
+  const [view, setViewSignal] = createSignal<StatesView>(
+    remembered("states-view", ["list", "tree"], "tree")
+  );
+  const setView = (next: StatesView): void => {
+    remember("states-view", next);
+    setViewSignal(next);
+  };
   const [taking, setTaking] = createSignal(false);
   const [editing, setEditing] = createSignal<State | null>(null);
   const [deleting, setDeleting] = createSignal<State | null>(null);
@@ -146,6 +158,20 @@ export function createStatesPresenter(
     }
   };
   const [selected, setSelected] = createSignal<readonly string[]>([]);
+  const [comparing, setComparing] = createSignal(false);
+  const compareWith = async (base: string, targetId: string | null): Promise<boolean> => {
+    const staticSlug = slug();
+    const target = targetId === null ? LIVE : { state_id: targetId };
+    let made = false;
+    await attempt(async () => {
+      await diffsModel.create(staticSlug, { base_state_id: base, target });
+      showToast("Comparison started. It lands in Activity.", "info");
+      setSelected([]);
+      setComparing(false);
+      made = true;
+    });
+    return made;
+  };
   const openById = (id: string): Promise<void> => {
     const staticSlug = slug();
     return attempt(async () => {
@@ -187,22 +213,18 @@ export function createStatesPresenter(
             [...current, id].slice(-2)
       ),
     clearSelected: () => setSelected([]),
-    compare: async () => {
-      const staticSlug = slug();
+    compare: () => {
       const staticPicked = selected();
       const base = staticPicked[0];
-      if (base === undefined) return false;
       // One ticked means "what has changed since", which is the live databases.
-      const target = staticPicked[1] === undefined ? LIVE : { state_id: staticPicked[1] };
-      let made = false;
-      await attempt(async () => {
-        await diffsModel.create(staticSlug, { base_state_id: base, target });
-        showToast("Comparison started. It lands in Activity.", "info");
-        setSelected([]);
-        made = true;
-      });
-      return made;
+      return base === undefined
+        ? Promise.resolve(false)
+        : compareWith(base, staticPicked[1] ?? null);
     },
+    comparing,
+    openCompare: () => setComparing(true),
+    closeCompare: () => setComparing(false),
+    compareWith,
     checkDrift: async (state) => {
       const staticSlug = slug();
       await attempt(async () => {
