@@ -3,6 +3,9 @@ import type { DetailTable, Head, State, StateDetail } from "@testate/shared";
 
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
+import { attempt, showToast } from "@/lib/toast.ts";
+import { diffsModel } from "../diffs/diffs.model.ts";
+import { jobsModel } from "../jobs/jobs.model.ts";
 import { projectsModel } from "../projects/projects.model.ts";
 import { matchingTables } from "./states.format.ts";
 import { statesModel } from "./states.model.ts";
@@ -27,6 +30,11 @@ export type StatePresenter = {
   tables: () => DetailTable[];
   isHead: () => boolean;
   refresh: () => void;
+  /**
+   * The diff of the parent against this state, made now and waited for: its id, or null when
+   * there is no parent or the comparison found nothing and was not kept.
+   */
+  diffAgainstParent: () => Promise<string | null>;
 };
 
 export function qualifiedTable(table: { schema: string | null; name: string }): string {
@@ -130,6 +138,25 @@ export function createStatePresenter(slug: () => string, id: () => string): Stat
     refresh: () => {
       detail.refresh();
       head.refresh();
+    },
+    diffAgainstParent: async () => {
+      const staticSlug = slug();
+      const staticId = id();
+      const parentId = detail.value().parent_state_id;
+      if (parentId === null) return null;
+      let kept: string | null = null;
+      await attempt(async () => {
+        const { diff, job } = await diffsModel.create(staticSlug, {
+          base_state_id: parentId,
+          target: { state_id: staticId },
+        });
+        showToast("Comparing with the parent...", "info");
+        const done = await jobsModel.settled(job.id);
+        if (done.status !== "succeeded") throw new Error(`The comparison ${done.status}.`);
+        if (done.result?.["moved"] === true) kept = diff.id;
+        else showToast("Nothing changed against the parent. No comparison kept.", "info");
+      });
+      return kept;
     },
   };
 }

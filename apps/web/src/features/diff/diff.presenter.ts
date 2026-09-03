@@ -33,6 +33,25 @@ export function tableName(table: DiffTable): string {
   return table.schema === null ? table.name : `${table.schema}.${table.name}`;
 }
 
+/** Rows moved, or the shape did. */
+export function moved(table: DiffTable): boolean {
+  return table.added + table.removed + table.changed > 0 || table.schema_changed !== null;
+}
+
+/** `?adapter=&table=` name the table a link lands on; else the first that moved. */
+export function wantedTarget(diff: Diff, search: string): Target | null {
+  const params = new URLSearchParams(search);
+  const adapterId = params.get("adapter");
+  const name = params.get("table");
+  for (const adapter of diff.adapters) {
+    if (adapterId !== null && adapter.adapter_id !== adapterId) continue;
+    const table = adapter.tables.find((t) => (name === null ? moved(t) : tableName(t) === name));
+    if (table !== undefined)
+      return { adapter_id: adapter.adapter_id, adapter_name: adapter.name, table };
+  }
+  return null;
+}
+
 /** "+12 -3 ~48", and nothing at all for a table that did not move. */
 export function countsLabel(table: DiffTable): string {
   const parts: string[] = [];

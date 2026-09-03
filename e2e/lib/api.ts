@@ -170,6 +170,33 @@ export async function demoProjectId(admin: APIRequestContext): Promise<string> {
 }
 
 /** Polls a job until it leaves `running`/`queued`; the terminal job comes back. */
+/**
+ * Inserts one row into a table with an `email` column through a write session, so a comparison
+ * against the live database finds something: one that finds nothing is discarded by its job.
+ */
+export async function insertRow(
+  context: APIRequestContext,
+  adapterId: string,
+  table: string
+): Promise<void> {
+  const started = await context.post(`projects/demo/adapters/${adapterId}/write-sessions`, {
+    data: { foreign_key_checks: true },
+  });
+  if (!started.ok()) throw new Error(`write session: ${started.status()} ${await started.text()}`);
+  const session: { data: { id: string } } = await started.json();
+  const edits = await context.post(
+    `projects/demo/adapters/${adapterId}/tables/${encodeURIComponent(table)}/row-edits`,
+    {
+      data: {
+        write_session_id: session.data.id,
+        edits: [{ kind: "insert", values: { email: { kind: "function", name: "uuid_v7" } } }],
+      },
+    }
+  );
+  if (!edits.ok()) throw new Error(`insert: ${edits.status()} ${await edits.text()}`);
+  await context.delete(`projects/demo/adapters/${adapterId}/write-sessions/${session.data.id}`);
+}
+
 export async function waitForJob(qa: APIRequestContext, jobId: string): Promise<JobRow> {
   for (let attempt = 0; attempt < 240; attempt += 1) {
     const body: { data: JobRow } = await (await qa.get(`jobs/${jobId}`)).json();

@@ -1,8 +1,9 @@
 import type { JSX } from "@solidjs/web";
-import { Show, createSignal } from "solid-js";
+import { Show, createEffect, createSignal } from "solid-js";
 
 import Tabs from "@/components/tabs.tsx";
 import { remember, remembered } from "@/lib/remembered.ts";
+import { search } from "@/lib/router.ts";
 import CheckoutsView from "../checkouts/checkouts.view.tsx";
 import DiffsView from "../diffs/diffs.view.tsx";
 import ImportsView from "../imports/imports.view.tsx";
@@ -45,6 +46,14 @@ export default function ActivityView(props: { slug: string; onChanged: () => voi
     remember("activity-tab", next);
     setChipSignal(next);
   };
+  // A comparison that ends while this screen is open lands on Diffs the same way: the address
+  // changes under a mounted screen, and the chip follows it.
+  createEffect(
+    () => CHIP_IDS.find((id) => id === new URLSearchParams(search()).get("show")),
+    (named) => {
+      if (named !== undefined) setChip(named);
+    }
+  );
   return (
     <div class="grid gap-4">
       <Tabs

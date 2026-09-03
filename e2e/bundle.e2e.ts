@@ -1,7 +1,14 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { adapterScreens, apiContext, representativeAdapters, waitForJob } from "./lib/api.ts";
+import {
+  adapterScreens,
+  apiContext,
+  firstTableOf,
+  insertRow,
+  representativeAdapters,
+  waitForJob,
+} from "./lib/api.ts";
 import { countApi, over, settle, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { SCREENS, statePath } from "./lib/roles.ts";
@@ -35,6 +42,8 @@ async function freshDiffPath(): Promise<string> {
   ).json();
   const baseline = states.data.find((state) => state.name === "seeded-baseline");
   if (baseline === undefined) throw new Error("the seed left no seeded-baseline state");
+  const target = await firstTableOf("postgres");
+  await insertRow(context, target.id, target.table);
   const started = await context.post("projects/demo/diffs", {
     data: { base_state_id: baseline.id, target: "live" },
   });

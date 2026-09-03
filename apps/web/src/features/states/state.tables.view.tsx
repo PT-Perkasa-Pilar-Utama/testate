@@ -10,6 +10,7 @@ import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { engineLabel } from "@/lib/labels.ts";
 import { changedCount, qualifiedTable, troubled } from "./state.presenter.ts";
 import type { DetailAdapter, StatePresenter } from "./state.presenter.ts";
+import type { DetailTable } from "@testate/shared";
 import { formatBytes } from "./states.format.ts";
 
 const sortsFor = (adapter: DetailAdapter) =>
@@ -85,6 +86,8 @@ export function TablesPane(props: {
   presenter: StatePresenter;
   adapter: DetailAdapter;
   searchRef: (element: HTMLInputElement) => void;
+  /** A table that moved against the parent opens its diff; the view says where that is. */
+  onDiff: (table: DetailTable) => void;
 }): JSX.Element {
   const a = (): DetailAdapter => props.adapter;
   return (
@@ -167,7 +170,21 @@ export function TablesPane(props: {
                 </Cell>
                 <Cell>
                   <Show when={table.change}>
-                    {(change) => <Badge variant={CHANGE_VARIANT[change()]}>{change()}</Badge>}
+                    {(change) => (
+                      <Show
+                        when={change() !== "same"}
+                        fallback={<Badge variant={CHANGE_VARIANT[change()]}>{change()}</Badge>}
+                      >
+                        <button
+                          type="button"
+                          class="cursor-pointer"
+                          title="Open the comparison with the parent"
+                          onClick={() => props.onDiff(table)}
+                        >
+                          <Badge variant={CHANGE_VARIANT[change()]}>{change()} →</Badge>
+                        </button>
+                      </Show>
+                    )}
                   </Show>
                 </Cell>
                 <Cell numeric>{table.rows}</Cell>

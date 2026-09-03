@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { demoAdapter, firstTable } from "./lib/api.ts";
+import { apiContext, demoAdapter, firstTable, firstTableOf, insertRow } from "./lib/api.ts";
 import { openStatesList, openTab, settle } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
@@ -76,8 +76,12 @@ test.describe("README screens", () => {
     await take("checkout-flow-baseline", "release-2.4");
     await take("after-the-failed-refund", "bug-4182");
 
-    // The demo has no diff of its own, so make one against the live database first: tick a state
-    // on the States tab and compare it, which is where a diff starts now.
+    // The demo has no diff of its own, so make one against the live database first: a row
+    // inserted so there is something to keep, then tick a state on the States tab and compare it.
+    const target = await firstTableOf("postgres");
+    const qa = await apiContext("qa");
+    await insertRow(qa, target.id, target.table);
+    await qa.dispose();
     await openStatesList(page);
     await page.getByRole("checkbox", { name: "Compare seeded-baseline" }).check();
     await page.getByRole("button", { name: "Compare with live" }).click();

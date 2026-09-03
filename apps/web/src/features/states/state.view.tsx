@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { Errored, For, Loading, Show, onSettled } from "solid-js";
-import type { StateDetail } from "@testate/shared";
+import type { DetailTable, StateDetail } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
@@ -193,6 +193,16 @@ export default function StateView(props: { slug: string; id: string }): JSX.Elem
     () => presenter.refresh()
   );
   let search: HTMLInputElement | undefined;
+  /** The comparison with the parent, landed on the table that was clicked. */
+  const openDiff = async (adapterId: string, table: DetailTable): Promise<void> => {
+    const staticSlug = props.slug;
+    const diffId = await presenter.diffAgainstParent();
+    if (diffId === null) return;
+    const name = table.schema === null ? table.name : `${table.schema}.${table.name}`;
+    navigate(
+      `/projects/${encodeURIComponent(staticSlug)}/diffs/${diffId}?adapter=${encodeURIComponent(adapterId)}&table=${encodeURIComponent(name)}`
+    );
+  };
   onSettled(() => {
     const onKey = (event: KeyboardEvent): void => {
       const typing =
@@ -253,6 +263,7 @@ export default function StateView(props: { slug: string; id: string }): JSX.Elem
                   searchRef={(element) => {
                     search = element;
                   }}
+                  onDiff={(table) => void openDiff(adapter().adapter_id, table)}
                 />
               )}
             </Show>

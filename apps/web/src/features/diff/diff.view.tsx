@@ -4,19 +4,27 @@ import Icon from "@/components/icon.tsx";
 import Pending from "@/components/pending.tsx";
 import { Eyebrow } from "@/components/page-header.tsx";
 import { Errored, For, Loading, Show, createEffect } from "solid-js";
-import type { DiffRow, DiffTable, JsonValue } from "@testate/shared";
+import type { Diff, DiffTable } from "@testate/shared";
 
-import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
 import Breadcrumbs from "@/components/breadcrumbs.tsx";
 import PageHeader from "@/components/page-header.tsx";
 import Tabs from "@/components/tabs.tsx";
 import { DIFF_OP_LABEL } from "@/lib/labels.ts";
 import { formatWhen } from "@/lib/format.ts";
-import { columnsOf, createDiffPresenter, tableName } from "./diff.presenter.ts";
+import DocumentPairs from "./diff.documents.view.tsx";
+import {
+  columnsOf,
+  createDiffPresenter,
+  moved,
+  tableName,
+  wantedTarget,
+} from "./diff.presenter.ts";
 import type { DiffPresenter, Target } from "./diff.presenter.ts";
-import { pretty } from "./diff.text.ts";
+import RowTable from "./diff.rows.view.tsx";
 import ValueDialog from "./diff.value.tsx";
+
+type DiffAdapter = Diff["adapters"][number];
 
 const OPS = [
   { id: "", label: "All" },
@@ -25,15 +33,10 @@ const OPS = [
   { id: "changed", label: DIFF_OP_LABEL.changed },
 ] as const;
 
-const OP_TONE = { added: "success", removed: "error", changed: "warning" } as const;
+const documents = (adapter: DiffAdapter): boolean => adapter.engine === "mongodb";
 
-function cellOf(row: DiffRow, side: "before" | "after", column: string): JsonValue {
-  return (side === "before" ? row.before : row.after)?.[column] ?? null;
-}
-
-/** One line of a cell for the grid; the full value goes to the dialog. */
-function show(value: JsonValue): string {
-  return value === null ? "" : pretty(value).replaceAll("\n", " ");
+function targetName(diff: Diff): string {
+  return "live" in diff.target ? "live databases" : diff.target.name;
 }
 
 /** What moved in a table, each count in the colour the diff rows use for it; nothing when nothing did. */
@@ -53,28 +56,28 @@ function Counts(props: { table: DiffTable }): JSX.Element {
   );
 }
 
-/** The tables of every adapter, with what moved in each; the rail is how you pick one. */
+/**
+ * What moved, and only that: the databases with a table or collection that changed, and those
+ * tables. A database where nothing moved has nothing to pick, so it is not listed.
+ */
 function TableRail(props: { presenter: DiffPresenter }): JSX.Element {
-  // One key per row rather than two comparisons: the old pair read the candidate's own table when
-  // nothing was selected yet, so a second row lit up beside the chosen one.
   const key = (target: Target): string => `${target.adapter_id}/${tableName(target.table)}`;
   const chosen = (target: Target): boolean => {
     const at = props.presenter.target();
     return at !== null && key(at) === key(target);
   };
+  const touched = (): DiffAdapter[] =>
+    props.presenter.diff.value().adapters.filter((adapter) => adapter.tables.some(moved));
   return (
-    <nav class="grid gap-5" aria-label="Tables in this diff">
-      <For each={props.presenter.diff.value().adapters}>
+    <nav class="grid gap-5" aria-label="What moved">
+      <For each={touched()} fallback={<p class="px-2 text-sm text-muted">Nothing moved.</p>}>
         {(adapter) => (
           <div class="grid gap-1">
             <h3 class="flex items-center gap-1.5 px-2">
               <Icon name="database" class="h-3.5 w-3.5 text-muted" />
               <Eyebrow>{adapter.name}</Eyebrow>
             </h3>
-            <For
-              each={adapter.tables}
-              fallback={<p class="px-2 text-sm text-muted">Nothing compared here.</p>}
-            >
+            <For each={adapter.tables.filter(moved)}>
               {(table) => (
                 <button
                   type="button"
@@ -92,7 +95,10 @@ function TableRail(props: { presenter: DiffPresenter }): JSX.Element {
                     })
                   }
                 >
-                  <Icon name="table" class="h-3.5 w-3.5 shrink-0" />
+                  <Icon
+                    name={documents(adapter) ? "folder" : "table"}
+                    class="h-3.5 w-3.5 shrink-0"
+                  />
                   <span class="truncate">{tableName(table)}</span>
                   <Counts table={table} />
                 </button>
@@ -105,64 +111,10 @@ function TableRail(props: { presenter: DiffPresenter }): JSX.Element {
   );
 }
 
-/** One row, both sides, with the columns the API already named as changed tinted. */
-function RowPair(props: {
-  row: DiffRow;
-  columns: string[];
-  presenter: DiffPresenter;
-}): JSX.Element {
-  const changed = (column: string): boolean => props.row.changed_columns?.includes(column) === true;
-  const cell = (side: "before" | "after", column: string): JSX.Element => (
-    <td
-      class={[
-        "max-w-[16rem] truncate px-2 py-1 align-top font-mono text-xs",
-        {
-          "cursor-pointer bg-warning-tint text-warning-fg hover:underline": changed(column),
-          "text-muted": !changed(column),
-        },
-      ]}
-      title={show(cellOf(props.row, side, column))}
-      onClick={() => {
-        if (!changed(column)) return;
-        props.presenter.openCell({
-          column,
-          before: cellOf(props.row, "before", column),
-          after: cellOf(props.row, "after", column),
-        });
-      }}
-    >
-      {show(cellOf(props.row, side, column))}
-    </td>
-  );
-  return (
-    <>
-      <Show when={props.row.before}>
-        <tr class="border-t border-hairline">
-          <td class="px-2 py-1 align-top">
-            <Badge variant={OP_TONE[props.row.op]}>{props.row.op === "added" ? "" : "-"}</Badge>
-          </td>
-          <For each={props.columns}>{(column) => cell("before", column)}</For>
-        </tr>
-      </Show>
-      <Show when={props.row.after}>
-        <tr class={props.row.before === null ? "border-t border-hairline" : ""}>
-          <td class="px-2 py-1 align-top">
-            <Badge variant={OP_TONE[props.row.op]}>+</Badge>
-          </td>
-          <For each={props.columns}>{(column) => cell("after", column)}</For>
-        </tr>
-      </Show>
-    </>
-  );
-}
-
 /**
- * One diff, on a page of its own.
- *
- * It was a dialog over a list, which is the wrong shape for a comparison: the rows are wide, there
- * are two of everything, and a person reads down a table rather than across a modal. No API work:
- * `GET /diffs/:id/rows` already answers with before, after and the columns that changed
- *.
+ * One diff, on a page of its own: what moved on the left, both sides of each row or document on
+ * the right. No API work: `GET /diffs/:id/rows` already answers with before, after and the
+ * columns that changed.
  */
 export default function DiffView(props: { slug: string; id: string }): JSX.Element {
   const presenter = createDiffPresenter(
@@ -170,21 +122,22 @@ export default function DiffView(props: { slug: string; id: string }): JSX.Eleme
     () => props.id
   );
   const columns = (): string[] => columnsOf(presenter.page()?.data ?? []);
-  // Open on the first table that moved rather than on "pick one": a diff page that lands on an
-  // instruction is a page that made the reader do the one thing it already knew to do.
+  const rows = () => presenter.page()?.data ?? [];
+  const adapterOf = (target: Target): DiffAdapter | undefined =>
+    presenter.diff.value().adapters.find((adapter) => adapter.adapter_id === target.adapter_id);
+  const noun = (target: Target): string =>
+    adapterOf(target)?.engine === "mongodb" ? "documents" : "rows";
+  // Read once, at build: a link from a state's page names the table it wants open.
+  const search = window.location.search;
+  // Land on the table the link named, else the first that moved: a page that lands on an
+  // instruction made the reader do the one thing it already knew to do.
   createEffect(
     () => ({ diff: presenter.diff.value(), target: presenter.target() }),
     ({ diff, target }) => {
       if (target !== null) return;
-      for (const adapter of diff.adapters) {
-        const table = adapter.tables.find((t) => t.added + t.removed + t.changed > 0);
-        if (table === undefined) continue;
-        // On the next turn, not inside the effect: `select` reads the presenter's own signals,
-        // and a read from an effect callback is the one Solid 2 warns about.
-        const pick = { adapter_id: adapter.adapter_id, adapter_name: adapter.name, table };
-        queueMicrotask(() => void presenter.select(pick));
-        return;
-      }
+      const pick = wantedTarget(diff, search);
+      // On the next turn, not inside the effect: `select` reads the presenter's own signals.
+      if (pick !== null) queueMicrotask(() => void presenter.select(pick));
     }
   );
   return (
@@ -201,9 +154,7 @@ export default function DiffView(props: { slug: string; id: string }): JSX.Eleme
           />
           <PageHeader
             eyebrow="Comparison"
-            title={`${presenter.diff.value().base.name} → ${
-              "live" in presenter.diff.value().target ? "live databases" : "another state"
-            }`}
+            title={`${presenter.diff.value().base.name} → ${targetName(presenter.diff.value())}`}
             description={`Made ${formatWhen(presenter.diff.value().created_at)}. Kept until ${formatWhen(presenter.diff.value().expires_at)}.`}
           />
           <div class="grid gap-4 lg:grid-cols-[16rem_1fr]">
@@ -213,8 +164,7 @@ export default function DiffView(props: { slug: string; id: string }): JSX.Eleme
                 when={presenter.target()}
                 fallback={
                   <EmptyState icon="table" title="Nothing moved">
-                    Every compared table holds the same rows on both sides. Pick one on the left to
-                    read it anyway.
+                    Both sides hold the same data.
                   </EmptyState>
                 }
               >
@@ -228,7 +178,7 @@ export default function DiffView(props: { slug: string; id: string }): JSX.Eleme
                         items={OPS}
                         value={presenter.op()}
                         onChange={(op) => void presenter.setOp(op)}
-                        label="Which rows"
+                        label={`Which ${noun(target())}`}
                         variant="segmented"
                       />
                     </div>
@@ -238,40 +188,21 @@ export default function DiffView(props: { slug: string; id: string }): JSX.Eleme
                       </Banner>
                     </Show>
                     <Show
-                      when={(presenter.page()?.data ?? []).length > 0}
+                      when={rows().length > 0}
                       fallback={
                         <p class="text-muted">
-                          {presenter.busy() ? "Reading rows..." : "No rows for this filter."}
+                          {presenter.busy()
+                            ? `Reading ${noun(target())}...`
+                            : `No ${noun(target())} for this filter.`}
                         </p>
                       }
                     >
-                      <div class="overflow-x-auto rounded-lg bg-surface ring ring-line">
-                        <table class="w-full text-left">
-                          <thead>
-                            <tr class="bg-fill">
-                              <th class="w-10 px-2 py-1.5 text-xs text-muted" />
-                              <For each={columns()}>
-                                {(column) => (
-                                  <th class="px-2 py-1.5 text-xs font-medium text-muted">
-                                    {column}
-                                  </th>
-                                )}
-                              </For>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <For each={presenter.page()?.data ?? []}>
-                              {(row) => (
-                                <RowPair row={row} columns={columns()} presenter={presenter} />
-                              )}
-                            </For>
-                          </tbody>
-                        </table>
-                      </div>
-                      <p class="text-sm text-muted">
-                        A tinted cell changed. Click one to read the value in full. The first 100
-                        rows, masked to your role.
-                      </p>
+                      <Show
+                        when={noun(target()) === "rows"}
+                        fallback={<DocumentPairs rows={rows()} />}
+                      >
+                        <RowTable rows={rows()} columns={columns()} presenter={presenter} />
+                      </Show>
                     </Show>
                   </>
                 )}

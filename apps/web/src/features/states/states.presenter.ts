@@ -16,6 +16,7 @@ import type { Paged, Refreshable } from "@/lib/async.ts";
 import { createJobFollower } from "@/lib/sse.ts";
 import { adaptersModel } from "../adapters/adapters.model.ts";
 import { diffsModel } from "../diffs/diffs.model.ts";
+import { jobsModel } from "../jobs/jobs.model.ts";
 import { LIVE } from "../diffs/diffs.presenter.ts";
 import { statesModel } from "./states.model.ts";
 
@@ -154,16 +155,27 @@ export function createStatesPresenter(
   };
   const [selected, setSelected] = createSignal<readonly string[]>([]);
   const [comparing, setComparing] = createSignal(false);
+  /**
+   * True when the comparison found something and was kept. One that found nothing is discarded
+   * by its job, so the answer is a toast, not a page of identical tables.
+   */
   const compareWith = async (base: string, targetId: string | null): Promise<boolean> => {
     const staticSlug = slug();
     const target = targetId === null ? LIVE : { state_id: targetId };
     let made = false;
     await attempt(async () => {
-      await diffsModel.create(staticSlug, { base_state_id: base, target });
-      showToast("Comparison started. It lands in Activity.", "info");
+      const { job } = await diffsModel.create(staticSlug, { base_state_id: base, target });
       setSelected([]);
       setComparing(false);
-      made = true;
+      showToast("Comparing...", "info");
+      const done = await jobsModel.settled(job.id);
+      if (done.status !== "succeeded") throw new Error(`The comparison ${done.status}.`);
+      made = done.result?.["moved"] === true;
+      onChanged();
+      showToast(
+        made ? "Comparison ready. It lands in Activity." : "Nothing changed. No comparison kept.",
+        made ? "success" : "info"
+      );
     });
     return made;
   };
@@ -216,16 +228,14 @@ export function createStatesPresenter(
     checkDrift: async (state) => {
       const staticSlug = slug();
       await attempt(async () => {
-        const { diff, job } = await diffsModel.create(staticSlug, {
+        const { job } = await diffsModel.create(staticSlug, {
           base_state_id: state.id,
           target: LIVE,
         });
         showToast(`Comparing ${state.name} with the live databases...`);
-        await jobs.settle(job);
-        const result = await diffsModel.get(staticSlug, diff.id);
-        const moved = result.adapters.some((adapter) =>
-          adapter.tables.some((table) => table.added + table.removed + table.changed > 0)
-        );
+        const done = await jobsModel.settled(job.id);
+        if (done.status !== "succeeded") throw new Error(`The comparison ${done.status}.`);
+        const moved = done.result?.["moved"] === true;
         onChanged();
         showToast(
           moved
