@@ -1,8 +1,8 @@
 import { Field, Form, createForm, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import AdapterBreadcrumbs from "@/features/adapter/adapter.crumb.view.tsx";
-import { For, Loading, Show, createEffect } from "solid-js";
-import type { ColumnPolicy } from "@testate/shared";
+import { For, Loading, Show, createEffect, createSignal } from "solid-js";
+import type { ColumnPolicy, TableSchema } from "@testate/shared";
 import { policyFormSchema } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
@@ -50,7 +50,7 @@ function PolicyDialog(props: { presenter: PoliciesPresenter }): JSX.Element {
       onClose={props.presenter.close}
       title={`Mask for ${props.presenter.draft()?.table ?? ""}.${props.presenter.draft()?.column ?? ""}`}
       size="lg"
-      description="A masked column reaches Guests and agents as *** and Testers and Administrators as the real value. It applies to the grid, diffs, exports, fixtures and MCP alike."
+      description="Guests and agents see *** in place of this column. Testers and Administrators see the value."
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.save(input)}>
         <Field of={form} path={["mask"]}>
@@ -172,6 +172,20 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
     presenter.policies.value().find((policy) => policy.table === table && policy.column === column);
   const policyCount = (table: string): number =>
     presenter.policies.value().filter((policy) => policy.table === table).length;
+  // One table at a time: a hundred tables of columns is a page nobody scrolls. The pick starts on
+  // the first table with a mask, since that is what an admin came back to look at.
+  const [picked, setPicked] = createSignal<string | null>(null);
+  const tables = (): TableSchema[] => presenter.schema.value().tables;
+  const current = (): TableSchema | undefined =>
+    tables().find((table) => qualifiedName(table) === picked()) ??
+    tables().find((table) => policyCount(qualifiedName(table)) > 0) ??
+    tables()[0];
+  const options = (): { value: string; label: string }[] =>
+    tables().map((table) => {
+      const name = qualifiedName(table);
+      const count = policyCount(name);
+      return { value: name, label: count === 0 ? name : `${name} (${count} masked)` };
+    });
   return (
     <section class="grid gap-4">
       <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf="column masks" />
@@ -181,14 +195,13 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
           Column masks
         </h2>
         <p class="max-w-prose text-sm text-muted">
-          Admin work. A mask set here applies everywhere a value could leave this database: the
-          grid, diffs, exports, fixtures and the AI agent. Guests and agents see ***. Testers and
-          Administrators see the real value. There is no unmask.
+          A mask hides a column from Guests and agents. They see ***. Testers and Administrators see
+          the value. The mask applies to the grid, diffs, exports, fixtures, and the AI agent.
         </p>
       </div>
       <Loading fallback={<Pending>Loading schema...</Pending>}>
-        <For
-          each={presenter.schema.value().tables}
+        <Show
+          when={current()}
           fallback={
             <EmptyState icon="table" title="No tables to mask yet">
               Connect a database with tables on it. Come back to hide a column from Guests and
@@ -197,13 +210,19 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
           }
         >
           {(table) => (
-            <div class="grid gap-2">
-              <h3 class="flex items-center gap-2 font-medium">
-                <code>{qualifiedName(table)}</code>
-                <Show when={policyCount(qualifiedName(table)) > 0}>
-                  <Badge variant="info">{policyCount(qualifiedName(table))} masked</Badge>
+            <div class="grid gap-3">
+              <label class="flex flex-wrap items-center gap-2 text-sm">
+                <span class="text-muted">Table</span>
+                <Select
+                  aria-label="Table"
+                  options={options()}
+                  value={qualifiedName(table())}
+                  onChange={(name) => setPicked(name)}
+                />
+                <Show when={policyCount(qualifiedName(table())) > 0}>
+                  <Badge variant="info">{policyCount(qualifiedName(table()))} masked</Badge>
                 </Show>
-              </h3>
+              </label>
               <Table>
                 <thead>
                   <tr>
@@ -213,7 +232,7 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
                   </tr>
                 </thead>
                 <tbody>
-                  <For each={table.columns}>
+                  <For each={table().columns}>
                     {(column) => (
                       <Row>
                         <Cell>
@@ -222,8 +241,8 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
                         <Cell>{column.type}</Cell>
                         <PolicyCell
                           presenter={presenter}
-                          policy={policyOf(qualifiedName(table), column.name)}
-                          table={qualifiedName(table)}
+                          policy={policyOf(qualifiedName(table()), column.name)}
+                          table={qualifiedName(table())}
                           column={column.name}
                         />
                       </Row>
@@ -233,7 +252,7 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
               </Table>
             </div>
           )}
-        </For>
+        </Show>
         <PolicyDialog presenter={presenter} />
       </Loading>
     </section>
