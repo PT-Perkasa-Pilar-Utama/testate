@@ -130,6 +130,10 @@ export default function StatesView(props: {
     if (await presenter.compare())
       navigate(`/projects/${encodeURIComponent(staticSlug)}?tab=activity&show=diffs`);
   };
+  const emptyText = (): string =>
+    presenter.databases.value().length === 0
+      ? "No databases yet. Connect one on the Databases tab; its first snapshot is the init state."
+      : "No states yet. Take one to keep what the databases hold right now.";
   return (
     <div class="grid gap-3">
       <div class="flex items-center justify-between gap-4">
@@ -140,25 +144,28 @@ export default function StatesView(props: {
           label="States view"
           variant="segmented"
         />
-        <div class="flex items-center gap-4">
-          <Show when={hasRole("qa")}>
-            <Button variant="secondary" onClick={() => presenter.openCompare()}>
-              <Icon name="git-compare" class="h-4 w-4" />
-              Compare
-            </Button>
-          </Show>
-          <Switch
-            label="Show stashes"
-            checked={presenter.showStashes()}
-            onChange={(value) => presenter.setShowStashes(value)}
-          />
-          <Show when={hasRole("qa")}>
-            <Button variant="accent" size="lg" onClick={() => presenter.openTake()}>
-              <Icon name="camera" class="h-4 w-4" />
-              Take state
-            </Button>
-          </Show>
-        </div>
+        {/* Nothing to take or compare before a database is connected; the empty case says so. */}
+        <Loading fallback={null}>
+          <div class="flex items-center gap-4">
+            <Show when={hasRole("qa") && presenter.databases.value().length > 0}>
+              <Button variant="secondary" onClick={() => presenter.openCompare()}>
+                <Icon name="git-compare" class="h-4 w-4" />
+                Compare
+              </Button>
+            </Show>
+            <Switch
+              label="Show stashes"
+              checked={presenter.showStashes()}
+              onChange={(value) => presenter.setShowStashes(value)}
+            />
+            <Show when={hasRole("qa") && presenter.databases.value().length > 0}>
+              <Button variant="accent" size="lg" onClick={() => presenter.openTake()}>
+                <Icon name="camera" class="h-4 w-4" />
+                Take state
+              </Button>
+            </Show>
+          </div>
+        </Loading>
       </div>
       {/* Two ticked states are a comparison waiting to be asked for, which is where the New diff
           dialog used to ask the same question with two selects. */}
@@ -183,7 +190,7 @@ export default function StatesView(props: {
         <Show when={presenter.view() === "tree"}>
           <Tree
             nodes={presenter.tree.value()}
-            empty="No states yet. Take one to keep what the databases hold right now."
+            empty={emptyText()}
             onOpen={(node) => void presenter.openDetailById(node.id)}
             actions={(node) => (
               <Show when={hasRole("qa")}>
@@ -220,7 +227,7 @@ export default function StatesView(props: {
                 checkout={(target) => preflight.open(target)}
               />
             )}
-            empty="No states yet. Take one to keep what the databases hold right now."
+            empty={emptyText()}
           />
           <TableFooter
             shown={presenter.value().length}

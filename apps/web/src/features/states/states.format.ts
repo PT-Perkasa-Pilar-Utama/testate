@@ -23,12 +23,6 @@ export function sortLabel(sort: ManifestTable["sort"]): string {
   return SORT_LABEL[sort];
 }
 
-const CONSISTENCY_LABEL = {
-  snapshot: "consistent snapshot",
-  best_effort: "best effort",
-} as const satisfies Record<StateAdapter["consistency"], string>;
-
-/** "best_effort" -> "best effort"; a person never typed the underscore. */
 /** The tables whose qualified name holds the text, case-insensitively; all of them for none. */
 export function matchingTables<T extends { schema: string | null; name: string }>(
   tables: readonly T[],
@@ -40,10 +34,6 @@ export function matchingTables<T extends { schema: string | null; name: string }
       .toLowerCase()
       .includes(needle)
   );
-}
-
-export function consistencyLabel(consistency: StateAdapter["consistency"]): string {
-  return CONSISTENCY_LABEL[consistency];
 }
 
 /**

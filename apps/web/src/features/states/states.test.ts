@@ -10,7 +10,7 @@ import {
   driftSummary,
   strategyLine,
 } from "../checkouts/preflight.presenter.ts";
-import { adapterSummary, consistencyLabel, sortLabel } from "./states.format.ts";
+import { adapterSummary, sortLabel } from "./states.format.ts";
 import {
   checkoutBlockedReason,
   parseTags,
@@ -140,11 +140,9 @@ describe("states feature", () => {
     );
   });
 
-  test("sort and consistency read as words, not the API's punctuation (labels pass)", () => {
+  test("sort reads as words, not the API's punctuation (labels pass)", () => {
     expect(sortLabel("primary-key")).toBe("primary key order");
     expect(sortLabel("row-hash")).toBe("row hash order");
-    expect(consistencyLabel("snapshot")).toBe("consistent snapshot");
-    expect(consistencyLabel("best_effort")).toBe("best effort");
   });
 
   test("the timeline names the databases a state covers and folds the rest into a count", () => {

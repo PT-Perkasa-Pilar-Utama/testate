@@ -10,7 +10,7 @@ import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { STATE_KIND_LABEL, engineLabel } from "@/lib/labels.ts";
-import { consistencyLabel, formatBytes, matchingTables } from "./states.format.ts";
+import { formatBytes, matchingTables } from "./states.format.ts";
 import type { StatesPresenter } from "./states.presenter.ts";
 
 type DetailAdapter = StateDetail["adapters"][number];
@@ -41,9 +41,10 @@ function AdapterSection(props: { adapter: DetailAdapter; open: boolean }): JSX.E
           {props.adapter.tables.length} {documents() ? "collections" : "tables"} ·{" "}
           {props.adapter.row_count} rows · {formatBytes(props.adapter.byte_count)}
         </span>
-        <Badge variant={props.adapter.consistency === "snapshot" ? "success" : "warning"}>
-          {consistencyLabel(props.adapter.consistency)}
-        </Badge>
+        {/* The normal case says nothing; the banner below names which tables and why. */}
+        <Show when={props.adapter.consistency === "best_effort"}>
+          <Badge variant="warning">read at different moments</Badge>
+        </Show>
         <Show when={props.adapter.warnings.length > 0}>
           <Icon name="triangle-alert" class="h-3.5 w-3.5 text-warning-fg" />
         </Show>

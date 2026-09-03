@@ -32,7 +32,7 @@ test.describe("qa stories", () => {
     // A project opens on States now, so its empty case needs no tab switch; every other tab's is
     // every table's empty case: it used to be a header row over blank space, and the demo project
     // the rest of the suite runs against is never empty enough to show it.
-    await expect(page.getByText("No states yet.")).toBeVisible();
+    await expect(page.getByText("No databases yet.")).toBeVisible();
     // Activity shows one list at a time, so each chip shows its own empty case.
     await openTab(page, "Activity");
     for (const [chip, message] of [
