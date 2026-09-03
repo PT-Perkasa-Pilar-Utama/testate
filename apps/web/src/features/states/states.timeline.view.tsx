@@ -13,6 +13,8 @@ const DOT_BASE = "z-10 mt-1 h-3.5 w-3.5 shrink-0 rounded-full ring-4 ring-surfac
 /** HEAD is the mark's own green, filled, the way the head node reads on the logo. */
 const DOT_HEAD = "bg-success";
 const DOT_OTHER = "border-2 border-line bg-surface";
+/** A stash: hollow and dashed, the way a git stash is drawn apart from a commit. */
+const DOT_STASH = "border-2 border-dashed border-muted bg-surface";
 
 /**
  * The dot on the rail, which is also the tick for a comparison when the reader may compare.
@@ -21,8 +23,14 @@ const DOT_OTHER = "border-2 border-line bg-surface";
  * checkbox itself: `appearance-none` and drawn as the node, a teal ring when ticked, and the same
  * accessible name as before, so nothing that selects "Compare <name>" changes.
  */
+function dotTone(head: boolean, stash: boolean): string {
+  if (head) return DOT_HEAD;
+  return stash ? DOT_STASH : DOT_OTHER;
+}
+
 function Dot(props: {
   head: boolean;
+  stash: boolean;
   name: string;
   picked: boolean;
   onPick?: (() => void) | undefined;
@@ -30,7 +38,7 @@ function Dot(props: {
   return (
     <Show
       when={props.onPick}
-      fallback={<span class={[DOT_BASE, props.head ? DOT_HEAD : DOT_OTHER]} aria-hidden="true" />}
+      fallback={<span class={[DOT_BASE, dotTone(props.head, props.stash)]} aria-hidden="true" />}
     >
       {(pick) => (
         <input
@@ -38,7 +46,7 @@ function Dot(props: {
           class={[
             DOT_BASE,
             "cursor-pointer appearance-none outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-            props.head ? DOT_HEAD : DOT_OTHER,
+            dotTone(props.head, props.stash),
             props.picked ? "!ring-accent" : "",
           ]}
           aria-label={`Compare ${props.name}`}
@@ -114,14 +122,28 @@ function TimelineRow(props: TimelineRowProps): JSX.Element {
       />
       <Dot
         head={props.head}
+        stash={props.state.kind === "stash"}
         name={props.state.name}
         picked={props.picked === true}
-        onPick={props.onPick === undefined ? undefined : () => props.onPick?.(props.state.id)}
+        // A stash is not a point a person compares from; it is the undo behind a restore.
+        onPick={
+          props.onPick === undefined || props.state.kind === "stash"
+            ? undefined
+            : () => props.onPick?.(props.state.id)
+        }
       />
       <div class="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div class="grid min-w-0 gap-1">
           <div class="flex flex-wrap items-center gap-2">
-            <Truncated class="max-w-[20rem] font-medium text-heading">{props.state.name}</Truncated>
+            <Truncated
+              class={
+                props.state.kind === "stash"
+                  ? "max-w-[20rem] font-medium text-muted italic"
+                  : "max-w-[20rem] font-medium text-heading"
+              }
+            >
+              {props.state.name}
+            </Truncated>
             <Show when={props.head}>
               {/* A checkout that failed part way leaves head_status 'unknown': the databases hold
                   some of this state and some of whatever came before, and saying HEAD flat would
@@ -192,7 +214,10 @@ export default function Timeline(props: TimelineProps): JSX.Element {
         </div>
       }
     >
-      <ul class="grid rounded-lg bg-surface px-5 py-4 ring ring-line" aria-label="States">
+      <ul
+        class="grid max-h-[36rem] overflow-y-auto rounded-lg bg-surface px-5 py-4 ring ring-line"
+        aria-label="States"
+      >
         <For each={props.states}>
           {(state) => (
             <TimelineRow

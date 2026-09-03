@@ -65,17 +65,19 @@ function RowActions(props: {
           Check out
         </Button>
       </Show>
+      {/* A stash is Testate's own safety net, taken before a restore or a write; it is read,
+          downloaded and checked out, never renamed, protected or deleted by hand. */}
       <Menu label={`Actions for ${props.state.name}`}>
         <Show when={hasRole("qa")}>
           <MenuItem onClick={() => void props.presenter.openDetail(props.state)}>Details</MenuItem>
         </Show>
-        <Show when={hasRole("qa") && props.head}>
+        <Show when={hasRole("qa") && props.head && props.state.kind !== "stash"}>
           <MenuItem onClick={() => void props.presenter.checkDrift(props.state)}>
             Check for changes
           </MenuItem>
         </Show>
         <MenuLink href={props.presenter.archiveUrl(props.state)}>Download</MenuLink>
-        <Show when={hasRole("qa")}>
+        <Show when={hasRole("qa") && props.state.kind !== "stash"}>
           <MenuItem onClick={() => props.presenter.openEdit(props.state)}>Edit</MenuItem>
           <MenuItem
             onClick={() => void props.presenter.setProtected(props.state, !props.state.protected)}
@@ -117,11 +119,15 @@ export default function StatesView(props: {
       props.onChanged?.();
     }
   );
+  /** A tree node carries an id and not the whole state; the preflight wants the state. */
+  const checkoutNode = async (id: string): Promise<void> => {
+    await preflight.open(await presenter.byId(id));
+  };
   // The diff lands in Activity, which is where every event about a state lives.
   const onCompare = async (): Promise<void> => {
     const staticSlug = props.slug;
     if (await presenter.compare())
-      navigate(`/projects/${encodeURIComponent(staticSlug)}?tab=activity`);
+      navigate(`/projects/${encodeURIComponent(staticSlug)}?tab=activity&show=diffs`);
   };
   return (
     <div class="grid gap-3">
@@ -178,6 +184,18 @@ export default function StatesView(props: {
             nodes={presenter.tree.value()}
             empty="No states yet. Take one to keep what the databases hold right now."
             onOpen={(node) => void presenter.openDetailById(node.id)}
+            actions={(node) => (
+              <Show when={hasRole("qa")}>
+                <Button
+                  size="sm"
+                  variant={node.is_head ? "outline" : "accent"}
+                  title={node.is_head ? "The databases are on this state" : undefined}
+                  onClick={() => void checkoutNode(node.id)}
+                >
+                  Check out
+                </Button>
+              </Show>
+            )}
           />
         </Show>
         <Show when={presenter.view() === "list"}>
@@ -216,7 +234,9 @@ export default function StatesView(props: {
       <TakeDialog presenter={presenter} />
       <CompareDialog
         presenter={presenter}
-        onDone={() => navigate(`/projects/${encodeURIComponent(props.slug)}?tab=activity`)}
+        onDone={() =>
+          navigate(`/projects/${encodeURIComponent(props.slug)}?tab=activity&show=diffs`)
+        }
       />
       <EditDialog presenter={presenter} />
       <DeleteDialog presenter={presenter} />
