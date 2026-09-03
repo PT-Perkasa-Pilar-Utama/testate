@@ -121,15 +121,24 @@ function DeleteDialog(props: { presenter: AdapterPresenter; name: string }): JSX
 function CollectionBrowser(props: {
   slug: string;
   id: string;
+  presenter: AdapterPresenter;
   schema: Introspection;
 }): JSX.Element {
   const [chosen, setChosen] = createSignal<string | null>(null);
   const names = (): string[] => props.schema.tables.map(qualifiedName);
   const collection = (): string => chosen() ?? names()[0] ?? "";
+  // The page already holds the adapter and its schema; the browser borrows both.
   const grid = createGridPresenter(
     () => props.slug,
     () => props.id,
-    collection
+    collection,
+    {
+      adapter: {
+        value: () => props.presenter.adapter.value(),
+        refresh: () => props.presenter.adapter.refresh(),
+      },
+      schema: { value: () => props.schema, refresh: () => props.presenter.detail.refresh() },
+    }
   );
   return (
     <Show
@@ -186,7 +195,12 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
                     />
                   </Show>
                   <Show when={presenter.adapter.value().tier === "document"}>
-                    <CollectionBrowser slug={props.slug} id={props.id} schema={schema()} />
+                    <CollectionBrowser
+                      slug={props.slug}
+                      id={props.id}
+                      presenter={presenter}
+                      schema={schema()}
+                    />
                   </Show>
                   <Show
                     when={tableView() === "list" && presenter.adapter.value().tier === "tabular"}

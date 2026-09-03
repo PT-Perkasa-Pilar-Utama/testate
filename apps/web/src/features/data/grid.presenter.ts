@@ -1,5 +1,5 @@
 import { createMemo, createSignal } from "solid-js";
-import type { Adapter, JsonValue, RowsPage, TableSchema } from "@testate/shared";
+import type { Adapter, Introspection, JsonValue, RowsPage, TableSchema } from "@testate/shared";
 import * as v from "valibot";
 
 import { plain } from "../../lib/plain-value.ts";
@@ -136,10 +136,14 @@ export function fkLink(
   return `/projects/${encodeURIComponent(slug)}/adapters/${encodeURIComponent(id)}/tables/${encodeURIComponent(qualifiedName(fk.ref))}?filter=${encodeURIComponent(filter)}`;
 }
 
+/** What a screen that already holds the adapter and its schema lends, so nothing is fetched twice. */
+export type GridShared = { adapter: Refreshable<Adapter>; schema: Refreshable<Introspection> };
+
 export function createGridPresenter(
   slug: () => string,
   id: () => string,
-  table_: () => string
+  table_: () => string,
+  shared?: GridShared
 ): GridPresenter {
   const [sort, setSort] = createSignal<string | undefined>(undefined);
   const [order, setOrder] = createSignal<"asc" | "desc">("asc");
@@ -165,8 +169,8 @@ export function createGridPresenter(
   const reset = (): void => {
     setCursors([]);
   };
-  const adapter = createRefreshable(() => adaptersModel.get(slug(), id()));
-  const schema = createRefreshable(() => adapterModel.schema(slug(), id()));
+  const adapter = shared?.adapter ?? createRefreshable(() => adaptersModel.get(slug(), id()));
+  const schema = shared?.schema ?? createRefreshable(() => adapterModel.schema(slug(), id()));
   const table = createMemo((): TableSchema | null => {
     const wanted = table_();
     return schema.value().tables.find((item) => qualifiedName(item) === wanted) ?? null;
