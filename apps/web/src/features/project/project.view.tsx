@@ -12,7 +12,10 @@ import { hasRole } from "@/lib/session.ts";
 import AdaptersView from "../adapters/adapters.view.tsx";
 import ActivityView from "./activity.view.tsx";
 import StatesView from "../states/states.view.tsx";
+import { TakeDialog } from "../states/states.dialogs.view.tsx";
 import { formatBytes } from "../states/states.format.ts";
+import { createStatesPresenter } from "../states/states.presenter.ts";
+import type { StatesPresenter } from "../states/states.presenter.ts";
 import { headBadge, quotaTone } from "../projects/projects.format.ts";
 import { DeleteDialog, EditDialog } from "./project-settings.view.tsx";
 import type { ProjectPresenter } from "./project.presenter.ts";
@@ -46,7 +49,10 @@ function QuotaChip(props: { presenter: ProjectPresenter }): JSX.Element {
  * do, Edit and Delete sit quiet at top-right because they are rare next to the tabs below, and HEAD
  * plus the quota only speak up when there is something to say.
  */
-function ProjectHeader(props: { presenter: ProjectPresenter }): JSX.Element {
+function ProjectHeader(props: {
+  presenter: ProjectPresenter;
+  states: StatesPresenter;
+}): JSX.Element {
   const project = () => props.presenter.overview.value().project;
   const banner = () => props.presenter.overview.value().banner;
   const badge = () => headBadge(project().head);
@@ -66,6 +72,14 @@ function ProjectHeader(props: { presenter: ProjectPresenter }): JSX.Element {
           </Show>
         </div>
         <div class="flex shrink-0 items-center gap-2">
+          {/* The product's own verb, on every tab: a state is of the project, not of a tab. It
+              waits for a database to exist, since there is nothing to take before one. */}
+          <Show when={hasRole("qa") && props.states.databases.value().length > 0}>
+            <Button size="sm" variant="accent" onClick={() => props.states.openTake()}>
+              <Icon name="camera" class="h-4 w-4" />
+              Take state
+            </Button>
+          </Show>
           <Show when={hasRole("qa")}>
             <Button size="sm" variant="secondary" onClick={() => props.presenter.openEdit()}>
               Edit
@@ -97,11 +111,18 @@ function ProjectHeader(props: { presenter: ProjectPresenter }): JSX.Element {
 
 export default function ProjectView(props: { slug: string }): JSX.Element {
   const presenter = createProjectPresenter(() => props.slug);
+  // One states presenter for the project: the header takes a state with it, the States tab lists
+  // with it, and a state taken from Activity still lands in the list when the tab is opened.
+  const states = createStatesPresenter(
+    () => props.slug,
+    () => presenter.overview.refresh()
+  );
   return (
     <section class="grid gap-5">
       <Loading fallback={<Pending>Loading project...</Pending>}>
-        <ProjectHeader presenter={presenter} />
+        <ProjectHeader presenter={presenter} states={states} />
       </Loading>
+      <TakeDialog presenter={states} />
       <Tabs
         items={PROJECT_TABS}
         value={presenter.tab()}
@@ -115,6 +136,7 @@ export default function ProjectView(props: { slug: string }): JSX.Element {
         <Match when={presenter.tab() === "states"}>
           <StatesView
             slug={props.slug}
+            presenter={states}
             headStateId={presenter.overview.value().project.head.state_id}
             headUnknown={presenter.overview.value().project.head.status === "unknown"}
             headDirty={presenter.overview.value().project.head.dirty}

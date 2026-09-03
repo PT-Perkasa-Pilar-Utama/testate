@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { Loading, Show } from "solid-js";
+import { Loading, Show, untrack } from "solid-js";
 import type { State } from "@testate/shared";
 
 import Button from "@/components/button.tsx";
@@ -15,9 +15,9 @@ import { hasRole } from "@/lib/session.ts";
 import { createPreflightPresenter } from "../checkouts/preflight.presenter.ts";
 import PreflightDialog from "../checkouts/preflight.view.tsx";
 import CompareDialog from "./states.compare.view.tsx";
-import { DeleteDialog, EditDialog, TakeDialog } from "./states.dialogs.view.tsx";
+import { DeleteDialog, EditDialog } from "./states.dialogs.view.tsx";
 import { statePath } from "./states.format.ts";
-import { checkoutBlockedReason, createStatesPresenter } from "./states.presenter.ts";
+import { checkoutBlockedReason } from "./states.presenter.ts";
 import Timeline from "./states.timeline.view.tsx";
 import Tree from "./states.tree.view.tsx";
 import type { StatesPresenter } from "./states.presenter.ts";
@@ -87,6 +87,8 @@ function RowActions(props: {
 
 export default function StatesView(props: {
   slug: string;
+  /** The project's own, shared with the header that takes states with it. */
+  presenter: StatesPresenter;
   /** The state the databases are on; the timeline marks it HEAD. */
   headStateId?: string | null;
   /** A restore failed part way, so nobody knows what the databases hold; the row says so. */
@@ -95,10 +97,8 @@ export default function StatesView(props: {
   headDirty?: boolean;
   onChanged?: () => void;
 }): JSX.Element {
-  const presenter = createStatesPresenter(
-    () => props.slug,
-    () => props.onChanged?.()
-  );
+  // Read once: the project hands one presenter for its lifetime, so nothing tracks the prop.
+  const presenter = untrack(() => props.presenter);
   const preflight = createPreflightPresenter(
     () => props.slug,
     () => {
@@ -134,21 +134,16 @@ export default function StatesView(props: {
         {/* Nothing to take or compare before a database is connected; the empty case says so. */}
         <Loading fallback={null}>
           <div class="flex items-center gap-4">
-            <Show when={hasRole("qa") && presenter.databases.value().length > 0}>
-              <Button variant="secondary" onClick={() => presenter.openCompare()}>
-                <Icon name="git-compare" class="h-4 w-4" />
-                Compare
-              </Button>
-            </Show>
             <Switch
               label="Show stashes"
               checked={presenter.showStashes()}
               onChange={(value) => presenter.setShowStashes(value)}
             />
+            {/* Take state sits in the project header now; Compare takes its place here. */}
             <Show when={hasRole("qa") && presenter.databases.value().length > 0}>
-              <Button variant="accent" size="lg" onClick={() => presenter.openTake()}>
-                <Icon name="camera" class="h-4 w-4" />
-                Take state
+              <Button variant="secondary" onClick={() => presenter.openCompare()}>
+                <Icon name="git-compare" class="h-4 w-4" />
+                Compare
               </Button>
             </Show>
           </div>
@@ -228,7 +223,6 @@ export default function StatesView(props: {
           </TableFooter>
         </Show>
       </Loading>
-      <TakeDialog presenter={presenter} />
       <CompareDialog
         presenter={presenter}
         onDone={() =>
