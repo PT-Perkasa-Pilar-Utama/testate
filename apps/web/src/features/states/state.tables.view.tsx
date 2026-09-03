@@ -147,13 +147,22 @@ export function TablesPane(props: {
           {rowsNoun(a(), a().row_count)} · {formatBytes(a().byte_count)}
         </span>
         <Show when={a().consistency === "best_effort"}>
-          <Badge variant="warning">read at different moments</Badge>
+          {/* The reason rides on the badge: it is the same sentence on every state of this
+              database, so it is read once, on demand, not as a banner each time. */}
+          <span
+            title={a()
+              .warnings.map((warning) => warning.message)
+              .join(" ")}
+          >
+            <Badge variant="warning">read at different moments</Badge>
+          </span>
         </Show>
       </div>
-      <Show when={a().warnings.length > 0}>
+      <Show when={troubled(a())}>
         <Banner variant="alert">
           {a()
-            .warnings.map((warning) => warning.message)
+            .warnings.filter((warning) => warning.code !== "best_effort")
+            .map((warning) => warning.message)
             .join(" ")}
         </Banner>
       </Show>

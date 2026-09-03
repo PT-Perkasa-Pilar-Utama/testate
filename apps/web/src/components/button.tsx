@@ -23,6 +23,9 @@ const VARIANTS = {
   // teal on a screen is the thing Testate exists to do.
   accent:
     "bg-accent !text-on-accent ring ring-accent not-disabled:hover:bg-accent-hover disabled:opacity-50",
+  // The verb on the state the databases already hold: still there, tinted, never the loud one.
+  "accent-outline":
+    "bg-accent/10 text-accent ring ring-accent/40 not-disabled:hover:bg-accent/20 disabled:opacity-50",
   // A destructive action that sits in a row or a header, where a solid red on every line would
   // shout. The confirm dialog that follows it carries the solid one.
   danger:

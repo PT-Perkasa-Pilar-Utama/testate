@@ -67,9 +67,13 @@ export function changedCount(adapter: DetailAdapter): number {
   );
 }
 
-/** A database's trouble, for the rail's mark: read at different moments, or a warning on a table. */
+/**
+ * A database's trouble, for the rail's mark: a warning on what was read, past the one that only
+ * says the engine has no snapshot reads. That one is a property of the deployment, true of every
+ * state, and the pane's badge carries it.
+ */
 export function troubled(adapter: DetailAdapter): boolean {
-  return adapter.consistency === "best_effort" || adapter.warnings.length > 0;
+  return adapter.warnings.some((warning) => warning.code !== "best_effort");
 }
 
 /** `?db=` and `?q=` name the picked database and the search, so a link lands on a table. */

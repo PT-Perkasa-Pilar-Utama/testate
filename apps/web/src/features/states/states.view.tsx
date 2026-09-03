@@ -45,7 +45,7 @@ function RowActions(props: {
             Testate has not seen yet is exactly when a tester reaches for it. */}
         <Button
           size="sm"
-          variant={props.atHead ? "outline" : "accent"}
+          variant={props.atHead ? "accent-outline" : "outline"}
           disabled={props.state.status !== "ready"}
           title={
             checkoutBlockedReason(props.state) ??
@@ -183,7 +183,7 @@ export default function StatesView(props: {
               <Show when={hasRole("qa")}>
                 <Button
                   size="sm"
-                  variant={node.is_head ? "outline" : "accent"}
+                  variant={node.is_head ? "accent-outline" : "outline"}
                   title={node.is_head ? "The databases are on this state" : undefined}
                   onClick={() => void checkoutNode(node.id)}
                 >
