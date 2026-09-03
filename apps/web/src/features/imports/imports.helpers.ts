@@ -134,6 +134,39 @@ export function reportCounts(
   };
 }
 
+/** "2, 3, 4, 5, 9" -> "2–5, 9": the rows a problem hit, as ranges a person can scan. */
+export function rowRanges(rows: readonly number[]): string {
+  const sorted = [...new Set(rows)].sort((a, b) => a - b);
+  const parts: string[] = [];
+  let start = sorted[0];
+  let previous = sorted[0];
+  for (const row of sorted.slice(1)) {
+    if (start === undefined || previous === undefined) break;
+    if (row === previous + 1) {
+      previous = row;
+      continue;
+    }
+    parts.push(start === previous ? String(start) : `${start}–${previous}`);
+    start = row;
+    previous = row;
+  }
+  if (start !== undefined && previous !== undefined)
+    parts.push(start === previous ? String(start) : `${start}–${previous}`);
+  return parts.join(", ");
+}
+
+export type Rejection = { reason: string; rows: number[] };
+
+/** The preview's rejected rows by problem, in the order the problems first appear. */
+export function rejectionGroups(
+  errors: readonly { row_number: number; reason: string }[]
+): Rejection[] {
+  const groups = new Map<string, number[]>();
+  for (const error of errors)
+    groups.set(error.reason, [...(groups.get(error.reason) ?? []), error.row_number]);
+  return [...groups.entries()].map(([reason, rows]) => ({ reason, rows }));
+}
+
 function plural(count: number, noun: string): string {
   return `${count.toLocaleString("en-GB")} ${noun}${count === 1 ? "" : "s"}`;
 }

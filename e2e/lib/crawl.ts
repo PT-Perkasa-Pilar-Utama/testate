@@ -39,7 +39,7 @@ const SKIP = new Set([
   "Move down",
   "Abort on failure",
   "Continue on failure",
-  "Take state",
+  "Snapshot",
   "Check out",
   "Protect",
   "Unprotect",

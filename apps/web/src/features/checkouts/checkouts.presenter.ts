@@ -79,6 +79,21 @@ export function adaptersSummary(checkout: Checkout): string {
     .join(", ");
 }
 
+/**
+ * What a checkout that did not simply succeed means for a tester, and what to do: a partial
+ * restore left some databases on the old data, and Retry restores only the ones that failed.
+ */
+export function outcomeSummary(checkout: Checkout): string {
+  const restored = checkout.adapters.filter((adapter) => adapter.result === "restored").length;
+  const total = checkout.adapters.length;
+  if (checkout.status === "partial")
+    return `${restored} of ${total} databases restored. The rest still hold the old data. Retry restores only the ones that failed.`;
+  if (checkout.status === "failed") return "Nothing was restored. Retry runs it again.";
+  if (checkout.status === "interrupted")
+    return "The server stopped while this ran. Retry restores the databases it did not finish.";
+  return "";
+}
+
 export function retriable(checkout: Checkout): boolean {
   return (
     checkout.status !== "running" &&

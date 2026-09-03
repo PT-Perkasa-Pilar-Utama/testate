@@ -58,7 +58,7 @@ test.describe("README screens", () => {
     // The list, not the tree: only a list row carries Check out, which is what "ready" means here.
     await openStatesList(page);
     const take = async (name: string, tags: string): Promise<void> => {
-      await page.getByRole("button", { name: "Take state" }).click();
+      await page.getByRole("button", { name: "Snapshot" }).click();
       const form = page.locator("dialog[open]");
       await form.getByLabel("Name").fill(name);
       await form.getByLabel("Tags (comma separated)").fill(tags);

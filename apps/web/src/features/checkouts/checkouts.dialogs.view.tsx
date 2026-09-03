@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import type { Checkout } from "@testate/shared";
 import { For, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
@@ -9,8 +10,6 @@ import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import {
   CHECKOUT_PURPOSE_LABEL,
   CHECKOUT_RESULT_LABEL,
-  EMPTY_MODE_LABEL,
-  FK_HANDLING_LABEL,
   JOB_STATUS_LABEL,
   engineLabel,
 } from "@/lib/labels.ts";
@@ -19,6 +18,7 @@ import {
   blockingSessions,
   countersSummary,
   hasFailure,
+  outcomeSummary,
   skippedSummary,
 } from "./checkouts.presenter.ts";
 import type { CheckoutsPresenter } from "./checkouts.presenter.ts";
@@ -32,7 +32,15 @@ export const RESULT_VARIANT = {
   counters_failed: "warning",
 } as const;
 
-/** Per-adapter outcome of one checkout: result, strategy, rows, timing, and what was left out (story 80). */
+/** "1.2 s", with the lock wait named when there was one: the one number after a restore. */
+function tookLine(adapter: Checkout["adapters"][number]): string {
+  if (adapter.duration_ms === null) return "-";
+  const took = `${(adapter.duration_ms / 1000).toFixed(1)} s`;
+  const waited = adapter.lock_wait_ms ?? 0;
+  return waited > 0 ? `${took}, ${(waited / 1000).toFixed(1)} s of it on a lock` : took;
+}
+
+/** Per-adapter outcome of one checkout: result, rows, timing, and what was left out (story 80). */
 export function DetailDialog(props: { presenter: CheckoutsPresenter }): JSX.Element {
   const checkout = (): ReturnType<CheckoutsPresenter["detail"]> => props.presenter.detail();
   /** The description line, kept out of the JSX attribute so narrowing `checkout()` works once. */
@@ -52,15 +60,18 @@ export function DetailDialog(props: { presenter: CheckoutsPresenter }): JSX.Elem
       <Show when={checkout()}>
         {(loaded) => (
           <div class="grid gap-4">
+            <Show when={outcomeSummary(loaded()) !== ""}>
+              <Banner variant="alert">{outcomeSummary(loaded())}</Banner>
+            </Show>
+            {/* No strategy column: how a restore empties a table and handles keys is answered
+                before the confirm, on the preflight. After the fact a tester needs the result. */}
             <Table>
               <thead>
                 <tr>
                   <Head>Database</Head>
                   <Head>Result</Head>
-                  <Head>Strategy</Head>
-                  <Head>Rows</Head>
-                  <Head>Duration</Head>
-                  <Head>Lock wait</Head>
+                  <Head numeric>Rows</Head>
+                  <Head>Took</Head>
                 </tr>
               </thead>
               <tbody>
@@ -91,18 +102,8 @@ export function DetailDialog(props: { presenter: CheckoutsPresenter }): JSX.Elem
                           </Button>
                         </Show>
                       </Cell>
-                      <Cell>
-                        {adapter.strategy === null
-                          ? "-"
-                          : `${EMPTY_MODE_LABEL[adapter.strategy.emptyMode]} · ${FK_HANDLING_LABEL[adapter.strategy.foreignKeyHandling]}`}
-                      </Cell>
-                      <Cell>{adapter.rows ?? "-"}</Cell>
-                      <Cell>
-                        {adapter.duration_ms === null ? "-" : `${adapter.duration_ms} ms`}
-                      </Cell>
-                      <Cell>
-                        {adapter.lock_wait_ms === null ? "-" : `${adapter.lock_wait_ms} ms`}
-                      </Cell>
+                      <Cell numeric>{adapter.rows ?? "-"}</Cell>
+                      <Cell class="whitespace-nowrap">{tookLine(adapter)}</Cell>
                     </Row>
                   )}
                 </For>
@@ -166,7 +167,8 @@ export function CountersDialog(props: { presenter: CheckoutsPresenter }): JSX.El
               <Button type="button" variant="ghost" onClick={() => props.presenter.close()}>
                 Close
               </Button>
-              <Show when={hasRole("qa")}>
+              {/* Only when one failed: a repair of counters that are in step does nothing. */}
+              <Show when={hasRole("qa") && hasFailure(loaded().result)}>
                 <Button
                   type="button"
                   variant="primary"

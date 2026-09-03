@@ -139,7 +139,7 @@ export default function StatesView(props: {
               checked={presenter.showStashes()}
               onChange={(value) => presenter.setShowStashes(value)}
             />
-            {/* Take state sits in the project header now; Compare takes its place here. */}
+            {/* Snapshot sits in the project header now; Compare takes its place here. */}
             <Show when={hasRole("qa") && presenter.databases.value().length > 0}>
               <Button variant="secondary" onClick={() => presenter.openCompare()}>
                 <Icon name="git-compare" class="h-4 w-4" />

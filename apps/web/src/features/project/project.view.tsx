@@ -86,7 +86,7 @@ function ProjectHeader(props: {
             <span class={["orbit", snapping() ? "shutter" : ""]}>
               <Button size="lg" variant="accent" onClick={() => snap()}>
                 <Icon name="camera" class="aim h-5 w-5" />
-                Take state
+                Snapshot
               </Button>
             </span>
           </Show>

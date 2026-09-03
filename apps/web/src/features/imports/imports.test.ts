@@ -4,10 +4,12 @@ import { importModeSchema } from "@testate/shared";
 import {
   MODE_OPTIONS,
   blockedReason,
-  importBlockedReason,
   defaultNormalizerName,
+  importBlockedReason,
+  rejectionGroups,
   reportCounts,
   reportSummary,
+  rowRanges,
   runBody,
   sourceBody,
 } from "./imports.helpers.ts";
@@ -90,5 +92,23 @@ describe("imports feature", () => {
 
     const done = reportCounts({ dry_run: false, inserted: 10, updated: 2, skipped: 0, failed: 1 });
     expect(reportSummary(done, false)).toBe("Imported 12 rows. 1 row was rejected.");
+  });
+});
+
+describe("the import report's rejected rows", () => {
+  test("problems group once, with the rows they hit as ranges", () => {
+    const groups = rejectionGroups([
+      { row_number: 2, reason: "email: null in a NOT NULL column" },
+      { row_number: 3, reason: "email: null in a NOT NULL column" },
+      { row_number: 4, reason: "email: null in a NOT NULL column" },
+      { row_number: 6, reason: "total: not a number" },
+      { row_number: 9, reason: "email: null in a NOT NULL column" },
+    ]);
+    expect(groups.map((group) => `${group.reason} @ ${rowRanges(group.rows)}`)).toEqual([
+      "email: null in a NOT NULL column @ 2–4, 9",
+      "total: not a number @ 6",
+    ]);
+    expect(rowRanges([])).toBe("");
+    expect(rowRanges([5, 5, 4])).toBe("4–5");
   });
 });

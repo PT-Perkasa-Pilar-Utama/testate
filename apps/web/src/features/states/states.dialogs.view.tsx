@@ -107,7 +107,7 @@ export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
     <FormDialog
       open={props.presenter.taking()}
       onClose={props.presenter.close}
-      title="Take state"
+      title="Snapshot"
       size="lg"
       description="Every database is snapshotted at one point in time. Untick one to take a partial state."
     >

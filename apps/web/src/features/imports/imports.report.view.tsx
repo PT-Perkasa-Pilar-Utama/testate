@@ -2,9 +2,9 @@ import type { JSX } from "@solidjs/web";
 import { For, Show } from "solid-js";
 import type { ImportReport } from "@testate/shared";
 
-import Banner from "@/components/banner.tsx";
 import Button, { buttonClass } from "@/components/button.tsx";
-import { reportCounts, reportSummary } from "./imports.helpers.ts";
+import { Cell, Head, Row, Table } from "@/components/table.tsx";
+import { rejectionGroups, reportCounts, rowRanges } from "./imports.helpers.ts";
 
 const REJECTED_LINK = buttonClass("ghost");
 
@@ -22,44 +22,84 @@ export type ReportPanelProps = {
   footer?: JSX.Element | undefined;
 };
 
+/** One number with its word under it. */
+function Stat(props: {
+  value: number;
+  label: string;
+  tone: "good" | "bad" | "plain";
+}): JSX.Element {
+  return (
+    <div class="grid gap-0.5 rounded-lg bg-surface px-4 py-3 ring ring-line">
+      <span
+        class={[
+          "text-2xl font-semibold tabular-nums",
+          props.tone === "bad" && props.value > 0 ? "text-danger-fg" : "",
+          props.tone === "good" && props.value > 0 ? "text-success-fg" : "",
+          props.value === 0 || props.tone === "plain" ? "text-heading" : "",
+        ]}
+      >
+        {props.value.toLocaleString("en-GB")}
+      </span>
+      <span class="text-xs text-muted">{props.label}</span>
+    </div>
+  );
+}
+
 /**
- * What a preview found, or what a run did (stories 56, 58). Never the raw counters off the wire:
- * "inserted 0 · updated 0 · skipped 1204 · failed 2" told a person nothing without reading the code.
+ * What a preview found, or what a run did (stories 56, 58): two numbers, then every problem
+ * once with the rows it hit. Eight lines of the same sentence told a person one thing eight times.
  */
 export default function ReportPanel(props: ReportPanelProps): JSX.Element {
   const counts = () => reportCounts(props.report);
+  const groups = () => rejectionGroups(props.report.errors_preview);
   return (
     <div class="grid gap-4">
-      <Banner variant={props.report.failed === 0 ? "default" : "alert"}>
-        <div class="grid gap-0.5">
-          <p class="font-medium">
-            {props.report.dry_run
-              ? "Preview only. Nothing has been imported yet."
-              : "Import complete."}
-          </p>
-          <p>{reportSummary(counts(), props.report.dry_run)}</p>
-        </div>
-      </Banner>
-      <Show when={props.report.stash_state_id !== null}>
-        <p class="text-sm text-muted">
-          A stash was taken first. Check it out from States if you need to undo this.
-        </p>
-      </Show>
-      <Show when={props.report.errors_preview.length > 0}>
-        <div class="grid gap-1">
-          <p class="text-sm font-medium text-heading">First rejected rows</p>
-          <ul class="grid gap-1 text-sm text-muted">
-            <For each={props.report.errors_preview}>
-              {(item) => (
-                <li>
-                  row {item.row_number}: {item.reason}
-                </li>
+      <p class="text-sm text-muted">
+        {props.report.dry_run ? "Preview. Nothing was written." : "Imported."}{" "}
+        <span class="tabular-nums">Took {formatDuration(props.report.duration_ms)}.</span>
+        <Show when={props.report.stash_state_id !== null}>
+          {" "}
+          A stash was taken first. Check it out from States to undo this.
+        </Show>
+      </p>
+      <div class="grid grid-cols-2 gap-3">
+        <Stat
+          value={counts().ready}
+          label={props.report.dry_run ? "rows ready" : "rows imported"}
+          tone="good"
+        />
+        <Stat
+          value={counts().rejected}
+          label={props.report.dry_run ? "rows will be rejected" : "rows rejected"}
+          tone="bad"
+        />
+      </div>
+      <Show when={groups().length > 0}>
+        <Table>
+          <thead>
+            <tr>
+              <Head>Problem</Head>
+              <Head>Rows</Head>
+            </tr>
+          </thead>
+          <tbody>
+            <For each={groups()}>
+              {(group) => (
+                <Row>
+                  <Cell wrap>{group.reason}</Cell>
+                  <Cell class="whitespace-nowrap font-mono text-xs">{rowRanges(group.rows)}</Cell>
+                </Row>
               )}
             </For>
-          </ul>
-        </div>
+          </tbody>
+        </Table>
+        <Show when={props.report.errors_preview.length < props.report.failed}>
+          <p class="text-xs text-muted">
+            The first {props.report.errors_preview.length} of {props.report.failed}. Rejected rows
+            holds every one.
+          </p>
+        </Show>
       </Show>
-      <p class="text-xs text-muted">took {formatDuration(props.report.duration_ms)}</p>
       <Show
         when={props.footer}
         fallback={
