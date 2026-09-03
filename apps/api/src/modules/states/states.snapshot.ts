@@ -195,8 +195,15 @@ export function initName(
   return free;
 }
 
-/** Stashes and hidden diff states never move HEAD (05 §5.8, §5.10). */
-const MOVES_HEAD = new Set<Target["kind"]>(["init", "manual"]);
+/**
+ * A manual state moves HEAD; a stash or a diff never does (05 §5.8, §5.10); the init state does
+ * only while the project has none, so a fifth database joining a project that sits on a release
+ * state does not drag HEAD back to the starting point.
+ */
+function movesHead(deps: SnapshotDeps, projectId: string, kind: Target["kind"]): boolean {
+  if (kind === "manual") return true;
+  return kind === "init" && deps.projects.byId(projectId)?.head.state_id === null;
+}
 
 type Target = {
   stateId: string;
@@ -276,8 +283,7 @@ export function createSnapshotRunner(deps: SnapshotDeps): JobRunner {
         }
       );
       const size = deps.states.commitManifest(target.stateId, manifests, deps.now().toISOString());
-      // A stash never moves HEAD (05 §5.8).
-      if (MOVES_HEAD.has(target.kind)) {
+      if (movesHead(deps, projectId, target.kind)) {
         deps.projects.setHead(projectId, target.stateId, "at_state", deps.now().toISOString());
       }
       deps.audit.record({

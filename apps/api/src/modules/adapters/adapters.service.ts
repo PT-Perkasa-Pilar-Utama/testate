@@ -23,7 +23,7 @@ import { validateConfig } from "./adapters.config.ts";
 import type { ValidatedConfig } from "./adapters.config.ts";
 import { listByKind } from "./adapters.stores.ts";
 import { createDeletionPlans, enqueueDeletion } from "./adapters.deletion.ts";
-import { initName } from "../states/states.snapshot.ts";
+import { createInitJob } from "./adapters.init.ts";
 import type { StatesRepository } from "../states/states.repository.ts";
 import type { RemoveDeps } from "./adapters.deletion.ts";
 import type { AdapterDeletionPlan, DeletionAction } from "./adapters.deletion.ts";
@@ -98,7 +98,7 @@ export type AdaptersDeps = {
   probe: ProbeFn;
   fileProbe: FileProbeFn;
   jobs: Pick<JobsService, "enqueue" | "replay">;
-  states: Pick<StatesRepository, "insert" | "nameTaken" | "update">;
+  states: Pick<StatesRepository, "insert" | "nameTaken" | "update" | "initOf">;
   now: () => Date;
 };
 
@@ -142,39 +142,7 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
       outcome: "succeeded",
       meta,
     });
-  /** A database adapter gets its init state through a snapshot job (05 §5.3 step 4). */
-  const initJob = async (
-    adapter: AdapterRecord,
-    actor: Actor,
-    meta: RequestMeta
-  ): Promise<Job | null> => {
-    if (adapter.kind !== "database") return null;
-    // The row exists before the job, as a manual state's does: a states list opened between
-    // "init snapshot queued" and the runner picking the job up had nothing to show and nothing to
-    // follow, so it sat without the state until someone reloaded.
-    const stateId = Bun.randomUUIDv7();
-    deps.states.insert({
-      id: stateId,
-      project_id: adapter.project_id,
-      name: initName(deps.states, adapter.project_id, adapter),
-      kind: "init",
-      protected: true,
-      parent_state_id: null,
-      job_id: "",
-      actor,
-      created_at: nowIso(),
-    });
-    const job = await deps.jobs.enqueue({
-      kind: "snapshot",
-      projectId: adapter.project_id,
-      adapterIds: [adapter.id],
-      payload: { state_id: stateId, adapter_ids: [adapter.id] },
-      actor,
-      parentRequestId: meta.request_id,
-    });
-    deps.states.update(stateId, { job_id: job.id }, nowIso());
-    return job;
-  };
+  const initJob = createInitJob({ states: deps.states, jobs: deps.jobs, now: deps.now });
   const failRetest = (id: string, cause: unknown): void => {
     if (!(cause instanceof AppError)) return;
     if (cause.code === "HOST_BLOCKED") repo.setStatus(id, "disabled", "policy", nowIso());
