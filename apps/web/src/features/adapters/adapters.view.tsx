@@ -171,7 +171,7 @@ export default function AdaptersView(props: { slug: string }): JSX.Element {
           </tbody>
         </Table>
       </Loading>
-      <CreateDialog presenter={presenter} />
+      <CreateDialog presenter={presenter} kind="database" />
     </div>
   );
 }

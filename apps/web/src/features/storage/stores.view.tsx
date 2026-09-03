@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { Errored, For, Loading, Show } from "solid-js";
+import { Errored, For, Loading, Show, createSignal } from "solid-js";
 import type { AdapterWithProject } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
@@ -10,7 +10,55 @@ import { Cell, EmptyRow, Head, Row, Table, TableFooter } from "@/components/tabl
 import { createRefreshable } from "@/lib/async.ts";
 import { ADAPTER_MODE_LABEL, ADAPTER_STATUS_LABEL, ENGINE_LABEL } from "@/lib/labels.ts";
 import { href } from "@/lib/router.ts";
+import Button from "@/components/button.tsx";
+import Icon from "@/components/icon.tsx";
+import Select from "@/components/select.tsx";
+import { hasRole } from "@/lib/session.ts";
+import { CreateDialog } from "../adapters/adapters.create.view.tsx";
+import { createAdaptersPresenter } from "../adapters/adapters.presenter.ts";
+import { projectsModel } from "../projects/projects.model.ts";
 import { storageModel } from "./storage.model.ts";
+
+/**
+ * A storage adapter belongs to a project, so making one here starts with picking the project;
+ * the dialog itself is the adapters' own, told to offer the storage engines. Keyed on the slug
+ * by the <For> around it, so a change of project builds a presenter for that project.
+ */
+function StoreCreator(props: { slug: string; onCreated: () => void }): JSX.Element {
+  const presenter = createAdaptersPresenter(
+    () => props.slug,
+    () => props.onCreated()
+  );
+  return (
+    <>
+      <Button variant="primary" onClick={() => presenter.openCreate()}>
+        <Icon name="plus" class="h-4 w-4" />
+        New storage adapter
+      </Button>
+      <CreateDialog presenter={presenter} kind="storage" />
+    </>
+  );
+}
+
+function NewStore(props: { onCreated: () => void }): JSX.Element {
+  const projects = createRefreshable(() => projectsModel.list());
+  const [picked, setPicked] = createSignal("");
+  const slug = (): string => picked() || (projects.value()[0]?.slug ?? "");
+  const options = () =>
+    projects.value().map((project) => ({ value: project.slug, label: project.name }));
+  return (
+    <Loading fallback={<span />}>
+      <Show when={slug() !== ""}>
+        <div class="flex items-center gap-2">
+          <Select aria-label="Project" options={options()} value={slug()} onChange={setPicked} />
+          <For each={[slug()]}>
+            {(current) => <StoreCreator slug={current} onCreated={() => props.onCreated()} />}
+          </For>
+        </div>
+      </Show>
+    </Loading>
+  );
+}
 
 const TONE = { ok: "success", error: "error", disabled: "warning" } as const;
 
@@ -53,7 +101,12 @@ export default function StoresView(): JSX.Element {
       <PageHeader
         eyebrow="Workspace"
         title="Storage"
-        description="S3, SFTP and FTP adapters, across every project you can see."
+        description="Object storage (S3-compatible), SFTP and FTP, across every project you can see."
+        actions={
+          <Show when={hasRole("qa")}>
+            <NewStore onCreated={() => stores.refresh()} />
+          </Show>
+        }
       />
       <Errored fallback={(error) => <Banner variant="error">{String(error())}</Banner>}>
         <Loading fallback={<p class="text-muted">Listing...</p>}>
@@ -61,7 +114,7 @@ export default function StoresView(): JSX.Element {
             when={stores.value().length > 0}
             fallback={
               <EmptyState icon="folder" title="No file stores yet">
-                Add one from a project's Databases tab and it appears here.
+                Pick a project above and add one; it appears here and under that project.
               </EmptyState>
             }
           >

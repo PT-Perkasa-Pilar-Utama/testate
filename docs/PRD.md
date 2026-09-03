@@ -172,7 +172,7 @@ apart on what a checkout does.
 
 ### Storage adapters
 
-93. As a QA engineer, I want to add an S3 bucket (or any S3-compatible store), an SFTP server, or an FTP server as a storage adapter, read-only by default, and in sandbox mode make folders, upload, rename, and delete files one at a time or as a batch, so that I can inspect the files the application produced and stage the ones it will read.
+93. As a QA engineer, I want to add object storage (an S3 bucket or any S3-compatible store), an SFTP server, or an FTP server as a storage adapter from the Storage screen, read-only by default, and in sandbox mode make folders, upload, rename, and delete files one at a time or as a batch, so that I can inspect the files the application produced and stage the ones it will read.
 94. As a viewer, I want to browse folders, see size and modified time, and filter by name, so that I find the export I am looking for.
 95. As a viewer, I want to preview text, JSON, CSV, images, and PDF files up to a size cap, so that I do not download everything.
 96. As a viewer, I want to download a file, so that I can inspect it locally.

@@ -38,7 +38,7 @@ On Supabase specifically, use the direct connection string, not the pooler, and 
 
 ## D. An object store that is not Amazon's
 
-There is one storage engine, `s3`, and it speaks to anything that speaks S3. The **Endpoint** field
+There is one object-storage engine, `s3` in the API and "Object storage" on screen, and it speaks to anything that speaks S3. The **Endpoint** field
 is the whole of it: leave it empty for Amazon, fill it in for everyone else. Addressing style is
 the other half, and the two go together.
 

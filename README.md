@@ -95,11 +95,11 @@ Testate is one container on the same server, or the same network, as the databas
 
 ## What it works with
 
-| Tier     | Engines                            | What you get                                           |
-| -------- | ---------------------------------- | ------------------------------------------------------ |
-| Tabular  | PostgreSQL, MySQL, MariaDB         | view, snapshot, checkout, diff, extract, edit, import  |
-| Document | MongoDB                            | view, snapshot, checkout, diff, extract                |
-| Files    | Any S3-compatible store, SFTP, FTP | view, preview, download, insert, rename, delete, batch |
+| Tier     | Engines                                       | What you get                                           |
+| -------- | --------------------------------------------- | ------------------------------------------------------ |
+| Tabular  | PostgreSQL, MySQL, MariaDB                    | view, snapshot, checkout, diff, extract, edit, import  |
+| Document | MongoDB                                       | view, snapshot, checkout, diff, extract                |
+| Files    | Object storage (any S3-compatible), SFTP, FTP | view, preview, download, insert, rename, delete, batch |
 
 Every engine here is real, driven over its own protocol, and proven in a contract suite against a real server. S3-compatible means Amazon, Cloudflare R2, Google Cloud Storage, Backblaze B2, MinIO and anything else that speaks the protocol; the [connecting guide](docs/CONNECTING.md#d-an-object-store-that-is-not-amazons) has the endpoint for each.
 

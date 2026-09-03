@@ -110,11 +110,20 @@ export const ENGINE_LABEL = {
   mysql: "MySQL",
   mariadb: "MariaDB",
   mongodb: "MongoDB",
-  s3: "S3",
+  s3: "Object storage",
   sftp: "SFTP",
   ftp: "FTP",
 } as const satisfies Record<Engine, string>;
 export const ENGINE_OPTIONS = ENGINES.map((value) => ({ value, label: ENGINE_LABEL[value] }));
+/** The engines a database adapter can be; a storage adapter is made from the Storage screen. */
+export const DATABASE_ENGINE_OPTIONS = ENGINE_OPTIONS.filter((option) =>
+  ["postgres", "mysql", "mariadb", "mongodb"].includes(option.value)
+);
+export const STORAGE_ENGINE_OPTIONS = [
+  { value: "s3", label: "Object storage (S3-compatible)" },
+  { value: "sftp", label: "SFTP" },
+  { value: "ftp", label: "FTP" },
+] as const;
 
 export const TIER_LABEL = {
   files: "Files",

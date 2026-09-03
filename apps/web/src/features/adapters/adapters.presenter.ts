@@ -68,7 +68,10 @@ function messageOf(cause: unknown, fallback: string): string {
   return humanMessage(cause, fallback);
 }
 
-export function createAdaptersPresenter(slug: () => string): AdaptersPresenter {
+export function createAdaptersPresenter(
+  slug: () => string,
+  onChanged: () => void = () => undefined
+): AdaptersPresenter {
   const adapters = createRefreshable(() => adaptersModel.list(slug()));
   // Asked for once with the adapter list, not when the dialog opens: `createRefreshable` is a memo
   // and a memo computes when it is created. One small request, and the buttons are ready by the
@@ -175,6 +178,7 @@ export function createAdaptersPresenter(slug: () => string): AdaptersPresenter {
         const result = await adaptersModel.create(staticSlug, staticBody);
         setCreating(false);
         adapters.refresh();
+        onChanged();
         showToast(
           result.init_job === null
             ? `${result.adapter.name} added`

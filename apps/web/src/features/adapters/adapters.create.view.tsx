@@ -1,6 +1,6 @@
 import { Field, Form, createForm, getInput, reset, setInput } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import { For, Loading, Show, createEffect, createSignal } from "solid-js";
+import { For, Loading, Show, createEffect, createSignal, untrack } from "solid-js";
 import type { AdapterCreateFormInput, Engine } from "@testate/shared";
 import { adapterCreateFormSchema } from "@testate/shared";
 
@@ -12,7 +12,11 @@ import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
-import { ADAPTER_MODE_OPTIONS, ENGINE_OPTIONS } from "@/lib/labels.ts";
+import {
+  ADAPTER_MODE_OPTIONS,
+  DATABASE_ENGINE_OPTIONS,
+  STORAGE_ENGINE_OPTIONS,
+} from "@/lib/labels.ts";
 import Switch from "@/components/switch.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import { ENGINE_FORMS } from "./adapters.fields.ts";
@@ -37,8 +41,9 @@ function FieldInput(props: {
   return (
     <Show
       when={props.field.type !== "boolean"}
+      // A switch carries its sentence beside it, so it takes the row rather than a column.
       fallback={
-        <div class="grid content-start gap-1.5 text-base">
+        <div class="grid content-start gap-1.5 text-base sm:col-span-2">
           <Switch
             checked={props.presenter.values()[key()] === "true"}
             onChange={(on) => props.presenter.setValue(key(), on ? "true" : "false")}
@@ -84,12 +89,26 @@ function FieldInput(props: {
   );
 }
 
-export function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Element {
+/**
+ * One dialog for both kinds. A database adapter is made from a project's Databases tab; a storage
+ * adapter (object storage, SFTP, FTP) from the Storage screen, which picks the project first.
+ */
+export function CreateDialog(props: {
+  presenter: AdaptersPresenter;
+  kind?: "database" | "storage" | undefined;
+}): JSX.Element {
+  const storage = (): boolean => props.kind === "storage";
+  const firstEngine = (): Engine => (storage() ? "s3" : "postgres");
+  const blank = (): AdapterCreateFormInput => ({
+    engine: firstEngine(),
+    name: "",
+    mode: "sandbox",
+  });
   const form = createForm({
     schema: adapterCreateFormSchema,
-    initialInput: { engine: "postgres", name: "", mode: "sandbox" },
+    initialInput: untrack(blank),
   });
-  const engine = (): Engine => getInput(form, { path: ["engine"] }) ?? "postgres";
+  const engine = (): Engine => getInput(form, { path: ["engine"] }) ?? firstEngine();
   const engineForm = () => ENGINE_FORMS[engine()];
   const [url, setUrl] = createSignal("");
 
@@ -112,7 +131,7 @@ export function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Eleme
     (opening) => {
       if (!opening) return;
       setUrl("");
-      onceSettled(() => reset(form));
+      onceSettled(() => reset(form, { initialInput: blank() }));
     }
   );
   // A test outcome describes one engine's connectivity; switching engines makes it stale.
@@ -128,7 +147,7 @@ export function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Eleme
   const readTest = (): AdapterCreateFormInput => {
     const raw = getInput(form);
     return {
-      engine: raw.engine ?? "postgres",
+      engine: raw.engine ?? firstEngine(),
       name: (raw.name ?? "").trim(),
       mode: raw.mode ?? "sandbox",
     };
@@ -138,30 +157,32 @@ export function CreateDialog(props: { presenter: AdaptersPresenter }): JSX.Eleme
     <FormDialog
       open={props.presenter.creating()}
       onClose={props.presenter.closeCreate}
-      title="New adapter"
+      title={storage() ? "New storage adapter" : "New adapter"}
       description="Secrets are sealed before they reach the database and never shown again."
       size="lg"
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.create(input)}>
-        <label class="grid content-start gap-1.5 text-base">
-          <FieldLabel required={false}>Connection URL</FieldLabel>
-          <Input
-            type="text"
-            autocomplete="off"
-            spellcheck={false}
-            placeholder="postgresql://user:password@host:5432/database"
-            value={url()}
-            onInput={(event) => applyUrl(event.currentTarget.value)}
-          />
-        </label>
+        <Show when={!storage()}>
+          <label class="grid content-start gap-1.5 text-base">
+            <FieldLabel required={false}>Connection URL</FieldLabel>
+            <Input
+              type="text"
+              autocomplete="off"
+              spellcheck={false}
+              placeholder="postgresql://user:password@host:5432/database"
+              value={url()}
+              onInput={(event) => applyUrl(event.currentTarget.value)}
+            />
+          </label>
+        </Show>
         <div class="grid gap-3 sm:grid-cols-2">
           <Field of={form} path={["engine"]}>
             {(field) => (
               <label class="grid content-start gap-1.5 text-base">
                 <span>Engine</span>
                 <Select
-                  options={ENGINE_OPTIONS}
-                  value={field.input ?? "postgres"}
+                  options={storage() ? STORAGE_ENGINE_OPTIONS : DATABASE_ENGINE_OPTIONS}
+                  value={field.input ?? firstEngine()}
                   onChange={(value) => field.onInput(value)}
                 />
                 <FieldError message={field.errors?.[0]} />

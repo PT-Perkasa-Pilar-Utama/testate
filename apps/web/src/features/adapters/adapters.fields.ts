@@ -49,7 +49,7 @@ export const ENGINE_FORMS = {
   mongodb: DATABASE(27017),
   s3: {
     kind: "storage",
-    label: "S3 bucket",
+    label: "Object storage",
     config: [
       { key: "bucket", label: "Bucket", type: "text", required: true },
       {
@@ -65,16 +65,16 @@ export const ENGINE_FORMS = {
         // Not "for MinIO". This one field is the whole of supporting every other S3-compatible
         // store: Cloudflare R2, Google Cloud Storage through its interoperability API, Backblaze
         // B2, Wasabi, Ceph. Leave it empty for Amazon's own S3.
-        label: "Endpoint (leave empty for Amazon S3)",
+        label: "Endpoint",
         type: "url",
-        placeholder: "https://<account>.r2.cloudflarestorage.com",
+        placeholder: "empty for Amazon S3, else https://<account>.r2.cloudflarestorage.com",
       },
       {
         key: "virtual_hosted",
         // Amazon deprecated path-style addressing for buckets made after September 2020, and
         // every other store here wants path-style. The default is off because that is what the
         // stores people point this at want; an Amazon bucket turns it on.
-        label: "Bucket in the hostname (Amazon S3 wants this)",
+        label: "Bucket in the hostname: on for Amazon S3, off for every other store",
         type: "boolean",
       },
     ],
