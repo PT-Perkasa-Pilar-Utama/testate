@@ -1,7 +1,7 @@
 import * as v from "valibot";
 
 import { roleSchema } from "../enums.ts";
-import { PASSWORD_MIN_LENGTH } from "./auth.ts";
+import { COMMON_PASSWORDS, PASSWORD_MIN_LENGTH } from "./auth.ts";
 import { idSchema, timestampSchema } from "./common.ts";
 
 // The messages are the ones a person reads, on the users forms and in the API's 400 alike (see
@@ -42,7 +42,11 @@ export const createUserSchema = v.object({
       PASSWORD_MIN_LENGTH,
       `A temporary password needs at least ${PASSWORD_MIN_LENGTH} characters.`
     ),
-    v.maxLength(1024, "That password is too long to be one of ours.")
+    v.maxLength(1024, "That password is too long to be one of ours."),
+    v.check(
+      (next) => !COMMON_PASSWORDS.has(next.toLowerCase()),
+      "That password is on every guess list. Choose another."
+    )
   ),
 });
 export type CreateUserInput = v.InferOutput<typeof createUserSchema>;
@@ -73,7 +77,11 @@ export const resetPasswordSchema = v.object({
       PASSWORD_MIN_LENGTH,
       `A temporary password needs at least ${PASSWORD_MIN_LENGTH} characters.`
     ),
-    v.maxLength(1024, "That password is too long to be one of ours.")
+    v.maxLength(1024, "That password is too long to be one of ours."),
+    v.check(
+      (next) => !COMMON_PASSWORDS.has(next.toLowerCase()),
+      "That password is on every guess list. Choose another."
+    )
   ),
 });
 export type ResetPasswordInput = v.InferOutput<typeof resetPasswordSchema>;

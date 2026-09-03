@@ -44,9 +44,13 @@ const targets = [
 ];
 
 for (const target of targets) {
-  const inside = !relative(ROOT, target).startsWith("..");
-  if (!inside) {
-    console.log(`left alone (outside the repository): ${target}`);
+  const rel = relative(ROOT, target);
+  const inside = rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
+  // A data directory holds no package.json and no repository; a path that does is the checkout
+  // itself or a workspace, whatever TESTATE_DATA_DIR says, and it is never removed from here.
+  const isCode = existsSync(join(target, "package.json")) || existsSync(join(target, ".git"));
+  if (!inside || isCode) {
+    console.log(`left alone (not a data directory of this checkout): ${target}`);
     continue;
   }
   if (!existsSync(target)) continue;

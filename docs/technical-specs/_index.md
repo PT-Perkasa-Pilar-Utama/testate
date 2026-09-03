@@ -51,10 +51,7 @@ Documents 12 to 24 are ad-hoc specifications: each is the single source of truth
 | [../CODING_STANDARD.md](../CODING_STANDARD.md) | Enforced coding rules (seed today; full standard after the scaffold) |
 | [../CODE_REVIEW_CHECKLIST.md](../CODE_REVIEW_CHECKLIST.md) | PR review checklist |
 | [../api-specs/](../api-specs/) | Endpoint-level API specification |
-| [../TASK_BREAKDOWN.md](../TASK_BREAKDOWN.md) | Sprint plan with owners |
 | [../DEPLOYMENT_PLAN.md](../DEPLOYMENT_PLAN.md) | Image, compose, nginx, upgrade, backup and restore runbook |
 | [../KEY_ROTATION.md](../KEY_ROTATION.md) | Operator procedure for the active key list |
 | [../AGENT_ACCESS.md](../AGENT_ACCESS.md) | Connecting an AI agent through MCP |
-| [../TROUBLESHOOTING_GUIDE.md](../TROUBLESHOOTING_GUIDE.md) | Known issue runbook |
-| [../ONBOARDING_GUIDE.md](../ONBOARDING_GUIDE.md) | New developer setup |
 | [../README.md](../../README.md) | Project front page |

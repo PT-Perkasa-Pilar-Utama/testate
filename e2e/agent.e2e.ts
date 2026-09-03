@@ -106,7 +106,7 @@ test.describe("agent access over MCP", () => {
       { ...target, table: ref, pk, format: "json", direction: "parents" }
     );
     expect(asJson.format).toBe("json");
-    expect(JSON.parse(asJson.content)).toBeTruthy();
+    expect(Object.keys(JSON.parse(asJson.content)).length).toBeGreaterThan(0);
     expect(asJson.tables).toEqual(expect.arrayContaining([expect.stringContaining("orders")]));
 
     await mcp.dispose();

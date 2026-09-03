@@ -105,6 +105,12 @@ services:
     command: testate:testate:1001::upload
     ports:
       - "22220:22"
+    # As for ftp below: `up --wait` only waits for "running", and sshd takes a moment to listen.
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 22"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   ftp:
     image: delfer/alpine-ftp-server

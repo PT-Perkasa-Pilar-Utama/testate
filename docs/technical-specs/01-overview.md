@@ -49,7 +49,7 @@ In scope: upload or storage-file source, CSV and XLSX parsing with typed cells, 
 
 ### 1.2.7 `states`
 
-In scope: snapshot job with per-table progress, consistency per adapter, single-adapter init states, unique names, parent and tree, protect, rename, stash retention, state-delete job, archive download and upload with adapter mapping, deduplicated storage, type fidelity, unsupported-type warnings. Stories 58 to 71.
+In scope: snapshot job with per-table progress, consistency per adapter, one init state per project that gains each adapter's entry, unique names, parent and tree, protect, rename, stash retention, state-delete job, archive download and upload with adapter mapping, deduplicated storage, type fidelity, unsupported-type warnings. Stories 58 to 71.
 
 ### 1.2.8 `checkouts`
 

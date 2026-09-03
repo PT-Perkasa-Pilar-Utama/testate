@@ -43,6 +43,8 @@ const SKIP = new Set([
   "Check out",
   "Protect",
   "Unprotect",
+  // Kills real database sessions with no dialog to cancel; story 85 covers it on its own.
+  "Terminate blockers",
 ]);
 /**
  * Dialogs whose submit destroys shared demo data, or reaches out to a host that does not exist:

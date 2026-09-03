@@ -1,6 +1,6 @@
 # Testate in a CI/CD pipeline
 
-The full REST API is available for automation; nothing here is dashboard-only. The endpoint matrix (every resource, its operations, and their status) lives in [docs/api-specs/_index.md](docs/api-specs/_index.md), with one detail document per resource alongside it.
+The full REST API is available for automation; nothing here is dashboard-only. The endpoint matrix (every resource, its operations, and their status) lives in [docs/api-specs/_index.md](api-specs/_index.md), with one detail document per resource alongside it.
 
 **Browse the API in the running instance.** Every endpoint, its parameters and its responses, with a request you can send from the page:
 

@@ -72,7 +72,7 @@ Draft body (create, test, update):
 1. Address check, probe as in 5.2; store capabilities, strategy, version, dialect, tier, `target_hash`.
 2. Seal `secrets` and `readonly_secrets` (story 34).
 3. Storage kind is always `read_only`.
-4. Database kind: enqueue job `snapshot` with `init: true` producing the protected state named `init` (first adapter) or `init-<name>` (later adapters). The name is frozen at creation for display; the init state is associated with the adapter by its immutable id, so a later rename changes nothing and return-to-init resolves the latest `init` kind state for that adapter id (stories 27, 29).
+4. Database kind: enqueue job `snapshot` into the project's one protected state named `init`, creating it for the first adapter and adding an entry to it for every later one; a change of host, port, or database replaces that adapter's entry. Return-to-init resolves the adapter's entry in that state by the adapter's immutable id, so a rename changes nothing.
 5. Audit `adapter.created`.
 
 **Output.** `201 { "data": { "adapter": {...}, "init_job": { job } | null } }`. **Errors.** As 5.2 plus `CONFLICT` (name). **Traceability.** Stories 17, 21, 23, 24, 26, 27, 34, 93, 98.
