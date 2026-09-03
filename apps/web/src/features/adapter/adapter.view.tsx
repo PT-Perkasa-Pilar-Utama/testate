@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import Breadcrumbs from "@/components/breadcrumbs.tsx";
+import AdapterBreadcrumbs from "./adapter.crumb.view.tsx";
 import Pending from "@/components/pending.tsx";
 import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
@@ -122,13 +122,7 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
   return (
     <section class="grid gap-6">
       <Loading fallback={<Pending>Loading adapter...</Pending>}>
-        <Breadcrumbs
-          items={[
-            { label: "Projects", href: "/projects" },
-            { label: props.slug, href: `/projects/${props.slug}` },
-            { label: presenter.adapter.value().name },
-          ]}
-        />
+        <AdapterBreadcrumbs slug={props.slug} id={props.id} />
         <PageHeader
           eyebrow="Database"
           title={presenter.adapter.value().name}

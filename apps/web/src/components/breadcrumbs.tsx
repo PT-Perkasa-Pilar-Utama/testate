@@ -3,7 +3,8 @@ import { For, Show } from "solid-js";
 
 import { href, navigate } from "@/lib/router.ts";
 
-export type Crumb = { label: JSX.Element; href?: string | undefined };
+/** `after` sits beside the label, outside its link: a control there must not also navigate. */
+export type Crumb = { label: JSX.Element; href?: string | undefined; after?: JSX.Element };
 
 /**
  * Where you are, as a path: the homepage's mono label, one slash between levels, the last one
@@ -44,6 +45,7 @@ export default function Breadcrumbs(props: { items: readonly Crumb[] }): JSX.Ele
                   </a>
                 )}
               </Show>
+              <Show when={item.after}>{item.after}</Show>
             </li>
           )}
         </For>
