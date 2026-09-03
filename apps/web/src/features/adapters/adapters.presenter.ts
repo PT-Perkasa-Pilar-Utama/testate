@@ -1,6 +1,7 @@
 import { createMemo, createSignal } from "solid-js";
 import type { Adapter, HostSuggestion, AdapterCreateFormInput } from "@testate/shared";
 
+import { EMPTY_MODE_LABEL, engineLabel } from "@/lib/labels.ts";
 import { humanMessage } from "@/lib/api-error.ts";
 import { showToast } from "@/lib/toast.ts";
 import { createRefreshable } from "@/lib/async.ts";
@@ -54,9 +55,19 @@ export type AdaptersPresenter = Refreshable<Adapter[]> & {
 };
 
 /** A probe outcome as one line for the test banner. */
+const ENFORCEMENT = {
+  transaction: "a read-only transaction",
+  credential: "the read-only credential",
+  filter: "an application filter",
+} as const;
+
+/** The probe's outcome as a sentence a person can act on, not a row of enum values. */
 export function describeOutcome(outcome: ProbeOutcome): string {
-  if ("reachable" in outcome) return `${outcome.engine} reachable (${outcome.tier} tier)`;
-  return `${outcome.dialect} ${outcome.version} · ${outcome.table_count} tables · ${outcome.strategy.emptyMode} restore · ${outcome.read_only_enforcement} read-only`;
+  if ("reachable" in outcome) return `${engineLabel(outcome.engine)} answers.`;
+  const engine = `${engineLabel(outcome.dialect)} ${outcome.version}`;
+  const tables = outcome.table_count === 1 ? "1 table" : `${outcome.table_count} tables`;
+  const restore = EMPTY_MODE_LABEL[outcome.strategy.emptyMode];
+  return `${engine} answers: ${tables}. Restores empty a table by ${restore}; read-only sessions are held by ${ENFORCEMENT[outcome.read_only_enforcement]}.`;
 }
 
 /** The probe's warnings, one line each; a shared database is the one that costs a tester's work. */
