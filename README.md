@@ -3,7 +3,7 @@
 [![CI](https://github.com/PT-Perkasa-Pilar-Utama/testate/actions/workflows/ci.yml/badge.svg)](https://github.com/PT-Perkasa-Pilar-Utama/testate/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/PT-Perkasa-Pilar-Utama/testate/badge)](https://scorecard.dev/viewer/?uri=github.com/PT-Perkasa-Pilar-Utama/testate)
 [![CodeQL](https://github.com/PT-Perkasa-Pilar-Utama/testate/actions/workflows/codeql.yml/badge.svg)](https://github.com/PT-Perkasa-Pilar-Utama/testate/actions/workflows/codeql.yml)
-[![Release](https://img.shields.io/github/v/release/PT-Perkasa-Pilar-Utama/testate?include_prereleases&sort=semver)](https://github.com/PT-Perkasa-Pilar-Utama/testate/releases)
+[![Release](https://img.shields.io/github/v/release/PT-Perkasa-Pilar-Utama/testate?include_prereleases&sort=date)](https://github.com/PT-Perkasa-Pilar-Utama/testate/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0f766e)](LICENSE)
 
 **Git for your test database.** Snapshot it, break it, put it back in seconds.
