@@ -71,10 +71,12 @@ test.describe("state stories", () => {
         .getByText(`${name}-renamed`, { exact: true })
     ).toBeVisible();
     await page.getByRole("tab", { name: "List" }).click();
-    await (await rowMenu(renamed)).getByRole("button", { name: "Details" }).click();
-    // The details fold each database into one line: engine, tables, rows, size, and how it was read.
-    await expect(page.locator("dialog[open]")).toContainText(/read at different moments/);
-    await page.locator("dialog[open]").getByText("Close", { exact: true }).click();
+    await (await rowMenu(renamed)).getByRole("link", { name: "Details" }).click();
+    await expect(page.getByRole("heading", { name: `${name}-renamed` })).toBeVisible();
+    await page.getByRole("button", { name: /shop-mongo/ }).click();
+    await expect(page.locator("main")).toContainText("read at different moments");
+    await page.goBack();
+    await settle(page);
     await (await rowMenu(renamed)).getByRole("button", { name: "Delete" }).click();
     // One job per adapter (story 86): a parallel checkout or snapshot makes the first submit refuse.
     await expect(async () => {

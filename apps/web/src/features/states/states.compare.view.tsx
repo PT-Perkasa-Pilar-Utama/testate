@@ -17,6 +17,8 @@ const LIVE_OPTION = "__live__";
 export default function CompareDialog(props: {
   presenter: StatesPresenter;
   onDone: () => void;
+  /** The base a page opens with, before the reader picks one. */
+  base?: string;
 }): JSX.Element {
   // Plain functions, read inside the dialog's own Loading below: the states list is async, and a
   // memo over it at setup would park the whole route on its fallback until it resolved.
@@ -24,7 +26,7 @@ export default function CompareDialog(props: {
     props.presenter.value().map((state) => ({ value: state.id, label: state.name }));
   const [base, setBase] = createSignal("");
   const [target, setTarget] = createSignal(LIVE_OPTION);
-  const baseId = (): string => base() || (states()[0]?.value ?? "");
+  const baseId = (): string => base() || props.base || (states()[0]?.value ?? "");
   const targets = (): { value: string; label: string }[] => [
     { value: LIVE_OPTION, label: "the live databases" },
     ...states().filter((option) => option.value !== baseId()),

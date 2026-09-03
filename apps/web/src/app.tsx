@@ -11,6 +11,7 @@ import PoliciesView from "@/features/data/policies.view.tsx";
 import QueryView from "@/features/data/query.view.tsx";
 import AdapterImportsView from "@/features/imports/imports.adapter.view.tsx";
 import DiffView from "@/features/diff/diff.view.tsx";
+import StateView from "@/features/states/state.view.tsx";
 import StorageView from "@/features/storage/storage.view.tsx";
 import HomeView from "@/features/home/home.view.tsx";
 import StoresView from "@/features/storage/stores.view.tsx";
@@ -60,6 +61,9 @@ function Page(props: { match: RouteMatch | null }): JSX.Element {
       </Match>
       <Match when={name() === "diff"}>
         <DiffView slug={param("slug")} id={param("id")} />
+      </Match>
+      <Match when={name() === "state" ? param("id") : false} keyed>
+        <StateView slug={param("slug")} id={param("id")} />
       </Match>
       <Match when={name() === "adapter"}>
         <AdapterView slug={param("slug")} id={param("id")} />

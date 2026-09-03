@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 import { openStatesList, rowMenu, settle, stateRow, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
@@ -7,6 +8,24 @@ import { statePath } from "./lib/roles.ts";
 const STAMP = Date.now().toString(36);
 
 /** An adapter's init snapshot and its deletion restore the shared database; nothing else runs meanwhile. */
+/**
+ * Opens the starting point's own page from the list and waits until its rail of databases names
+ * the adapter: the init job adds the entry after the adapter is saved. Back on the list after.
+ */
+async function initHolds(page: Page, name: string): Promise<void> {
+  await (await rowMenu(stateRow(page, "init"))).getByRole("link", { name: "Details" }).click();
+  await expect(async () => {
+    await page.reload();
+    await settle(page);
+    await expect(page.getByRole("navigation", { name: "Databases in this state" })).toContainText(
+      name,
+      { timeout: 3_000 }
+    );
+  }).toPass({ timeout: 60_000 });
+  await page.goBack();
+  await settle(page);
+}
+
 test.describe("adapter settings stories", () => {
   test.use({ storageState: statePath("qa") });
 
@@ -32,15 +51,7 @@ test.describe("adapter settings stories", () => {
     // One starting point per project: the new database joins it rather than adding a row.
     await openStatesList(page);
     await expect(stateRow(page, "init")).toHaveCount(1);
-    await expect(async () => {
-      await (
-        await rowMenu(stateRow(page, "init"))
-      )
-        .getByRole("button", { name: "Details" })
-        .click();
-      await expect(page.locator("dialog[open]")).toContainText(`cfg-${STAMP}`, { timeout: 3_000 });
-    }).toPass({ timeout: 60_000 });
-    await page.locator("dialog[open]").getByText("Close", { exact: true }).click();
+    await initHolds(page, `cfg-${STAMP}`);
     await page.getByRole("tab", { name: "Databases" }).click();
     await page.getByRole("link", { name: `cfg-${STAMP}` }).click();
     await settle(page);
@@ -70,17 +81,7 @@ test.describe("adapter settings stories", () => {
     await settle(page);
     await openStatesList(page);
     await expect(stateRow(page, "init")).toHaveCount(1);
-    await expect(async () => {
-      await (
-        await rowMenu(stateRow(page, "init"))
-      )
-        .getByRole("button", { name: "Details" })
-        .click();
-      await expect(page.locator("dialog[open]")).toContainText(`cfg-${STAMP}-2`, {
-        timeout: 3_000,
-      });
-    }).toPass({ timeout: 60_000 });
-    await page.locator("dialog[open]").getByText("Close", { exact: true }).click();
+    await initHolds(page, `cfg-${STAMP}-2`);
     await page.getByRole("tab", { name: "Databases" }).click();
     await page.getByRole("link", { name: `cfg-${STAMP}-2` }).click();
     await settle(page);
@@ -97,8 +98,7 @@ test.describe("adapter settings stories", () => {
     await openStatesList(page);
     // The starting point outlives the adapter (story 31): still one row, still holding its entry.
     await expect(stateRow(page, "init")).toHaveCount(1);
-    await (await rowMenu(stateRow(page, "init"))).getByRole("button", { name: "Details" }).click();
-    await expect(page.locator("dialog[open]")).toContainText(`cfg-${STAMP}-2`);
+    await initHolds(page, `cfg-${STAMP}-2`);
     expect(issues).toStrictEqual([]);
   });
 });

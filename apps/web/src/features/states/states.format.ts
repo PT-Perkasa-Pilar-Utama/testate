@@ -2,6 +2,11 @@ import type { ManifestTable, StateAdapter } from "@testate/shared";
 
 const UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
 
+/** The page of one state. */
+export function statePath(slug: string, id: string): string {
+  return `/projects/${encodeURIComponent(slug)}/states/${encodeURIComponent(id)}`;
+}
+
 /** 1536 -> "1.5 KB"; integer bytes only, base 1024. */
 export function formatBytes(bytes: number): string {
   let value = bytes;

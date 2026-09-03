@@ -15,8 +15,8 @@ import { hasRole } from "@/lib/session.ts";
 import { createPreflightPresenter } from "../checkouts/preflight.presenter.ts";
 import PreflightDialog from "../checkouts/preflight.view.tsx";
 import CompareDialog from "./states.compare.view.tsx";
-import DetailDialog from "./states.detail.view.tsx";
 import { DeleteDialog, EditDialog, TakeDialog } from "./states.dialogs.view.tsx";
+import { statePath } from "./states.format.ts";
 import { checkoutBlockedReason, createStatesPresenter } from "./states.presenter.ts";
 import Timeline from "./states.timeline.view.tsx";
 import Tree from "./states.tree.view.tsx";
@@ -29,6 +29,7 @@ const VIEWS = [
 
 function RowActions(props: {
   presenter: StatesPresenter;
+  slug: string;
   state: State;
   /** This row is HEAD. */
   head: boolean;
@@ -44,7 +45,7 @@ function RowActions(props: {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => void props.presenter.openDetail(props.state)}
+            onClick={() => navigate(statePath(props.slug, props.state.id))}
           >
             Details
           </Button>
@@ -70,7 +71,7 @@ function RowActions(props: {
           downloaded and checked out, never renamed, protected or deleted by hand. */}
       <Menu label={`Actions for ${props.state.name}`}>
         <Show when={hasRole("qa")}>
-          <MenuItem onClick={() => void props.presenter.openDetail(props.state)}>Details</MenuItem>
+          <MenuLink href={statePath(props.slug, props.state.id)}>Details</MenuLink>
         </Show>
         <Show when={hasRole("qa") && props.head && props.state.kind !== "stash"}>
           <MenuItem onClick={() => void props.presenter.checkDrift(props.state)}>
@@ -191,7 +192,7 @@ export default function StatesView(props: {
           <Tree
             nodes={presenter.tree.value()}
             empty={emptyText()}
-            onOpen={(node) => void presenter.openDetailById(node.id)}
+            onOpen={(node) => navigate(statePath(props.slug, node.id))}
             actions={(node) => (
               <Show when={hasRole("qa")}>
                 <Button
@@ -216,6 +217,7 @@ export default function StatesView(props: {
             picked={presenter.selected()}
             actionsFor={(state) => (
               <RowActions
+                slug={props.slug}
                 presenter={presenter}
                 state={state}
                 head={state.id === props.headStateId}
@@ -248,7 +250,6 @@ export default function StatesView(props: {
       />
       <EditDialog presenter={presenter} />
       <DeleteDialog presenter={presenter} />
-      <DetailDialog presenter={presenter} />
       <PreflightDialog presenter={preflight} />
     </div>
   );

@@ -58,6 +58,10 @@ async function deepPaths(): Promise<string[]> {
     if (adapter.tier === "tabular") paths.push(`${base}/imports`, `${base}/masks`);
   }
   paths.push(await freshDiffPath());
+  const states: { data: { id: string }[] } = await (
+    await (await apiContext("admin")).get("projects/demo/states?limit=1")
+  ).json();
+  for (const state of states.data) paths.push(`/projects/demo/states/${state.id}`);
   return paths;
 }
 

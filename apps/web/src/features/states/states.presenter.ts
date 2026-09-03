@@ -4,7 +4,6 @@ import type {
   JsonObject,
   State,
   StateListItem,
-  StateDetail,
   StateDraftInput,
   StateTreeNode,
 } from "@testate/shared";
@@ -32,14 +31,10 @@ export type StatesPresenter = Paged<StateListItem> & {
   taking: () => boolean;
   editing: () => State | null;
   deleting: () => State | null;
-  detail: () => StateDetail | null;
   error: () => string | null;
   openTake: () => void;
   openEdit: (state: State) => void;
   openDelete: (state: State) => void;
-  openDetail: (state: State) => Promise<void>;
-  /** The same dialog from a tree node, which carries an id and not the whole state. */
-  openDetailById: (id: string) => Promise<void>;
   /** The whole state behind a tree node: from the loaded list when it is there, else fetched. */
   byId: (id: string) => Promise<State>;
   close: () => void;
@@ -136,7 +131,6 @@ export function createStatesPresenter(
   const [taking, setTaking] = createSignal(false);
   const [editing, setEditing] = createSignal<State | null>(null);
   const [deleting, setDeleting] = createSignal<State | null>(null);
-  const [detail, setDetail] = createSignal<StateDetail | null>(null);
   const [error, setError] = createSignal<string | null>(null);
   const refreshAll = (): void => {
     states.refresh();
@@ -147,7 +141,6 @@ export function createStatesPresenter(
     setTaking(false);
     setEditing(null);
     setDeleting(null);
-    setDetail(null);
     setError(null);
   };
   /** Dialog submits keep their error in the form instead of a toast. */
@@ -174,12 +167,6 @@ export function createStatesPresenter(
     });
     return made;
   };
-  const openById = (id: string): Promise<void> => {
-    const staticSlug = slug();
-    return attempt(async () => {
-      setDetail(await statesModel.get(staticSlug, id));
-    });
-  };
   return {
     ...states,
     tree,
@@ -191,7 +178,6 @@ export function createStatesPresenter(
     taking,
     editing,
     deleting,
-    detail,
     error,
     openTake: () => {
       setError(null);
@@ -249,8 +235,6 @@ export function createStatesPresenter(
         );
       });
     },
-    openDetail: (state) => openById(state.id),
-    openDetailById: (id) => openById(id),
     byId: (id) => {
       const loaded = states.value().find((state) => state.id === id);
       return loaded === undefined ? statesModel.get(slug(), id) : Promise.resolve(loaded);

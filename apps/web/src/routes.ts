@@ -7,6 +7,7 @@ export const ROUTE_NAMES = [
   "projects",
   "project",
   "diff",
+  "state",
   "adapter",
   "table",
   "query",
@@ -32,6 +33,8 @@ export const ROUTES: readonly RouteDef<RouteName>[] = [
   { name: "project", pattern: "/projects/:slug", role: "viewer" },
   // A comparison is wide and has two of everything, which a dialog over a list cannot hold.
   { name: "diff", pattern: "/projects/:slug/diffs/:id", role: "viewer" },
+  // A state with a hundred tables is a page with a rail, not a dialog of folds.
+  { name: "state", pattern: "/projects/:slug/states/:id", role: "viewer" },
   { name: "adapter", pattern: "/projects/:slug/adapters/:id", role: "viewer" },
   { name: "table", pattern: "/projects/:slug/adapters/:id/tables/:table", role: "viewer" },
   { name: "query", pattern: "/projects/:slug/adapters/:id/query", role: "viewer" },
