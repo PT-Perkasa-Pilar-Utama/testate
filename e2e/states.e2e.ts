@@ -279,7 +279,8 @@ test.describe("state stories", () => {
       .first();
     await run.getByRole("button", { name: "Report" }).click();
     const report = page.locator("dialog[open]");
-    await expect(report.getByText("Import complete.")).toBeVisible();
+    await expect(report.getByText(/^Imported\. Took/)).toBeVisible();
+    await expect(report.getByText("rows rejected")).toBeVisible();
     await expect(report.getByText("A stash was taken first")).toBeVisible();
     const rejected = await report.getByRole("link", { name: "Rejected rows" }).getAttribute("href");
     const rejectedFile = await page.request.get(String(rejected));
