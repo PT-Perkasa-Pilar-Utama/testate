@@ -54,26 +54,29 @@ export default function ResultTable(props: { result: QueryResult }): JSX.Element
           </EmptyState>
         }
       >
-        <Table>
-          <thead>
-            <tr>
-              <For each={props.result.columns}>
-                {(column) => <Head identifier>{column.name}</Head>}
+        {/* Bounded: 500 rows must not push the editor and the Run button off the top of the page. */}
+        <div class="max-h-[60vh] overflow-auto rounded-lg">
+          <Table>
+            <thead>
+              <tr>
+                <For each={props.result.columns}>
+                  {(column) => <Head identifier>{column.name}</Head>}
+                </For>
+              </tr>
+            </thead>
+            <tbody>
+              <For each={props.result.rows}>
+                {(row) => (
+                  <Row>
+                    <For each={props.result.columns}>
+                      {(column) => <Cell>{cellText(row[column.name])}</Cell>}
+                    </For>
+                  </Row>
+                )}
               </For>
-            </tr>
-          </thead>
-          <tbody>
-            <For each={props.result.rows}>
-              {(row) => (
-                <Row>
-                  <For each={props.result.columns}>
-                    {(column) => <Cell>{cellText(row[column.name])}</Cell>}
-                  </For>
-                </Row>
-              )}
-            </For>
-          </tbody>
-        </Table>
+            </tbody>
+          </Table>
+        </div>
       </Show>
     </div>
   );

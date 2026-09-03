@@ -81,7 +81,10 @@ test.describe("qa stories", () => {
     const mongo = await demoAdapter({ engine: "mongodb" });
     await page.goto(`/projects/demo/adapters/${mongo.id}/query`);
     await settle(page);
-    await page.getByPlaceholder("collection").fill("customers");
+    // Sample fills every box from the collection's documents, and what it fills runs.
+    await page.getByRole("button", { name: "Sample" }).click();
+    await expect(page.getByLabel("Collection")).not.toHaveValue("");
+    await expect(page.getByLabel("Filter (JSON)")).not.toContainText("$options");
     await page.getByRole("button", { name: "Run (read-only)" }).click();
     await expect(page.getByText(/\d+ row\(s\)/)).toBeVisible();
     await expect(page.getByText(/read-only credential|application filter only/)).toBeVisible();

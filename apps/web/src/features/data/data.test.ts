@@ -147,21 +147,8 @@ describe("data feature", () => {
   });
 
   test("the Mongo sample fills every box from the collection's own fields and parses", () => {
-    const customers: TableSchema = {
-      schema: null,
-      name: "customers",
-      kind: "table",
-      row_estimate: 0,
-      columns: [column("_id", "objectId"), column("email", "string"), column("balance", "long")],
-      primary_key: ["_id"],
-      foreign_keys_out: [],
-      foreign_keys_in: [],
-      unique: [],
-      unsupported: [],
-      excluded: false,
-      display_column: null,
-    };
-    const draft = mongoSample(customers);
+    // `$options` is the introspection's pseudo column, never a field of a document.
+    const draft = mongoSample("customers", ["_id", "$options", "email", "balance"]);
     expect(draft.collection).toBe("customers");
     expect(JSON.parse(draft.filter)).toEqual({ email: { $exists: true } });
     expect(JSON.parse(draft.projection)).toEqual({ _id: 1, email: 1, balance: 1 });

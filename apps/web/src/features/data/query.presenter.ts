@@ -1,12 +1,5 @@
 import { createSignal } from "solid-js";
-import type {
-  Adapter,
-  JsonObject,
-  JsonValue,
-  QueryRequest,
-  QueryResult,
-  TableSchema,
-} from "@testate/shared";
+import type { Adapter, JsonObject, JsonValue, QueryRequest, QueryResult } from "@testate/shared";
 import { jsonObjectSchema, mongoOperationSchema } from "@testate/shared";
 import * as v from "valibot";
 
@@ -116,16 +109,18 @@ type Draft = { sql: string; mongo: MongoDraft };
 
 /**
  * A find and an aggregate over the collection's own fields, every box filled, so the form shows
- * what each one takes. `_id` is never the field picked: it is in every document and says nothing.
+ * what each one takes. The fields come from its documents: the introspection knows a collection
+ * only by `_id` and a `$options` pseudo column, which is no field to query. `_id` is never the
+ * field picked: it is in every document and says nothing.
  */
-export function mongoSample(collection: TableSchema): MongoDraft {
-  const names = collection.columns.map((column) => column.name).filter((name) => name !== "_id");
+export function mongoSample(collection: string, fields: string[]): MongoDraft {
+  const names = fields.filter((name) => name !== "_id" && !name.startsWith("$"));
   const first = names[0] ?? "_id";
   const second = names[1] ?? first;
   const json = (value: JsonValue): string => JSON.stringify(value, null, 2);
   return {
     op: "find",
-    collection: collection.name,
+    collection,
     filter: json({ [first]: { $exists: true } }),
     projection: JSON.stringify({ _id: 1, [first]: 1, [second]: 1 }),
     sort: JSON.stringify({ [first]: 1 }),
@@ -240,7 +235,17 @@ export function createQueryPresenter(slug: () => string, id: () => string): Quer
         if (first === undefined) throw new Error("This adapter has no tables to sample yet.");
         const name = first.schema === null ? first.name : `${first.schema}.${first.name}`;
         if (adapter.value().engine === "mongodb") {
-          setMongoSignal(mongoSample(first));
+          const page = await dataModel.rows(staticSlug, staticId, first.name, {
+            limit: 25,
+            order: "asc",
+            filter: [],
+          });
+          setMongoSignal(
+            mongoSample(
+              first.name,
+              page.columns.map((column) => column.name)
+            )
+          );
         } else {
           setSql(`SELECT *\nFROM ${name}\nORDER BY 1\nLIMIT 20`);
         }
