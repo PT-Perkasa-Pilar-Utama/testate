@@ -6,27 +6,28 @@ import { TEST_META } from "../../../test/accounts.ts";
 import { PG, createAdaptersHarness, createSettled, shopDatabase } from "../../../test/adapters.ts";
 import type { AdaptersHarness } from "../../../test/adapters.ts";
 import { expectContract } from "../../../test/contract.ts";
+import { createStatesHarness } from "../../../test/states-harness.ts";
 import { CHECKOUT_MOCK, PREFLIGHT_MOCK } from "./checkouts.mock.ts";
 import { createCheckoutsService } from "./checkouts.service.ts";
 import type { CheckoutsService } from "./checkouts.service.ts";
 
 type Harness = { harness: AdaptersHarness; checkouts: CheckoutsService };
 
-async function createCheckoutsHarness(): Promise<Harness> {
-  const harness = await createAdaptersHarness();
+async function createCheckoutsHarness(harness?: AdaptersHarness): Promise<Harness> {
+  const base = harness ?? (await createAdaptersHarness());
   const checkouts = createCheckoutsService({
-    engines: harness.engines,
-    blobs: harness.blobs,
-    ring: harness.ring,
-    adapters: harness.repo,
-    states: harness.states,
-    repo: harness.checkouts,
-    projects: harness.projectsRepo,
-    jobs: harness.runtime.jobs,
-    audit: harness.audit,
-    now: harness.now,
+    engines: base.engines,
+    blobs: base.blobs,
+    ring: base.ring,
+    adapters: base.repo,
+    states: base.states,
+    repo: base.checkouts,
+    projects: base.projectsRepo,
+    jobs: base.runtime.jobs,
+    audit: base.audit,
+    now: base.now,
   });
-  return { harness, checkouts };
+  return { harness: base, checkouts };
 }
 
 /** Mutates the fake shop database so a restore has something to undo. */
@@ -86,10 +87,19 @@ describe("checkouts", () => {
   });
 
   it("a preflight names the project adapters a partial state leaves untouched (story 79)", async () => {
-    const h = await createCheckoutsHarness();
-    await createSettled(h.harness, PG);
+    // The init state covers every database, so the partial one is taken by hand (story 62).
+    const states = await createStatesHarness();
+    const h = await createCheckoutsHarness(states.harness);
+    const first = await createSettled(h.harness, PG);
     const other = await createSettled(h.harness, { ...PG, name: "second" });
-    const preflight = await h.checkouts.preflight("shop", { state_name: "init", force: false });
+    const taken = await states.states.snapshot(
+      h.harness.qa,
+      "shop",
+      { name: "partial", adapter_ids: [first.id] },
+      TEST_META
+    );
+    await h.harness.runtime.jobs.wait(null, taken.job.id, 5);
+    const preflight = await h.checkouts.preflight("shop", { state_name: "partial", force: false });
     expect(preflight.adapters.find((adapter) => adapter.adapter_id === other.id)).toMatchObject({
       included: false,
       removed: false,

@@ -8,6 +8,12 @@ beta line starts at 1.0, so `1.0.0-beta` sorts after every alpha in the release 
 
 ### New
 
+**One starting point per project.** Connecting a database used to take a protected init state
+of its own, so a project with four databases had four roots and a comparison could pair two of
+them by mistake. A project now holds one `init` state that gains each database's baseline as it
+connects; retargeting a database replaces its entry; deleting one keeps it. HEAD moves to the
+starting point only while the project has no HEAD.
+
 **The dashboard matches the project's homepage.** Near-black ground, one raised surface, teal
 for what you can act on, the mark's green for identity, mono labels, tight headings. Every
 screen under a project starts with a breadcrumb path. Take state and Check out are the two

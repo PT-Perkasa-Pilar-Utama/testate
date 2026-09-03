@@ -2,7 +2,13 @@ import { describe, expect, it } from "bun:test";
 import * as v from "valibot";
 
 import { decodeChunks } from "../../lib/snapshot/codec.ts";
-import { PG, PROJECT_ID, createAdaptersHarness, createSettled } from "../../../test/adapters.ts";
+import {
+  PG,
+  PROJECT_ID,
+  createAdaptersHarness,
+  createSettled,
+  shopDatabase,
+} from "../../../test/adapters.ts";
 import type { AdaptersHarness } from "../../../test/adapters.ts";
 import type { InitManifest } from "./states.repository.ts";
 import { TEST_META } from "../../../test/accounts.ts";
@@ -22,6 +28,12 @@ function requireInit(harness: AdaptersHarness, adapterId: string): InitManifest 
   const init = harness.states.latestInit(adapterId);
   if (init === null) throw new Error("no init state");
   return init;
+}
+
+/** A retarget always takes a baseline; a null here is the failure, not a branch. */
+function requireJob(job: { id: string } | null): { id: string } {
+  if (job === null) throw new Error("a retarget takes a baseline");
+  return job;
 }
 
 function firstBlob(init: InitManifest): string {
@@ -84,11 +96,42 @@ describe("init snapshot job", () => {
     expect(rows).toEqual(['{"id":1,"email":"a@x.io"}', '{"id":2,"email":"b@x.io"}']);
   });
 
-  it("names the second adapter's init state after the adapter", async () => {
+  it("adds a second database to the project's one init state, and a retarget replaces its entry", async () => {
     const harness = await createAdaptersHarness();
     await createSettled(harness, PG);
     const second = await createSettled(harness, { ...PG, name: "billing-db" });
-    expect(requireInit(harness, second.id).state_name).toBe("init-billing-db");
+    const init = requireInit(harness, second.id);
+    expect(init.state_name).toBe("init");
+    expect(
+      harness.states
+        .manifestsOf(init.state_id)
+        .map((m) => m.adapter_name)
+        .sort()
+    ).toEqual([PG.name, "billing-db"].sort());
+    // Pointing the adapter at another database is a new baseline for it, in the same state.
+    harness.databases.set("other", shopDatabase());
+    const retarget = await harness.adapters.update(
+      harness.qa,
+      "shop",
+      second.id,
+      { config: { ...PG.config, database: "other" } },
+      TEST_META
+    );
+    expect(
+      (await harness.runtime.jobs.wait(null, requireJob(retarget.init_job).id, 5)).error
+    ).toBeNull();
+    const inits = harness.db.query("SELECT COUNT(*) AS n FROM states WHERE kind = 'init'").get();
+    expect(inits).toEqual({ n: 1 });
+    expect(harness.states.manifestsOf(init.state_id)).toHaveLength(2);
+    // Both databases hold the same rows, so both entries name the same blob: one reference
+    // each. The old entry let its reference go before the new one took it, or this would be 3.
+    const blob = v.parse(
+      refRow,
+      harness.db
+        .query("SELECT ref_count, size_bytes FROM blobs WHERE hash = ?")
+        .get(firstBlob(init))
+    );
+    expect(blob.ref_count).toBe(2);
   });
 
   it("refuses a new state when the project is at its quota", async () => {

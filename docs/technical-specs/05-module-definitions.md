@@ -159,7 +159,7 @@ Tabular adapters only; a Document adapter answers `ENGINE_UNSUPPORTED` on every 
 ```ts
 snapshot(actor, slug, { name; notes?; tags?; adapterIds? }, event): Promise<Job>       // kind snapshot
 stash(slug, reason: "checkout" | "import" | "write-session", event): Promise<StateId>   // internal; kind stash; synchronous job inside the caller's job
-initState(adapterId, event): Promise<Job>                                                // single adapter; protected; named init or init-<adapter>
+initState(adapterId, event): Promise<Job>                                                // into the project's one protected `init` state; a retarget replaces the adapter's entry
 list(actor, slug, filter: { kind?; tag?; includeStash? }, page): Promise<Page<State>>
 tree(actor, slug): Promise<StateTreeNode[]>
 get(actor, slug, idOrName): Promise<StateDetail>                                         // manifests per adapter, warnings, sizes

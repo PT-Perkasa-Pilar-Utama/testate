@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { openStatesList, settle, stateRow, watch } from "./lib/crawl.ts";
+import { openStatesList, rowMenu, settle, stateRow, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
 
@@ -29,10 +29,18 @@ test.describe("adapter settings stories", () => {
     await create.getByLabel("Password").fill("testate");
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
+    // One starting point per project: the new database joins it rather than adding a row.
     await openStatesList(page);
-    await expect(stateRow(page, `init-cfg-${STAMP}`)).toBeVisible({
-      timeout: 60_000,
-    });
+    await expect(stateRow(page, "init")).toHaveCount(1);
+    await expect(async () => {
+      await (
+        await rowMenu(stateRow(page, "init"))
+      )
+        .getByRole("button", { name: "Details" })
+        .click();
+      await expect(page.locator("dialog[open]")).toContainText(`cfg-${STAMP}`, { timeout: 3_000 });
+    }).toPass({ timeout: 60_000 });
+    await page.locator("dialog[open]").getByText("Close", { exact: true }).click();
     await page.getByRole("tab", { name: "Databases" }).click();
     await page.getByRole("link", { name: `cfg-${STAMP}` }).click();
     await settle(page);
@@ -52,7 +60,8 @@ test.describe("adapter settings stories", () => {
       has: page.getByText("Read-only password", { exact: true }),
     });
     await expect(readOnly.first()).toContainText("sealed under key");
-    // A new host is a new target: the adapter takes a fresh init state (story 28).
+    // A new host is a new target: the database's entry in the starting point is replaced, and
+    // the starting point stays one row (story 28).
     await page.getByRole("button", { name: "Edit adapter" }).click();
     await page.locator("dialog[open]").getByLabel("Host").fill("localhost");
     await page.locator("dialog[open]").getByRole("button", { name: "Save adapter" }).click();
@@ -60,9 +69,18 @@ test.describe("adapter settings stories", () => {
     await page.goto("/projects/demo");
     await settle(page);
     await openStatesList(page);
-    await expect(stateRow(page, `init-cfg-${STAMP}-2`)).toBeVisible({
-      timeout: 60_000,
-    });
+    await expect(stateRow(page, "init")).toHaveCount(1);
+    await expect(async () => {
+      await (
+        await rowMenu(stateRow(page, "init"))
+      )
+        .getByRole("button", { name: "Details" })
+        .click();
+      await expect(page.locator("dialog[open]")).toContainText(`cfg-${STAMP}-2`, {
+        timeout: 3_000,
+      });
+    }).toPass({ timeout: 60_000 });
+    await page.locator("dialog[open]").getByText("Close", { exact: true }).click();
     await page.getByRole("tab", { name: "Databases" }).click();
     await page.getByRole("link", { name: `cfg-${STAMP}-2` }).click();
     await settle(page);
@@ -77,8 +95,10 @@ test.describe("adapter settings stories", () => {
       timeout: 60_000,
     });
     await openStatesList(page);
-    // Both init states outlive the adapter (story 31): the first target and the retarget.
-    await expect(stateRow(page, `init-cfg-${STAMP}`)).toHaveCount(2);
+    // The starting point outlives the adapter (story 31): still one row, still holding its entry.
+    await expect(stateRow(page, "init")).toHaveCount(1);
+    await (await rowMenu(stateRow(page, "init"))).getByRole("button", { name: "Details" }).click();
+    await expect(page.locator("dialog[open]")).toContainText(`cfg-${STAMP}-2`);
     expect(issues).toStrictEqual([]);
   });
 });

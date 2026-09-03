@@ -87,8 +87,8 @@ apart on what a checkout does.
 24. As a QA engineer, I want to exclude tables from snapshots and checkouts, so that migration bookkeeping tables and audit tables stay as they are.
 25. As a QA engineer, I want Testate to exclude common migration tables by default, so that the application's migration tool keeps its own history.
 26. As a QA engineer, I want to pick which Postgres schemas an adapter covers, so that Testate handles multi-schema databases.
-27. As a QA engineer, I want Testate to take a protected, single-adapter init state when an adapter first connects, so that every adapter has a baseline.
-28. As a QA engineer, I want Testate to take a new init state when I point an adapter at a different host or database, so that the baseline always matches the target.
+27. As a QA engineer, I want a project to hold one protected starting point that gains each database's baseline as I connect it, so that every database has a baseline and the history has one root rather than one per database.
+28. As a QA engineer, I want Testate to replace a database's entry in the starting point when I point it at a different host or database, so that the baseline always matches the target.
 29. As a QA engineer, I want to rename an adapter without touching its states, normalizers, or saved queries, so that names stay readable.
 30. As a QA engineer, I want deleting an adapter to return its database to the adapter's init state by default, through the same deletion plan, so that a disconnected database is left as Testate found it.
 31. As a QA engineer, I want a deleted adapter's data to stay inside existing states, so that history stays complete while checkouts skip the removed adapter and say so.
