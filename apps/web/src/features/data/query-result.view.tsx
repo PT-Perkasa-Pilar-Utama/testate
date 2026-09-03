@@ -58,7 +58,7 @@ export default function ResultTable(props: {
         when={props.result.rows.length > 0}
         fallback={
           <EmptyState icon="circle-check" title="Ran clean, nothing to show">
-            The query ran and answered with zero rows. If that's a surprise, check the query above.
+            The query ran and answered with zero rows. Check the query above.
           </EmptyState>
         }
       >

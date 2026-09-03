@@ -20,8 +20,8 @@ import { ApiError } from "./api-client.ts";
 const REPLACED = {
   UNAUTHORIZED: "Your session has ended. Sign in again.",
   FORBIDDEN: "Your role does not allow this.",
-  NOT_FOUND: "That is no longer here. It may have been deleted; refresh and try again.",
-  INTERNAL: "Something went wrong at our end. Try again, and tell an admin if it keeps happening.",
+  NOT_FOUND: "That is no longer here. It may have been deleted. Refresh and try again.",
+  INTERNAL: "Something went wrong at our end. Try again. Tell an admin if it keeps happening.",
   PAYLOAD_TOO_LARGE: "That file is too large.",
   QUOTA_EXCEEDED: "This project is at its storage quota. Delete a state or raise the quota.",
   RATE_LIMITED: "Too many attempts. Wait a moment and try again.",

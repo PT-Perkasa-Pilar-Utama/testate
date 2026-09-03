@@ -172,9 +172,9 @@ export default function ColumnPanel(props: { presenter: ImportPresenter }): JSX.
           </For>
         </div>
         <p class="text-sm text-muted">
-          Auto trims the value, leaves an empty cell as NULL where the column allows one, and hands
-          the rest to the column's own type. Reach for the others when the file does not already
-          speak the database's language. {choiceLabel(AUTO)} is the default.
+          Auto trims the value. It leaves an empty cell as NULL where the column allows one. It
+          hands the rest to the column's own type. Reach for the others when the file does not
+          already speak the database's language. {choiceLabel(AUTO)} is the default.
         </p>
       </Show>
     </div>

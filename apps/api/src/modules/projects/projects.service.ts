@@ -218,7 +218,7 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
           project.head.status === "unknown"
             ? {
                 kind: "head_unknown",
-                message: "The last checkout did not finish; HEAD is unknown until the next one.",
+                message: "The last checkout did not finish. HEAD is unknown until the next one.",
               }
             : null,
       };

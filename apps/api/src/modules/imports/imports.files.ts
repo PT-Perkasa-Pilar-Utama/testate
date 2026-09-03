@@ -53,7 +53,7 @@ function typeOf(name: string): Upload["type"] {
   if (lower.endsWith(".csv") || lower.endsWith(".txt") || lower.endsWith(".tsv")) return "csv";
   if (lower.endsWith(".xlsx")) return "xlsx";
   if (lower.endsWith(".tar")) return "tar";
-  throw new AppError("VALIDATION_ERROR", "unsupported file type; use csv, xlsx, or tar", {
+  throw new AppError("VALIDATION_ERROR", "unsupported file type: use csv, xlsx, or tar", {
     file_name: name,
   });
 }

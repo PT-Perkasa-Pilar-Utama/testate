@@ -166,7 +166,7 @@ export function CreateDialog(props: {
       open={props.presenter.creating()}
       onClose={props.presenter.closeCreate}
       title={storage() ? "New storage adapter" : "New adapter"}
-      description="Secrets are sealed before they reach the database and never shown again."
+      description="Testate seals secrets before they reach the database. It never shows them again."
       size="lg"
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.create(input)}>

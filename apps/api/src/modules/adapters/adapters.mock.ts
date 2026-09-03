@@ -36,8 +36,7 @@ export const PROBE_MOCK: ProbeResult = {
   read_only_enforcement: "transaction",
   table_count: 42,
   size_estimate_bytes: 812345678,
-  atomicity_notice:
-    "Postgres restores are one transaction; restored tables are locked for the duration.",
+  atomicity_notice: "Postgres restores as one transaction. Locks each table while it restores it.",
   warnings: [],
 };
 

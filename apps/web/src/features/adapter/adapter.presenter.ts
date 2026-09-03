@@ -81,7 +81,7 @@ export function createAdapterPresenter(slug: () => string, id: () => string): Ad
         adapter.refresh();
         detail.refresh();
         showToast(
-          result.init_job === null ? "Adapter saved" : "Adapter saved; init snapshot queued",
+          result.init_job === null ? "Adapter saved" : "Adapter saved. Init snapshot queued.",
           "success"
         );
       });
@@ -133,7 +133,7 @@ export function createAdapterPresenter(slug: () => string, id: () => string): Ad
           action: staticPlan.adapter.action === "skip" ? "skip" : "restore",
         });
         setPlan(null);
-        showToast("Deletion job queued; the database returns to its init state first", "info");
+        showToast("Deletion job queued. The database returns to its init state first.", "info");
         // The project page opens on States (the rework of 2026-09-01); send the admin back to the tab
         // they were just working in, not the tester's front door.
         jobs.follow(job, (done) => {

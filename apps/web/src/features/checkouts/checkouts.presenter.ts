@@ -201,7 +201,7 @@ export function createCheckoutsPresenter(
           session_ids: staticSessions,
         });
         showToast(
-          `Terminated ${result.terminated.length} session(s)${result.failed.length === 0 ? "" : `; ${result.failed.length} refused`}`,
+          `Terminated ${result.terminated.length} session(s)${result.failed.length === 0 ? "" : `. ${result.failed.length} refused`}`,
           result.failed.length === 0 ? "success" : "error"
         );
         checkouts.refresh();

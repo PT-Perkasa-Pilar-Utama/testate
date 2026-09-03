@@ -190,7 +190,7 @@ export function EditDialog(props: { presenter: StatesPresenter }): JSX.Element {
       open={props.presenter.editing() !== null}
       onClose={props.presenter.close}
       title={`Edit ${props.presenter.editing()?.name ?? ""}`}
-      description="Init states keep their kind; CI filters on it."
+      description="Init states keep their kind. CI filters on it."
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.save(input)}>
         <DraftFields form={form} />

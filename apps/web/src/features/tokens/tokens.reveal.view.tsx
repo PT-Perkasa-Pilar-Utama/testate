@@ -23,7 +23,7 @@ export default function RevealDialog(props: { presenter: TokensPresenter }): JSX
       onClose={props.presenter.dismissCreated}
       title={created() === null ? "Token created" : `${created()?.record.name} created`}
       size="lg"
-      description="Copy it now. It will not be shown again."
+      description="Copy it now. Testate will not show it again."
     >
       <Show when={created()}>
         {(result) => (
@@ -31,8 +31,8 @@ export default function RevealDialog(props: { presenter: TokensPresenter }): JSX
             <Banner variant="alert">
               <Icon name="triangle-alert" class="mt-0.5 h-4 w-4 shrink-0" />
               <span>
-                Testate stores only a hash of this token. If you leave this dialog without copying
-                it, the only way back is to revoke it and create another.
+                Testate stores only a hash of this token. Closing without copying it loses your only
+                look at it. Revoke it and create another to get a new one.
               </span>
             </Banner>
             <output class="block rounded-md bg-hover px-3 py-2.5 font-mono text-sm break-all ring ring-line">

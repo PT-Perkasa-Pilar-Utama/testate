@@ -208,7 +208,7 @@ export default function EditDialog(props: {
           </div>
         </Show>
         <Banner variant="secondary">
-          Secrets are sealed before storage and never shown again.
+          Testate seals secrets before storage. It never shows them again.
         </Banner>
         <DialogActions>
           <Button type="button" variant="ghost" onClick={() => props.presenter.closeEdit()}>

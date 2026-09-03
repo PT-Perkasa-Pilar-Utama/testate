@@ -129,7 +129,7 @@ export default function StoresView(): JSX.Element {
             when={stores.value().length > 0}
             fallback={
               <EmptyState icon="folder" title="No file stores yet">
-                Add one with the button above; it appears here under its project.
+                Add one with the button above. It appears here under its project.
               </EmptyState>
             }
           >

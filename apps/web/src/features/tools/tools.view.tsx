@@ -53,7 +53,7 @@ function HashCard(props: { presenter: ToolsPresenter }): JSX.Element {
       <div class="grid gap-1">
         <CardTitle icon="key-round">Hash</CardTitle>
         <p class="text-sm text-muted">
-          The same functions column policies apply, so a hashed column never receives raw input.
+          The same functions column policies apply. A hashed column never receives raw input.
         </p>
       </div>
       <div class="grid gap-3">

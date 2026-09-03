@@ -176,9 +176,9 @@ export function createGridPresenter(
   const editableReason = (): string | null => {
     const current = adapter.value();
     if (current.tier !== "tabular") return "Editing needs the Tabular tier.";
-    if (current.mode !== "sandbox") return "Editing needs sandbox mode; this adapter is read-only.";
+    if (current.mode !== "sandbox") return "Editing needs sandbox mode. This adapter is read-only.";
     if ((table()?.primary_key?.length ?? 0) === 0)
-      return "This table has no primary key, so a row can't be targeted for edits.";
+      return "This table has no primary key. Edits cannot target a row.";
     return null;
   };
   const exportUrl = (format: "csv" | "json"): string => {

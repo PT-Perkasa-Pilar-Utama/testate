@@ -181,7 +181,7 @@ export function createProjectPresenter(slug: () => string): ProjectPresenter {
         });
         showToast("Project deleted.", "success");
         setPlan(null);
-        showToast("Deletion job queued; every database returns to its init state first", "info");
+        showToast("Deletion job queued. Every database returns to its init state first.", "info");
         navigate("/projects");
       } catch (cause: unknown) {
         setDeleteError(humanMessage(cause, "Could not delete the project."));

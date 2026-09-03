@@ -86,7 +86,7 @@ function SourceRow(props: { presenter: ImportPresenter }): JSX.Element {
 function RejectedNote(): JSX.Element {
   return (
     <Banner variant="default">
-      The rows an earlier run rejected are the source. Fix how a column is read below, then import.
+      The rows an earlier run rejected are the source. Fix how a column is read below. Import again.
     </Banner>
   );
 }

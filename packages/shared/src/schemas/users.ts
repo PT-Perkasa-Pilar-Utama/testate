@@ -42,7 +42,7 @@ export const createUserSchema = v.object({
       PASSWORD_MIN_LENGTH,
       `A temporary password needs at least ${PASSWORD_MIN_LENGTH} characters.`
     ),
-    v.maxLength(1024, "That password is too long to be one of ours."),
+    v.maxLength(1024, "A password has at most 1024 characters."),
     v.check(
       (next) => !COMMON_PASSWORDS.has(next.toLowerCase()),
       "That password is on every guess list. Choose another."
@@ -77,7 +77,7 @@ export const resetPasswordSchema = v.object({
       PASSWORD_MIN_LENGTH,
       `A temporary password needs at least ${PASSWORD_MIN_LENGTH} characters.`
     ),
-    v.maxLength(1024, "That password is too long to be one of ours."),
+    v.maxLength(1024, "A password has at most 1024 characters."),
     v.check(
       (next) => !COMMON_PASSWORDS.has(next.toLowerCase()),
       "That password is on every guess list. Choose another."

@@ -136,8 +136,8 @@ export function WriteStrip(props: { presenter: GridPresenter }): JSX.Element {
               <span class="font-medium">Write mode is on.</span>{" "}
               <span class="text-muted">
                 {open().stash_state_id === null
-                  ? "Edits go to the live database. The first one stashes this table, so you can put it back."
-                  : "Edits go to the live database. It was stashed before the first one, so you can put it back."}
+                  ? "Edits go to the live database. The first one stashes this table. You can put it back."
+                  : "Edits go to the live database. It was stashed before the first one. You can put it back."}
               </span>
             </span>
           </p>

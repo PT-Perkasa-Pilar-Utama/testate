@@ -182,7 +182,7 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
         </h2>
         <p class="max-w-prose text-sm text-muted">
           Admin work. A mask set here applies everywhere a value could leave this database: the
-          grid, diffs, exports, fixtures and the AI agent. Guests and agents see ***; Testers and
+          grid, diffs, exports, fixtures and the AI agent. Guests and agents see ***. Testers and
           Administrators see the real value. There is no unmask.
         </p>
       </div>
@@ -191,7 +191,7 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
           each={presenter.schema.value().tables}
           fallback={
             <EmptyState icon="table" title="No tables to mask yet">
-              Connect a database with tables on it, then come back to hide a column from Guests and
+              Connect a database with tables on it. Come back to hide a column from Guests and
               agents.
             </EmptyState>
           }

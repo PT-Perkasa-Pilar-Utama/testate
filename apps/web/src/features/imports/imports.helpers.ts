@@ -56,12 +56,12 @@ export const MODE_OPTIONS: ReadonlyArray<{
     value: "upsert",
     label: IMPORT_MODE_LABEL.upsert,
     description:
-      "Rows are matched by the key columns below. New rows are added; matching rows are updated.",
+      "Rows are matched by the key columns below. New rows are added. Matching rows are updated.",
   },
   {
     value: "replace",
     label: IMPORT_MODE_LABEL.replace,
-    description: "Every row already in the table is removed first, then these rows are added.",
+    description: "Testate removes every row already in the table first. It adds these rows after.",
   },
 ];
 

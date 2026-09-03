@@ -141,7 +141,7 @@ export function EditDialog(props: { presenter: UsersPresenter }): JSX.Element {
       open={props.presenter.editing() !== null}
       onClose={props.presenter.closeEdit}
       title={`Edit ${props.presenter.editing()?.username ?? ""}`}
-      description="The username never changes; it is what the audit log records."
+      description="The username never changes. The audit log records it."
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.update(input)}>
         <Field of={form} path={["display_name"]}>

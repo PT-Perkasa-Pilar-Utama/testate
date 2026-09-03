@@ -92,7 +92,7 @@ export async function probe(sql: SQL): Promise<ProbeResult> {
     table_count: tables.length,
     size_estimate_bytes: Math.round(flags.size),
     atomicity_notice:
-      "Postgres restores are one transaction; restored tables are locked for the duration.",
+      "Postgres restores as one transaction. Locks each table while it restores it.",
     warnings: introspection.warnings,
   };
 }
