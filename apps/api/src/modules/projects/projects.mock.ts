@@ -27,6 +27,7 @@ export const PROJECT_MOCK: Project = {
     dirty: false,
   },
   created_by: ADMIN_ID,
+  created_by_label: "admin",
   created_at: EARLIER,
   updated_at: NOW,
 };

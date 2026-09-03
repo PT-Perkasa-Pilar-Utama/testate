@@ -25,6 +25,8 @@ export const projectSchema = v.object({
   quota_bytes: v.nullable(v.number()),
   head: headSchema,
   created_by: idSchema,
+  /** The creator's display name, so a list can say who without a second request. */
+  created_by_label: v.string(),
   created_at: timestampSchema,
   updated_at: timestampSchema,
 });

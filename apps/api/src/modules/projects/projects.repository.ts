@@ -20,6 +20,7 @@ const projectRecordSchema = v.object({
   head_changed_at: v.nullable(v.string()),
   head_dirty: v.number(),
   created_by: v.string(),
+  created_by_label: v.string(),
   created_at: v.string(),
   updated_at: v.string(),
 });
@@ -88,8 +89,11 @@ export type DeletionCounts = {
   tokens: number;
 };
 
-const SELECT = `SELECT p.*, s.name AS head_state_name
-  FROM projects p LEFT JOIN states s ON s.id = p.head_state_id`;
+const SELECT = `SELECT p.*, s.name AS head_state_name,
+    COALESCE(u.display_name, u.username, '') AS created_by_label
+  FROM projects p
+  LEFT JOIN states s ON s.id = p.head_state_id
+  LEFT JOIN users u ON u.id = p.created_by`;
 
 const SORT_COLUMNS = {
   name: "p.name COLLATE NOCASE",
@@ -115,6 +119,7 @@ function toProject(row: ProjectRecord): Project {
       dirty: row.head_dirty === 1,
     },
     created_by: row.created_by,
+    created_by_label: row.created_by_label,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };

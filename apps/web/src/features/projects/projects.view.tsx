@@ -20,6 +20,7 @@ import {
   Table,
   TableFooter,
   TableSearch,
+  Truncated,
 } from "@/components/table.tsx";
 import { activeFilterCount } from "@/lib/table.ts";
 import { href, navigate } from "@/lib/router.ts";
@@ -118,6 +119,7 @@ export default function ProjectsView(): JSX.Element {
                 <SortColumn view={presenter.table} column="changed_at">
                   Last moved
                 </SortColumn>
+                <Head>Created by</Head>
                 <SortColumn view={presenter.table} column="created_at">
                   Created
                 </SortColumn>
@@ -187,6 +189,9 @@ export default function ProjectsView(): JSX.Element {
                         >
                           {(changedAt) => <>{formatWhen(changedAt())}</>}
                         </Show>
+                      </Cell>
+                      <Cell>
+                        <Truncated class="max-w-[12rem]">{project.created_by_label}</Truncated>
                       </Cell>
                       <Cell>{formatWhen(project.created_at)}</Cell>
                       <Cell>{formatWhen(project.updated_at)}</Cell>
