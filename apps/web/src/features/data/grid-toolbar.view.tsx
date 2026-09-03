@@ -141,7 +141,7 @@ export function WriteStrip(props: { presenter: GridPresenter }): JSX.Element {
               </span>
             </span>
           </p>
-          <div class="flex flex-wrap items-center gap-3">
+          <div class="flex flex-wrap items-center gap-3 text-sm">
             {/* The switch says which way it is, and the engine's own statement only when the
                 checks are off: that is the moment a person wants to know what was sent. */}
             <div class="grid gap-0.5">

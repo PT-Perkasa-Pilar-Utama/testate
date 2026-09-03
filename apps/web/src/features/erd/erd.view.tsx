@@ -118,6 +118,8 @@ function TableBox(props: {
  */
 export default function Erd(props: { tables: readonly TableSchema[] }): JSX.Element {
   const [focus, setFocus] = createSignal<string | null>(null);
+  /** Where the last press on empty canvas landed; a release near it is a click, not a pan. */
+  const [pressed, setPressed] = createSignal<{ x: number; y: number } | null>(null);
   const [zoom, setZoom] = createSignal(1);
   const [pan, setPan] = createSignal({ x: PADDING, y: PADDING });
   const [dragging, setDragging] = createSignal<{ x: number; y: number } | null>(null);
@@ -145,7 +147,9 @@ export default function Erd(props: { tables: readonly TableSchema[] }): JSX.Elem
             onChange={(next) => setFocus(next === "" ? null : next)}
           />
           <Show when={focus()}>
-            <span class="text-sm text-muted">and every table one foreign key away from it</span>
+            <span class="text-sm whitespace-nowrap text-muted">
+              and every table one foreign key away from it
+            </span>
           </Show>
         </div>
         <div class="flex items-center gap-1">
@@ -182,13 +186,22 @@ export default function Erd(props: { tables: readonly TableSchema[] }): JSX.Elem
             return;
           }
           setDragging({ x: event.clientX - pan().x, y: event.clientY - pan().y });
+          setPressed({ x: event.clientX, y: event.clientY });
           event.currentTarget.setPointerCapture(event.pointerId);
         }}
         onPointerMove={(event) => {
           const from = dragging();
           if (from !== null) setPan({ x: event.clientX - from.x, y: event.clientY - from.y });
         }}
-        onPointerUp={() => setDragging(null)}
+        onPointerUp={(event) => {
+          // A click on empty canvas ends the focus: back to every table.
+          const at = pressed();
+          if (at !== null && Math.hypot(event.clientX - at.x, event.clientY - at.y) < 4) {
+            setFocus(null);
+          }
+          setPressed(null);
+          setDragging(null);
+        }}
         onWheel={(event) => {
           event.preventDefault();
           setZoom(Math.min(2, Math.max(0.3, zoom() - event.deltaY / 500)));
