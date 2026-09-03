@@ -24,11 +24,11 @@ export default function FieldLabel(props: {
 }): JSX.Element {
   const [open, setOpen] = createSignal(false);
   return (
-    <span class="flex flex-wrap items-center gap-1.5">
+    <span class="flex items-center gap-1.5">
       {props.children}
       <Show when={props.help}>
         {(text) => (
-          <>
+          <span class="group relative inline-flex">
             {/* Not a <button>: a label names the first labelable element inside it, and a button
                 before the input would take the name away from the input. A span with the role
                 keeps the label on the control and still opens on click, Enter, or Space. */}
@@ -51,10 +51,17 @@ export default function FieldLabel(props: {
             >
               <Icon name="circle-question-mark" class="h-3.5 w-3.5" />
             </span>
-            <Show when={open()}>
-              <span class="basis-full text-xs font-normal text-muted">{text()}</span>
-            </Show>
-          </>
+            {/* Floats over the form, so it shifts nothing: hover shows it, a click pins it. */}
+            <span
+              role="tooltip"
+              class={[
+                "absolute top-full left-0 z-20 mt-1 w-64 rounded-md bg-surface p-2 text-xs font-normal whitespace-normal text-body shadow-md ring ring-line",
+                open() ? "block" : "hidden group-hover:block",
+              ]}
+            >
+              {text()}
+            </span>
+          </span>
         )}
       </Show>
       <Show

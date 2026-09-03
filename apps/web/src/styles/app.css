@@ -241,3 +241,44 @@ body,
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * The one button Testate exists for: a thin accent light runs around Take state, so the eye lands
+ * on it without the button shouting. The gradient spins behind a padded wrapper; the button's own
+ * background covers everything but the rim. Reduced motion keeps a still rim.
+ */
+@keyframes orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@layer components {
+  .orbit {
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    padding: 2px;
+    border-radius: 0.625rem;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  }
+  .orbit::before {
+    content: "";
+    position: absolute;
+    inset: -150%;
+    z-index: -1;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0 65%,
+      var(--color-accent) 82%,
+      #ffffff 90%,
+      transparent 100%
+    );
+    animation: orbit 2.4s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .orbit::before {
+      animation: none;
+    }
+  }
+}

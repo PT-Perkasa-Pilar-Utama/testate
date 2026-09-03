@@ -76,15 +76,24 @@ function ProjectHeader(props: {
           {/* The product's own verb, on every tab: a state is of the project, not of a tab. It
               waits for a database to exist, since there is nothing to take before one. */}
           <Show when={hasRole("qa") && props.states.databases.value().length > 0}>
-            <Button size="sm" variant="accent" onClick={() => props.states.openTake()}>
-              <Icon name="camera" class="h-4 w-4" />
-              Take state
-            </Button>
+            <span class="orbit">
+              <Button size="lg" variant="accent" onClick={() => props.states.openTake()}>
+                <Icon name="camera" class="h-5 w-5" />
+                Take state
+              </Button>
+            </span>
           </Show>
           {/* Settings behind a gear: Edit and Delete are rare, and beside the product's verb they
               read as three equals. */}
           <Show when={hasRole("qa")}>
-            <Menu label="Project settings" trigger={<Icon name="settings" class="h-4 w-4" />}>
+            <Menu
+              label="Project settings"
+              trigger={
+                <span class="inline-flex h-10 w-10 items-center justify-center rounded-md ring ring-line hover:bg-hover">
+                  <Icon name="settings" class="h-5 w-5" />
+                </span>
+              }
+            >
               <MenuItem onClick={() => props.presenter.openEdit()}>Edit</MenuItem>
               <Show when={hasRole("admin")}>
                 <MenuItem danger onClick={() => void props.presenter.openDelete()}>

@@ -84,7 +84,12 @@ export default function GridView(props: { slug: string; id: string; table: strin
   };
   return (
     <section class="grid gap-4">
-      <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf={props.table} />
+      <AdapterBreadcrumbs
+        slug={props.slug}
+        id={props.id}
+        leaf={props.table}
+        back="Back to the database"
+      />
       <Loading fallback={<Pending>Loading rows...</Pending>}>
         <Show
           when={presenter.adapter.value().tier !== "document"}
