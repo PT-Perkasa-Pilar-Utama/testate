@@ -84,6 +84,35 @@ Spec [07 Security](technical-specs/07-security.md) is the design; this is the au
 | Logging and incident response | Done | One wide event per request, an audit row per security-relevant action, SECURITY.md's reporting path with acknowledgment and fix timelines |
 | Vulnerability response and updates | Done | Latest release maintained, advisories on fix, signed images and binaries with provenance so an update can be verified |
 
+## ISO/IEC, and what a product can and cannot claim
+
+ISO/IEC 27001 certifies an organisation's information security management system, not a piece
+of software: a repository cannot comply with it. What Testate can do is hand the organisation
+that runs it the evidence its Annex A (2022) controls ask for. The standards below that do
+address software itself are followed directly.
+
+| Standard | What it is | Status | Where |
+| --- | --- | --- | --- |
+| ISO/IEC 27001:2022 A.5.15, A.8.2, A.8.3 | Access control, privileged access, information access restriction | Evidence provided | Three cumulative roles, admin-only mode changes and administration, project-scoped tokens, agent tokens fenced to `/mcp`; every grant and revocation in the audit log |
+| A.8.5 | Secure authentication | Evidence provided | argon2id, twelve-character floor, common-password list, lockout after five failures, per-address budgets, forced change on first login, sessions bound to a host-locked cookie |
+| A.8.8 | Management of technical vulnerabilities | Evidence provided | Dependabot, `bun audit` in the gate, CodeQL on every push, Scorecard weekly, advisories with a fix, SECURITY.md timelines |
+| A.8.9 | Configuration management | Evidence provided | One image, one volume, configuration from the environment only and refused when incomplete; `bun run bump-version --check` keeps every version slot in step |
+| A.8.12 | Data leakage prevention | Evidence provided | Column policies mask values by role with no unmask for agents; the logger refuses credential keys; sealed values never return |
+| A.8.13 | Information backup | Evidence provided | A backup job for metadata and blobs, recording the key fingerprints that sealed its values; restore by replacing the volume |
+| A.8.15, A.8.16 | Logging, monitoring | Evidence provided | One wide event per request and job, an audit row per security-relevant action that outlives what it describes, a health endpoint and structured logs for whatever watches the instance |
+| A.8.24 | Use of cryptography | Evidence provided | AES-GCM sealed values under an environment key, two-key rotation, argon2id, SHA-256 lookups, keyless-signed releases with provenance |
+| A.8.25, A.8.27, A.8.28 | Secure development life cycle, secure architecture, secure coding | Followed | Threat surface in spec 07, the coding standard and its lint rules, two reviews and a code-owner review on main, the review checklist |
+| A.8.29 | Security testing in development | Followed | Role and scope pinned by tests, contract suites against real engines, browser suite over every story, property tests over the parsers |
+| A.8.31 | Separation of environments | Followed | Development endpoints never mount in production; the suite and the dev server run on separate ports and data directories |
+| ISO/IEC 27034 | Application security | Followed in principle | The controls in this document are the application security controls; there is no organisation-level ASC library to register them in, which is the adopter's |
+| ISO/IEC 29147 | Vulnerability disclosure | Followed | SECURITY.md names the contact, what to send, and the acknowledgment, assessment and fix timelines; the homepage serves `/.well-known/security.txt` (RFC 9116) |
+| ISO/IEC 30111 | Vulnerability handling | Followed | The same timelines, a fix on the latest release with an advisory; no backports, which SECURITY.md says |
+| ISO/IEC 25010 | Product quality, the security characteristic | Followed | Confidentiality (sealing, masks), integrity (signed releases, stashes), accountability (audit), authenticity (sessions, tokens), non-repudiation (audit rows with actor and address) |
+
+What an adopter still owns under 27001: the risk assessment that decides whether Testate is
+exposed at all, the access reviews of who holds which role, the operating procedures for
+rotation and backup, and the incident process the reporting path feeds into.
+
 ## Before an instance faces the internet
 
 Testate is built to sit beside a system under test, inside a network. Nothing stops an adopter

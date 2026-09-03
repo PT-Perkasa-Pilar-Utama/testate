@@ -7,7 +7,8 @@ latest image or binary.
 
 ## Reporting a vulnerability
 
-**Do not open a public issue for a vulnerability.** Email **awalariansyah7@gmail.com** with what
+**Do not open a public issue for a vulnerability.** Open a private advisory on GitHub, or email
+**awalariansyah7@gmail.com**, with what
 you found, how to reproduce it, the version affected, and a fix if you have one. You get an
 acknowledgment within 72 hours, an assessment within 7 days, and a fix with an advisory within 30
 days of confirmation.

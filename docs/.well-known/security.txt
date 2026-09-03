@@ -1,0 +1,6 @@
+Contact: mailto:awalariansyah7@gmail.com
+Contact: https://github.com/PT-Perkasa-Pilar-Utama/testate/security/advisories/new
+Expires: 2027-09-03T00:00:00.000Z
+Preferred-Languages: en, id
+Canonical: https://pt-perkasa-pilar-utama.github.io/testate/.well-known/security.txt
+Policy: https://github.com/PT-Perkasa-Pilar-Utama/testate/blob/main/SECURITY.md
