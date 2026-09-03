@@ -1,10 +1,12 @@
-# OWASP checklist
+# Security standards
 
-What Testate does against the OWASP lists that apply to it: the API Security Top 10 (2023), the
-Web Application Top 10 (2021), and the parts of the Application Security Verification Standard
-(ASVS 4.0) that a self-hosted, single-tenant tool with database credentials has to answer. Each
+What Testate does against the lists that apply to it: OWASP's API Security Top 10 (2023) and Web
+Application Top 10 (2021), the OWASP Application Security Verification Standard (chapters cited
+with 4.0.3 numbering; the requirements carry over to 5.0), the IEEE Center for Secure Design's
+ten design flaws, and the practices IBM's Secure Engineering Framework asks of a product. Each
 row names where the control lives, so a reader can check the claim rather than trust it. The
-last section lists what is deliberately not done, so nobody audits it twice.
+last two sections say what to do before an instance faces the internet, and what is deliberately
+not done, so nobody audits it twice.
 
 Spec [07 Security](technical-specs/07-security.md) is the design; this is the audit view of it.
 
@@ -42,8 +44,8 @@ Spec [07 Security](technical-specs/07-security.md) is the design; this is the au
 
 | Chapter | Status | Note |
 | --- | --- | --- |
-| V2 Authentication | Done, one gap | 2.1.7 (breached-password lookup) is not done: the instance is offline by design |
-| V3 Session management | Done | Cookie `HttpOnly`, `SameSite=Strict`, `Secure` behind TLS, idle and absolute timeouts, logout revokes server-side |
+| V2 Authentication | Done, one gap | 2.1.7 asks for a breached-password lookup; the instance is offline, so it refuses the top of every breach list (`passwordWeakness`, packages/shared) and stops there; the username is not a rule, since the bootstrap account is called `admin` |
+| V3 Session management | Done | Cookie `HttpOnly`, `SameSite=Strict`, `Secure` behind TLS and then `__Host-` prefixed on a root-path deploy, idle and absolute timeouts, a new session per login, logout revokes server-side |
 | V4 Access control | Done | Deny by default, roles cumulative, checks server-side only |
 | V5 Validation and encoding | Done | valibot at every boundary; output is JSON or text, never templated HTML |
 | V6 Cryptography | Done | AES-GCM, random from the platform, keys from the environment only |
@@ -54,17 +56,66 @@ Spec [07 Security](technical-specs/07-security.md) is the design; this is the au
 | V13 API | Done | JSON only, envelope with stable codes, cursor pagination with limits, CSRF on cookie writes |
 | V14 Configuration | Done | Headers above; `/docs` behind a session; the image runs as `bun`, read-only, no capabilities |
 
+## IEEE Center for Secure Design: the ten flaws
+
+| Flaw to avoid | Status | Where |
+| --- | --- | --- |
+| Earn or give, but never assume, trust | Done | Every request re-resolves its credential; a token acts as its role and scope on every call; engines' rows and stores' objects are parsed before use |
+| Use an authentication mechanism that cannot be bypassed | Done | `authenticate` runs on every route; `requireRole` on every non-public one; the API reference asks for a session; `/mcp` refuses everything but an agent token |
+| Authorize after you authenticate | Done | Role, project scope and agent-ness are checked per route after the actor is known; mode changes are an admin's at the service, not only the button |
+| Strictly separate data and control instructions | Done | Parameterised SQL in every repository; the query console runs user SQL inside a read-only transaction and says so; agent tool arguments parse with valibot |
+| Define an approach that ensures all data are explicitly validated | Done | valibot at every trust boundary (body, query, params, env, engine rows, MCP arguments), unknown keys refused |
+| Use cryptography correctly | Done | AES-GCM sealed values, argon2id, platform randomness, SHA-256 for session and token lookup; keys come from the environment only |
+| Identify sensitive data and how they should be handled | Done | Sealed values never leave the API; the logger refuses credential keys; masks apply before an agent or a viewer sees a value; snapshots are named as sensitive in SECURITY.md |
+| Always consider the users | Done, by design | A stash before every write, import and checkout; a deletion plan before it runs; forced password change on first login; errors in words |
+| Understand how integrating external components changes your attack surface | Done | Lockfile, Dependabot, `bun audit`, actions pinned by hash, CodeQL and Scorecard; engines are reached through an address policy with a deny list |
+| Be flexible when considering future changes to objects and actors | Done | Roles are cumulative and named once (`packages/shared`); keys rotate with two in the environment; the API is versioned under one prefix |
+
+## IBM Secure Engineering Framework, the practices
+
+| Practice | Status | Where |
+| --- | --- | --- |
+| Threat model and attack surface | Done | Spec 07 §7.1 names the surface; SECURITY.md names what the instance holds and where it is exposed |
+| Secure by default | Done | New adapters default to read-only for a file store; write sessions need sandbox mode; development endpoints never mount in production; strangers share a per-address request budget |
+| Least privilege | Done | Three cumulative roles, project-scoped tokens that cannot administer, agent tokens fenced to `/mcp`, a container that runs as `bun` with no capabilities |
+| Secure coding standard and review | Done | `docs/CODING_STANDARD.md`, lint rules for the hazards, `docs/CODE_REVIEW_CHECKLIST.md`, two reviews and a code-owner review on main |
+| Static and dependency analysis | Done | CodeQL on every push, Scorecard weekly, Dependabot, `bun audit` in the gate |
+| Security testing | Done | Role and scope pinned by `roles.test.ts` and the e2e suite; contract suites against real engines; property tests over the parsers |
+| Logging and incident response | Done | One wide event per request, an audit row per security-relevant action, SECURITY.md's reporting path with acknowledgment and fix timelines |
+| Vulnerability response and updates | Done | Latest release maintained, advisories on fix, signed images and binaries with provenance so an update can be verified |
+
+## Before an instance faces the internet
+
+Testate is built to sit beside a system under test, inside a network. Nothing stops an adopter
+from exposing it for convenience, so here is what has to be true first, in order:
+
+1. **TLS terminates in front of it**, and `TESTATE_TRUST_PROXY=true` is set. That one flag turns
+   on HSTS, marks the session cookie `Secure` and `__Host-`, and makes rate limits and audit rows
+   see the client's address rather than the proxy's.
+2. **A strong bootstrap password**, changed on first login, and never the README's example.
+3. **A second factor at the door.** Testate has no MFA of its own; put it behind an identity-aware
+   proxy (Cloudflare Access, oauth2-proxy, Pomerium) or a VPN. Without one, a public instance's
+   admin is one password away.
+4. **Tokens with an expiry**, scoped to one project each, and the agent token for exactly one
+   agent. Revoke on rotation.
+5. **Rotate the sealing key on a schedule** (docs/KEY_ROTATION.md) and keep backups with their
+   key fingerprints.
+6. **Read the audit log**, or ship the wide events to something that does, so a login from the
+   wrong continent is noticed.
+7. **Keep the databases it reaches on private addresses.** The deny list blocks loopback and the
+   cloud metadata service already; add the ranges your network does not want probed.
+
 ## Deliberately not done
 
 - **`style-src 'unsafe-inline'`.** Solid writes style attributes; a nonce cannot cover an attribute.
   There is no inline script anywhere, so `script-src` stays `'self'`.
 - **The API reference loads Scalar from jsdelivr** with inline configuration, on a page behind a
   session. Vendoring the bundle would ship a copy of a viewer that changes weekly.
-- **No breached-password lookup.** The instance does not call out; the 12-character floor and the
-  argon2id cost are the defence.
-- **No rate limit on session mutations beyond login.** A session belongs to a person an admin
-  created; tokens, which automation holds, are limited per minute.
-- **No multi-factor authentication.** Out of scope for a tool that sits inside a network; put it
-  on the proxy if the network needs it.
+- **No breached-password lookup.** The instance does not call out; the 12-character floor, the
+  common-password list and the argon2id cost are the defence.
+- **No rate limit on a signed-in session's writes.** A session belongs to a person an admin
+  created; tokens, which automation holds, are limited per minute, and strangers share a budget.
+- **No multi-factor authentication of its own.** Out of scope for a tool that sits inside a
+  network; an instance that faces the internet puts it on the proxy, as the section above says.
 - **Snapshots are stored in the clear.** Encrypting them would protect against a copied volume and
   nothing else, and the databases they came from are in the clear on the same network.

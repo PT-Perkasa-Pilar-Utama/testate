@@ -8,6 +8,12 @@ beta line starts at 1.0, so `1.0.0-beta` sorts after every alpha in the release 
 
 ### New
 
+**Ready for a public address, if it must have one.** Strangers share 120 requests a minute per
+address under the API, health excepted. The session cookie carries the `__Host-` prefix behind
+TLS on a root-path deploy. A new password cannot be on the common list.
+`docs/SECURITY_STANDARDS.md` maps the controls to OWASP, the IEEE secure-design flaws and IBM's
+practices, and lists what to do before exposing an instance.
+
 **One starting point per project.** Connecting a database used to take a protected init state
 of its own, so a project with four databases had four roots and a comparison could pair two of
 them by mistake. A project now holds one `init` state that gains each database's baseline as it

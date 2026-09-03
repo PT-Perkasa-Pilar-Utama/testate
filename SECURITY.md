@@ -33,8 +33,9 @@ its attack surface is the interesting part of this document.
   `TESTATE_DATA_DIR`. Snapshots hold your test data in the clear; protect that volume the way
   you protect the databases it came from.
 
-The controls behind this, checked against the OWASP lists, are in
-[docs/OWASP.md](docs/OWASP.md).
+The controls behind this, checked against the OWASP lists, the IEEE secure-design flaws and IBM's
+secure engineering practices, are in [docs/SECURITY_STANDARDS.md](docs/SECURITY_STANDARDS.md),
+which also says what has to be true before an instance faces the internet.
 
 Reports in scope: anything that lets a role do more than the table in the README says, reads a
 sealed value back, reaches a denied address, escapes a masked column, or writes through a Guest
