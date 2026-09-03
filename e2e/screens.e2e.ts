@@ -116,6 +116,11 @@ test.describe("README screens", () => {
     await page.getByPlaceholder("save as...").fill("rows after a reset");
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.getByRole("button", { name: "rows after a reset" })).toBeVisible();
+    // A click on a saved query is a call of it: the editor takes its text and the rows come back.
+    await page.getByLabel("SQL").fill("");
+    await page.getByRole("button", { name: "rows after a reset" }).click();
+    await expect(page.getByLabel("SQL")).toHaveValue(`SELECT * FROM ${table} ORDER BY 1 LIMIT 5`);
+    await expect(page.getByText(/\d+ row\(s\)/)).toBeVisible();
     await fit(page);
     await page.screenshot({ path: join(SHOTS, "query.png") });
     await page.getByRole("button", { name: "Delete" }).first().click();

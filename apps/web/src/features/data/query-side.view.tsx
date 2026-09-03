@@ -36,7 +36,8 @@ export default function SidePanel(props: { presenter: QueryPresenter }): JSX.Ele
                   <button
                     type="button"
                     class="cursor-pointer hover:underline"
-                    onClick={() => props.presenter.load(query)}
+                    title="Run this query"
+                    onClick={() => void props.presenter.load(query)}
                   >
                     {query.name}
                   </button>
@@ -84,8 +85,8 @@ export default function SidePanel(props: { presenter: QueryPresenter }): JSX.Ele
                   <button
                     type="button"
                     class="cursor-pointer text-left hover:underline"
-                    title="Load into the editor"
-                    onClick={() => props.presenter.loadHistory(row)}
+                    title="Run this query again"
+                    onClick={() => void props.presenter.loadHistory(row)}
                   >
                     <code class="block truncate">{row.query_text}</code>
                   </button>

@@ -52,9 +52,10 @@ export type QueryPresenter = {
   saveName: () => string;
   setSaveName: (name: string) => void;
   save: () => Promise<void>;
-  load: (query: SavedQuery) => void;
-  /** A past run back in the editor, SQL text or the Mongo operation it stored as JSON. */
-  loadHistory: (row: HistoryRow) => void;
+  /** A saved query into the editor, and run: a click on it is a call of it. */
+  load: (query: SavedQuery) => Promise<void>;
+  /** A past run back in the editor and run again, SQL text or the Mongo operation stored as JSON. */
+  loadHistory: (row: HistoryRow) => Promise<void>;
   removeSaved: (id: string) => Promise<void>;
   history: Refreshable<HistoryRow[]>;
   running: Refreshable<RunningQuery[]>;
@@ -210,6 +211,24 @@ export function createQueryPresenter(slug: () => string, id: () => string): Quer
    * screen exists to report what is wrong with a query, and a friendlier sentence would say less.
    */
   const request = (): QueryRequest => buildRequest(isMongo(), sql(), mongo(), rowCap());
+  const run = (): Promise<void> => {
+    setError(null);
+    setBusy(true);
+    let body: QueryRequest;
+    try {
+      body = request();
+    } catch (cause: unknown) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+      setBusy(false);
+      return Promise.resolve();
+    }
+    return runQuery(slug(), id(), body);
+  };
+  const take = (draft: Draft): Promise<void> => {
+    setSql(draft.sql);
+    setMongoSignal(draft.mongo);
+    return run();
+  };
   return {
     adapter,
     sample: async () => {
@@ -238,19 +257,7 @@ export function createQueryPresenter(slug: () => string, id: () => string): Quer
     result,
     error,
     busy,
-    run: () => {
-      setError(null);
-      setBusy(true);
-      let body: QueryRequest;
-      try {
-        body = request();
-      } catch (cause: unknown) {
-        setError(cause instanceof Error ? cause.message : String(cause));
-        setBusy(false);
-        return Promise.resolve();
-      }
-      return runQuery(slug(), id(), body);
-    },
+    run,
     exportAs: (format) => {
       const staticSlug = slug();
       const staticId = id();
@@ -290,16 +297,8 @@ export function createQueryPresenter(slug: () => string, id: () => string): Quer
         showToast("Query saved", "success");
       });
     },
-    load: (query) => {
-      const draft = draftOf(query.body);
-      setSql(draft.sql);
-      setMongoSignal(draft.mongo);
-    },
-    loadHistory: (row) => {
-      const draft = draftOfText(row.query_text);
-      setSql(draft.sql);
-      setMongoSignal(draft.mongo);
-    },
+    load: (query) => take(draftOf(query.body)),
+    loadHistory: (row) => take(draftOfText(row.query_text)),
     removeSaved: (queryId) => {
       const staticSlug = slug();
       const staticId = id();
