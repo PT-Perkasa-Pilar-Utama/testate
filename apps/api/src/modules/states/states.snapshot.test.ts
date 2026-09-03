@@ -134,6 +134,46 @@ describe("init snapshot job", () => {
     expect(blob.ref_count).toBe(2);
   });
 
+  it("a failed add leaves the starting point ready for the databases it already holds", async () => {
+    const harness = await createAdaptersHarness();
+    const first = await createSettled(harness, PG);
+    const broken = await createUnsettled(harness, {
+      ...PG,
+      name: "broken-db",
+      config: { ...PG.config, database: "gone" },
+    });
+    expect((await harness.runtime.jobs.wait(null, broken.jobId, 5)).status).toBe("failed");
+    const state = v.parse(
+      stateRow,
+      harness.db.query("SELECT * FROM states WHERE kind = 'init'").get()
+    );
+    expect(state.status).toBe("ready");
+    expect(requireInit(harness, first.id).manifest.tables).toHaveLength(2);
+  });
+
+  it("a retarget that changes the data reclaims the blobs nothing references any more", async () => {
+    const harness = await createAdaptersHarness();
+    const adapter = await createSettled(harness, PG);
+    const before = firstBlob(requireInit(harness, adapter.id));
+    const other = shopDatabase();
+    other.set("public.customers", [{ id: 9, email: "z@x.io" }]);
+    harness.databases.set("other", other);
+    const retarget = await harness.adapters.update(
+      harness.qa,
+      "shop",
+      adapter.id,
+      { config: { ...PG.config, database: "other" } },
+      TEST_META
+    );
+    expect(
+      (await harness.runtime.jobs.wait(null, requireJob(retarget.init_job).id, 5)).error
+    ).toBeNull();
+    expect(harness.db.query("SELECT COUNT(*) AS n FROM blobs WHERE hash = ?").get(before)).toEqual({
+      n: 0,
+    });
+    expect(await harness.blobs.has(before)).toBe(false);
+  });
+
   it("refuses a new state when the project is at its quota", async () => {
     const harness = await createAdaptersHarness();
     harness.projectsRepo.update(PROJECT_ID, { quota_bytes: 0 }, "2026-08-29T00:00:00.000Z");

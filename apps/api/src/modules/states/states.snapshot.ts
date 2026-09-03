@@ -252,6 +252,16 @@ function resolveTarget(deps: SnapshotDeps, job: JobRunnerContext["job"]): Target
 }
 
 /**
+ * A retarget left the old entry's blobs with no reference; the same sweep a state delete runs
+ * reclaims them now, or nothing ever would.
+ */
+async function reclaim(deps: SnapshotDeps, released: string[]): Promise<void> {
+  const orphans = deps.states.unpinnedOrphans(released);
+  for (const hash of orphans) await deps.blobs.delete(hash);
+  deps.states.forgetBlobs(orphans);
+}
+
+/**
  * The `snapshot` job: every adapter at one instant each, blobs pinned, manifests committed in one
  * transaction, HEAD moved to the state (08 §8.3, 15 §15.3).
  * Adapters on distinct targets run in parallel up to `adapterLanes`; one target stays sequential.
@@ -282,7 +292,12 @@ export function createSnapshotRunner(deps: SnapshotDeps): JobRunner {
           return manifest;
         }
       );
-      const size = deps.states.commitManifest(target.stateId, manifests, deps.now().toISOString());
+      const { size, released } = deps.states.commitManifest(
+        target.stateId,
+        manifests,
+        deps.now().toISOString()
+      );
+      await reclaim(deps, released);
       if (movesHead(deps, projectId, target.kind)) {
         deps.projects.setHead(projectId, target.stateId, "at_state", deps.now().toISOString());
       }
@@ -312,7 +327,11 @@ export function createSnapshotRunner(deps: SnapshotDeps): JobRunner {
         },
       };
     } catch (cause: unknown) {
-      deps.states.setStatus(target.stateId, "failed", deps.now().toISOString());
+      // A state that already holds other databases stays ready for them: one bad credential on a
+      // fifth database must not lock a project's starting point, and with it every checkout,
+      // export, diff and deletion, behind a "failed" it did not earn. The job carries the failure.
+      if (deps.states.manifestsOf(target.stateId).length === 0)
+        deps.states.setStatus(target.stateId, "failed", deps.now().toISOString());
       throw cause;
     } finally {
       deps.states.releasePins(job.id);

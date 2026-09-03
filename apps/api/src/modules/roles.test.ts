@@ -105,6 +105,18 @@ const A = `${P}/adapters/a1`;
 /** Every route worth asserting a role on, with the lowest role that may reach it. */
 const MATRIX: [string, string, Role][] = [
   ["GET", "/projects", "viewer"],
+  ["GET", "/projects/defaults", "qa"],
+  ["GET", "/adapter-hosts", "qa"],
+  ["POST", `${P}/adapters/test`, "qa"],
+  ["POST", `${A}/retest`, "qa"],
+  ["GET", `${A}/deletion-plan`, "qa"],
+  ["POST", `${A}/deletion`, "qa"],
+  ["POST", `${P}/checkouts/preflight`, "qa"],
+  ["POST", `${P}/checkouts/c1/retry`, "qa"],
+  ["GET", `${P}/checkouts/c1/counters`, "viewer"],
+  ["POST", `${P}/checkouts/c1/repair-counters`, "qa"],
+  ["GET", `${P}/uploads/u1/archive-manifest`, "qa"],
+  ["POST", "/tools/random", "viewer"],
   ["POST", "/projects", "qa"],
   ["PATCH", P, "qa"],
   ["POST", `${P}/deletion`, "admin"],

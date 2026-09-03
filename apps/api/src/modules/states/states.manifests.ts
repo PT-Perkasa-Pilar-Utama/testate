@@ -20,6 +20,8 @@ export type AdapterManifest = {
 };
 
 export type InitManifest = { state_id: string; state_name: string; manifest: AdapterManifest };
+/** What a commit answers: the state's size, and the blobs a replaced entry left with no reference. */
+export type Committed = { size: number; released: string[] };
 
 export type ManifestStore = {
   /** Records a written blob and pins it to the job until the manifest commits (15 §15.3). */
@@ -30,7 +32,7 @@ export type ManifestStore = {
    * size. An adapter the state already holds is replaced, its old blobs' references let go: that
    * is how a retargeted database gets a fresh entry in the project's one init state.
    */
-  commitManifest(stateId: string, manifests: AdapterManifest[], at: string): number;
+  commitManifest(stateId: string, manifests: AdapterManifest[], at: string): Committed;
   /** The project's init state, the one root of its history; null before the first database. */
   initOf(projectId: string): { id: string; name: string } | null;
   /** The latest ready `init` state that covers an adapter (13 §13.7). */
@@ -65,24 +67,28 @@ const tablesRow = v.object({ tables: v.string() });
  * the state still holds is touched. A no-op when the entry is not there, which is every first
  * snapshot.
  */
-function forget(db: MetadataDb, stateId: string, adapterId: string): void {
+function forget(db: MetadataDb, stateId: string, adapterId: string): string[] {
   const row = db
     .query("SELECT tables FROM state_adapters WHERE state_id = ? AND adapter_id = ?")
     .get(stateId, adapterId);
-  if (row === null) return;
+  if (row === null) return [];
   const tables = v.parse(v.array(manifestTableSchema), JSON.parse(v.parse(tablesRow, row).tables));
   db.query("DELETE FROM state_adapters WHERE state_id = ? AND adapter_id = ?").run(
     stateId,
     adapterId
   );
+  const released: string[] = [];
   for (const table of tables) {
     db.query("UPDATE blobs SET ref_count = ref_count - 1 WHERE hash = ?").run(table.blob_hash);
+    const left = db.query("SELECT ref_count AS n FROM blobs WHERE hash = ?").get(table.blob_hash);
+    if (left === null || v.parse(sizeRow, left).n <= 0) released.push(table.blob_hash);
   }
   db.query(
     `DELETE FROM state_blobs WHERE state_id = ? AND blob_hash NOT IN (
        SELECT value ->> 'blob_hash' FROM state_adapters sa, json_each(sa.tables) WHERE sa.state_id = ?
      )`
   ).run(stateId, stateId);
+  return released;
 }
 
 function toManifest(parsed: v.InferOutput<typeof manifestRow>): AdapterManifest {
@@ -120,8 +126,9 @@ export function createManifestStore(db: MetadataDb): ManifestStore {
     commitManifest(stateId, manifests, at) {
       return db.transaction(() => {
         const hashes = new Set<string>();
+        const released: string[] = [];
         for (const manifest of manifests) {
-          forget(db, stateId, manifest.adapter_id);
+          released.push(...forget(db, stateId, manifest.adapter_id));
           db.query(
             `INSERT INTO state_adapters (state_id, adapter_id, adapter_name, engine, engine_version, fingerprint,
                consistency, removed, tables, introspection, row_count, byte_count, warnings)
@@ -160,7 +167,8 @@ export function createManifestStore(db: MetadataDb): ManifestStore {
         db.query(
           "UPDATE states SET status = 'ready', size_bytes = ?, updated_at = ? WHERE id = ?"
         ).run(size, at, stateId);
-        return size;
+        // A blob the new entry wrote again is not released: its count went down and back up.
+        return { size, released: released.filter((hash) => !hashes.has(hash)) };
       })();
     },
     initOf(projectId) {

@@ -80,7 +80,7 @@ export function createArchiveImportRunner(deps: ArchiveImportDeps): JobRunner {
         deps.states.recordBlob(put.hash, put.size, job.id, deps.now().toISOString());
       }
       const manifests = resolveManifests(deps, archive, payload.normalizer);
-      const size = deps.states.commitManifest(
+      const { size } = deps.states.commitManifest(
         payload.state_id,
         manifests,
         deps.now().toISOString()
