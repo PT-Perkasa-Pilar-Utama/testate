@@ -7,6 +7,7 @@ import Pending from "@/components/pending.tsx";
 import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
 import { Menu, MenuItem } from "@/components/menu.tsx";
+import { navigate } from "@/lib/router.ts";
 import { Cell, EmptyRow, Head, Row, Table, TableToolbar } from "@/components/table.tsx";
 import FixtureDialog from "./fixture.view.tsx";
 import { NUMERIC_TYPE, cellText, createGridPresenter } from "./grid.presenter.ts";
@@ -93,6 +94,11 @@ export default function GridView(props: { slug: string; id: string; table: strin
               slug={props.slug}
               id={props.id}
               table={props.table}
+              onCollection={(name) =>
+                navigate(
+                  `/projects/${encodeURIComponent(props.slug)}/adapters/${encodeURIComponent(props.id)}/tables/${encodeURIComponent(name)}`
+                )
+              }
             />
           }
         >

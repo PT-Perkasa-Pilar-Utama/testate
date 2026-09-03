@@ -5,19 +5,21 @@ import { For, Show, createMemo, createSignal } from "solid-js";
 import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
 import { TableToolbar } from "@/components/table.tsx";
-import { navigate } from "@/lib/router.ts";
 import { Column, Empty, Item } from "./document.columns.view.tsx";
 import { at, documentId, entriesOf, fitting } from "./document.presenter.ts";
 import { ExportLinks, FilterBar } from "./grid-toolbar.view.tsx";
 import type { GridPresenter } from "./grid.presenter.ts";
 
-type Props = { presenter: GridPresenter; slug: string; id: string; table: string };
+type Props = {
+  presenter: GridPresenter;
+  slug: string;
+  id: string;
+  table: string;
+  /** What a click on a collection does: the grid route navigates, the adapter page swaps in place. */
+  onCollection: (name: string) => void;
+};
 /** Where the reader is: a document, and the keys opened inside it, one column each. */
 type Pick = { id: string | null; path: string[] };
-
-function collectionPath(props: Props, name: string): string {
-  return `/projects/${encodeURIComponent(props.slug)}/adapters/${encodeURIComponent(props.id)}/tables/${encodeURIComponent(name)}`;
-}
 
 /** The path bar: every level opened so far, each a way back to it. */
 function PathBar(props: {
@@ -33,13 +35,7 @@ function PathBar(props: {
       class="flex items-center gap-1 border-b border-line px-3 py-2 font-mono text-xs text-muted"
     >
       <Icon name="database" class="h-3.5 w-3.5 shrink-0" />
-      <button
-        type="button"
-        class={crumb}
-        onClick={() => navigate(`/projects/${props.browser.slug}/adapters/${props.browser.id}`)}
-      >
-        {props.browser.presenter.adapter.value().name}
-      </button>
+      <span class="truncate">{props.browser.presenter.adapter.value().name}</span>
       <span aria-hidden="true">›</span>
       <button type="button" class={crumb} onClick={() => props.onJump(-1)}>
         {props.browser.table}
@@ -175,7 +171,7 @@ export default function DocumentBrowser(props: Props): JSX.Element {
       <div class="overflow-hidden rounded-lg bg-surface ring ring-line">
         <PathBar browser={props} picked={picked()} path={path()} onJump={jump} />
         <div class="flex divide-x divide-line overflow-x-auto">
-          <Column title="Collections" icon="folder">
+          <Column title={props.presenter.adapter.value().name} icon="database">
             <For each={props.presenter.collections()}>
               {(name) => (
                 <Item
@@ -183,7 +179,7 @@ export default function DocumentBrowser(props: Props): JSX.Element {
                   mono
                   selected={name === props.table}
                   opens
-                  onClick={() => navigate(collectionPath(props, name))}
+                  onClick={() => props.onCollection(name)}
                 />
               )}
             </For>

@@ -25,10 +25,11 @@ export function Column(props: {
       ]}
       aria-label={props.title}
     >
-      <h3 class="flex items-center gap-2 border-b border-line px-3 py-2.5 text-sm font-medium text-heading">
+      {/* A label, not a heading: the section carries the name, and the page keeps its one h1. */}
+      <div class="flex items-center gap-2 border-b border-line px-3 py-2.5 text-sm font-medium text-heading">
         <Icon name={props.icon} class="h-3.5 w-3.5 shrink-0 text-muted" />
         <span class="truncate">{props.title}</span>
-      </h3>
+      </div>
       <div class="min-h-0 flex-1 overflow-y-auto py-1">{props.children}</div>
       <Show when={props.foot}>
         <div class="border-t border-line px-3 py-2">{props.foot}</div>
@@ -51,8 +52,10 @@ export function Item(props: {
     <button
       type="button"
       class={[
-        "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-fill",
-        props.selected ? "bg-fill text-heading" : "text-body",
+        "flex w-full items-center gap-2 border-l-2 px-3 py-1.5 text-left text-sm hover:bg-fill",
+        props.selected
+          ? "border-accent bg-accent/15 font-medium text-heading"
+          : "border-transparent text-body",
         props.mono === true ? "font-mono" : "",
       ]}
       aria-current={props.selected ? "true" : undefined}

@@ -90,6 +90,13 @@ test.describe("qa stories", () => {
     await expect(page.getByRole("heading", { name: "Collections" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Diagram" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Import a file" })).toHaveCount(0);
+    // The collections are browsed on this page: a pick swaps the documents and keeps the URL.
+    await page.getByRole("button", { name: "orders", exact: true }).click();
+    await expect(page.getByRole("region", { name: "orders", exact: true })).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/adapters/${mongo.id}$`));
+    await expect(page.getByRole("region", { name: "Fields of the document" })).toContainText(
+      "_id:"
+    );
     const table = await firstTable(mongo.id);
     await page.goto(`/projects/demo/adapters/${mongo.id}/tables/${encodeURIComponent(table)}`);
     await settle(page);

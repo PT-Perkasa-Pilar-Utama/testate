@@ -4,7 +4,7 @@ import Pending from "@/components/pending.tsx";
 import PageHeader from "@/components/page-header.tsx";
 import { formatWhen } from "@/lib/format.ts";
 import { Loading, Match, Show, Switch, createSignal } from "solid-js";
-import type { Adapter } from "@testate/shared";
+import type { Adapter, Introspection } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
@@ -20,6 +20,8 @@ const TABLE_VIEWS = [
 type TableView = (typeof TABLE_VIEWS)[number]["id"];
 
 import Erd from "../erd/erd.view.tsx";
+import DocumentBrowser from "../data/document.view.tsx";
+import { createGridPresenter, qualifiedName } from "../data/grid.presenter.ts";
 import { FilesView, JunctionToolbar, TablesView } from "./adapter.junction.view.tsx";
 import EditDialog from "./adapter.edit.view.tsx";
 import { createAdapterPresenter } from "./adapter.presenter.ts";
@@ -112,6 +114,42 @@ function DeleteDialog(props: { presenter: AdapterPresenter; name: string }): JSX
   );
 }
 
+/**
+ * A document store's collections are browsed here, in place: picking one changes the rows, not
+ * the page. The grid route still serves a deep link to one collection.
+ */
+function CollectionBrowser(props: {
+  slug: string;
+  id: string;
+  schema: Introspection;
+}): JSX.Element {
+  const [chosen, setChosen] = createSignal<string | null>(null);
+  const names = (): string[] => props.schema.tables.map(qualifiedName);
+  const collection = (): string => chosen() ?? names()[0] ?? "";
+  const grid = createGridPresenter(
+    () => props.slug,
+    () => props.id,
+    collection
+  );
+  return (
+    <Show
+      when={collection() !== ""}
+      fallback={<p class="py-6 text-center text-sm text-muted">No collections yet.</p>}
+    >
+      <DocumentBrowser
+        presenter={grid}
+        slug={props.slug}
+        id={props.id}
+        table={collection()}
+        onCollection={(name) => {
+          grid.clearFilters();
+          setChosen(name);
+        }}
+      />
+    </Show>
+  );
+}
+
 export default function AdapterView(props: { slug: string; id: string }): JSX.Element {
   const presenter = createAdapterPresenter(
     () => props.slug,
@@ -147,14 +185,13 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
                       variant="segmented"
                     />
                   </Show>
+                  <Show when={presenter.adapter.value().tier === "document"}>
+                    <CollectionBrowser slug={props.slug} id={props.id} schema={schema()} />
+                  </Show>
                   <Show
-                    when={tableView() === "list" || presenter.adapter.value().tier !== "tabular"}
+                    when={tableView() === "list" && presenter.adapter.value().tier === "tabular"}
                   >
-                    <TablesView
-                      schema={schema()}
-                      base={base()}
-                      documents={presenter.adapter.value().tier === "document"}
-                    />
+                    <TablesView schema={schema()} base={base()} />
                   </Show>
                   <Show
                     when={tableView() === "diagram" && presenter.adapter.value().tier === "tabular"}

@@ -49,6 +49,8 @@ export type GridPresenter = {
   exportUrl: (format: "csv" | "json") => string;
   addFilter: (filter: Filter) => void;
   removeFilter: (index: number) => void;
+  /** Back to page one with no filter: what a switch of collection calls. */
+  clearFilters: () => void;
   limit: () => PageSize;
   setLimit: (limit: PageSize) => void;
   /** The cursors behind the current page, so "previous" replays the one before. */
@@ -220,6 +222,10 @@ export function createGridPresenter(
       reset();
     },
     limit,
+    clearFilters: () => {
+      setFilters([]);
+      reset();
+    },
     setLimit: (next) => {
       setLimitSignal(next);
       reset();

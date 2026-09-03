@@ -61,12 +61,7 @@ function qualified(table: { schema: string | null; name: string }): string {
   return table.schema === null ? table.name : `${table.schema}.${table.name}`;
 }
 
-export function TablesView(props: {
-  schema: Introspection;
-  base: string;
-  /** A document store: collections and fields, no primary key to speak of. */
-  documents?: boolean | undefined;
-}): JSX.Element {
+export function TablesView(props: { schema: Introspection; base: string }): JSX.Element {
   const tablePath = (name: string): string => `${props.base}/tables/${encodeURIComponent(name)}`;
   const open = (event: MouseEvent, name: string): void => {
     event.preventDefault();
@@ -76,12 +71,10 @@ export function TablesView(props: {
     <Table>
       <thead>
         <tr>
-          <Head>{props.documents === true ? "Collection" : "Table"}</Head>
-          <Head numeric>{props.documents === true ? "Documents (est.)" : "Rows (est.)"}</Head>
-          <Head numeric>{props.documents === true ? "Fields" : "Columns"}</Head>
-          <Show when={props.documents !== true}>
-            <Head>Primary key</Head>
-          </Show>
+          <Head>Table</Head>
+          <Head numeric>Rows (est.)</Head>
+          <Head numeric>Columns</Head>
+          <Head>Primary key</Head>
         </tr>
       </thead>
       <tbody>
@@ -110,11 +103,9 @@ export function TablesView(props: {
                 </Cell>
                 <Cell numeric>{table.row_estimate}</Cell>
                 <Cell numeric>{table.columns.length}</Cell>
-                <Show when={props.documents !== true}>
-                  <Cell>
-                    <Truncated>{table.primary_key?.join(", ") ?? "none"}</Truncated>
-                  </Cell>
-                </Show>
+                <Cell>
+                  <Truncated>{table.primary_key?.join(", ") ?? "none"}</Truncated>
+                </Cell>
               </Row>
             )}
           </For>

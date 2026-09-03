@@ -38,3 +38,4 @@ slim.report.json
 
 # compiled binaries (scripts/binary/build-binaries.ts)
 .bin-build
+.claude/worktrees/
