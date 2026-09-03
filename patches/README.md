@@ -1,45 +1,8 @@
 # Patched dependencies
 
-## `@solidjs/signals@2.0.0-rc.4`
-
-One line in `commitPendingNodes`, in each of the three builds (`dist/dev.js`,
-`dist/prod/core/scheduler.js`, `dist/node.cjs`; the last two with mangled field names, `_transition`
-as `_e` and `O`):
-
-```js
-const node = pendingNodes[i];
-commitPendingNode(node);
-node._transition = null;
-```
-
-**What it fixes.** A node's `_transition` stamp is cleared only for optimistic nodes and in one
-async settle. Everything else relies on `reassignPendingTransition`, which runs over
-`batch._pendingNodes` when the transition completes. `commitPendingNodes` drains that list without
-clearing anything, so a node committed by an earlier drain keeps pointing at a transition that later
-finishes.
-
-`setSignal` then re-enters that stamp before it discovers a write changes nothing, and a `Loading`
-boundary rewrites the same flag on every pass of a drain. So a write that changes nothing re-arms a
-transition that can never complete again, and `flush()` never ends. The dev build throws "Potential
-Infinite Loop Detected" at 100,000 passes. The production scheduler runs the same loop with no
-counter, so it hangs: a frozen tab and a pinned core, on the data grid.
-
-**Evidence.** `docs/upstream-solid-flush-loop.md` holds the instrumentation record. Solid's own
-suite passes with and without the change (114 files, 1432 tests). Over our browser crawl, scoring
-runaways, `RangeError` and every page error: unpatched, the condition arose in 5 of 10 runs and all
-5 span; patched, 12 of 12 runs were clean and the condition never arose at all.
-
-**Do not reinvent this.** Two other repairs were tried and both are wrong. Refusing the finished
-transition inside `initTransition` opens a fresh batch instead and the drain still spins. Clearing
-the stamp at the write in `setSignal` stops the spin but corrupts the pending-node bookkeeping,
-because the fresh ambient batch aliases the dead transition's arrays and the adoption pass then
-pushes into the array it is iterating (`RangeError: Invalid array length`). That second one was
-briefly shipped here and reverted.
-
-**Ceiling and upgrade path.** Submitted upstream as `solidjs/solid#3143`, which closes
-`solidjs/solid#3140`. Drop this patch when a release carries the fix. On any `@solidjs/signals`
-upgrade `bun install` will fail to apply it, which is the signal to check whether it is still needed
-rather than to force it through.
+One patch, and it is here because the package's peer range is wrong rather than because its code
+is. Solid's own was removed on 2026-09-03: `@solidjs/signals@2.0.0-rc.6` ships the fix upstream
+(`solidjs/solid#3143`), and rc.5 carried it too.
 
 ## `@formisch/solid@1.0.0`
 
@@ -96,3 +59,29 @@ browser suite does, and a rejected password comes back as a banner rather than a
 **Ceiling and upgrade path.** Drop this patch when Formisch ships a Solid 2 build; the peer range
 is the thing to watch. `bun install` failing to apply it after an upgrade is the signal to check
 whether the two shims are still needed rather than to force it through.
+
+## The `overrides` block in the root `package.json`
+
+```json
+"overrides": { "solid-js": "2.0.0-rc.6", "@solidjs/signals": "2.0.0-rc.6" }
+```
+
+The same wrong peer range, spending a second time. Formisch asks for `solid-js >=1.6 <2`, and
+while the app sat on rc.4 nothing showed: Bun hoisted the one copy and every package shared it.
+Moving the app to rc.6 changed that. Bun stopped hoisting, gave Formisch a nested `solid-js@rc.4`
+of its own, and pulled `@solidjs/signals@rc.4` under it.
+
+Two copies of signals is two reactive graphs. A signal made in a form belongs to a different
+module instance from the one every other screen reads, so nothing that crosses that line updates,
+and it fails quietly rather than loudly. The old bug rides along too: the nested copy is
+unpatched, and this repo's patch for it is gone because rc.6 fixed it upstream.
+
+So the check after any Solid bump is one line, and it is not "does it build":
+
+```sh
+ls node_modules/.bun | grep -E 'solidjs\+signals|^solid-js@'
+```
+
+One entry each. Two means the override stopped doing its job. `bun install` alone will not tell
+you: it reported "no changes" while `node_modules` still held the old tree, and only a clean
+install made the disk match the lockfile.

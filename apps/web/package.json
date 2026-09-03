@@ -10,9 +10,9 @@
   },
   "dependencies": {
     "@formisch/solid": "1.0.0",
-    "@solidjs/web": "2.0.0-rc.4",
+    "@solidjs/web": "2.0.0-rc.6",
     "@testate/shared": "workspace:*",
-    "solid-js": "2.0.0-rc.4",
+    "solid-js": "2.0.0-rc.6",
     "valibot": "1.4.2"
   },
   "devDependencies": {
