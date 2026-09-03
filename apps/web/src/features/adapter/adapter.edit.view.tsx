@@ -25,19 +25,29 @@ import type { AdapterPresenter } from "./adapter.presenter.ts";
 // plan.restoreMode and drops the transaction for it.
 const RESTORE_OPTIONS = [{ value: "atomic", label: RESTORE_MODE_LABEL.atomic }] as const;
 
+/** A short line under a field, for what the label is too short to say. */
+function Hint(props: { children: JSX.Element }): JSX.Element {
+  return <p class="text-xs text-muted">{props.children}</p>;
+}
+
 function Fields(props: {
   presenter: AdapterPresenter;
   fields: EngineField[];
   prefix: string;
+  /** Rendered before the field's own label: "Read-only" makes "Read-only password". */
+  labelPrefix?: string;
   hint?: string;
 }): JSX.Element {
+  const label = (field: EngineField): string =>
+    props.labelPrefix === undefined
+      ? field.label
+      : `${props.labelPrefix} ${field.label.toLowerCase()}`;
   return (
     <For each={props.fields}>
       {(field) => (
         <label class="grid content-start gap-1.5 text-base">
-          <FieldLabel required={field.required === true}>
-            {field.label}
-            {props.hint === undefined ? "" : ` ${props.hint}`}
+          <FieldLabel required={field.required === true && props.hint === undefined}>
+            {label(field)}
           </FieldLabel>
           <Input
             required={field.required === true}
@@ -49,6 +59,7 @@ function Fields(props: {
               props.presenter.setValue(`${props.prefix}.${field.key}`, event.currentTarget.value)
             }
           />
+          <Show when={props.hint}>{(text) => <Hint>{text()}</Hint>}</Show>
         </label>
       )}
     </For>
@@ -104,16 +115,16 @@ export default function EditDialog(props: {
           <Field of={form} path={["excluded_tables"]}>
             {(field) => (
               <label class="grid content-start gap-1.5 text-base">
-                <FieldLabel required={false}>
-                  Excluded tables (comma separated; migration tables are excluded by default)
-                </FieldLabel>
+                <FieldLabel required={false}>Excluded tables</FieldLabel>
                 <InputArea
                   {...field.props}
                   rows="2"
+                  placeholder="audit_log, sessions"
                   value={field.input}
                   variant={field.errors ? "error" : "default"}
                   aria-invalid={field.errors ? "true" : undefined}
                 />
+                <Hint>Comma separated. Migration tables are excluded by default.</Hint>
                 <FieldError message={field.errors?.[0]} />
               </label>
             )}
@@ -122,38 +133,42 @@ export default function EditDialog(props: {
             <Field of={form} path={["schemas"]}>
               {(field) => (
                 <label class="grid content-start gap-1.5 text-base">
-                  <FieldLabel required={false}>
-                    Schemas (comma separated; empty = every non-system schema)
-                  </FieldLabel>
+                  <FieldLabel required={false}>Schemas</FieldLabel>
                   <Input
                     {...field.props}
+                    placeholder="public"
                     value={field.input}
                     variant={field.errors ? "error" : "default"}
                     aria-invalid={field.errors ? "true" : undefined}
                   />
+                  <Hint>Comma separated. Empty means every schema that is not the system's.</Hint>
                   <FieldError message={field.errors?.[0]} />
                 </label>
               )}
             </Field>
           </Show>
           <div class="grid gap-3 sm:grid-cols-2">
-            <Field of={form} path={["restore_mode"]}>
-              {(field) => (
-                <label class="grid content-start gap-1.5 text-base">
-                  <span>Restore mode</span>
-                  <Select
-                    options={RESTORE_OPTIONS}
-                    value={field.input ?? "atomic"}
-                    onChange={(value) => field.onInput(value)}
-                  />
-                  <FieldError message={field.errors?.[0]} />
-                </label>
-              )}
-            </Field>
+            {/* A choice with one option is not a choice: the select appears once a second mode is
+                offered (see RESTORE_OPTIONS); until then the form keeps the value it was given. */}
+            <Show when={RESTORE_OPTIONS.length > 1}>
+              <Field of={form} path={["restore_mode"]}>
+                {(field) => (
+                  <label class="grid content-start gap-1.5 text-base">
+                    <span>Restore mode</span>
+                    <Select
+                      options={RESTORE_OPTIONS}
+                      value={field.input ?? "atomic"}
+                      onChange={(value) => field.onInput(value)}
+                    />
+                    <FieldError message={field.errors?.[0]} />
+                  </label>
+                )}
+              </Field>
+            </Show>
             <Field of={form} path={["lock_timeout_ms"]}>
               {(field) => (
                 <label class="grid content-start gap-1.5 text-base">
-                  <FieldLabel required={false}>Lock timeout (ms)</FieldLabel>
+                  <FieldLabel required={false}>Lock timeout</FieldLabel>
                   <Input
                     {...field.props}
                     type="number"
@@ -163,6 +178,7 @@ export default function EditDialog(props: {
                     variant={field.errors ? "error" : "default"}
                     aria-invalid={field.errors ? "true" : undefined}
                   />
+                  <Hint>Milliseconds a restore waits for a table lock before it gives up.</Hint>
                   <FieldError message={field.errors?.[0]} />
                 </label>
               )}
@@ -177,7 +193,7 @@ export default function EditDialog(props: {
             presenter={props.presenter}
             fields={engineForm().secrets}
             prefix="secret"
-            hint="(blank keeps the sealed one)"
+            hint="Blank keeps the one on record."
           />
         </div>
         <Show when={props.adapter.kind === "database"}>
@@ -186,7 +202,8 @@ export default function EditDialog(props: {
               presenter={props.presenter}
               fields={engineForm().secrets}
               prefix="readonly"
-              hint="for read-only sessions (optional)"
+              labelPrefix="Read-only"
+              hint="Optional. A second credential, used for read-only sessions only."
             />
           </div>
         </Show>

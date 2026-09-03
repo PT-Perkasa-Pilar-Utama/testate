@@ -43,7 +43,7 @@ test.describe("adapter settings stories", () => {
     await edit.getByLabel("Name").fill(`cfg-${STAMP}-2`);
     await edit.getByLabel(/Excluded tables/).fill("contract.schema_migrations, contract.notes");
     await edit.getByLabel(/^Schemas/).fill("contract");
-    await edit.getByLabel(/Password for read-only sessions/).fill("testate");
+    await edit.getByLabel(/^Read-only password/).fill("testate");
     await edit.getByRole("button", { name: "Save adapter" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: `cfg-${STAMP}-2` })).toBeVisible();
