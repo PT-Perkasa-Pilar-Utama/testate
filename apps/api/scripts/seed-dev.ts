@@ -196,7 +196,7 @@ const listSchema = v.object({
 async function ids(
   session: Session,
   path: string
-): Promise<{ id: string; name: string; engine?: string }[]> {
+): Promise<{ id: string; name: string; engine?: string | undefined }[]> {
   return v.parse(listSchema, await (await call(session, "GET", path)).json()).data;
 }
 

@@ -13,13 +13,19 @@ const SQL_URLS = [
   ["shop-mariadb", "mysql://testate:testate@127.0.0.1:13307/shop", ""],
 ] as const;
 
+/** The shape the seed touches; `_id` is the integer the contract fixture gives an order. */
+type Order = { _id: number; total: number; status?: string; note?: string };
+
 const MONGO_URL = "mongodb://testate:testate@127.0.0.1:27017/shop?authSource=admin";
 
 /** Applies the story. Returns the engines it reached; a refused one is named, never fatal. */
 export async function applyRefundStory(say: (line: string) => void): Promise<string[]> {
   const reached: string[] = [];
   for (const [name, url, prefix] of SQL_URLS) {
-    const sql = new SQL(url);
+    // SAFETY: `allowPublicKeyRetrieval` is a documented Bun MySQL option missing from the bundled types.
+    const sql = new SQL({ url, allowPublicKeyRetrieval: true } as ConstructorParameters<
+      typeof SQL
+    >[0]);
     try {
       await sql.unsafe(`UPDATE ${prefix}orders SET total = total - 5 WHERE id = 2`);
       await sql.unsafe(`UPDATE ${prefix}customers SET balance = balance + 5 WHERE id = 1`);
@@ -39,10 +45,10 @@ export async function applyRefundStory(say: (line: string) => void): Promise<str
   try {
     const db = mongo.db("shop");
     await db
-      .collection("orders")
+      .collection<Order>("orders")
       .updateOne({ _id: 2 }, { $set: { total: 15.5, status: "refund-failed" } });
     await db
-      .collection("orders")
+      .collection<Order>("orders")
       .insertOne({ _id: 4, total: 9.99, note: "retry after the failed refund" });
     reached.push("shop-mongo");
   } catch (cause: unknown) {
