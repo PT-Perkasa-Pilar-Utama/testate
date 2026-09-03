@@ -47,7 +47,11 @@ test.describe("adapter settings stories", () => {
     await edit.getByRole("button", { name: "Save adapter" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: `cfg-${STAMP}-2` })).toBeVisible();
-    await expect(page.getByText(/read-only credential/i)).toBeVisible();
+    // On record, not only labelled: the card names the key that sealed it (story 23).
+    const readOnly = page.locator("div", {
+      has: page.getByText("Read-only password", { exact: true }),
+    });
+    await expect(readOnly.first()).toContainText("sealed under key");
     // A new host is a new target: the adapter takes a fresh init state (story 28).
     await page.getByRole("button", { name: "Edit adapter" }).click();
     await page.locator("dialog[open]").getByLabel("Host").fill("localhost");

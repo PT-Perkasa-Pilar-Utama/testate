@@ -113,8 +113,8 @@ function TableBox(props: {
  * The schema as boxes and lines, laid out from the foreign keys every time.
  *
  * No dragging and nothing stored: a saved position goes stale the moment a column is added, and
- * the layout is cheap enough to recompute. Pan with a drag, zoom with the wheel, click a table to
- * see it and one hop.
+ * the layout is cheap enough to recompute. Pan with a drag, zoom with the wheel, pick a table to
+ * see it with every table one foreign key away, in either direction.
  */
 export default function Erd(props: { tables: readonly TableSchema[] }): JSX.Element {
   const [focus, setFocus] = createSignal<string | null>(null);
@@ -145,7 +145,7 @@ export default function Erd(props: { tables: readonly TableSchema[] }): JSX.Elem
             onChange={(next) => setFocus(next === "" ? null : next)}
           />
           <Show when={focus()}>
-            <span class="text-sm text-muted">and one hop from it</span>
+            <span class="text-sm text-muted">and every table one foreign key away from it</span>
           </Show>
         </div>
         <div class="flex items-center gap-1">

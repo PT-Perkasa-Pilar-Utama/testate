@@ -37,6 +37,19 @@ describe("data feature", () => {
     expect(cellText({ a: 1 })).toBe('{"a":1}');
   });
 
+  test("a document store's Extended JSON reads as plain values in a cell", () => {
+    expect(cellText({ $numberInt: "1" })).toBe("1");
+    expect(cellText({ $numberDouble: "20.5" })).toBe("20.5");
+    expect(cellText({ $numberLong: "9007199254740993" })).toBe("9007199254740993");
+    expect(cellText({ $oid: "65f000000000000000000001" })).toBe("65f000000000000000000001");
+    expect(cellText({ $date: { $numberLong: "0" } })).toBe("1970-01-01T00:00:00.000Z");
+    expect(cellText({ items: [{ $numberInt: "2" }], id: { $oid: "ab" } })).toBe(
+      '{"items":[2],"id":"ab"}'
+    );
+    // A plain object with a dollar key that is not a wrapper stays what it is.
+    expect(cellText({ $set: { a: 1 } })).toBe('{"$set":{"a":1}}');
+  });
+
   test("a filter with no value is refused before it reaches the API, and so is a link to one", () => {
     // The API's own rule (data.handler.ts parseFilter): only null and notnull take no value.
     expect(filterNeedsValue("eq")).toBe(true);

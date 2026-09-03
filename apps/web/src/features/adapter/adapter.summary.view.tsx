@@ -64,8 +64,18 @@ export function StatusLine(props: { adapter: Adapter }): JSX.Element {
 
 /** A sealed value's fingerprint when set; a single reference to `sealed` so TypeScript can narrow
  * the `set` discriminant, which two separate `props.adapter.credential` reads would not. */
-function fingerprintOf(sealed: Adapter["credential"]): string {
-  return sealed.set ? sealed.key_fingerprint : "";
+/** What is on record about a secret: never the secret, only which key of the instance sealed it. */
+function Sealed(props: { sealed: Adapter["credential"] }): JSX.Element {
+  const on = (): { key_fingerprint: string } | null => (props.sealed.set ? props.sealed : null);
+  return (
+    <Show when={on()} fallback={<span class="text-muted">none saved</span>}>
+      {(stored) => (
+        <span>
+          sealed under key <code class="text-[0.9em]">{stored().key_fingerprint}</code>
+        </span>
+      )}
+    </Show>
+  );
 }
 
 /** The connection's identity, kept out of the way of the junction: what secret is stored and since
@@ -79,23 +89,16 @@ export function ConnectionCard(props: { adapter: Adapter }): JSX.Element {
       <h3 class="text-xs font-medium text-muted">Connection</h3>
       <dl class="grid gap-1.5 text-sm">
         <div class="flex items-center justify-between gap-4">
-          <dt class="text-muted">Credential</dt>
+          <dt class="text-muted">Password</dt>
           <dd>
-            <Show when={credential().set} fallback={<span class="text-muted">none saved</span>}>
-              <code class="text-[0.9em]">{fingerprintOf(credential())}</code>
-            </Show>
+            <Sealed sealed={credential()} />
           </dd>
         </div>
         <Show when={props.adapter.kind === "database"}>
           <div class="flex items-center justify-between gap-4">
-            <dt class="text-muted">Read-only credential</dt>
+            <dt class="text-muted">Read-only password</dt>
             <dd>
-              <Show
-                when={readonlyCredential().set}
-                fallback={<span class="text-muted">none saved</span>}
-              >
-                <code class="text-[0.9em]">{fingerprintOf(readonlyCredential())}</code>
-              </Show>
+              <Sealed sealed={readonlyCredential()} />
             </dd>
           </div>
         </Show>

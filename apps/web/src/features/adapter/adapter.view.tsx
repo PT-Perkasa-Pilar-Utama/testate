@@ -38,13 +38,19 @@ function AdminActions(props: { presenter: AdapterPresenter; adapter: Adapter }):
         <Button size="sm" variant="secondary" onClick={() => props.presenter.openEdit()}>
           Edit adapter
         </Button>
-        <Button size="sm" variant="secondary" onClick={() => void props.presenter.retest()}>
+        <Button
+          size="sm"
+          variant="secondary"
+          title="Run the connection test again: engine version, privileges, restore strategy, table count"
+          onClick={() => void props.presenter.retest()}
+        >
           Retest
         </Button>
         <Show when={a().kind === "database" && a().mode === "sandbox"}>
           <Button
             size="sm"
             variant="outline"
+            title="Refuse restores, imports and write sessions on this database; only an admin can allow them again"
             onClick={() => void props.presenter.setMode("read_only")}
           >
             Make read-only
@@ -54,6 +60,7 @@ function AdminActions(props: { presenter: AdapterPresenter; adapter: Adapter }):
           <Button
             size="sm"
             variant="outline"
+            title="Back to sandbox: restores, imports and write sessions allowed again, with its own audit event"
             onClick={() => void props.presenter.setMode("sandbox")}
           >
             Allow restores

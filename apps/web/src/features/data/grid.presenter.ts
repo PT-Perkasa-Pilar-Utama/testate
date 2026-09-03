@@ -2,6 +2,8 @@ import { createMemo, createSignal } from "solid-js";
 import type { Adapter, JsonValue, RowsPage, TableSchema } from "@testate/shared";
 import * as v from "valibot";
 
+import { plain } from "../../lib/plain-value.ts";
+
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { adapterModel } from "../adapter/adapter.model.ts";
@@ -79,10 +81,14 @@ export function filterText(filter: Filter): string {
   return `${filter.column}:${filter.op}:${filter.value}`;
 }
 
-/** A cell for the grid: strings raw, everything else as JSON, null as the word. */
+/**
+ * A cell for the grid: strings raw, everything else as JSON, null as the word. A document
+ * store's Extended JSON is unwrapped first, so an id reads as its hex and a number as digits.
+ */
 export function cellText(value: JsonValue | undefined): string {
   if (value === undefined || value === null) return "NULL";
-  return v.is(v.string(), value) ? value : JSON.stringify(value);
+  const shown = plain(value);
+  return v.is(v.string(), shown) ? shown : JSON.stringify(shown);
 }
 
 export function qualifiedName(table: { schema: string | null; name: string }): string {
