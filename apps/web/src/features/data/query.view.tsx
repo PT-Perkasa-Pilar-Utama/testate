@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import AdapterBreadcrumbs from "@/features/adapter/adapter.crumb.view.tsx";
+import SubScreen from "@/features/adapter/adapter.subscreen.view.tsx";
 import { Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
@@ -128,11 +128,13 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
   };
   return (
     <section class="grid gap-4">
-      <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf="query console" />
-      <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-heading">
-        <Icon name="terminal" class="h-4 w-4 text-muted" />
-        Query console
-      </h2>
+      <SubScreen
+        slug={props.slug}
+        id={props.id}
+        leaf="query console"
+        icon="terminal"
+        title="Query console"
+      />
       <Loading fallback={<Pending>Loading adapter...</Pending>}>
         <div class="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
           <form class="grid gap-3" onSubmit={onSubmit}>

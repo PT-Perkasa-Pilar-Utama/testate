@@ -1,6 +1,8 @@
 import type { JSX } from "@solidjs/web";
 import { Show } from "solid-js";
 
+import Icon from "./icon.tsx";
+
 /**
  * A field's label, saying whether you have to fill it in.
  *
@@ -17,10 +19,24 @@ import { Show } from "solid-js";
 export default function FieldLabel(props: {
   children: JSX.Element;
   required: boolean;
+  /** One sentence for a rule the name cannot carry, behind a (?) beside it. */
+  help?: string | undefined;
 }): JSX.Element {
   return (
     <span class="flex items-center gap-1.5">
       {props.children}
+      <Show when={props.help}>
+        {(text) => (
+          <span
+            class="inline-flex cursor-help text-muted"
+            title={text()}
+            aria-label={text()}
+            role="img"
+          >
+            <Icon name="circle-question-mark" class="h-3.5 w-3.5" />
+          </span>
+        )}
+      </Show>
       <Show
         when={props.required}
         fallback={

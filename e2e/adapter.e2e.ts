@@ -58,7 +58,7 @@ test.describe("adapter settings stories", () => {
     await page.getByRole("button", { name: "Edit adapter" }).click();
     const edit = page.locator("dialog[open]");
     // Migration tables are excluded by the engines themselves (story 25); the list holds extras.
-    await expect(edit.getByText(/always excluded/)).toBeVisible();
+    await expect(edit.getByTitle(/always excluded/)).toBeVisible();
     await edit.getByLabel("Name").fill(`cfg-${STAMP}-2`);
     await edit.getByLabel(/Excluded tables/).fill("contract.schema_migrations, contract.notes");
     await edit.getByLabel(/^Schemas/).fill("contract");

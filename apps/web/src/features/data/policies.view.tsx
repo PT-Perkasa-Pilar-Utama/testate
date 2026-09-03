@@ -1,6 +1,6 @@
 import { Field, Form, createForm, reset } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import AdapterBreadcrumbs from "@/features/adapter/adapter.crumb.view.tsx";
+import SubScreen from "@/features/adapter/adapter.subscreen.view.tsx";
 import { For, Loading, Show, createEffect, createSignal } from "solid-js";
 import type { ColumnPolicy, TableSchema } from "@testate/shared";
 import { policyFormSchema } from "@testate/shared";
@@ -12,7 +12,6 @@ import { onceSettled } from "@/lib/form.ts";
 import Button from "@/components/button.tsx";
 import FormDialog from "@/components/form-dialog.tsx";
 import EmptyState from "@/components/empty-state.tsx";
-import Icon from "@/components/icon.tsx";
 import Select from "@/components/select.tsx";
 import Switch from "@/components/switch.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
@@ -188,17 +187,14 @@ export default function PoliciesView(props: { slug: string; id: string }): JSX.E
     });
   return (
     <section class="grid gap-4">
-      <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf="column masks" />
-      <div class="grid gap-1.5">
-        <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-heading">
-          <Icon name="shield" class="h-4 w-4 text-muted" />
-          Column masks
-        </h2>
-        <p class="max-w-prose text-sm text-muted">
-          A mask hides a column from Guests and agents. They see ***. Testers and Administrators see
-          the value. The mask applies to the grid, diffs, exports, fixtures, and the AI agent.
-        </p>
-      </div>
+      <SubScreen
+        slug={props.slug}
+        id={props.id}
+        leaf="column masks"
+        icon="shield"
+        title="Column masks"
+        description="A mask hides a column from Guests and agents. They see ***. Testers and Administrators see the value. The mask applies to the grid, diffs, exports, fixtures, and the AI agent."
+      />
       <Loading fallback={<Pending>Loading schema...</Pending>}>
         <Show
           when={current()}

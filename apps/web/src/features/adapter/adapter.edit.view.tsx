@@ -25,10 +25,6 @@ import type { AdapterPresenter } from "./adapter.presenter.ts";
 const RESTORE_OPTIONS = [{ value: "atomic", label: RESTORE_MODE_LABEL.atomic }] as const;
 
 /** A short line under a field, for what the label is too short to say. */
-function Hint(props: { children: JSX.Element }): JSX.Element {
-  return <p class="text-xs text-muted">{props.children}</p>;
-}
-
 function Fields(props: {
   presenter: AdapterPresenter;
   fields: EngineField[];
@@ -45,7 +41,10 @@ function Fields(props: {
     <For each={props.fields}>
       {(field) => (
         <label class="grid content-start gap-1.5 text-base">
-          <FieldLabel required={field.required === true && props.hint === undefined}>
+          <FieldLabel
+            required={field.required === true && props.hint === undefined}
+            help={props.hint ?? field.hint}
+          >
             {label(field)}
           </FieldLabel>
           <Input
@@ -58,7 +57,6 @@ function Fields(props: {
               props.presenter.setValue(`${props.prefix}.${field.key}`, event.currentTarget.value)
             }
           />
-          <Show when={props.hint ?? field.hint}>{(text) => <Hint>{text()}</Hint>}</Show>
         </label>
       )}
     </For>
@@ -117,7 +115,12 @@ export default function EditDialog(props: {
             <Field of={form} path={["lock_timeout_ms"]}>
               {(field) => (
                 <label class="grid content-start gap-1.5 text-base">
-                  <FieldLabel required={false}>Lock timeout</FieldLabel>
+                  <FieldLabel
+                    required={false}
+                    help="Milliseconds a restore waits for a table lock."
+                  >
+                    Lock timeout
+                  </FieldLabel>
                   <Input
                     {...field.props}
                     type="number"
@@ -127,7 +130,6 @@ export default function EditDialog(props: {
                     variant={field.errors ? "error" : "default"}
                     aria-invalid={field.errors ? "true" : undefined}
                   />
-                  <Hint>Milliseconds a restore waits for a table lock.</Hint>
                   <FieldError message={field.errors?.[0]} />
                 </label>
               )}
@@ -139,7 +141,12 @@ export default function EditDialog(props: {
             <Field of={form} path={["excluded_tables"]}>
               {(field) => (
                 <label class="grid content-start gap-1.5 text-base">
-                  <FieldLabel required={false}>Excluded tables</FieldLabel>
+                  <FieldLabel
+                    required={false}
+                    help="Comma separated. Migration tables are always excluded."
+                  >
+                    Excluded tables
+                  </FieldLabel>
                   <Input
                     {...field.props}
                     placeholder="audit_log, sessions"
@@ -147,7 +154,6 @@ export default function EditDialog(props: {
                     variant={field.errors ? "error" : "default"}
                     aria-invalid={field.errors ? "true" : undefined}
                   />
-                  <Hint>Comma separated. Migration tables are always excluded.</Hint>
                   <FieldError message={field.errors?.[0]} />
                 </label>
               )}
@@ -156,7 +162,12 @@ export default function EditDialog(props: {
               <Field of={form} path={["schemas"]}>
                 {(field) => (
                   <label class="grid content-start gap-1.5 text-base">
-                    <FieldLabel required={false}>Schemas</FieldLabel>
+                    <FieldLabel
+                      required={false}
+                      help="Comma separated. Empty means every schema but the system's."
+                    >
+                      Schemas
+                    </FieldLabel>
                     <Input
                       {...field.props}
                       placeholder="public"
@@ -164,7 +175,6 @@ export default function EditDialog(props: {
                       variant={field.errors ? "error" : "default"}
                       aria-invalid={field.errors ? "true" : undefined}
                     />
-                    <Hint>Comma separated. Empty means every schema but the system's.</Hint>
                     <FieldError message={field.errors?.[0]} />
                   </label>
                 )}

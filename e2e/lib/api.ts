@@ -182,8 +182,15 @@ export async function insertRow(
   const started = await context.post(`projects/demo/adapters/${adapterId}/write-sessions`, {
     data: { foreign_key_checks: true },
   });
-  if (!started.ok()) throw new Error(`write session: ${started.status()} ${await started.text()}`);
-  const session: { data: { id: string } } = await started.json();
+  // One session per adapter (story 42): a spec that left one open lends it, and keeps it.
+  const reused = started.status() === 409;
+  if (!started.ok() && !reused)
+    throw new Error(`write session: ${started.status()} ${await started.text()}`);
+  const body: { data?: { id: string }; error?: { details: { write_session_id: string } } } =
+    await started.json();
+  const sessionId = body.data?.id ?? body.error?.details.write_session_id;
+  if (sessionId === undefined) throw new Error("write session: no id in the answer");
+  const session = { data: { id: sessionId } };
   const edits = await context.post(
     `projects/demo/adapters/${adapterId}/tables/${encodeURIComponent(table)}/row-edits`,
     {
@@ -194,7 +201,8 @@ export async function insertRow(
     }
   );
   if (!edits.ok()) throw new Error(`insert: ${edits.status()} ${await edits.text()}`);
-  await context.delete(`projects/demo/adapters/${adapterId}/write-sessions/${session.data.id}`);
+  if (!reused)
+    await context.delete(`projects/demo/adapters/${adapterId}/write-sessions/${session.data.id}`);
 }
 
 export async function waitForJob(qa: APIRequestContext, jobId: string): Promise<JobRow> {

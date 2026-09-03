@@ -1,11 +1,11 @@
-import { createSignal } from "solid-js";
+import { createMemo, createSignal } from "solid-js";
 import type { Diff, DiffRow, JsonObject, State } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
 import { createRefreshable, refreshWhileBusy } from "@/lib/async.ts";
 import { DIFF_STATUS_LABEL } from "@/lib/labels.ts";
-import { createTableView } from "@/lib/table.ts";
+import { activeFilterCount, createTableView } from "@/lib/table.ts";
 import type { TableView } from "@/lib/table.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { createJobFollower } from "@/lib/sse.ts";
@@ -16,8 +16,17 @@ export const LIVE = "live";
 export type DiffDraft = { base_state_id: string; target: string };
 export type DiffSort = "base" | "status" | "changed" | "expires_at";
 
+export type DiffStatusFilter = Diff["status"] | "";
+export type DiffTargetFilter = "live" | "state" | "";
+export type DiffFilters = { status: DiffStatusFilter; target: DiffTargetFilter };
+
 export type DiffsPresenter = Refreshable<Diff[]> & {
   table: TableView<Diff, DiffSort>;
+  filters: () => DiffFilters;
+  setFilters: (patch: Partial<DiffFilters>) => void;
+  activeFilters: () => number;
+  filtersOpen: () => boolean;
+  toggleFilters: () => void;
   states: Refreshable<State[]>;
   creating: () => boolean;
   draft: () => DiffDraft;
@@ -29,6 +38,14 @@ export type DiffsPresenter = Refreshable<Diff[]> & {
   remove: (diff: Diff) => Promise<void>;
   exportUrl: (diff: Diff, format: "csv" | "jsonl") => string;
 };
+
+/** Status and target side, the two things a list of diffs is narrowed by. */
+export function matchesFilters(diff: Diff, filters: DiffFilters): boolean {
+  if (filters.status !== "" && diff.status !== filters.status) return false;
+  if (filters.target === "live") return "live" in diff.target;
+  if (filters.target === "state") return !("live" in diff.target);
+  return true;
+}
 
 export function targetLabel(target: Diff["target"]): string {
   return "live" in target ? "live database" : target.name;
@@ -146,13 +163,23 @@ export function createDiffsPresenter(
       DIFF_STATUS_LABEL[diff.status],
     ],
   });
+  const [filters, setFiltersSignal] = createSignal<DiffFilters>({ status: "", target: "" });
+  const [filtersOpen, setFiltersOpen] = createSignal(false);
+  const filteredRows = createMemo((): Diff[] =>
+    table.rows().filter((diff) => matchesFilters(diff, filters()))
+  );
   const states = createRefreshable(() => statesModel.list(slug(), false));
   const [creating, setCreating] = createSignal(false);
   const [draft, setDraftSignal] = createSignal<DiffDraft>({ base_state_id: "", target: LIVE });
   const [error, setError] = createSignal<string | null>(null);
   return {
     ...diffs,
-    table,
+    table: { ...table, rows: filteredRows },
+    filters,
+    setFilters: (patch) => setFiltersSignal((current) => ({ ...current, ...patch })),
+    activeFilters: () => activeFilterCount(filters().status !== "", filters().target !== ""),
+    filtersOpen,
+    toggleFilters: () => setFiltersOpen((open) => !open),
     states,
     creating,
     draft,

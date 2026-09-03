@@ -7,7 +7,9 @@ import Badge from "@/components/badge.tsx";
 import Pending from "@/components/pending.tsx";
 import Button, { buttonClass } from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
+import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
 import { Menu, MenuItem, MenuLink } from "@/components/menu.tsx";
+import Select from "@/components/select.tsx";
 import { Cell, EmptyRow, Head, Row, SortColumn, Table, TableSearch } from "@/components/table.tsx";
 import { DIFF_STATUS_LABEL } from "@/lib/labels.ts";
 import { href } from "@/lib/router.ts";
@@ -22,6 +24,17 @@ import {
 import type { DiffsPresenter } from "./diffs.presenter.ts";
 
 const STATUS_VARIANT = { running: "info", ready: "success", failed: "error" } as const;
+const STATUS_FILTER_OPTIONS = [
+  { value: "", label: "All" },
+  { value: "running", label: DIFF_STATUS_LABEL.running },
+  { value: "ready", label: DIFF_STATUS_LABEL.ready },
+  { value: "failed", label: DIFF_STATUS_LABEL.failed },
+] as const;
+const TARGET_FILTER_OPTIONS = [
+  { value: "", label: "All" },
+  { value: "live", label: "the live databases" },
+  { value: "state", label: "another state" },
+] as const;
 
 /**
  * Base and target on one line, the way a compare view names the two sides of a diff. A state name
@@ -118,9 +131,30 @@ export default function DiffsView(props: { slug: string; onChanged?: () => void 
           value={presenter.table.query()}
           onInput={(value) => presenter.table.setQuery(value)}
         />
+        <FilterToggle
+          open={presenter.filtersOpen()}
+          active={presenter.activeFilters()}
+          onToggle={() => presenter.toggleFilters()}
+        />
         {/* No New diff here: a diff is two states, and the place to pick two states is the
             States tab, where ticking two offers Compare. */}
       </div>
+      <FilterPanel open={presenter.filtersOpen()}>
+        <FilterField label="Status">
+          <Select
+            options={STATUS_FILTER_OPTIONS}
+            value={presenter.filters().status}
+            onChange={(value) => presenter.setFilters({ status: value })}
+          />
+        </FilterField>
+        <FilterField label="Compared with">
+          <Select
+            options={TARGET_FILTER_OPTIONS}
+            value={presenter.filters().target}
+            onChange={(value) => presenter.setFilters({ target: value })}
+          />
+        </FilterField>
+      </FilterPanel>
       <Loading fallback={<Pending>Loading diffs...</Pending>}>
         <Table>
           <thead>
@@ -149,7 +183,7 @@ export default function DiffsView(props: { slug: string; onChanged?: () => void 
                     when={presenter.value().length > 0}
                     fallback="No diffs yet. Compare two states, or a state against what the databases hold now, to see what a test run changed."
                   >
-                    No diff matches that search.
+                    No diff matches your search or filters.
                   </Show>
                 </EmptyRow>
               }

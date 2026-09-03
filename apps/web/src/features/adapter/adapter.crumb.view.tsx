@@ -70,6 +70,13 @@ function Switcher(props: { slug: string; id: string; name?: JSX.Element }): JSX.
 }
 
 /**
+ * Names this tab has already read, by adapter id. A sub-screen mounts its own crumb and fetches
+ * the adapter again; until that answer lands the crumb showed the word "adapter", which is a
+ * flicker every time a person moves between an adapter's screens. The last known name stands in.
+ */
+const NAMES = new Map<string, string>();
+
+/**
  * The path down to an adapter's sub-screen: Projects, the project, the adapter, and the screen
  * itself. The five sub-screens (table, query, masks, files, imports) each led with the literal
  * word "adapter", so the one line that says where you are named nothing at all; this names all of
@@ -83,9 +90,15 @@ export default function AdapterBreadcrumbs(props: {
   /** The current screen. Absent on the adapter page itself, where the adapter is the page. */
   leaf?: JSX.Element;
 }): JSX.Element {
-  const adapter = createRefreshable(() => adaptersModel.get(props.slug, props.id));
+  const adapter = createRefreshable(async () => {
+    const found = await adaptersModel.get(props.slug, props.id);
+    NAMES.set(found.id, found.name);
+    return found;
+  });
   const base = (): string => `/projects/${props.slug}/adapters/${props.id}`;
-  const name = (): JSX.Element => <Loading fallback="adapter">{adapter.value().name}</Loading>;
+  const name = (): JSX.Element => (
+    <Loading fallback={NAMES.get(props.id) ?? "adapter"}>{adapter.value().name}</Loading>
+  );
   return (
     <Breadcrumbs
       items={[

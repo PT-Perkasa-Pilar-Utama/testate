@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { Errored, For, Loading, Show, untrack } from "solid-js";
 
-import AdapterBreadcrumbs from "@/features/adapter/adapter.crumb.view.tsx";
+import SubScreen from "@/features/adapter/adapter.subscreen.view.tsx";
 import Banner from "@/components/banner.tsx";
 import Pending from "@/components/pending.tsx";
 import Button from "@/components/button.tsx";
@@ -117,17 +117,14 @@ export default function AdapterImportsView(props: { slug: string; id: string }):
     importBlockedReason(presenter.draft(), presenter.preview() !== null, presenter.report());
   return (
     <section class="grid gap-4">
-      <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf="import a file" />
-      <div class="grid gap-1.5">
-        <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-heading">
-          <Icon name="upload" class="h-4 w-4 text-muted" />
-          Import a file
-        </h2>
-        <p class="max-w-prose text-sm text-muted">
-          A CSV or an Excel file into one table. Testate stashes the database first, so the import
-          can be undone.
-        </p>
-      </div>
+      <SubScreen
+        slug={props.slug}
+        id={props.id}
+        leaf="import a file"
+        icon="upload"
+        title="Import a file"
+        description="A CSV or an Excel file into one table. Testate stashes the database first, so the import can be undone."
+      />
       <Errored fallback={(error) => <Banner variant="error">{String(error())}</Banner>}>
         <Loading fallback={<Pending>Loading...</Pending>}>
           {/* Read so the refreshable runs: it is the call that loads a rejected-rows preview. */}
