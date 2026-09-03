@@ -22,8 +22,8 @@ import type { DeletionPlan, Overview } from "../projects/projects.model.ts";
  */
 export const PROJECT_TABS = [
   { id: "states", label: "States" },
-  { id: "activity", label: "Activity" },
   { id: "adapters", label: "Databases" },
+  { id: "activity", label: "Activity" },
 ] as const;
 export type ProjectTab = (typeof PROJECT_TABS)[number]["id"];
 
