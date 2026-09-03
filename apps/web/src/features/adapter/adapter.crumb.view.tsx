@@ -36,12 +36,11 @@ function Switcher(props: { slug: string; id: string }): JSX.Element {
     <span class="inline-flex w-4 shrink-0 items-center">
       <Menu
         label="Switch adapter"
-        trigger={
-          <span onClick={() => setWanted(true)}>
-            <Icon name="chevrons-up-down" class="h-3 w-3" />
-          </span>
-        }
+        trigger={<Icon name="chevrons-up-down" class="h-3 w-3" />}
         panelClass="min-w-56"
+        // On the menu's own open, not a click on the icon: Enter on the button opens the panel
+        // without ever reaching a listener on what sits inside it.
+        onOpen={() => setWanted(true)}
       >
         <Show when={wanted()}>
           <Others slug={props.slug} id={props.id} />

@@ -24,19 +24,20 @@ import { storageModel } from "./storage.model.ts";
  * one to leave open on the page. The presenter's slug is the signal, so the dialog follows the
  * pick without being rebuilt.
  */
-function NewStore(props: { onCreated: () => void }): JSX.Element {
-  const projects = createRefreshable(() => projectsModel.list());
+/** Built once the projects are known, so the presenter's own list never reads a pending value. */
+function StoreCreator(props: {
+  projects: { value: string; label: string }[];
+  onCreated: () => void;
+}): JSX.Element {
   const [picked, setPicked] = createSignal("");
-  const slug = (): string => picked() || (projects.value()[0]?.slug ?? "");
+  const slug = (): string => picked() || (props.projects[0]?.value ?? "");
   const presenter = createAdaptersPresenter(slug, () => props.onCreated());
-  const options = () =>
-    projects.value().map((project) => ({ value: project.slug, label: project.name }));
   return (
-    <Loading fallback={<span />}>
+    <>
       <Button
         variant="primary"
-        disabled={options().length === 0}
-        title={options().length === 0 ? "Create a project first" : undefined}
+        disabled={props.projects.length === 0}
+        title={props.projects.length === 0 ? "Create a project first" : undefined}
         onClick={() => presenter.openCreate()}
       >
         <Icon name="plus" class="h-4 w-4" />
@@ -45,8 +46,19 @@ function NewStore(props: { onCreated: () => void }): JSX.Element {
       <CreateDialog
         presenter={presenter}
         kind="storage"
-        project={{ options: options(), value: slug(), onChange: setPicked }}
+        project={{ options: props.projects, value: slug(), onChange: setPicked }}
       />
+    </>
+  );
+}
+
+function NewStore(props: { onCreated: () => void }): JSX.Element {
+  const projects = createRefreshable(() => projectsModel.list());
+  const options = () =>
+    projects.value().map((project) => ({ value: project.slug, label: project.name }));
+  return (
+    <Loading fallback={<span />}>
+      <StoreCreator projects={options()} onCreated={() => props.onCreated()} />
     </Loading>
   );
 }

@@ -18,9 +18,16 @@ type Unwrap = (inner: JsonValue) => JsonValue | undefined;
 
 const asText: Unwrap = (inner) => (v.is(text, inner) ? inner : undefined);
 const asNumber: Unwrap = (inner) => (v.is(text, inner) ? Number(inner) : undefined);
+/**
+ * A BSON date is a 64-bit count of milliseconds, and JavaScript's Date stops at ±8.64e15 of
+ * them: past that, or on garbage, `toISOString` throws and took a whole screen down. The
+ * digits are shown as they are instead, which is what the store holds anyway.
+ */
 const asDate: Unwrap = (inner) => {
   if (v.is(text, inner)) return inner;
-  return v.is(dateMs, inner) ? new Date(Number(inner.$numberLong)).toISOString() : undefined;
+  if (!v.is(dateMs, inner)) return undefined;
+  const at = new Date(Number(inner.$numberLong));
+  return Number.isNaN(at.getTime()) ? inner.$numberLong : at.toISOString();
 };
 const asBinary: Unwrap = (inner) =>
   v.is(binary, inner) ? `binary, ${Math.floor((inner.base64.length * 3) / 4)} bytes` : undefined;

@@ -44,6 +44,8 @@ export function Menu(props: {
   trigger?: JSX.Element;
   place?: MenuPlace;
   panelClass?: string;
+  /** Fires as the panel opens, however it was opened: a click, Enter or Space on the trigger. */
+  onOpen?: (() => void) | undefined;
   children: JSX.Element;
 }): JSX.Element {
   const id = createUniqueId();
@@ -56,6 +58,7 @@ export function Menu(props: {
   // it paints, which is the last moment a wrong position is still invisible.
   const onOpening = (event: ToggleEvent): void => {
     if (event.newState !== "open") return;
+    props.onOpen?.();
     requestAnimationFrame(() => {
       const box = panel();
       const anchor = button();

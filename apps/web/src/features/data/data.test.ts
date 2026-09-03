@@ -75,6 +75,11 @@ describe("data feature", () => {
     expect(cellText({ $numberLong: "9007199254740993" })).toBe("9007199254740993");
     expect(cellText({ $oid: "65f000000000000000000001" })).toBe("65f000000000000000000001");
     expect(cellText({ $date: { $numberLong: "0" } })).toBe("1970-01-01T00:00:00.000Z");
+    // A date past what Date can hold shows its digits rather than throwing off the screen.
+    expect(cellText({ $date: { $numberLong: "99999999999999999999" } })).toBe(
+      "99999999999999999999"
+    );
+    expect(cellText({ $date: { $numberLong: "not-a-number" } })).toBe("not-a-number");
     expect(cellText({ items: [{ $numberInt: "2" }], id: { $oid: "ab" } })).toBe(
       '{"items":[2],"id":"ab"}'
     );

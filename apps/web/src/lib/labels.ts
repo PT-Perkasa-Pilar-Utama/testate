@@ -8,7 +8,6 @@ import type * as v from "valibot";
 import { ENGINES, ROLES, TOKEN_KINDS, fieldModeSchema, importModeSchema } from "@testate/shared";
 import type { functionNameSchema, maskSchema, restoreModeSchema } from "@testate/shared";
 import type {
-  AdapterKind,
   AdapterMode,
   AuditRow,
   Checkout,
@@ -16,7 +15,6 @@ import type {
   DiffRow,
   Engine,
   Entry,
-  HeadStatus,
   JobKind,
   JobStatus,
   RestoreStrategy,
@@ -62,7 +60,6 @@ type StoreDriver = StoreMigrationFormInput["driver"];
 // features, not shared-package enums, so the union lives here rather than importing a features
 // file into lib (imports run the other way: features depend on lib, not back).
 type FilterOp = "eq" | "ne" | "lt" | "le" | "gt" | "ge" | "like" | "in" | "null" | "notnull";
-type ImportValueTransform = "trim" | "emptyToNull" | "number" | "uuid" | "now" | "json";
 
 export const ROLE_LABEL = {
   admin: "Administrator",
@@ -94,11 +91,6 @@ export const TOKEN_KIND_OPTIONS = TOKEN_KINDS.map((value) => ({
   value,
   label: TOKEN_KIND_LABEL[value],
 }));
-
-export const ADAPTER_KIND_LABEL = {
-  database: "Database",
-  storage: "Storage",
-} as const satisfies Record<AdapterKind, string>;
 
 export const ENTRY_KIND_LABEL = {
   file: "File",
@@ -162,12 +154,6 @@ export const STATE_STATUS_LABEL = {
   ready: "Ready",
   failed: "Failed",
 } as const satisfies Record<StateStatus, string>;
-
-export const HEAD_STATUS_LABEL = {
-  none: "Not at a state",
-  at_state: "At a state",
-  unknown: "Unknown",
-} as const satisfies Record<HeadStatus, string>;
 
 export const JOB_KIND_LABEL = {
   snapshot: "Snapshot",
@@ -253,15 +239,6 @@ export const IMPORT_MODE_OPTIONS = importModeSchema.options.map((value) => ({
   value,
   label: IMPORT_MODE_LABEL[value],
 }));
-
-export const IMPORT_VALUE_TRANSFORM_LABEL = {
-  trim: "Trim extra spaces",
-  emptyToNull: "Treat blank cells as no value",
-  number: "Convert text to a number",
-  uuid: "Generate a unique ID",
-  now: "Fill in today's date and time",
-  json: "Read as structured data (JSON)",
-} as const satisfies Record<ImportValueTransform, string>;
 
 export const DIFF_OP_LABEL = {
   added: "Added",
