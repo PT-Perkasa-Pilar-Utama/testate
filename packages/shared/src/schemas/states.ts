@@ -86,7 +86,9 @@ export const detailTableSchema = v.object({
 export type DetailTable = v.InferOutput<typeof detailTableSchema>;
 
 export const stateDetailSchema = v.object({
-  ...stateSchema.entries,
+  ...stateListItemSchema.entries,
+  /** When the newest checkout of this state was asked for; null when there was none. */
+  last_checkout_at: v.nullable(timestampSchema),
   adapters: v.array(
     v.object({
       ...stateAdapterSchema.entries,

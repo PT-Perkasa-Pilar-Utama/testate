@@ -20,7 +20,7 @@ import type { StatePresenter } from "./state.presenter.ts";
 import { DatabaseRail, TablesPane } from "./state.tables.view.tsx";
 import CompareDialog from "./states.compare.view.tsx";
 import { DeleteDialog, EditDialog } from "./states.dialogs.view.tsx";
-import { formatBytes, statePath } from "./states.format.ts";
+import { eventsLabel, formatBytes, statePath } from "./states.format.ts";
 import { statesModel } from "./states.model.ts";
 import { checkoutBlockedReason, createStatesPresenter } from "./states.presenter.ts";
 import type { StatesPresenter } from "./states.presenter.ts";
@@ -66,6 +66,18 @@ function Facts(props: { presenter: StatePresenter; slug: string }): JSX.Element 
       </span>
       <span aria-hidden="true">·</span>
       <span class="tabular-nums">{formatBytes(d().size_bytes)}</span>
+      <Show when={eventsLabel(d()) !== ""}>
+        <span aria-hidden="true">·</span>
+        <a
+          class="text-link hover:underline"
+          href={href(`/projects/${encodeURIComponent(props.slug)}?tab=activity&show=checkouts`)}
+        >
+          {eventsLabel(d())}
+        </a>
+        <Show when={d().last_checkout_at}>
+          {(at) => <span class="tabular-nums">last {formatWhen(at())}</span>}
+        </Show>
+      </Show>
       <Loading fallback={null}>
         <Show when={props.presenter.parent.value()}>
           {(parent) => (

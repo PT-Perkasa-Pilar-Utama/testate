@@ -6,6 +6,7 @@ import type {
   StateDetail,
   TableChange,
 } from "@testate/shared";
+import type { StateEvents } from "./states.events.ts";
 import {
   engineWarningSchema,
   manifestTableSchema,
@@ -162,13 +163,18 @@ function parentTables(parent: AdapterRow[] | null, adapterId: string): ManifestT
   return counterpart === undefined ? [] : tablesOf(counterpart);
 }
 
+/** `parent` is null for a root state; an empty list for a parent that never held the adapter. */
 export function toStateDetail(
   row: StateRow,
   adapters: AdapterRow[],
-  parent: AdapterRow[] | null
+  parent: AdapterRow[] | null,
+  events: StateEvents
 ): StateDetail {
   return {
     ...toState(row, adapters),
+    checkout_count: events.checkouts,
+    diff_count: events.diffs,
+    last_checkout_at: events.last_checkout_at,
     adapters: adapters.map((adapter) => ({
       ...toStateAdapter(adapter),
       ...changesAgainst(tablesOf(adapter), parentTables(parent, adapter.adapter_id)),

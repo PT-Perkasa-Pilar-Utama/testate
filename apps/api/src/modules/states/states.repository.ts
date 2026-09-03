@@ -12,7 +12,7 @@ import { keysetCondition } from "../../lib/db/keyset.ts";
 
 import type { MetadataDb } from "../../lib/db/index.ts";
 import { blobAccounting } from "./states.blobs.ts";
-import { eventsOf } from "./states.events.ts";
+import { NO_EVENTS, eventsOf } from "./states.events.ts";
 import { createManifestStore } from "./states.manifests.ts";
 import type { ManifestStore } from "./states.manifests.ts";
 import {
@@ -179,7 +179,7 @@ function createStateRows(db: MetadataDb): StateRows {
       const adapters = adaptersOf(ids);
       const events = eventsOf(db, ids);
       return rows.map((row) => {
-        const counted = events.get(row.id) ?? { checkouts: 0, diffs: 0 };
+        const counted = events.get(row.id) ?? NO_EVENTS;
         return {
           ...toState(row, adapters.get(row.id) ?? []),
           checkout_count: counted.checkouts,
@@ -208,7 +208,8 @@ function createStateRows(db: MetadataDb): StateRows {
       return toStateDetail(
         row,
         byState.get(row.id) ?? [],
-        parentId === null ? null : (byState.get(parentId) ?? [])
+        parentId === null ? null : (byState.get(parentId) ?? []),
+        eventsOf(db, [row.id]).get(row.id) ?? NO_EVENTS
       );
     },
     update(id, patch, at) {

@@ -12,16 +12,23 @@ import { changedCount, qualifiedTable, troubled } from "./state.presenter.ts";
 import type { DetailAdapter, StatePresenter } from "./state.presenter.ts";
 import { formatBytes } from "./states.format.ts";
 
-const SORTS = [
-  { id: "changes", label: "Changes" },
-  { id: "name", label: "Name" },
-  { id: "rows", label: "Rows" },
-] as const;
+const sortsFor = (adapter: DetailAdapter) =>
+  [
+    { id: "changes", label: "Changes" },
+    { id: "name", label: "Name" },
+    { id: "rows", label: adapter.engine === "mongodb" ? "Documents" : "Rows" },
+  ] as const;
 
 const CHANGE_VARIANT = { changed: "warning", added: "success", same: "secondary" } as const;
 
+/** A document store holds collections of documents; everything else, tables of rows. */
 function noun(adapter: DetailAdapter, count: number): string {
   const one = adapter.engine === "mongodb" ? "collection" : "table";
+  return count === 1 ? one : `${one}s`;
+}
+
+function rowsNoun(adapter: DetailAdapter, count: number): string {
+  const one = adapter.engine === "mongodb" ? "document" : "row";
   return count === 1 ? one : `${one}s`;
 }
 
@@ -88,8 +95,8 @@ export function TablesPane(props: {
           {engineLabel(a().engine)} {a().engine_version}
         </span>
         <span class="text-sm text-muted tabular-nums">
-          {a().tables.length} {noun(a(), a().tables.length)} · {a().row_count} rows ·{" "}
-          {formatBytes(a().byte_count)}
+          {a().tables.length} {noun(a(), a().tables.length)} · {a().row_count}{" "}
+          {rowsNoun(a(), a().row_count)} · {formatBytes(a().byte_count)}
         </span>
         <Show when={a().consistency === "best_effort"}>
           <Badge variant="warning">read at different moments</Badge>
@@ -119,7 +126,7 @@ export function TablesPane(props: {
           onInput={(event) => props.presenter.setNeedle(event.currentTarget.value)}
         />
         <Tabs
-          items={SORTS}
+          items={sortsFor(a())}
           value={props.presenter.sort()}
           onChange={(sort) => props.presenter.setSort(sort)}
           label="Sort tables"
@@ -131,7 +138,7 @@ export function TablesPane(props: {
           <tr>
             <Head>{noun(a(), 1)}</Head>
             <Head>Against parent</Head>
-            <Head numeric>Rows</Head>
+            <Head numeric>{a().engine === "mongodb" ? "Documents" : "Rows"}</Head>
             <Head numeric>Size</Head>
           </tr>
         </thead>
