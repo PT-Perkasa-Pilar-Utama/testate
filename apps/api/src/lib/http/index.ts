@@ -95,6 +95,8 @@ export function parseParams<TSchema extends v.GenericSchema>(
   return parseAt(schema, c.req.param(), "params");
 }
 export { firstQuery } from "./query.ts";
+export { waitForJob, waitQuerySchema, waitSeconds } from "./wait.ts";
+export type { JobWaiter } from "./wait.ts";
 export {
   anonymousLimit,
   bodyLimits,

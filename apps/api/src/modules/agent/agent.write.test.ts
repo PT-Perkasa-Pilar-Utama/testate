@@ -14,6 +14,7 @@ describe("agent tools a tester has", () => {
       ["end_write_session", { project: "shop", adapter: "orders-db" }],
       ["take_snapshot", { project: "shop", name: "from-a-viewer" }],
       ["checkout_state", { project: "shop", state: "init" }],
+      ["get_job", { job: "01991f00-0000-7000-8000-000000000999" }],
       ["upload_file", { project: "shop", adapter: "exports", path: "a.txt", content: "x" }],
       ["delete_file", { project: "shop", adapter: "exports", path: "a.txt" }],
     ];

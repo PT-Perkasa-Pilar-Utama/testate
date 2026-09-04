@@ -192,20 +192,24 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   const live = { jobs, adapters: wiring.adapters };
   const resyncPolicy = async (): Promise<void> =>
     netguard.setDeny((await settings.get()).netguard.deny);
+  const seedServices = { users, projects, adapters, states: core.states, jobs, usersRepo };
 
   const handlers = {
     ops: createOpsHandlers(
       opsDeps(config, db, VERSION, bootId, bootedAt, storeTarget, wiring.blobs, ring, logger, live),
       () => ready
     ),
-    resetState: resetHandler(config, db, migrationsDir, bootstrap, jobs, resyncPolicy, {
-      users,
-      projects,
-      adapters,
-      states: core.states,
+    resetState: resetHandler(
+      config,
+      db,
+      migrationsDir,
+      bootstrap,
       jobs,
-      usersRepo,
-    }),
+      resyncPolicy,
+      seedServices,
+      dispatcher,
+      audit
+    ),
     auth: createAuthHandlers(auth, {
       env: config.TESTATE_ENV,
       basePath: config.TESTATE_BASE_PATH,
@@ -220,9 +224,9 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     adapters: createAdaptersHandlers(adapters, prefix, config.TESTATE_TRUST_PROXY, jobs),
     data: createDataHandlers(core.data, config.TESTATE_TRUST_PROXY),
     imports: createImportsHandlers(core.imports, prefix, config.TESTATE_TRUST_PROXY),
-    states: createStatesHandlers(core.states, prefix, config.TESTATE_TRUST_PROXY),
+    states: createStatesHandlers(core.states, prefix, config.TESTATE_TRUST_PROXY, jobs),
     checkouts: createCheckoutsHandlers(core.checkouts, prefix, config.TESTATE_TRUST_PROXY, jobs),
-    diffs: createDiffsHandlers(core.diffs, prefix, config.TESTATE_TRUST_PROXY),
+    diffs: createDiffsHandlers(core.diffs, prefix, config.TESTATE_TRUST_PROXY, jobs),
     storage: createStorageHandlers(
       storage,
       config.TESTATE_TRUST_PROXY,

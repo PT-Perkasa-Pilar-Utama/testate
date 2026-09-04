@@ -1,15 +1,80 @@
 import { describe, expect, it } from "bun:test";
 import { AGENT_TOOL_INPUTS } from "@testate/shared";
+import type { Actor, QueryRequest, QueryResult } from "@testate/shared";
 import * as v from "valibot";
 
 import { S3, createSettled } from "../../../test/adapters.ts";
 import type { MemoryTree } from "../../lib/files/index.ts";
 import { createRateLimiter } from "../../lib/http/ratelimit.ts";
+import type { Sealed } from "../../lib/sealed/index.ts";
+import { MONGO_ADAPTER_MOCK } from "../adapters/adapters.mock.ts";
+import type { AuditService } from "../audit/audit.service.ts";
+import type { DataService } from "../data/data.contract.ts";
+import { PROJECT_MOCK } from "../projects/projects.mock.ts";
 import { TOOL_DESCRIPTIONS, agentGuide } from "./agent.guide.ts";
 import { call, createHarness, rowResult, rowsResult, uriAt } from "./agent.harness.ts";
 import type { AgentContext } from "./agent.service.ts";
+import type { AgentToolDeps } from "./agent.tools.ts";
+import { createAgentTools } from "./agent.tools.ts";
 
 const AGENT_TOOL_NAMES = Object.keys(AGENT_TOOL_INPUTS);
+
+/**
+ * Stands in for a service `run_readonly_query` never calls; only the type needs satisfying,
+ * since the tool under test never dispatches to it.
+ */
+function unused<T>(): T {
+  // SAFETY: an empty object satisfies the shape here because no path in this test calls a
+  // method on it; the real implementation is exercised by the harness-backed specs above.
+  return {} as T;
+}
+
+const MONGO_ADAPTER_RECORD = {
+  ...MONGO_ADAPTER_MOCK,
+  // SAFETY: an opaque brand on an already-sealed value; this adapter's secrets are never read.
+  config_sealed: "" as Sealed,
+  readonly_config_sealed: null,
+  target_hash: null,
+};
+
+/**
+ * `AgentToolDeps` with every service `run_readonly_query` never calls stubbed away, and only
+ * `projectsRepo`, `adaptersRepo`, `data` and `audit` given the behaviour that tool reads.
+ */
+function queryToolDeps(query: DataService["query"]): AgentToolDeps {
+  return {
+    projectsRepo: { bySlug: () => PROJECT_MOCK },
+    projects: unused(),
+    adaptersRepo: { list: () => [MONGO_ADAPTER_RECORD] },
+    adapters: unused(),
+    // SAFETY: run_readonly_query calls only `query`; the rest of DataService goes unused.
+    data: { ...unused<DataService>(), query },
+    states: unused(),
+    checkouts: unused(),
+    diffs: unused(),
+    storage: unused(),
+    jobs: unused(),
+    // SAFETY: `runTool` calls `audit.record` on every path; the rest of AuditService is unused.
+    audit: { ...unused<AuditService>(), record: () => undefined },
+  };
+}
+
+const QUERY_TOOL_CTX: AgentContext = {
+  actor: { kind: "token", id: "t1", label: "token:agent", role: "viewer", agent: true },
+  scope: null,
+  meta: { ip: "", user_agent: "test", request_id: null },
+};
+
+const QUERY_RESULT: QueryResult = {
+  query_id: "01991f00-0000-7000-8000-000000000099",
+  columns: [{ name: "_id", type: "unknown" }],
+  rows: [{ _id: "abc" }],
+  rows_affected: null,
+  truncated: { rows: false, bytes: false, time: false },
+  duration_ms: 1,
+  read_only_enforcement: "filter",
+  masked_columns: [],
+};
 
 describe("agent tools", () => {
   it("resolves adapters by name, masks rows, and caps page sizes", async () => {
@@ -188,6 +253,28 @@ describe("agent tools", () => {
     expect(resources[0]?.uri).toBe("testate://guide");
     expect(resources[0]?.mimeType).toBe("text/markdown");
     expect(await h.runtime.readResource("testate://guide", h.ctx)).toBe(agentGuide("viewer"));
+  });
+
+  it("run_readonly_query reaches the query with dialect mongo when only mongo is given", async () => {
+    let seen: QueryRequest | undefined;
+    const runtime = createAgentTools(
+      queryToolDeps((_actor: Actor, _adapterId: string, request: QueryRequest) => {
+        seen = request;
+        return Promise.resolve(QUERY_RESULT);
+      })
+    );
+    await runtime.runTool(
+      "run_readonly_query",
+      {
+        project: PROJECT_MOCK.slug,
+        adapter: MONGO_ADAPTER_MOCK.name,
+        mongo: { op: "find", collection: "events", filter: { kind: "signup" } },
+      },
+      QUERY_TOOL_CTX
+    );
+    expect(seen?.dialect).toBe("mongo");
+    expect(seen?.mongo).toEqual({ op: "find", collection: "events", filter: { kind: "signup" } });
+    expect(seen?.text).toBeUndefined();
   });
 
   it("describes every tool it advertises, in its own words", () => {

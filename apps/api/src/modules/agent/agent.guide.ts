@@ -29,7 +29,7 @@ export const TOOL_DESCRIPTIONS = new Map<string, string>(
     get_row:
       "One row by primary key. Use it after page_rows when you want a single record rather than a page.",
     run_readonly_query:
-      "A SELECT against the adapter, in a read-only transaction. The database refuses a write, not a filter. Do not try to work around it.",
+      "A SELECT against a SQL adapter, or a mongo find/aggregate against a MongoDB one, in a read-only transaction. The database refuses a write, not a filter. Do not try to work around it.",
     extract_fixture:
       "One row and the rows it references, as SQL or JSON, following foreign keys up to three hops. Use it to reproduce a bug on another database.",
     list_states:
@@ -49,7 +49,7 @@ export const TOOL_DESCRIPTIONS = new Map<string, string>(
     checkout_state:
       "Restores a state over the live databases. This overwrites data. Pass `force` only after reading what the refusal said. Tester tokens only.",
     get_job:
-      "The status of a snapshot or checkout that was still running when it answered. Poll this rather than holding a call open.",
+      "The status of a snapshot or checkout that was still running when it answered. Poll this rather than holding a call open. Tester tokens only.",
     upload_file:
       "Writes a file to a sandbox file adapter, overwriting whatever is at that path. Send text in `content`, or bytes as base64 with `base64: true`. Tester tokens only.",
     delete_file:

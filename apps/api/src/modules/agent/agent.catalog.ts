@@ -1,5 +1,5 @@
-import type { JsonObject, JsonValue, Project, TableSchema } from "@testate/shared";
-import { jsonValueSchema } from "@testate/shared";
+import type { JsonObject, JsonValue, Project, QueryRequest, TableSchema } from "@testate/shared";
+import { jsonValueSchema, mongoOperationSchema } from "@testate/shared";
 import * as v from "valibot";
 
 import type { RowFilter } from "../../lib/engines/index.ts";
@@ -131,6 +131,22 @@ async function getRow(
   return json({ row, parents, masked_columns: [...masked] });
 }
 
+/** Builds a read-only `QueryRequest` from either `sql` or `mongo`, the way `POST .../query` does. */
+function readonlyQueryOf(args: JsonObject): QueryRequest {
+  const sql = optional(args, "sql", v.string());
+  const mongo = optional(args, "mongo", mongoOperationSchema);
+  const base = {
+    mode: "read" as const,
+    row_cap: cap(optional(args, "limit", v.number())),
+    byte_budget: AGENT_CAPS.byteBudget,
+    time_budget_ms: AGENT_CAPS.timeBudgetMs,
+    tag: "mcp",
+  };
+  if (mongo !== undefined) return { ...base, dialect: "mongo", mongo };
+  if (sql !== undefined) return { ...base, dialect: "sql", text: sql };
+  throw new AppError("VALIDATION_ERROR", "sql or mongo is required");
+}
+
 function pageQuery(args: JsonObject): Parameters<DataService["rows"]>[3] {
   const query: Parameters<DataService["rows"]>[3] = {
     limit: cap(optional(args, "limit", v.number())),
@@ -211,18 +227,7 @@ export function tools(deps: AgentToolDeps): ReadonlyMap<string, Tool> {
         ),
       run_readonly_query: async (args, ctx, scope) => {
         const adapter = scope.adapter(scope.project(text(args, "project")), text(args, "adapter"));
-        const sql = optional(args, "sql", v.string());
-        if (sql === undefined)
-          throw new AppError("VALIDATION_ERROR", "sql is required in this build");
-        const result = await deps.data.query(ctx.actor, adapter.id, {
-          dialect: "sql",
-          text: sql,
-          mode: "read",
-          row_cap: cap(optional(args, "limit", v.number())),
-          byte_budget: AGENT_CAPS.byteBudget,
-          time_budget_ms: AGENT_CAPS.timeBudgetMs,
-          tag: "mcp",
-        });
+        const result = await deps.data.query(ctx.actor, adapter.id, readonlyQueryOf(args));
         return json({
           columns: result.columns,
           rows: result.rows,

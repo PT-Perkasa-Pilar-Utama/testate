@@ -3,8 +3,16 @@ import * as v from "valibot";
 
 import { exportLine } from "../../lib/csv.ts";
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
-import { ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.ts";
-import type { Handler } from "../../lib/http/index.ts";
+import {
+  ok,
+  okPage,
+  param,
+  parseBody,
+  parseQuery,
+  waitForJob,
+  waitSeconds,
+} from "../../lib/http/index.ts";
+import type { Handler, JobWaiter } from "../../lib/http/index.ts";
 import { firstQuery } from "../../lib/http/query.ts";
 import type { DiffRowsQuery, DiffsService } from "./diffs.service.ts";
 
@@ -50,7 +58,8 @@ function toRowsQuery(parsed: v.InferOutput<typeof rowsQuery>): DiffRowsQuery {
 export function createDiffsHandlers(
   service: DiffsService,
   apiPrefix: string,
-  trustProxy: boolean
+  trustProxy: boolean,
+  jobs: JobWaiter
 ): DiffsHandlers {
   const meta = (c: Parameters<Handler>[0]): ReturnType<typeof requestMeta> =>
     requestMeta(c, trustProxy);
@@ -66,7 +75,11 @@ export function createDiffsHandlers(
         meta(c)
       );
       c.header("Location", `${apiPrefix}/jobs/${result.job.id}`);
-      return ok(c, result, 202);
+      const seconds = waitSeconds(c);
+      if (seconds === undefined) return ok(c, result, 202);
+      const done = await waitForJob(jobs, c.get("projectScope"), result.job.id, seconds);
+      const diff = await service.get(param(c, "slug"), result.diff.id);
+      return ok(c, { diff, job: done.job }, done.status);
     },
     list: async (c) => {
       const limit = firstQuery(parseQuery(c, listQuery).limit) ?? 50;

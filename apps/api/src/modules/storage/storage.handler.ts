@@ -17,6 +17,7 @@ import {
   parseQuery,
 } from "../../lib/http/index.ts";
 import type { Handler } from "../../lib/http/index.ts";
+import { clampLimit } from "./storage.service.ts";
 import type { EntriesQuery, StorageService } from "./storage.service.ts";
 
 export type StorageHandlers = {
@@ -72,8 +73,9 @@ export function createStorageHandlers(
   ];
   return {
     list: async (c) => {
-      const page = await service.list(...args(c), toQuery(parseQuery(c, entriesQuery)));
-      return okPage(c, page.data, page.next_cursor, 200);
+      const query = toQuery(parseQuery(c, entriesQuery));
+      const page = await service.list(...args(c), query);
+      return okPage(c, page.data, page.next_cursor, clampLimit(query.limit));
     },
     stat: async (c) => {
       const query = parseQuery(c, requiredPathQuery);

@@ -1,16 +1,19 @@
-import {
-  TERMINAL_JOB_STATUSES,
-  stateRefBodySchema,
-  terminateBlockersSchema,
-} from "@testate/shared";
+import { stateRefBodySchema, terminateBlockersSchema } from "@testate/shared";
 import * as v from "valibot";
 import { nextCursor } from "../../lib/db/keyset.ts";
 
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
-import { ok, okPage, param, parseBody, parseQuery } from "../../lib/http/index.ts";
-import type { Handler } from "../../lib/http/index.ts";
+import {
+  ok,
+  okPage,
+  param,
+  parseBody,
+  parseQuery,
+  waitForJob,
+  waitSeconds,
+} from "../../lib/http/index.ts";
+import type { Handler, JobWaiter } from "../../lib/http/index.ts";
 import { firstQuery } from "../../lib/http/query.ts";
-import type { JobsService } from "../jobs/jobs.service.ts";
 import type { Checkout } from "@testate/shared";
 import type { CheckoutsFilter } from "./checkouts.repository.ts";
 import type { CheckoutWithJob, CheckoutsService } from "./checkouts.service.ts";
@@ -42,12 +45,6 @@ const listQuery = v.object({
   created_from: v.optional(v.array(v.string())),
   created_to: v.optional(v.array(v.string())),
 });
-const waitQuery = v.object({
-  wait: v.optional(
-    v.array(v.pipe(v.string(), v.transform(Number), v.integer(), v.minValue(1), v.maxValue(300)))
-  ),
-});
-
 /** Every string filter, folded through one loop: a branch per field is what tipped this over 10. */
 const TEXT_KEYS = ["q", "cursor", "state_id", "created_from", "created_to"] as const;
 
@@ -80,18 +77,18 @@ export function createCheckoutsHandlers(
   service: CheckoutsService,
   apiPrefix: string,
   trustProxy: boolean,
-  jobs: Pick<JobsService, "wait">
+  jobs: JobWaiter
 ): CheckoutsHandlers {
   const meta = (c: Parameters<Handler>[0]): ReturnType<typeof requestMeta> =>
     requestMeta(c, trustProxy);
   /** `?wait=` long-polls the job; a terminal job answers `200` with the finished checkout (09 §9.2). */
   const respond = async (c: Parameters<Handler>[0], result: CheckoutWithJob): Promise<Response> => {
-    const seconds = firstQuery(parseQuery(c, waitQuery).wait);
+    const seconds = waitSeconds(c);
     c.header("Location", `${apiPrefix}/jobs/${result.job.id}`);
     if (seconds === undefined) return ok(c, result, 202);
-    const job = await jobs.wait(c.get("projectScope"), result.job.id, seconds);
+    const { job, status } = await waitForJob(jobs, c.get("projectScope"), result.job.id, seconds);
     const checkout = await service.get(param(c, "slug"), result.checkout.id);
-    return ok(c, { checkout, job }, TERMINAL_JOB_STATUSES.includes(job.status) ? 200 : 202);
+    return ok(c, { checkout, job }, status);
   };
   return {
     preflight: async (c) =>

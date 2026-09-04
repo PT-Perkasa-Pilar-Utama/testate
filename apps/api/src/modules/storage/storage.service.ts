@@ -42,8 +42,13 @@ export type StorageService = StorageWrites & {
   ): Promise<void>;
 };
 
-const LIMIT_DEFAULT = 200;
-const LIMIT_MAX = 1000;
+export const LIMIT_DEFAULT = 200;
+export const LIMIT_MAX = 1000;
+
+/** The clamp `list` applies to `query.limit`; the handler answers `page.limit` with the same value. */
+export function clampLimit(limit: number | undefined): number {
+  return Math.min(limit ?? LIMIT_DEFAULT, LIMIT_MAX);
+}
 
 /** Closes the source once the stream ends or is cancelled. */
 function closing(
@@ -147,7 +152,7 @@ export function createStorageService(deps: StorageDeps): StorageService {
   return {
     list: (actor, slug, adapterId, query) =>
       withSource(actor, slug, adapterId, (source) => {
-        const page = { limit: Math.min(query.limit ?? LIMIT_DEFAULT, LIMIT_MAX) };
+        const page = { limit: clampLimit(query.limit) };
         const listQuery = query.q === undefined ? page : { ...page, q: query.q };
         return source.list(
           normalizePath(query.path),
