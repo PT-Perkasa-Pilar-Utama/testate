@@ -1,5 +1,98 @@
 # Changelog
 
+## 1.0.0
+
+The first release without a suffix. Upgrading from the beta keeps the volume: no migration was
+added since.
+
+### New
+
+**A state has a page.** The list's names link to it. A rail names each database and how many
+of its tables moved; the pane lists the tables with what each did against the parent state, in
+rows added, removed and changed, and a changed table opens its own comparison. Past eight tables
+the list takes a search and a sort. The page also says how the state was used: how many
+checkouts and comparisons, and when it was last put back. A MongoDB database reads in
+collections and documents there, as it does everywhere else.
+
+**Snapshot sits in the project header, on every tab.** It takes every database, always; the
+dialog is a viewfinder that lists them, with the name, notes and tags. Taking one runs a shutter
+across the page and the snapshot starts when it closes. Edit and Delete sit behind a gear beside
+it.
+
+**A document store browses as its console does.** A MongoDB collection opens on the adapter's
+own page, switches in place, and shows documents as key and value pairs. The grid filter matches
+the typed form the grid shows, so an ObjectId, a Long or a date finds its document. In the query
+console the Mongo sample fills every box from real documents, an answer comes back as coloured
+JSON, and a saved or past query runs on a click. Results are bounded to the screen. There is no
+CSV of documents.
+
+**A comparison that finds nothing is not kept.** The job answers `moved: false` and leaves no
+diff behind. The diff page shows only the databases and tables that moved, renders documents as
+documents, and opens on the table you came from. The seed now carries a story: a baseline,
+a failed refund, and the comparison between them, in every engine.
+
+**A database joins only at the starting point.** Connecting a database, or repointing one, is
+refused with `409 CONFLICT` unless HEAD stands on `init` with nothing changed since. The
+Databases tab says so and offers the checkout. This is what keeps a snapshot project-wide: every
+database in a project shares one history from one root.
+
+**Deleting a project can leave the databases as they are.** The dialog fits one screen, lists
+what each database would get, and a switch turns every step into "kept as is".
+
+**Storage stands on its own.** A store is made from the Storage screen as object storage. Its
+crumb runs from Storage to the open folder and never hands off to a project. An admin can open a
+store for writes, and the batch bar moves, copies or deletes the ticked files; `POST
+.../entries/copy` is the endpoint behind it. The seeded store holds an image.
+
+**Every table owns its import.** Import opens from the table's row or from the grid, with sample
+CSV and XLSX files beside the picker. The column panel is a table: column, what the file gives
+it, how it is read, and its setting. A SHA hash takes a salt; an HMAC takes its secret. The
+report counts what went in and what was rejected. Import from a store is gone.
+
+**Checkouts read plainly.** The databases column is one line that opens the details; a failed
+checkout offers Put back, Retry, and the sessions that block it; the repair counters appear only
+when something failed.
+
+**Smaller things a person will notice.** Help hides behind a (?) that opens on a click and moves
+nothing. A back arrow sits beside every title under a project, and column names stand apart from
+their types. Activity filters comparisons too. The masks screen takes one table at a time. The
+adapter crumb switches to the project's other databases, a connection test answers in a
+sentence, the tabs read States, Databases and Activity, and a screen reopens on the tab, view
+and chip it was left on. The states screen gains a Compare button; its tree scrolls, opens on HEAD
+and checks out from a node; a stash reads apart from a state and takes no editing. Fixture stands
+beside Edit on a row, the checkout dialog folds the restore strategy away, the projects list says
+who created each project, and the edit adapter dialog explains under its fields rather than in
+its labels. Every sentence a person sees states one fact.
+
+**The API and MCP.** `?wait=` now holds a snapshot, an archive import and a comparison the way
+it holds a checkout. `run_readonly_query` takes a `mongo` operation. `GET /agent/guide` answers
+for the caller's role. `POST /admin/reset-state` drains the dispatcher, wipes blobs, uploads and
+imports, and records `reset_state.run`. `docs/SECURITY_STANDARDS.md` gains the ISO map and the
+homepage a `security.txt`.
+
+### Changed
+
+- An agent token reaches `/mcp` and nothing else, the session routes included: off it the
+  answer is `403`, and `401` once revoked. `get_job` refuses a viewer token like its
+  neighbours, and a `resources/read` failure is a JSON-RPC error, `-32002` when the resource is
+  missing.
+- Instance-wide audit rows, the boot and the resets, are shown to admins only.
+- The storage listing answers the limit that applied instead of `200` every time.
+- The reset guard counts queued jobs as running.
+- Changing an adapter's mode is an admin's, in either direction.
+- The `@solidjs/signals` patch is gone: `2.0.0-rc.6` ships the fix.
+
+### Fixed
+
+- A retarget reclaims the orphaned blobs, and cannot fail a live init.
+- A project with no database offered Take state; the "consistent snapshot" badge named the
+  normal case.
+- A click on a saved or past query did nothing.
+- A job's progress label overflowed its column.
+- A date past what `Date` can hold threw; it shows its digits. The diagram kept its selection on
+  a canvas click.
+- `reset:dev` removed the checkout along with the environment.
+
 ## 1.0.0-beta
 
 The first beta. The number goes down from `1.1.0-alpha`: the alpha line ended at 1.1 and the

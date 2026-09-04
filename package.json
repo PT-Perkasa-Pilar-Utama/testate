@@ -1,6 +1,6 @@
 {
   "name": "testate",
-  "version": "1.0.0-beta",
+  "version": "1.0.0",
   "private": true,
   "description": "Git for your test database. Snapshot it, break it, put it back in seconds.",
   "license": "MIT",

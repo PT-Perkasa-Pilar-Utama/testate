@@ -10,7 +10,7 @@
 
 **Website:** [pt-perkasa-pilar-utama.github.io/testate](https://pt-perkasa-pilar-utama.github.io/testate/)
 
-Testate runs beside the system under test, takes data-only snapshots of its databases, and puts any of them back on demand. One container, one volume, no account, no telemetry. Version 1.0.0-beta.
+Testate runs beside the system under test, takes data-only snapshots of its databases, and puts any of them back on demand. One container, one volume, no account, no telemetry. Version 1.0.0.
 
 ## The problem
 
@@ -41,7 +41,7 @@ Nothing gets added to your application. Testate is a separate service that talks
 docker run -d --name testate -p 7378:7378 -v testate-data:/data \
   -e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
   -e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
-  ghcr.io/pt-perkasa-pilar-utama/testate:1.0.0-beta
+  ghcr.io/pt-perkasa-pilar-utama/testate:1.0.0
 ```
 
 Open <http://localhost:7378>, sign in as `admin` with that password, and change it when asked.
@@ -161,9 +161,9 @@ It listens on 7378 and keeps everything under `TESTATE_DATA_DIR`, which has to b
 Every release is built by this repository's own workflow and leaves a trail you can check without trusting us: SLSA build provenance and a keyless Sigstore signature on the image and on every binary, plus a CycloneDX SBOM.
 
 ```sh
-gh attestation verify oci://ghcr.io/pt-perkasa-pilar-utama/testate:1.0.0-beta \
+gh attestation verify oci://ghcr.io/pt-perkasa-pilar-utama/testate:1.0.0 \
   --repo PT-Perkasa-Pilar-Utama/testate
-cosign verify ghcr.io/pt-perkasa-pilar-utama/testate:1.0.0-beta \
+cosign verify ghcr.io/pt-perkasa-pilar-utama/testate:1.0.0 \
   --certificate-identity-regexp 'https://github.com/PT-Perkasa-Pilar-Utama/testate/' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```

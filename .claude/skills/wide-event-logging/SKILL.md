@@ -25,7 +25,7 @@ Source of the pattern: https://loggingsucks.com/. Source of truth for Testate's 
   "kind": "request",
   "level": "error",
   "sampled": true,
-  "service": { "name": "testate", "version": "1.0.0-beta", "boot_id": "01J...", "base_path": "/testate" },
+  "service": { "name": "testate", "version": "1.0.0", "boot_id": "01J...", "base_path": "/testate" },
   "request": { "id": "01J...", "method": "POST", "path": "/api/v1/projects/shop/checkouts", "route": "/projects/:slug/checkouts", "status": 409, "duration_ms": 41, "client_ip": "10.0.4.7", "user_agent": "curl/8.7", "bytes_in": 88, "bytes_out": 412, "idempotency_key_hash": "9f3c..." },
   "actor": { "user_id": "01J...", "role": "qa", "token_id": null, "auth": "session" },
   "project": { "id": "01J...", "slug": "shop" },
