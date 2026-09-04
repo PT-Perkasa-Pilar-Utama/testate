@@ -130,10 +130,10 @@ export function TakeDialog(props: {
       if (open) onceSettled(() => reset(form, { initialInput: EMPTY_DRAFT }));
     }
   );
-  // The dialog closes itself when the snapshot is queued; that is the moment the shutter fires.
+  // The moment the snapshot is queued is the moment the shutter fires. The presenter says so in
+  // its answer: a signal read right after the await still holds the value from before the write.
   const take = async (input: StateDraftInput): Promise<void> => {
-    await props.presenter.take(input);
-    if (!props.presenter.taking()) props.onTaken?.();
+    if (await props.presenter.take(input)) props.onTaken?.();
   };
   return (
     <FormDialog

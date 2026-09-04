@@ -39,10 +39,11 @@ export type StatesPresenter = Paged<StateListItem> & {
   /** The whole state behind a tree node: from the loaded list when it is there, else fetched. */
   byId: (id: string) => Promise<State>;
   close: () => void;
-  take: (input: StateDraftInput) => Promise<void>;
-  save: (input: StateDraftInput) => Promise<void>;
+  /** True once the snapshot is queued; false when the form has an error to show. */
+  take: (input: StateDraftInput) => Promise<boolean>;
+  save: (input: StateDraftInput) => Promise<boolean>;
   setProtected: (state: State, value: boolean) => Promise<void>;
-  confirmDelete: () => Promise<void>;
+  confirmDelete: () => Promise<boolean>;
   archiveUrl: (state: State) => string;
   /** The states ticked for a comparison, in the order they were ticked. */
   selected: () => readonly string[];
@@ -144,13 +145,15 @@ export function createStatesPresenter(
     setDeleting(null);
     setError(null);
   };
-  /** Dialog submits keep their error in the form instead of a toast. */
-  const inForm = async (task: () => Promise<void>): Promise<void> => {
+  /** Dialog submits keep their error in the form instead of a toast; true when the task ran. */
+  const inForm = async (task: () => Promise<void>): Promise<boolean> => {
     setError(null);
     try {
       await task();
+      return true;
     } catch (cause: unknown) {
       setError(messageOf(cause));
+      return false;
     }
   };
   const [selected, setSelected] = createSignal<readonly string[]>([]);
@@ -276,7 +279,7 @@ export function createStatesPresenter(
       const staticSlug = slug();
       const staticTarget = editing();
       const staticBody = toUpdateBody(input);
-      if (staticTarget === null) return Promise.resolve();
+      if (staticTarget === null) return Promise.resolve(false);
       return inForm(async () => {
         await statesModel.update(staticSlug, staticTarget.id, staticBody);
         showToast("State updated.", "success");
@@ -298,7 +301,7 @@ export function createStatesPresenter(
     confirmDelete: () => {
       const staticSlug = slug();
       const staticTarget = deleting();
-      if (staticTarget === null) return Promise.resolve();
+      if (staticTarget === null) return Promise.resolve(false);
       return inForm(async () => {
         const job = await statesModel.remove(staticSlug, staticTarget.id);
         close();
