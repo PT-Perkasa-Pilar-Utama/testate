@@ -37,7 +37,7 @@ describe("the way out of a name that does not resolve", () => {
     const target = { host: "localhost", port: 5432 };
     const verdict = { allowed: false, reason: "policy", matched: "127.0.0.0/8" } as const;
     expect(refusal(verdict, target, true).message).toContain("Testate itself");
-    expect(refusal(verdict, target, false).message).toBe("localhost:5432 is blocked (policy)");
+    expect(refusal(verdict, target, false).message).toContain("machine's own address");
     expect(refusal(verdict, { host: "pg.prod.internal", port: 5432 }, true).message).toBe(
       "pg.prod.internal:5432 is blocked (policy)"
     );

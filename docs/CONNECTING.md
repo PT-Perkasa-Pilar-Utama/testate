@@ -19,7 +19,13 @@ Once connected, a container's own name is its DNS name on that network. Adapter 
 
 ## B. A database running as a native binary on the host
 
-Uncomment `extra_hosts` in `deploy/docker-compose.yml` and restart:
+Docker on Linux defines `host.docker.internal` only when you ask for it; Docker Desktop on macOS and Windows defines it always. With `docker run`, add the flag and recreate the container:
+
+```sh
+docker run -d --name testate ... --add-host=host.docker.internal:host-gateway ghcr.io/pt-perkasa-pilar-utama/testate:1.0.0
+```
+
+With compose, uncomment `extra_hosts` in `deploy/docker-compose.yml` and restart:
 
 ```yaml
 services:
@@ -30,9 +36,9 @@ services:
 
 Adapter form: Host `host.docker.internal`, Port whatever the native process listens on (`5432` for a default Postgres install). The database must also listen on that interface. A Postgres bound only to `127.0.0.1` in `postgresql.conf` is unreachable from the container even with `extra_hosts` set; bind it to `0.0.0.0` or the Docker bridge address instead.
 
-## C. A database in the cloud (managed or remote)
+## C. A database on another machine, or in the cloud (managed or remote)
 
-Adapter form: Host is the provider's address or DNS name, Port its usual port. Nothing extra to configure on the Testate side beyond a route from the host running Testate to that address (an open firewall, a VPN, a public endpoint, whatever your provider needs).
+Adapter form: Host is the machine's address or DNS name, Port its usual port. Another machine on your network is the same case as a cloud provider: the database must listen on an interface that machine exposes (a Postgres bound to `127.0.0.1` answers nobody else), and its firewall must let the port through. Nothing extra to configure on the Testate side beyond a route from the host running Testate to that address (an open firewall, a VPN, a public endpoint, whatever your provider needs).
 
 On Supabase specifically, use the direct connection string, not the pooler, and a role that owns the tables. The pooler refuses the transaction shape a restore needs.
 
@@ -71,6 +77,16 @@ files you browse: `TESTATE_STORE=s3` with `TESTATE_S3_ENDPOINT` points it at any
 
 Before saving, click **Test connection** in the New adapter dialog. Testate opens the connection with the values in the form, reports the engine and version, whether it meets the minimum supported version, its capabilities (can it truncate, disable triggers, run inside one transaction), and any warnings. Nothing is written until you click **Create**; the test is a dry run.
 
-A blocked or unreachable host fails here with the reason (address policy, authentication, timeout), before you commit to a broken adapter.
+A blocked or unreachable host fails here with the reason (address policy, authentication, timeout), before you commit to a broken adapter. A name that does not resolve, or a loopback address from inside the container, fails with the way out for where Testate runs: sections A and B from a container, section F from the binary.
 
 Once an adapter is saved, `POST /api/v1/projects/{slug}/adapters/{id}/retest` re-runs the same probe with the stored credentials. This is useful after a password rotation or a privilege change on the database side. There is no retest button in the dashboard yet; call the endpoint directly with a `qa` or `admin` token.
+
+## F. Testate running as the binary, the database in Docker
+
+The single binary runs on the host itself, so there is no container to join a Docker network from and a container's name does not resolve. Point the adapter at this machine and the port the database container publishes:
+
+```sh
+docker ps --format '{{.Names}} {{.Ports}}'      # e.g. shop-postgres 0.0.0.0:15432->5432/tcp
+```
+
+Adapter form: Host this machine's own address, which the chip under the field offers, Port the published one, `15432` in that example, not the container's `5432`. `localhost` is refused by default: the deny list ships with `127.0.0.0/8` on it because loopback inside a container is Testate itself. On the binary that rule protects nothing, so an admin may remove it under **Settings**, and `localhost` works from then on.

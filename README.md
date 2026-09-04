@@ -84,12 +84,13 @@ flowchart LR
 
 Testate is one container on the same server, or the same network, as the databases. Nothing installs inside your app. Remove the container and nothing remains but the volume.
 
-| The database runs                       | Point the adapter at                             | Details                                                                                           |
-| --------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| In Docker, same machine                 | the container's name, on a shared Docker network | [Connecting, A](docs/CONNECTING.md#a-a-database-running-in-docker-on-the-same-machine-as-testate) |
-| Natively on the host                    | `host.docker.internal`                           | [Connecting, B](docs/CONNECTING.md#b-a-database-running-as-a-native-binary-on-the-host)           |
-| In the cloud, managed or remote         | its address, with a route from the host          | [Connecting, C](docs/CONNECTING.md#c-a-database-in-the-cloud-managed-or-remote)                   |
-| As an object store that is not Amazon's | its endpoint, in the Endpoint field              | [Connecting, D](docs/CONNECTING.md#d-an-object-store-that-is-not-amazons)                         |
+| The database runs                        | Point the adapter at                             | Details                                                                                               |
+| ---------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| In Docker, same machine                  | the container's name, on a shared Docker network | [Connecting, A](docs/CONNECTING.md#a-a-database-running-in-docker-on-the-same-machine-as-testate)     |
+| Natively on the host                     | `host.docker.internal`                           | [Connecting, B](docs/CONNECTING.md#b-a-database-running-as-a-native-binary-on-the-host)               |
+| On another machine, or in the cloud      | its address, with a route from the host          | [Connecting, C](docs/CONNECTING.md#c-a-database-on-another-machine-or-in-the-cloud-managed-or-remote) |
+| In Docker, Testate running as the binary | this machine's address and the published port    | [Connecting, F](docs/CONNECTING.md#f-testate-running-as-the-binary-the-database-in-docker)            |
+| As an object store that is not Amazon's  | its endpoint, in the Endpoint field              | [Connecting, D](docs/CONNECTING.md#d-an-object-store-that-is-not-amazons)                             |
 
 ## Who it is for
 

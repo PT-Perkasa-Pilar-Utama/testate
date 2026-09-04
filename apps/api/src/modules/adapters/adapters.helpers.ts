@@ -48,7 +48,10 @@ const LOOPBACK = new Set(["localhost", "127.0.0.1", "::1"]);
 /** Inside a container, loopback is the one address a person means as "this machine" and is not. */
 function blocked(verdict: { reason: string }, target: Target, contained: boolean): string {
   const where = `${target.host}:${target.port} is blocked (${verdict.reason})`;
-  if (!contained || !LOOPBACK.has(target.host.toLowerCase())) return where;
+  if (!LOOPBACK.has(target.host.toLowerCase())) return where;
+  if (!contained) {
+    return `${where}: the deny list refuses loopback. Use this machine's own address, or an admin removes 127.0.0.0/8 from the deny list in Settings.`;
+  }
   return `${where}: inside the container it is Testate itself. ${BY_NAME}; ${BY_HOST}.`;
 }
 
