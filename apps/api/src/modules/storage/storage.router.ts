@@ -57,6 +57,12 @@ export function createStorageRouter(h: StorageHandlers): Hono {
     h.rename
   );
   router.post(
+    `${P}/entries/copy`,
+    requireRole("qa"),
+    describe("storage", "Copy a file on a sandbox adapter to a free path", entrySchema, 201),
+    h.copy
+  );
+  router.post(
     `${P}/entries/directory`,
     requireRole("qa"),
     describe("storage", "Make an empty folder on a sandbox adapter", entrySchema, 201),

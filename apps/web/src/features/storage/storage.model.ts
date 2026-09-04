@@ -61,6 +61,12 @@ export const storageModel = {
       schema: entrySchema,
       body: { path, to },
     }),
+  /** A copy lands at `to`, a whole path that must be free; the source stays. */
+  copy: (slug: string, id: string, path: string, to: string): Promise<Entry> =>
+    apiClient.post(`${adapterPath(slug, id)}/entries/copy`, {
+      schema: entrySchema,
+      body: { path, to },
+    }),
   makeDirectory: (slug: string, id: string, path: string): Promise<Entry> =>
     apiClient.post(`${adapterPath(slug, id)}/entries/directory`, {
       schema: entrySchema,

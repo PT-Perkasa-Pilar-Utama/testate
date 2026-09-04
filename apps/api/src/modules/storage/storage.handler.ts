@@ -1,4 +1,9 @@
-import { acceptHostKeySchema, directorySchema, renameEntrySchema } from "@testate/shared";
+import {
+  acceptHostKeySchema,
+  copyEntrySchema,
+  directorySchema,
+  renameEntrySchema,
+} from "@testate/shared";
 import * as v from "valibot";
 
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
@@ -21,6 +26,7 @@ export type StorageHandlers = {
   download: Handler;
   upload: Handler;
   rename: Handler;
+  copy: Handler;
   makeDirectory: Handler;
   removeDirectory: Handler;
   remove: Handler;
@@ -130,6 +136,11 @@ export function createStorageHandlers(
         requestMeta(c, trustProxy)
       );
       return ok(c, entry);
+    },
+    copy: async (c) => {
+      const body = await parseBody(c, copyEntrySchema);
+      const entry = await service.copy(...args(c), body.path, body.to, requestMeta(c, trustProxy));
+      return ok(c, entry, 201);
     },
     makeDirectory: async (c) => {
       const body = await parseBody(c, directorySchema);

@@ -7,6 +7,8 @@ import { ApiError } from "@/lib/api-client.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { adaptersModel } from "../adapters/adapters.model.ts";
+import { moveOrCopy } from "./storage.batch.ts";
+import type { BatchMode } from "./storage.batch.ts";
 import { BINARY_EXTENSIONS, extensionOf, storageModel } from "./storage.model.ts";
 import type { EntriesPage } from "./storage.model.ts";
 
@@ -64,6 +66,12 @@ export type StoragePresenter = {
   clearPicked: () => void;
   /** Deletes every ticked entry, one call each, and says what it could not do. */
   removePicked: () => Promise<void>;
+  /** The move or copy dialog: which one is open, for the ticked entries. */
+  batchMode: () => BatchMode | null;
+  askBatchMove: (mode: BatchMode) => void;
+  cancelBatchMove: () => void;
+  /** Moves or copies every ticked file into a folder, and says what it could not do. */
+  movePicked: (folder: string) => Promise<void>;
 };
 
 /** A screenful. The listing pages with a cursor, so a bucket with thousands of keys
@@ -96,6 +104,7 @@ export function createStoragePresenter(slug: () => string, id: () => string): St
   const [renaming, setRenaming] = createSignal<Entry | null>(null);
   const [addingFolder, setAddingFolder] = createSignal(false);
   const [picked, setPicked] = createSignal<string[]>([]);
+  const [batchMode, setBatchMode] = createSignal<BatchMode | null>(null);
   const [confirmingBatch, setConfirmingBatch] = createSignal(false);
   // The adapter says whether it may be written; the API refuses either way, and this is only so
   // the screen does not offer a button that always fails.
@@ -231,6 +240,32 @@ export function createStoragePresenter(slug: () => string, id: () => string): St
     },
     picked,
     confirmingBatch,
+    batchMode,
+    askBatchMove: (mode) => setBatchMode(mode),
+    cancelBatchMove: () => setBatchMode(null),
+    movePicked: (folder) => {
+      const staticSlug = slug();
+      const staticId = id();
+      const staticMode = batchMode();
+      const staticRows = page.value().data.filter((entry) => picked().includes(entry.path));
+      if (staticMode === null || staticRows.length === 0) return Promise.resolve();
+      return attempt(async () => {
+        const { done, failed } = await moveOrCopy(staticMode, staticRows, folder, {
+          rename: (path, to) => storageModel.rename(staticSlug, staticId, path, to),
+          copy: (path, to) => storageModel.copy(staticSlug, staticId, path, to),
+        });
+        setPicked([]);
+        setBatchMode(null);
+        page.refresh();
+        const verb = staticMode === "move" ? "moved" : "copied";
+        showToast(
+          failed.length === 0
+            ? `${done} ${verb}.`
+            : `${done} ${verb}. Left where they were: ${failed.join(", ")}.`,
+          failed.length === 0 ? "success" : "info"
+        );
+      });
+    },
     askBatch: () => setConfirmingBatch(true),
     cancelBatch: () => setConfirmingBatch(false),
     togglePicked: (entry) =>

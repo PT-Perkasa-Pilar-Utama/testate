@@ -1,6 +1,6 @@
 import type { Actor, Entry, JsonObject } from "@testate/shared";
 
-import { normalizePath, notAFile } from "../../lib/files/index.ts";
+import { alreadyThere, normalizePath, notAFile } from "../../lib/files/index.ts";
 import type { RequestMeta } from "../../lib/http/auth.ts";
 import type { ResolvedFiles } from "../adapters/adapters.files.ts";
 
@@ -26,6 +26,18 @@ export type StorageWrites = {
    * Directories are refused, and so is a destination that already holds something.
    */
   rename(
+    actor: Actor,
+    slug: string,
+    adapterId: string,
+    path: string,
+    to: string,
+    meta: RequestMeta
+  ): Promise<Entry>;
+  /**
+   * Copies one file on a sandbox adapter: read through Testate, written at `to`. Directories are
+   * refused, and so is a destination that already holds something.
+   */
+  copy(
     actor: Actor,
     slug: string,
     adapterId: string,
@@ -99,6 +111,37 @@ export function createStorageWrites(ctx: WriteContext): StorageWrites {
       try {
         await source.move(from, target);
         ctx.record(actor, "file.renamed", adapter, slug, from, { to: target }, meta);
+        return await source.stat(target);
+      } finally {
+        await source.close();
+      }
+    },
+    async copy(actor, slug, adapterId, path, to, meta) {
+      const from = normalizePath(path);
+      const target = normalizePath(to);
+      if (from === "" || target === "") throw notAFile(from === "" ? from : target);
+      const { adapter, source } = await ctx.writable(actor, slug, adapterId);
+      try {
+        const entry = await source.stat(from);
+        if (entry.kind === "directory") throw notAFile(from);
+        // No store here copies in place across every engine, and an S3 copy is the one that
+        // could: the bytes pass through Testate, which is the cost of one rule for all three.
+        const taken = await source.stat(target).then(
+          () => true,
+          () => false
+        );
+        if (taken) throw alreadyThere(target);
+        const bytes = new Uint8Array(await new Response(await source.read(from)).arrayBuffer());
+        await source.put(target, bytes);
+        ctx.record(
+          actor,
+          "file.copied",
+          adapter,
+          slug,
+          from,
+          { to: target, bytes: bytes.byteLength },
+          meta
+        );
         return await source.stat(target);
       } finally {
         await source.close();

@@ -11,7 +11,7 @@ import Icon from "@/components/icon.tsx";
 import { Cell, EmptyRow, Head, Row, Table, TableFooter, TableSearch } from "@/components/table.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { formatBytes } from "../states/states.format.ts";
-import { DeleteDialogs, FolderDialog, RenameDialog } from "./storage.dialogs.view.tsx";
+import { DeleteDialogs, FolderDialog, MoveDialog, RenameDialog } from "./storage.dialogs.view.tsx";
 import { PreviewDialog } from "./storage.preview.view.tsx";
 import { createStoragePresenter } from "./storage.presenter.ts";
 import type { StoragePresenter } from "./storage.presenter.ts";
@@ -220,9 +220,17 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
               ? "1 entry selected."
               : `${presenter.picked().length} entries selected.`}
           </span>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <Button size="sm" variant="ghost" onClick={() => presenter.clearPicked()}>
               Clear
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => presenter.askBatchMove("move")}>
+              <Icon name="folder" class="h-3.5 w-3.5" />
+              Move to...
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => presenter.askBatchMove("copy")}>
+              <Icon name="copy" class="h-3.5 w-3.5" />
+              Copy to...
             </Button>
             <Button size="sm" variant="danger" onClick={() => presenter.askBatch()}>
               <Icon name="trash-2" class="h-3.5 w-3.5" />
@@ -289,6 +297,7 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
         </Loading>
       </Errored>
       <DeleteDialogs presenter={presenter} />
+      <MoveDialog presenter={presenter} />
       <RenameDialog presenter={presenter} />
       <FolderDialog presenter={presenter} />
       <PreviewDialog presenter={presenter} />

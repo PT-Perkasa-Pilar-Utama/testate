@@ -39,6 +39,28 @@ function actions(harness: AdaptersHarness): string[] {
   return rows.map((row) => v.parse(actionRow, row).action);
 }
 
+describe("copying a file", () => {
+  it("lands the copy, leaves the source, and refuses a taken destination", async () => {
+    const h = await createHarness();
+    const copied = await h.storage.copy(
+      h.harness.qa,
+      "shop",
+      h.s3,
+      "exports/report.csv",
+      "exports/2026/report.csv",
+      TEST_META
+    );
+    expect(copied).toMatchObject({ name: "report.csv", path: "exports/2026/report.csv" });
+    await expect(
+      h.storage.stat(h.harness.qa, "shop", h.s3, "exports/report.csv")
+    ).resolves.toMatchObject({ path: "exports/report.csv" });
+    await expect(
+      h.storage.copy(h.harness.qa, "shop", h.s3, "readme.md", "exports/2026/report.csv", TEST_META)
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(actions(h.harness)).toStrictEqual(["file.copied"]);
+  });
+});
+
 describe("renaming a file", () => {
   it("answers with the entry at its new path and leaves nothing at the old one", async () => {
     const h = await createHarness();

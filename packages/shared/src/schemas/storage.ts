@@ -42,6 +42,9 @@ export const renameEntrySchema = v.object({
   to: v.pipe(v.string(), v.minLength(1)),
 });
 
+/** A copy: `to` is a whole path, like a rename's, and must be free. */
+export const copyEntrySchema = renameEntrySchema;
+
 export const directorySchema = v.object({
   path: v.pipe(v.string(), v.minLength(1)),
 });

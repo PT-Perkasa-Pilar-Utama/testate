@@ -121,6 +121,68 @@ export function FolderDialog(props: { presenter: StoragePresenter }): JSX.Elemen
 }
 
 /** One file, and the batch, which says how many rather than naming them all. */
+const folderSchema = v.object({
+  folder: v.pipe(
+    v.string(),
+    v.check((value) => !value.split("/").includes(".."), "A folder cannot climb with `..`.")
+  ),
+});
+
+/** Where the ticked entries go: a folder on this store, empty for the root. */
+export function MoveDialog(props: { presenter: StoragePresenter }): JSX.Element {
+  const form = createForm({ schema: folderSchema, initialInput: { folder: "" } });
+  const mode = (): "move" | "copy" => props.presenter.batchMode() ?? "move";
+  const count = (): number => props.presenter.picked().length;
+  createEffect(
+    () => props.presenter.batchMode(),
+    (open) => {
+      if (open !== null)
+        onceSettled(() => reset(form, { initialInput: { folder: props.presenter.path() } }));
+    }
+  );
+  return (
+    <FormDialog
+      open={props.presenter.batchMode() !== null}
+      onClose={props.presenter.cancelBatchMove}
+      title={mode() === "move" ? "Move the selected" : "Copy the selected"}
+      description={`${count() === 1 ? "1 file" : `${count()} files`} ${mode() === "move" ? "move" : "copy"} into the folder below, on the store itself. A path already taken there is left alone. Folders stay where they are.`}
+    >
+      <Form
+        of={form}
+        class="grid gap-4"
+        onSubmit={(input) => props.presenter.movePicked(input.folder)}
+      >
+        <Field of={form} path={["folder"]}>
+          {(field) => (
+            <label class="grid content-start gap-1.5 text-base">
+              <FieldLabel required={false} help="Empty means the root of the store.">
+                Into folder
+              </FieldLabel>
+              <Input
+                {...field.props}
+                autocomplete="off"
+                placeholder="exports/2026"
+                value={field.input}
+                variant={field.errors ? "error" : "default"}
+                aria-invalid={field.errors ? "true" : undefined}
+              />
+              <FieldError message={field.errors?.[0]} />
+            </label>
+          )}
+        </Field>
+        <DialogActions>
+          <Button type="button" variant="ghost" onClick={() => props.presenter.cancelBatchMove()}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary">
+            {mode() === "move" ? "Move" : "Copy"}
+          </Button>
+        </DialogActions>
+      </Form>
+    </FormDialog>
+  );
+}
+
 export function DeleteDialogs(props: { presenter: StoragePresenter }): JSX.Element {
   const count = (): number => props.presenter.picked().length;
   return (
