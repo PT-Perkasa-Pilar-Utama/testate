@@ -225,7 +225,7 @@ export default function Timeline(props: TimelineProps): JSX.Element {
       }
     >
       <ul
-        class="grid max-h-[36rem] min-h-[20rem] overflow-y-auto rounded-lg bg-surface px-5 py-4 ring ring-line"
+        class="grid max-h-[36rem] min-h-[20rem] content-start overflow-y-auto rounded-lg bg-surface px-5 py-4 ring ring-line"
         aria-label="States"
       >
         <For each={props.states}>

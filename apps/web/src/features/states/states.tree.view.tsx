@@ -115,7 +115,7 @@ export default function Tree(props: TreeProps): JSX.Element {
       }
     >
       <ul
-        class="grid max-h-[36rem] min-h-[20rem] gap-3 overflow-y-auto rounded-lg bg-surface px-5 py-4 ring ring-line"
+        class="grid max-h-[36rem] min-h-[20rem] content-start gap-3 overflow-y-auto rounded-lg bg-surface px-5 py-4 ring ring-line"
         aria-label="State history"
       >
         <For each={props.nodes}>
