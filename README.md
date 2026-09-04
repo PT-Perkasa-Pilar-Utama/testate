@@ -44,6 +44,8 @@ docker run -d --name testate -p 7378:7378 -v testate-data:/data \
   ghcr.io/pt-perkasa-pilar-utama/testate:1.0.0
 ```
 
+The same image is on Docker Hub as `snowfluke/testate`, under the same tags.
+
 Open <http://localhost:7378>, sign in as `admin` with that password, and change it when asked.
 
 Then: add a database under **Databases**, take a state under **States**, break something, click **Check out**. Where to point the host is the one thing that catches people, so read [Connecting a database](docs/CONNECTING.md) before you add the first one.
@@ -167,6 +169,8 @@ cosign verify ghcr.io/pt-perkasa-pilar-utama/testate:1.0.0 \
   --certificate-identity-regexp 'https://github.com/PT-Perkasa-Pilar-Utama/testate/' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
+
+Both commands hold for `docker.io/snowfluke/testate:1.0.0` too: it is the same manifest, copied by digest and signed again where it lives.
 
 For a binary, run the same two commands on the archive, with `--bundle <archive>.sigstore.json` for cosign; the release also carries `testate-<version>.intoto.jsonl`, the provenance statement for every archive, for a check without network access (`gh attestation verify <archive> --bundle <that file>`). A download that fails either check is not ours; [SECURITY.md](SECURITY.md) says how to report it.
 

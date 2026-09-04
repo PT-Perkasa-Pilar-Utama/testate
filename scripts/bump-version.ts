@@ -52,6 +52,12 @@ const SLOTS: Slot[] = [
   },
   {
     file: "README.md",
+    pattern: /docker\.io\/snowfluke\/testate:([^\s"'`]+)/,
+    render: (version: string) => `docker.io/snowfluke/testate:${version}`,
+    all: true,
+  },
+  {
+    file: "README.md",
     pattern: /\bVersion (\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\./,
     render: (version: string) => `Version ${version}.`,
   },
