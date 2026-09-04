@@ -119,7 +119,10 @@ describe("adapters", () => {
     ).rejects.toMatchObject({ code: "HOST_BLOCKED", details: { reason: "policy" } });
     await expect(
       adapters.testDraft("shop", { ...PG, config: { ...PG.config, host: "gone.invalid" } })
-    ).rejects.toMatchObject({ code: "ADAPTER_UNREACHABLE" });
+    ).rejects.toMatchObject({
+      code: "ADAPTER_UNREACHABLE",
+      message: expect.stringContaining("reached by its container name"),
+    });
     await expect(
       adapters.testDraft("shop", { ...PG, config: { ...PG.config, database: "ancient" } })
     ).rejects.toMatchObject({ code: "ENGINE_UNSUPPORTED", details: { floor: "13" } });

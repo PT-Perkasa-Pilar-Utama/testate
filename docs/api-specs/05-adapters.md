@@ -58,7 +58,7 @@ Draft body (create, test, update):
             "warnings": [] } }
 ```
 
-**Errors.** `HOST_BLOCKED` 422, `ENGINE_UNSUPPORTED` 422, `ADAPTER_UNREACHABLE` 502 (auth failures included, `details.reason: "auth"`), `VALIDATION_ERROR`. **Traceability.** Stories 18, 19, 20, 32.
+**Errors.** `HOST_BLOCKED` 422, `ENGINE_UNSUPPORTED` 422, `ADAPTER_UNREACHABLE` 502 (auth failures included, `details.reason: "auth"`; a name that does not resolve, `details.reason: "dns"`, carries a message naming the two ways a database on the same machine is reached from a container), `VALIDATION_ERROR`. **Traceability.** Stories 18, 19, 20, 32.
 
 ## 5.3 `POST /projects/{slug}/adapters`
 

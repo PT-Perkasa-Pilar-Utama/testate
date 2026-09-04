@@ -46,6 +46,8 @@ docker run -d --name testate -p 7378:7378 -v testate-data:/data \
 
 The same image is on Docker Hub as `snowfluke/testate`, under the same tags.
 
+Testate dials the database from inside its container, so `localhost` there means Testate itself. A database in another container on the same machine is reached by its container name once both share a network: `docker network create testate-net`, then `docker network connect testate-net testate` and the same for the database container, and the host is that container's name with the engine's own port. A database running natively on the machine is `host.docker.internal`, which Docker on Linux defines only when the run command above carries `--add-host=host.docker.internal:host-gateway`.
+
 Open <http://localhost:7378>, sign in as `admin` with that password, and change it when asked.
 
 Then: add a database under **Databases**, take a state under **States**, break something, click **Check out**. Where to point the host is the one thing that catches people, so read [Connecting a database](docs/CONNECTING.md) before you add the first one.

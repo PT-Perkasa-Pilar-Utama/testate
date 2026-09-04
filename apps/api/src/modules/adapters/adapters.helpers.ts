@@ -21,10 +21,23 @@ export function purposeOf(kind: Adapter["kind"]): Check["purpose"] {
   return kind === "database" ? "database" : "files";
 }
 
+const HOST_GATEWAY = "--add-host=host.docker.internal:host-gateway";
+
+/**
+ * A name that does not resolve is nearly always one of two Docker mistakes, so the message names
+ * the way out of each: the two ways a database on the same machine is reached from a container.
+ */
+export function unresolvable(host: string): string {
+  if (host.toLowerCase() === "host.docker.internal") {
+    return `${host} does not resolve: Docker on Linux defines it only when Testate starts with ${HOST_GATEWAY}. A database in another container is reached by its container name once both share a network.`;
+  }
+  return `${host} does not resolve. A database in another container is reached by its container name once both share a network (docker network connect); one on the machine itself by host.docker.internal, with ${HOST_GATEWAY} on Testate.`;
+}
+
 /** A denied target answers HOST_BLOCKED; an unresolvable one ADAPTER_UNREACHABLE (05 §5.2). */
 export function refusal(verdict: Exclude<Verdict, { allowed: true }>, target: Target): AppError {
   if (verdict.reason === "unresolvable") {
-    return new AppError("ADAPTER_UNREACHABLE", `${target.host} does not resolve`, {
+    return new AppError("ADAPTER_UNREACHABLE", unresolvable(target.host), {
       reason: "dns",
       host: target.host,
     });
