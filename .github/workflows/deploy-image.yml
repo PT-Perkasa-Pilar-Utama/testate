@@ -293,8 +293,27 @@ jobs:
           subject-digest: ${{ steps.published.outputs.digest }}
           push-to-registry: true
 
+      # Docker Hub gets the same manifest, copied from ghcr.io by digest, so both names resolve to
+      # one image. It runs only when the Docker Hub secrets exist, and it runs even when the ghcr.io
+      # build above was skipped, so a re-dispatch mirrors a version ghcr.io already has. The
+      # repository variable `DOCKERHUB_IMAGE` (say `acme/testate`) names the repository; without it
+      # the image goes to `docker.io/<DOCKERHUB_USERNAME>/testate`.
+      - name: Resolve the Docker Hub repository
+        id: hub
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DOCKERHUB_IMAGE: ${{ vars.DOCKERHUB_IMAGE }}
+        run: |
+          if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
+            echo "::notice::DOCKERHUB_USERNAME or DOCKERHUB_TOKEN is not set; Docker Hub is skipped."
+            echo "image=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "image=docker.io/${DOCKERHUB_IMAGE:-${DOCKERHUB_USERNAME}/testate}" >> "$GITHUB_OUTPUT"
+
       - name: Install cosign
-        if: steps.published.outputs.digest != ''
+        if: steps.published.outputs.digest != '' || steps.hub.outputs.image != ''
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
       # Keyless, through the workflow's OIDC identity: no long-lived key anywhere. Verify with:
@@ -306,6 +325,56 @@ jobs:
         env:
           COSIGN_YES: "true"
         run: cosign sign "${{ steps.img.outputs.image }}@${{ steps.published.outputs.digest }}"
+
+      - name: Log in to Docker Hub
+        if: steps.hub.outputs.image != ''
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Idempotent like the ghcr.io publish: an existing version on Docker Hub is left alone. The
+      # copy is checked by digest, so a Docker Hub tag never points at anything but the manifest
+      # that was attested and signed above.
+      - name: Mirror the release tags to Docker Hub
+        if: steps.hub.outputs.image != ''
+        id: mirrored
+        run: |
+          source="${{ steps.img.outputs.image }}"
+          target="${{ steps.hub.outputs.image }}"
+          version="${{ steps.img.outputs.version }}"
+          if docker manifest inspect "${target}:${version}" > /dev/null 2>&1; then
+            echo "::notice::${target}:${version} already exists - skipping the mirror."
+            echo "digest=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          digest=$(docker buildx imagetools inspect "${source}:${version}" --format '{{ json .Manifest.Digest }}' | tr -d '"')
+          if [ -z "$digest" ]; then
+            echo "::error::${source}:${version} is not published; nothing to mirror"
+            exit 1
+          fi
+          docker buildx imagetools create \
+            --tag "${target}:${version}" \
+            --tag "${target}:latest" \
+            "${source}@${digest}"
+          copied=$(docker buildx imagetools inspect "${target}:${version}" --format '{{ json .Manifest.Digest }}' | tr -d '"')
+          if [ "$copied" != "$digest" ]; then
+            echo "::error::Docker Hub holds ${copied} where ghcr.io holds ${digest}"
+            exit 1
+          fi
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+          echo "mirrored ${target}:${version} as ${digest}"
+
+      # The provenance attestation is looked up by digest in this repository's store, so
+      # `gh attestation verify oci://docker.io/<repo>:<version> --repo PT-Perkasa-Pilar-Utama/testate`
+      # already holds. A cosign signature lives in the registry beside its image, so the copy
+      # takes its own.
+      - name: Sign the Docker Hub image (keyless)
+        if: steps.mirrored.outputs.digest != ''
+        env:
+          COSIGN_YES: "true"
+        run: cosign sign "${{ steps.hub.outputs.image }}@${{ steps.mirrored.outputs.digest }}"
 
   # One executable per platform, the SPA and the migrations inside it, so a machine with no Docker
   # can run Testate from a download. Cross-compiled on one Linux runner: nothing native is inside
