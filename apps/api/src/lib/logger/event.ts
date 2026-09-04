@@ -11,6 +11,7 @@ export type Section =
   | "adapter"
   | "op"
   | "engine"
+  | "audit"
   | "error";
 
 export type Fields = JsonObject;

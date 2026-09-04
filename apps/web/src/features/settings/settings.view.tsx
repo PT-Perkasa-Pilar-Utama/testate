@@ -25,6 +25,7 @@ const LABELS = {
   "retention.query_history_days": "Query history (days)",
   "retention.job_history_days": "Job history (days)",
   "retention.audit_days": "Audit log (days)",
+  "retention.audit_payload_days": "Audit request and response bodies (days)",
   "retention.import_run_days": "Import run history (days)",
   "quota.default_bytes": "Default project quota (bytes)",
   "quota.instance_ceiling_bytes": "Instance quota ceiling (bytes)",

@@ -1,7 +1,7 @@
 import * as v from "valibot";
 
 import { idSchema, timestampSchema } from "./common.ts";
-import { jsonObjectSchema } from "./json.ts";
+import { jsonObjectSchema, jsonValueSchema } from "./json.ts";
 
 export const auditRowSchema = v.object({
   id: idSchema,
@@ -21,9 +21,30 @@ export const auditRowSchema = v.object({
   outcome: v.nullable(v.picklist(["succeeded", "failed", "partial"])),
   ip: v.nullable(v.string()),
   user_agent: v.nullable(v.string()),
+  /** The HTTP request that wrote the row; null for a job's or the system's, and for older rows. */
+  request_id: v.nullable(v.string()),
   created_at: timestampSchema,
 });
 export type AuditRow = v.InferOutput<typeof auditRowSchema>;
+
+/**
+ * The request and the response behind a row, as the API kept them: secrets replaced whole,
+ * identifiers shortened to their ends, each body cut at the size cap. `expired` means the row
+ * had a request but its bodies passed `retention.audit_payload_days`; `none` means no request
+ * wrote the row.
+ */
+export const auditPayloadSchema = v.object({
+  state: v.picklist(["kept", "expired", "none"]),
+  method: v.nullable(v.string()),
+  path: v.nullable(v.string()),
+  status: v.nullable(v.number()),
+  /** A body cut at the cap arrives as the text that was kept, which is not JSON. */
+  request: v.nullable(jsonValueSchema),
+  response: v.nullable(jsonValueSchema),
+  request_truncated: v.boolean(),
+  response_truncated: v.boolean(),
+});
+export type AuditPayload = v.InferOutput<typeof auditPayloadSchema>;
 
 export const auditQuerySchema = v.object({
   cursor: v.optional(v.string()),

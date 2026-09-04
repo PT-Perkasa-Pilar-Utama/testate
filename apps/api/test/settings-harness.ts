@@ -89,7 +89,12 @@ export async function createSettingsHarness(
       harness.blocked.add("pg.sit.internal");
       return harness.adapters.recheckDenyList();
     },
-    retention: { db: harness.db, removeState: async () => undefined, dataDir: harness.dataDir },
+    retention: {
+      db: harness.db,
+      removeState: async () => undefined,
+      pruneAuditPayloads: () => 0,
+      dataDir: harness.dataDir,
+    },
     now: harness.now,
   });
   return { harness, settings, rechecks };

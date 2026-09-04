@@ -40,6 +40,7 @@ export function createTestSettings(
     retention: {
       db,
       removeState: async () => undefined,
+      pruneAuditPayloads: () => 0,
       dataDir: `${process.cwd()}/.scratch-settings`,
     },
     now,

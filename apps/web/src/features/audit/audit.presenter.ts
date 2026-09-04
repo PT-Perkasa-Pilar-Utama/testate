@@ -1,7 +1,8 @@
 import { createSignal } from "solid-js";
-import type { AuditRow } from "@testate/shared";
+import type { AuditPayload, AuditRow } from "@testate/shared";
 
 import { createRefreshable } from "@/lib/async.ts";
+import type { Refreshable } from "@/lib/async.ts";
 import { auditModel } from "./audit.model.ts";
 import type { AuditFilter } from "./audit.model.ts";
 
@@ -20,6 +21,12 @@ export type AuditPresenter = {
   hasNext: () => boolean;
   next: () => void;
   previous: () => void;
+  /** The row whose request and response are open, null when that dialog is shut. */
+  inspecting: () => AuditRow | null;
+  inspect: (row: AuditRow) => void;
+  closeInspect: () => void;
+  /** The bodies behind `inspecting`; null while nothing is open. */
+  payload: Refreshable<AuditPayload | null>;
 };
 
 const EMPTY: AuditFilter = { q: "", action: "", actor: "", outcome: "", from: "", to: "" };
@@ -35,6 +42,11 @@ export function createAuditPresenter(): AuditPresenter {
   const [filter, setFilterSignal] = createSignal<AuditFilter>(EMPTY);
   const [cursors, setCursors] = createSignal<string[]>([]);
   const page = createRefreshable(() => auditModel.page(filter(), cursors().at(-1)));
+  const [inspecting, setInspecting] = createSignal<AuditRow | null>(null);
+  const payload = createRefreshable((): Promise<AuditPayload | null> => {
+    const row = inspecting();
+    return row === null ? Promise.resolve(null) : auditModel.payload(row.id);
+  });
   // Changing the question puts you back on its first page: the cursors in hand answer the old one.
   const narrow = (change: () => void): void => {
     setCursors([]);
@@ -54,5 +66,9 @@ export function createAuditPresenter(): AuditPresenter {
       if (cursor !== null) setCursors((current) => [...current, cursor]);
     },
     previous: () => setCursors((current) => current.slice(0, -1)),
+    inspecting,
+    inspect: setInspecting,
+    closeInspect: () => setInspecting(null),
+    payload,
   };
 }

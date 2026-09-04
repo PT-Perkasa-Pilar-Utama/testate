@@ -13,7 +13,7 @@ Every route below requires `admin` **and** an unscoped credential; a project-sco
 ```json
 { "data": {
   "store": { "driver": "local", "s3": null, "locked_by_env": false },
-  "retention": { "stash_keep": 5, "diff_days": 7, "query_history_days": 90, "job_history_days": 90, "audit_days": 365, "import_run_days": 30 },
+  "retention": { "stash_keep": 5, "diff_days": 7, "query_history_days": 90, "job_history_days": 90, "audit_days": 365, "audit_payload_days": 30, "import_run_days": 30 },
   "quota": { "default_bytes": 10737418240, "instance_ceiling_bytes": null },
   "limits": { "query_rows_default": 500, "query_rows_max": 5000, "query_bytes": 10485760, "query_timeout_ms": 30000, "query_timeout_max_ms": 300000, "upload_mb": 50, "token_requests_per_minute": 600, "agent_requests_per_minute": 120, "failed_logins_per_minute": 20, "write_session_idle_minutes": 30, "job_concurrency": 2 },
   "netguard": { "deny": ["127.0.0.0/8", "::1/128"], "fixed": ["169.254.0.0/16", "fe80::/10", "169.254.169.254", "fd00:ec2::254", "metadata.google.internal", "self"] },

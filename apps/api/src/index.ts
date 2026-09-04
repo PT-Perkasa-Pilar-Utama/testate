@@ -39,8 +39,7 @@ import { createAgentHandlers } from "./modules/agent/agent.handler.ts";
 import { createAgentService } from "./modules/agent/agent.service.ts";
 import { createAgentTools } from "./modules/agent/agent.tools.ts";
 import { createAuditHandlers } from "./modules/audit/audit.handler.ts";
-import { createAuditRepository } from "./modules/audit/audit.repository.ts";
-import { createAuditService } from "./modules/audit/audit.service.ts";
+import { createAuditModule } from "./modules/audit/audit.wiring.ts";
 import { createAuthHandlers } from "./modules/auth/auth.handler.ts";
 import { createAuthRepository } from "./modules/auth/auth.repository.ts";
 import { createAuthService } from "./modules/auth/auth.service.ts";
@@ -121,7 +120,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
 
   const now = (): Date => new Date();
   const password = createPasswordHasher();
-  const audit = createAuditService({ repo: createAuditRepository(db), now });
+  const { audit, payloads, captureAudit } = createAuditModule(db, now);
   const usersRepo = createUsersRepository(db);
   const authRepo = createAuthRepository(db);
   const projectsRepo = createProjectsRepository(db);
@@ -150,6 +149,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
       setDeny: (deny) => netguard.setDeny(deny),
       recheck: () => adapters.recheckDenyList(),
       removeState: (id) => core.states.removeNow(id),
+      pruneAuditPayloads: payloads.prune,
       jobs: lazyJobs(() => jobs),
       ring,
       netguard,
@@ -254,6 +254,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
 
   const app = new Hono();
   app.use("*", logger.middleware());
+  app.use("*", captureAudit);
   installHardening(app, hardeningFor(config, prefix, auth, now));
   app.onError((cause, c) => errorResponse(c, cause, c.get("event"), config.TESTATE_LOG_STACKS));
   app.notFound((c) => errorResponse(c, notFound("route"), c.get("event"), false));

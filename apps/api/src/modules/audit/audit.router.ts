@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { auditRowSchema } from "@testate/shared";
+import { auditPayloadSchema, auditRowSchema } from "@testate/shared";
 import * as v from "valibot";
 
 import { requireRole } from "../../lib/http/auth.ts";
@@ -19,6 +19,13 @@ export function createAuditRouter(h: AuditHandlers): Hono {
     requireRole("viewer"),
     describe("audit", "Audit CSV", v.unknown()),
     h.exportCsv
+  );
+  // Admin only: a stored response was masked for whoever asked, not for whoever reads it here.
+  router.get(
+    "/audit-logs/:id/payload",
+    requireRole("admin"),
+    describe("audit", "Request and response behind a row", auditPayloadSchema),
+    h.payload
   );
   return router;
 }

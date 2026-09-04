@@ -23,6 +23,7 @@ const auditRecordSchema = v.object({
   outcome: v.nullable(v.picklist(["succeeded", "failed", "partial"])),
   ip: v.nullable(v.string()),
   user_agent: v.nullable(v.string()),
+  request_id: v.nullable(v.string()),
   created_at: v.string(),
 });
 type AuditRecord = v.InferOutput<typeof auditRecordSchema>;
@@ -44,6 +45,7 @@ export type AuditInsert = {
   outcome: "succeeded" | "failed" | "partial" | null;
   ip: string | null;
   user_agent: string | null;
+  request_id: string | null;
   created_at: string;
 };
 
@@ -71,6 +73,8 @@ export type AuditPage = { rows: AuditRow[]; nextCursor: string | null };
 
 export type AuditRepository = {
   insert(row: AuditInsert): void;
+  /** One row by id, under the same scope as the list; null when it is not there or not yours. */
+  find(id: string, query: Pick<AuditListQuery, "scope" | "includeInstance">): AuditRow | null;
   list(query: AuditListQuery): AuditPage;
   /** How many rows the filter matches, ignoring the page. */
   total(query: AuditListQuery): number;
@@ -102,6 +106,7 @@ function toRow(record: AuditRecord): AuditRow {
     outcome: record.outcome,
     ip: record.ip,
     user_agent: record.user_agent,
+    request_id: record.request_id,
     created_at: record.created_at,
   };
 }
@@ -187,8 +192,8 @@ function afterCursor(query: AuditListQuery): Condition | null {
 export function createAuditRepository(db: MetadataDb): AuditRepository {
   const insert = db.query(
     `INSERT INTO audit_logs (id, actor_user_id, actor_token_id, actor_label, action, target_type, target_id, target_label,
-       project_id, project_slug, adapter_id, adapter_name, details, outcome, ip, user_agent, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       project_id, project_slug, adapter_id, adapter_name, details, outcome, ip, user_agent, request_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
   return {
     insert(row) {
@@ -209,8 +214,17 @@ export function createAuditRepository(db: MetadataDb): AuditRepository {
         row.outcome,
         row.ip,
         row.user_agent,
+        row.request_id,
         row.created_at
       );
+    },
+    find(id, query) {
+      const found = conditions({ limit: 1, ...query });
+      found.push({ sql: "id = ?", params: [id] });
+      const record = db
+        .query(`SELECT * FROM audit_logs WHERE ${found.map((item) => item.sql).join(" AND ")}`)
+        .get(...found.flatMap((item) => item.params));
+      return record === null ? null : toRow(v.parse(auditRecordSchema, record));
     },
     total(query) {
       const found = conditions(query);

@@ -27,6 +27,8 @@ export const settingsSchema = v.object({
     query_history_days: positiveInt,
     job_history_days: positiveInt,
     audit_days: positiveInt,
+    /** The request and response bodies behind audit rows; the rows outlive them. */
+    audit_payload_days: positiveInt,
     import_run_days: positiveInt,
   }),
   quota: v.object({

@@ -15,6 +15,8 @@ const SIZES = {
   base: "sm:w-[26rem]",
   lg: "sm:w-[40rem]",
   xl: "sm:w-[48rem]",
+  /** Two panes of JSON side by side; the viewport caps it on a narrow screen. */
+  wide: "sm:w-[76rem]",
 } as const;
 
 export type DialogProps = {

@@ -155,6 +155,7 @@ const MATRIX: [string, string, Role][] = [
   ["GET", "/jobs", "viewer"],
   ["POST", "/jobs/j1/cancel", "qa"],
   ["GET", "/audit-logs", "viewer"],
+  ["GET", "/audit-logs/a1/payload", "admin"],
   ["GET", "/users", "admin"],
   ["POST", "/users", "admin"],
   ["DELETE", "/users/u1", "admin"],

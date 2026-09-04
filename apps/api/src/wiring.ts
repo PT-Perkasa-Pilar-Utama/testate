@@ -178,6 +178,7 @@ export type SettingsHooks = {
   setDeny: (deny: string[]) => void;
   recheck: () => Promise<string[]>;
   removeState: (id: string) => Promise<void>;
+  pruneAuditPayloads: (before: string) => number;
   jobs: SettingsDeps["jobs"];
   ring: KeyRing;
   netguard: Netguard;
@@ -202,7 +203,12 @@ export function settingsDeps(
       hooks.setDeny(deny);
       return hooks.recheck();
     },
-    retention: { db, removeState: hooks.removeState, dataDir: config.TESTATE_DATA_DIR },
+    retention: {
+      db,
+      removeState: hooks.removeState,
+      pruneAuditPayloads: hooks.pruneAuditPayloads,
+      dataDir: config.TESTATE_DATA_DIR,
+    },
     now,
   };
 }

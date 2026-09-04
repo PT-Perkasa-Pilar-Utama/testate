@@ -88,6 +88,7 @@ describe("settings", () => {
       retention: {
         db: h.harness.db,
         removeState: async (id) => void removed.push(id),
+        pruneAuditPayloads: () => 0,
         dataDir: h.harness.dataDir,
       },
       now: h.harness.now,

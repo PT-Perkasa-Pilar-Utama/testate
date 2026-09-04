@@ -10,6 +10,7 @@ export type RetentionReport = {
   stashes: number;
   query_history: number;
   audit_logs: number;
+  audit_payloads: number;
   import_runs: number;
   backups: number;
 };
@@ -18,6 +19,8 @@ export type RetentionDeps = {
   db: MetadataDb;
   /** Deletes one state with its blob refcounts; the states repository owns the recipe (15 §15.4). */
   removeState: (id: string) => Promise<void>;
+  /** Request and response bodies behind audit rows, on their own shorter clock (15 §15.3). */
+  pruneAuditPayloads: (before: string) => number;
   /** Download backups under `run/backups` expire after 24 hours (16 §16.4). */
   dataDir: string;
   now: () => Date;
@@ -85,7 +88,8 @@ export async function runRetention(
   const audit_logs = deps.db
     .query("DELETE FROM audit_logs WHERE created_at < ?")
     .run(cutoff(now, retention.audit_days)).changes;
+  const audit_payloads = deps.pruneAuditPayloads(cutoff(now, retention.audit_payload_days));
   const import_runs = pruneImportRuns(deps, cutoff(now, retention.import_run_days));
   const backups = pruneBackups(deps.dataDir, now);
-  return { stashes, query_history, audit_logs, import_runs, backups };
+  return { stashes, query_history, audit_logs, audit_payloads, import_runs, backups };
 }

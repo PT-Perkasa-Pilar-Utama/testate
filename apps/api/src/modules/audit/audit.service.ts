@@ -1,4 +1,4 @@
-import type { Actor, AuditRow, JsonObject } from "@testate/shared";
+import type { Actor, AuditPayload, AuditRow, JsonObject } from "@testate/shared";
 
 import { exportCell } from "../../lib/csv.ts";
 import type { RequestMeta } from "../../lib/http/auth.ts";
@@ -9,6 +9,7 @@ import type {
   AuditPage,
   AuditRepository,
 } from "./audit.repository.ts";
+import type { PayloadStore } from "./audit.payloads.ts";
 
 export const AUDIT_ROW_MOCK: AuditRow = {
   id: AUDIT_ID,
@@ -23,7 +24,30 @@ export const AUDIT_ROW_MOCK: AuditRow = {
   outcome: "succeeded",
   ip: "10.0.4.7",
   user_agent: "Mozilla/5.0",
+  request_id: "01991f00-0000-7000-8000-0000000000aa",
   created_at: NOW,
+};
+
+export const AUDIT_PAYLOAD_MOCK: AuditPayload = {
+  state: "kept",
+  method: "POST",
+  path: "/api/v1/projects/shop/checkouts",
+  status: 202,
+  request: { state_name: "seeded-baseline", force: false },
+  response: { data: { id: "01991f00-0000-7000-8000-000000000050", status: "queued" } },
+  request_truncated: false,
+  response_truncated: false,
+};
+
+const NO_PAYLOAD: AuditPayload = {
+  state: "none",
+  method: null,
+  path: null,
+  status: null,
+  request: null,
+  response: null,
+  request_truncated: false,
+  response_truncated: false,
 };
 
 /** What a module records. `actor: null` is the system (boot, retention, recovery). */
@@ -46,9 +70,14 @@ export type AuditService = {
   list(query: AuditListQuery): Promise<AuditPage>;
   total(query: AuditListQuery): Promise<number>;
   exportCsv(query: AuditListQuery): Promise<string>;
+  /** The bodies behind one row the caller may see; null when the row is not there or not theirs. */
+  payload(
+    id: string,
+    scope: Pick<AuditListQuery, "scope" | "includeInstance">
+  ): Promise<AuditPayload | null>;
 };
 
-export type AuditDeps = { repo: AuditRepository; now?: () => Date };
+export type AuditDeps = { repo: AuditRepository; payloads?: PayloadStore; now?: () => Date };
 
 const CSV_COLUMNS = [
   "created_at",
@@ -116,6 +145,7 @@ export function createAuditService(deps: AuditDeps): AuditService {
         outcome: entry.outcome,
         ip: entry.meta?.ip ?? null,
         user_agent: entry.meta?.user_agent ?? null,
+        request_id: entry.meta?.request_id ?? null,
         created_at: now().toISOString(),
       });
     },
@@ -124,6 +154,13 @@ export function createAuditService(deps: AuditDeps): AuditService {
     },
     async total(query) {
       return deps.repo.total(query);
+    },
+    async payload(id, scope) {
+      const row = deps.repo.find(id, scope);
+      if (row === null) return null;
+      if (row.request_id === null) return NO_PAYLOAD;
+      const kept = deps.payloads?.get(row.request_id) ?? null;
+      return kept === null ? { ...NO_PAYLOAD, state: "expired" } : { state: "kept", ...kept };
     },
     async exportCsv(query) {
       const lines = [CSV_COLUMNS.join(",")];

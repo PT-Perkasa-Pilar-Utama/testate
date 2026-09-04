@@ -1,12 +1,12 @@
 import * as v from "valibot";
 
 import { currentActor } from "../../lib/http/auth.ts";
-import { okPage, parseQuery } from "../../lib/http/index.ts";
+import { notFound, ok, okPage, param, parseQuery } from "../../lib/http/index.ts";
 import type { Handler } from "../../lib/http/index.ts";
 import type { AuditListQuery } from "./audit.repository.ts";
 import type { AuditService } from "./audit.service.ts";
 
-export type AuditHandlers = { list: Handler; exportCsv: Handler };
+export type AuditHandlers = { list: Handler; exportCsv: Handler; payload: Handler };
 
 const text = v.optional(v.array(v.string()));
 
@@ -54,6 +54,14 @@ export function createAuditHandlers(service: AuditService): AuditHandlers {
       const page = await service.list(query);
       const total = await service.total(query);
       return okPage(c, page.rows, page.nextCursor, query.limit, total);
+    },
+    payload: async (c) => {
+      const found = await service.payload(param(c, "id"), {
+        scope: c.get("projectScope"),
+        includeInstance: currentActor(c).role === "admin",
+      });
+      if (found === null) throw notFound("audit row");
+      return ok(c, found);
     },
     exportCsv: async (c) => {
       const query = toListQuery(

@@ -60,6 +60,7 @@ export const SETTINGS_DEFAULTS: Settings = {
     query_history_days: 90,
     job_history_days: 90,
     audit_days: 365,
+    audit_payload_days: 30,
     import_run_days: 30,
   },
   quota: { default_bytes: 10737418240, instance_ceiling_bytes: null },

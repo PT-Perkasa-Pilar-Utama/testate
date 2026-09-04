@@ -1,6 +1,6 @@
 import * as v from "valibot";
-import type { AuditRow } from "@testate/shared";
-import { auditRowSchema } from "@testate/shared";
+import type { AuditPayload, AuditRow } from "@testate/shared";
+import { auditPayloadSchema, auditRowSchema } from "@testate/shared";
 
 import { apiClient } from "@/lib/api-client.ts";
 import type { Page } from "@/lib/async.ts";
@@ -40,4 +40,6 @@ export const auditModel = {
     apiClient.get("/audit-logs", { schema: v.array(auditRowSchema) }),
   page: (filter: AuditFilter, cursor?: string): Promise<Page<AuditRow>> =>
     apiClient.page("/audit-logs", auditRowSchema, queryOf(filter, cursor)),
+  payload: (id: string): Promise<AuditPayload> =>
+    apiClient.get(`/audit-logs/${id}/payload`, { schema: auditPayloadSchema }),
 };

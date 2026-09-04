@@ -7,7 +7,6 @@ import { For, Loading, Show, createSignal } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
-import Dialog from "@/components/dialog.tsx";
 import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
 import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
@@ -15,6 +14,8 @@ import Select from "@/components/select.tsx";
 import { AUDIT_OUTCOME_LABEL } from "@/lib/labels.ts";
 import { activeFilterCount } from "@/lib/table.ts";
 import { Cell, EmptyRow, Head, Row, Table, TableFooter, TableSearch } from "@/components/table.tsx";
+import { hasRole } from "@/lib/session.ts";
+import { PayloadDialog, TargetDialog } from "./audit.dialogs.view.tsx";
 import { OUTCOMES, createAuditPresenter } from "./audit.presenter.ts";
 import type { AuditPresenter } from "./audit.presenter.ts";
 
@@ -98,54 +99,6 @@ function Filters(props: { presenter: AuditPresenter }): JSX.Element {
   );
 }
 
-/**
- * What one row touched. `target_id` is the row in the database and `target_label` is what a person
- * called it, and an audit trail needs both: the name to recognise it, the id to go and find it when
- * the name has since changed or the thing is gone.
- */
-function TargetDialog(props: { row: AuditRow | null; onClose: () => void }): JSX.Element {
-  // Read once, on open: `reset` tears the dialog down rather than changing it, and holding the
-  // accessor would read a null row on the way out.
-  const row = (): AuditRow | null => props.row;
-  return (
-    <Dialog
-      size="lg"
-      open={row() !== null}
-      onClose={() => props.onClose()}
-      title="Target"
-      description={`What ${row()?.action ?? "this"} acted on.`}
-    >
-      <dl class="grid gap-3 text-sm">
-        <div class="grid gap-1">
-          <dt class="text-xs text-muted">Kind</dt>
-          <dd>{row()?.target_type}</dd>
-        </div>
-        <div class="grid gap-1">
-          <dt class="text-xs text-muted">Name at the time</dt>
-          <dd>
-            <Show
-              when={row()?.target_label}
-              fallback={
-                <span class="text-muted">
-                  Not recorded. This row predates the column that keeps it.
-                </span>
-              }
-            >
-              {(label) => <span class="font-medium text-heading">{label()}</span>}
-            </Show>
-          </dd>
-        </div>
-        <div class="grid gap-1">
-          <dt class="text-xs text-muted">Id</dt>
-          <dd>
-            <code class="text-xs break-all">{row()?.target_id}</code>
-          </dd>
-        </div>
-      </dl>
-    </Dialog>
-  );
-}
-
 export default function AuditView(): JSX.Element {
   const presenter = createAuditPresenter();
   const [open, setOpen] = createSignal(false);
@@ -184,6 +137,11 @@ export default function AuditView(): JSX.Element {
               <Head>Target</Head>
               <Head>When</Head>
               <Head>Outcome</Head>
+              <Show when={hasRole("admin")}>
+                <Head>
+                  <span class="sr-only">Request and response</span>
+                </Head>
+              </Show>
             </tr>
           </thead>
           <tbody>
@@ -245,6 +203,20 @@ export default function AuditView(): JSX.Element {
                         {row.outcome === null ? "n/a" : AUDIT_OUTCOME_LABEL[row.outcome]}
                       </Badge>
                     </Cell>
+                    <Show when={hasRole("admin")}>
+                      <Cell class="whitespace-nowrap text-right">
+                        {/* What was sent and what came back, kept for a while by the API. Admin
+                            only, as the route is: a response was masked for whoever asked. */}
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          title="Request and response"
+                          onClick={() => presenter.inspect(row)}
+                        >
+                          <Icon name="braces" class="h-3.5 w-3.5" />
+                        </Button>
+                      </Cell>
+                    </Show>
                   </Row>
                 )}
               </For>
@@ -279,6 +251,7 @@ export default function AuditView(): JSX.Element {
         </TableFooter>
       </Loading>
       <TargetDialog row={looking()} onClose={() => setLooking(null)} />
+      <PayloadDialog presenter={presenter} />
     </section>
   );
 }
