@@ -15,7 +15,7 @@ import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
 import InputArea from "@/components/input-area.tsx";
-import { Cell, Head, Row, Table, Truncated } from "@/components/table.tsx";
+import { Truncated } from "@/components/table.tsx";
 import { engineLabel } from "@/lib/labels.ts";
 import { hasRole } from "@/lib/session.ts";
 import type { DeletionAffected } from "../projects/projects.model.ts";
@@ -45,11 +45,12 @@ export function AffectedList(props: { affected: DeletionAffected }): JSX.Element
     AFFECTED_LABELS.filter(([key]) => props.affected[key] > 0).map(([key, label]) =>
       plural(props.affected[key], label)
     );
+  // One line, not a list: eight rows of "will be deleted" pushed the confirm below the fold.
   return (
     <Show when={rows().length > 0} fallback={<p class="text-sm">The project holds nothing yet.</p>}>
-      <ul class="grid gap-1 text-sm">
-        <For each={rows()}>{(row) => <li>{row} will be deleted</li>}</For>
-      </ul>
+      <p class="text-sm">
+        <span class="font-medium text-heading">Deleted with it:</span> {rows().join(" · ")}.
+      </p>
     </Show>
   );
 }
@@ -192,8 +193,8 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
       open={props.presenter.plan() !== null}
       onClose={props.presenter.closeDelete}
       title={`Delete ${props.slug}`}
-      description="This cannot be undone. Read what goes. Type the project's slug."
-      size="lg"
+      description="This cannot be undone. Type the project's slug to confirm."
+      size="xl"
     >
       <Show when={props.presenter.plan()}>
         {(plan) => (
@@ -203,45 +204,30 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
             onSubmit={(input) => props.presenter.confirmDelete(input.confirm_slug)}
           >
             <Banner variant="alert">
-              <div class="grid gap-1">
-                <p>
-                  Each database below returns to its starting point. Testate saves nothing first.
-                </p>
-                <p>The project and everything in it is gone for good.</p>
-              </div>
+              Every database returns to its starting point first, nothing is saved, and the project
+              is gone for good.
             </Banner>
             <AffectedList affected={plan().affected} />
-            <Table>
-              <thead>
-                <tr>
-                  <Head>Adapter</Head>
-                  <Head>Engine</Head>
-                  <Head>Action</Head>
-                </tr>
-              </thead>
-              <tbody>
-                <For each={plan().adapters}>
-                  {(adapter) => (
-                    <Row>
-                      {/* This dialog is 32rem wide and the adapter name is free text up to 80
-                          characters, so it gets the narrowest cap here, leaving room for the
-                          engine and action columns beside it. */}
-                      <Cell>
-                        <Truncated class="max-w-[10rem]">{adapter.name}</Truncated>
-                      </Cell>
-                      <Cell>{engineLabel(adapter.engine)}</Cell>
-                      <Cell>
-                        <Badge variant={ACTION_VARIANT[adapter.action]}>
-                          {adapter.reason === undefined
-                            ? ACTION_LABEL[adapter.action]
-                            : `${ACTION_LABEL[adapter.action]} (${reasonLabel(adapter.reason)})`}
-                        </Badge>
-                      </Cell>
-                    </Row>
-                  )}
-                </For>
-              </tbody>
-            </Table>
+            {/* Two columns of one-liners, not a table: the plan is read once, top to bottom, with
+                the confirm still in view under it. */}
+            <ul
+              class="grid gap-1.5 text-sm sm:grid-cols-2"
+              aria-label="What happens to each adapter"
+            >
+              <For each={plan().adapters}>
+                {(adapter) => (
+                  <li class="flex min-w-0 items-center gap-2">
+                    <Badge variant={ACTION_VARIANT[adapter.action]}>
+                      {adapter.reason === undefined
+                        ? ACTION_LABEL[adapter.action]
+                        : `${ACTION_LABEL[adapter.action]} (${reasonLabel(adapter.reason)})`}
+                    </Badge>
+                    <Truncated class="max-w-[12rem]">{adapter.name}</Truncated>
+                    <span class="shrink-0 text-muted">{engineLabel(adapter.engine)}</span>
+                  </li>
+                )}
+              </For>
+            </ul>
             <Field of={form} path={["confirm_slug"]}>
               {(field) => (
                 <label class="grid content-start gap-1.5 text-base">

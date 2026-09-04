@@ -13,6 +13,7 @@ import { engineLabel } from "@/lib/labels.ts";
 import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
+import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import InputArea from "@/components/input-area.tsx";
 import type { StatesPresenter } from "./states.presenter.ts";
@@ -20,7 +21,11 @@ import type { StatesPresenter } from "./states.presenter.ts";
 const EMPTY_DRAFT: StateDraftInput = { name: "", notes: "", tags: "", adapter_ids: [] };
 
 /** Name, notes and tags: the fields the take and edit dialogs share, off one schema. */
-function DraftFields(props: { form: FormStore<typeof stateDraftSchema> }): JSX.Element {
+function DraftFields(props: {
+  form: FormStore<typeof stateDraftSchema>;
+  /** Examples in the empty boxes; the edit dialog shows the record's own values instead. */
+  hints?: boolean | undefined;
+}): JSX.Element {
   return (
     <>
       <Field of={props.form} path={["name"]}>
@@ -33,6 +38,7 @@ function DraftFields(props: { form: FormStore<typeof stateDraftSchema> }): JSX.E
               required
               maxlength="80"
               autocomplete="off"
+              placeholder={props.hints === true ? "after-the-failed-refund" : ""}
               value={field.input}
               variant={field.errors ? "error" : "default"}
               aria-invalid={field.errors ? "true" : undefined}
@@ -47,8 +53,11 @@ function DraftFields(props: { form: FormStore<typeof stateDraftSchema> }): JSX.E
             <FieldLabel required={false}>Notes</FieldLabel>
             <InputArea
               {...field.props}
-              rows="3"
+              rows="2"
               maxlength="4000"
+              placeholder={
+                props.hints === true ? "What the databases hold right now, in a sentence." : ""
+              }
               value={field.input}
               variant={field.errors ? "error" : "default"}
               aria-invalid={field.errors ? "true" : undefined}
@@ -60,11 +69,17 @@ function DraftFields(props: { form: FormStore<typeof stateDraftSchema> }): JSX.E
       <Field of={props.form} path={["tags"]}>
         {(field) => (
           <label class="grid content-start gap-1.5 text-base">
-            <FieldLabel required={false}>Tags (comma separated)</FieldLabel>
+            <FieldLabel
+              required={false}
+              help="Comma separated. A tag is a word to find the state by."
+            >
+              Tags
+            </FieldLabel>
             <Input
               {...field.props}
               type="text"
               autocomplete="off"
+              placeholder={props.hints === true ? "bug-4182, release-2.4" : ""}
               value={field.input}
               variant={field.errors ? "error" : "default"}
               aria-invalid={field.errors ? "true" : undefined}
@@ -77,20 +92,32 @@ function DraftFields(props: { form: FormStore<typeof stateDraftSchema> }): JSX.E
   );
 }
 
-function Actions(props: { presenter: StatesPresenter; submit: string }): JSX.Element {
+function Actions(props: {
+  presenter: StatesPresenter;
+  submit: string;
+  /** The product's own verb wears the accent and the camera. */
+  accent?: boolean | undefined;
+}): JSX.Element {
   return (
     <DialogActions>
       <Button type="button" variant="ghost" onClick={() => props.presenter.close()}>
         Cancel
       </Button>
-      <Button type="submit" variant="primary">
+      <Button type="submit" variant={props.accent === true ? "accent" : "primary"}>
+        <Show when={props.accent}>
+          <Icon name="camera" class="h-4 w-4" />
+        </Show>
         {props.submit}
       </Button>
     </DialogActions>
   );
 }
 
-export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
+export function TakeDialog(props: {
+  presenter: StatesPresenter;
+  /** Fires once a snapshot was queued: the page runs its shutter. */
+  onTaken?: (() => void) | undefined;
+}): JSX.Element {
   // `adapter_ids` is an array, and an array with no initial input has no item stores: submit
   // then fails validation with nothing on screen to say so.
   const form = createForm({
@@ -103,50 +130,58 @@ export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
       if (open) onceSettled(() => reset(form, { initialInput: EMPTY_DRAFT }));
     }
   );
+  // The dialog closes itself when the snapshot is queued; that is the moment the shutter fires.
+  const take = async (input: StateDraftInput): Promise<void> => {
+    await props.presenter.take(input);
+    if (!props.presenter.taking()) props.onTaken?.();
+  };
   return (
     <FormDialog
       open={props.presenter.taking()}
       onClose={props.presenter.close}
       title="Snapshot"
       size="lg"
-      description="Every database is snapshotted at one point in time. Untick one to take a partial state."
+      description="A picture of every database as it is right now."
     >
-      <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.take(input)}>
-        <DraftFields form={form} />
+      <Form of={form} class="grid gap-4" onSubmit={(input) => take(input)}>
+        <DraftFields form={form} hints />
         <Field of={form} path={["adapter_ids"]}>
           {(field) => (
-            <fieldset class="grid gap-1.5 text-sm">
-              <legend>Databases</legend>
+            <fieldset class="viewfinder grid gap-2 p-4 text-sm">
+              <legend class="px-1 font-mono text-[11px] tracking-[0.12em] text-accent uppercase">
+                In the frame
+              </legend>
+              <p class="text-xs text-muted">Every database is in. Untick one to leave it out.</p>
               <Loading fallback={<p class="text-muted">Listing adapters...</p>}>
-                <For each={props.presenter.databases.value()}>
-                  {(adapter) => (
-                    <label class="flex min-w-0 items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={
-                          (field.input ?? []).length === 0 ||
-                          (field.input ?? []).includes(adapter.id)
-                        }
-                        onChange={() => {
-                          const current = field.input ?? [];
-                          field.onInput(
-                            current.includes(adapter.id)
-                              ? current.filter((id) => id !== adapter.id)
-                              : [...current, adapter.id]
-                          );
-                        }}
-                      />
-                      {/* The dialog is only 24rem wide; an adapter name with no ceiling needs to
-                          give way before the "(engine)" suffix does. */}
-                      <span class="flex min-w-0 items-center gap-1">
-                        <span class="min-w-0 truncate" title={adapter.name}>
-                          {adapter.name}
+                <div class="flex flex-wrap gap-2">
+                  <For each={props.presenter.databases.value()}>
+                    {(adapter) => (
+                      <label class="flex min-w-0 cursor-pointer items-center gap-2 rounded-md bg-fill px-2.5 py-1.5 ring ring-line has-checked:ring-accent">
+                        <input
+                          type="checkbox"
+                          checked={
+                            (field.input ?? []).length === 0 ||
+                            (field.input ?? []).includes(adapter.id)
+                          }
+                          onChange={() => {
+                            const current = field.input ?? [];
+                            field.onInput(
+                              current.includes(adapter.id)
+                                ? current.filter((id) => id !== adapter.id)
+                                : [...current, adapter.id]
+                            );
+                          }}
+                        />
+                        <span class="flex min-w-0 items-center gap-1">
+                          <span class="max-w-[12rem] truncate" title={adapter.name}>
+                            {adapter.name}
+                          </span>
+                          <span class="shrink-0 text-muted">{engineLabel(adapter.engine)}</span>
                         </span>
-                        <span class="shrink-0 text-muted">({engineLabel(adapter.engine)})</span>
-                      </span>
-                    </label>
-                  )}
-                </For>
+                      </label>
+                    )}
+                  </For>
+                </div>
               </Loading>
             </fieldset>
           )}
@@ -154,7 +189,7 @@ export function TakeDialog(props: { presenter: StatesPresenter }): JSX.Element {
         <Show when={props.presenter.error()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>
-        <Actions presenter={props.presenter} submit="Take" />
+        <Actions presenter={props.presenter} submit="Take" accent />
       </Form>
     </FormDialog>
   );

@@ -136,12 +136,21 @@ export default function ProjectView(props: { slug: string }): JSX.Element {
     () => props.slug,
     () => presenter.overview.refresh()
   );
+  const [iris, setIris] = createSignal(false);
+  const shutter = (): void => {
+    setIris(true);
+    setTimeout(() => setIris(false), 1100);
+  };
   return (
     <section class="grid gap-5">
       <Loading fallback={<Pending>Loading project...</Pending>}>
         <ProjectHeader presenter={presenter} states={states} />
       </Loading>
-      <TakeDialog presenter={states} />
+      <TakeDialog presenter={states} onTaken={() => shutter()} />
+      {/* The picture being taken: an iris closes over the page and opens again, then is gone. */}
+      <Show when={iris()}>
+        <div class="iris" aria-hidden="true" />
+      </Show>
       <Tabs
         items={PROJECT_TABS}
         value={presenter.tab()}
