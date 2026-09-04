@@ -2,6 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { For, Loading, Show, createSignal } from "solid-js";
 
 import Breadcrumbs from "@/components/breadcrumbs.tsx";
+import type { Crumb } from "@/components/breadcrumbs.tsx";
 import Icon from "@/components/icon.tsx";
 import { Menu, MenuLink } from "@/components/menu.tsx";
 import { createRefreshable } from "@/lib/async.ts";
@@ -75,6 +76,8 @@ function Switcher(props: { slug: string; id: string; name?: JSX.Element }): JSX.
  * flicker every time a person moves between an adapter's screens. The last known name stands in.
  */
 const NAMES = new Map<string, string>();
+/** Which adapters are file stores, by id, remembered the same way: a store's crumb starts at Storage. */
+const STORES = new Set<string>();
 
 /**
  * The path down to an adapter's sub-screen: Projects, the project, the adapter, and the screen
@@ -93,24 +96,36 @@ export default function AdapterBreadcrumbs(props: {
   const adapter = createRefreshable(async () => {
     const found = await adaptersModel.get(props.slug, props.id);
     NAMES.set(found.id, found.name);
+    if (found.kind === "storage") STORES.add(found.id);
     return found;
   });
   const base = (): string => `/projects/${props.slug}/adapters/${props.id}`;
   const name = (): JSX.Element => (
     <Loading fallback={NAMES.get(props.id) ?? "adapter"}>{adapter.value().name}</Loading>
   );
+  const leaf = (): Crumb[] => (props.leaf === undefined ? [] : [{ label: props.leaf }]);
+  // A file store is the Storage screen's, not the project's: its crumb never passes through the
+  // project, and it has no switcher, since the Storage screen is where stores are picked.
+  const storeItems = (): Crumb[] => [
+    { label: "Storage", href: "/storage" },
+    props.leaf === undefined ? { label: name() } : { label: name(), href: base() },
+    ...leaf(),
+  ];
+  const databaseItems = (): Crumb[] => [
+    { label: "Projects", href: "/projects" },
+    { label: props.slug, href: `/projects/${props.slug}` },
+    props.leaf === undefined
+      ? { label: <Switcher slug={props.slug} id={props.id} name={name()} /> }
+      : { label: name(), href: base(), after: <Switcher slug={props.slug} id={props.id} /> },
+    ...leaf(),
+  ];
+  // The kind is known once the adapter answers; until then the last answer for this id stands.
+  const known = (): Crumb[] => (STORES.has(props.id) ? storeItems() : databaseItems());
   return (
     <span class="flex items-center gap-1">
-      <Breadcrumbs
-        items={[
-          { label: "Projects", href: "/projects" },
-          { label: props.slug, href: `/projects/${props.slug}` },
-          props.leaf === undefined
-            ? { label: <Switcher slug={props.slug} id={props.id} name={name()} /> }
-            : { label: name(), href: base(), after: <Switcher slug={props.slug} id={props.id} /> },
-          ...(props.leaf === undefined ? [] : [{ label: props.leaf }]),
-        ]}
-      />
+      <Loading fallback={<Breadcrumbs items={known()} />}>
+        <Breadcrumbs items={adapter.value().kind === "storage" ? storeItems() : databaseItems()} />
+      </Loading>
     </span>
   );
 }

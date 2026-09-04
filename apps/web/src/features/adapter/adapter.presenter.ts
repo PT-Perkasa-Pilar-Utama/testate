@@ -126,6 +126,7 @@ export function createAdapterPresenter(slug: () => string, id: () => string): Ad
       const staticPlan = plan();
       const staticSlug = slug();
       const staticId = id();
+      const staticKind = adapter.value().kind;
       if (staticPlan === null) return Promise.resolve();
       return attempt(async () => {
         const job = await adaptersModel.remove(staticSlug, staticId, {
@@ -141,7 +142,8 @@ export function createAdapterPresenter(slug: () => string, id: () => string): Ad
             `Adapter deletion ${done.status}`,
             done.status === "succeeded" ? "success" : "error"
           );
-          navigate(`/projects/${staticSlug}?tab=adapters`);
+          // A file store is the Storage screen's; a database is the project's.
+          navigate(staticKind === "storage" ? "/storage" : `/projects/${staticSlug}?tab=adapters`);
         });
       });
     },

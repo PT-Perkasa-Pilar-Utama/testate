@@ -138,9 +138,7 @@ export default function StoresView(): JSX.Element {
                 {(group) => (
                   <section class="grid gap-2">
                     <h3 class="flex items-baseline gap-2 text-sm font-medium text-heading">
-                      <a class="hover:underline" href={href(`/projects/${group.slug}`)}>
-                        {group.name}
-                      </a>
+                      {group.name}
                       <span class="text-xs text-muted">{group.stores.length}</span>
                     </h3>
                     <Table>
