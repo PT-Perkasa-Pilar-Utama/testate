@@ -180,6 +180,7 @@ export function writeTools(deps: AgentToolDeps): WriteTools {
       return json({ deleted: text(args, "path") });
     },
     get_job: async (args, ctx) => {
+      requireTester(ctx);
       const job = await deps.jobs.get(ctx.scope, text(args, "job"));
       return json({
         id: job.id,

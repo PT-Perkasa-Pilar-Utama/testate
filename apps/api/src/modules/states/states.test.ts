@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { Hono } from "hono";
 import { archiveManifestSchema, stateSchema, stateTreeNodeSchema } from "@testate/shared";
 import * as v from "valibot";
 
@@ -11,7 +12,9 @@ import {
   initIdOf,
   snapshotSettled,
 } from "../../../test/states-harness.ts";
+import { createStatesHandlers } from "./states.handler.ts";
 import { ARCHIVE_MANIFEST_MOCK, STASH_MOCK, STATE_MOCK, TREE_MOCK } from "./states.mock.ts";
+import { createStatesRouter } from "./states.router.ts";
 
 /** The first of a set the caller has already asserted is not empty. */
 function firstOf(hashes: string[]): string {
@@ -19,6 +22,13 @@ function firstOf(hashes: string[]): string {
   if (first === undefined) throw new Error("no blobs to pin");
   return first;
 }
+
+const waitResponse = v.object({
+  data: v.object({
+    state: v.object({ status: v.string() }),
+    job: v.object({ status: v.string() }),
+  }),
+});
 
 function projectId(harness: {
   projectsRepo: { bySlug: (slug: string) => { id: string } | null };
@@ -223,5 +233,28 @@ describe("states", () => {
     const counts = new Map(listed.map((row) => [row.name, row]));
     expect(counts.get("as-base")).toMatchObject({ checkout_count: 1, diff_count: 1 });
     expect(counts.get("init")).toMatchObject({ checkout_count: 0, diff_count: 1 });
+  });
+
+  it("honours ?wait= on POST /projects/:slug/states: 200 once the snapshot job is terminal", async () => {
+    const h = await createStatesHarness();
+    await createSettled(h.harness, PG);
+    const handlers = createStatesHandlers(h.states, "/api/v1", false, h.harness.runtime.jobs);
+    const app = new Hono();
+    app.use("*", async (c, next) => {
+      c.set("actor", h.harness.qa);
+      c.set("authKind", "bearer");
+      c.set("projectScope", null);
+      await next();
+    });
+    app.route("/", createStatesRouter(handlers));
+    const response = await app.request("/projects/shop/states?wait=5", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "wait-test" }),
+    });
+    expect(response.status).toBe(200);
+    const body = v.parse(waitResponse, await response.json());
+    expect(body.data.job.status).toBe("succeeded");
+    expect(body.data.state.status).toBe("ready");
   });
 });

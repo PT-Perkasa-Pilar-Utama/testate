@@ -43,6 +43,9 @@ export const ERR_RATE_LIMITED = -32000;
 const ERR_INVALID_REQUEST = -32600;
 const ERR_METHOD = -32601;
 const ERR_PARAMS = -32602;
+const ERR_INTERNAL = -32603;
+/** The MCP-defined code for a `resources/read` on a URI that does not resolve. */
+const ERR_RESOURCE_NOT_FOUND = -32002;
 
 const TOOLS: ReadonlyMap<string, v.GenericSchema> = new Map(Object.entries(AGENT_TOOL_INPUTS));
 
@@ -65,16 +68,26 @@ function toolList(): JsonValue {
   }));
 }
 
+/** The 01 §1.6 error code and message a caught failure carries, tool call or resource read alike. */
+function errorBodyOf(cause: unknown): { code: string; message: string; details: JsonObject } {
+  return cause instanceof AppError
+    ? { code: cause.code, message: cause.message, details: cause.details ?? {} }
+    : {
+        code: "INTERNAL",
+        message: cause instanceof Error ? cause.message : String(cause),
+        details: {},
+      };
+}
+
 /** Tool failures are results with `isError`, carrying the 01 §1.6 error code (18 §18.4). */
 function toolFailure(id: string | number | null, cause: unknown): JsonRpcResponse {
-  const body =
-    cause instanceof AppError
-      ? { code: cause.code, message: cause.message, details: cause.details ?? {} }
-      : { code: "INTERNAL", message: cause instanceof Error ? cause.message : String(cause) };
   return {
     jsonrpc: "2.0",
     id,
-    result: { content: [{ type: "text", text: JSON.stringify(body) }], isError: true },
+    result: {
+      content: [{ type: "text", text: JSON.stringify(errorBodyOf(cause)) }],
+      isError: true,
+    },
   };
 }
 
@@ -120,7 +133,15 @@ async function readResource(
       result: { contents: [{ uri: uri.output, mimeType: "application/json", text }] },
     };
   } catch (cause: unknown) {
-    return toolFailure(id, cause);
+    // Not a tool call: a JSON-RPC error, like `uri is required` above, rather than a tool
+    // result's `isError` shape. A missing resource gets the code the MCP spec defines for it;
+    // anything else is the generic JSON-RPC internal error.
+    const body = errorBodyOf(cause);
+    const code =
+      cause instanceof AppError && cause.code === "NOT_FOUND"
+        ? ERR_RESOURCE_NOT_FOUND
+        : ERR_INTERNAL;
+    return error(id, code, body.message, v.parse(jsonValueSchema, body));
   }
 }
 

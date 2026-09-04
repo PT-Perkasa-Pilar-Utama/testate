@@ -78,8 +78,10 @@ export function createAgentHandlers(
     },
     get: async (c) => c.body(null, 405),
     guide: async (c) =>
-      // No token on this route, so it shows the reader's guide; a tester sees its own
-      // through `help` once it connects.
-      c.text(agentGuide("viewer"), 200, { "content-type": "text/markdown; charset=utf-8" }),
+      // `requireRole("viewer")` authenticates the human session on this route, so the guide
+      // renders for that caller's own role rather than always the reader's text.
+      c.text(agentGuide(currentActor(c).role), 200, {
+        "content-type": "text/markdown; charset=utf-8",
+      }),
   };
 }

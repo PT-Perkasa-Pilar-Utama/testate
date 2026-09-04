@@ -3,11 +3,11 @@ import type { BlobStore } from "./lib/blobstore/index.ts";
 import type { MetadataDb } from "./lib/db/index.ts";
 import type { KeyRing } from "./lib/sealed/index.ts";
 import type { AuditService } from "./modules/audit/audit.service.ts";
-import type { Dispatcher } from "./modules/jobs/jobs.dispatcher.ts";
+import type { Dispatcher, Heartbeat } from "./modules/jobs/jobs.dispatcher.ts";
 import type { JobsService } from "./modules/jobs/jobs.service.ts";
 import type { HealthDeps } from "./modules/ops/ops.service.ts";
 import { createResetHandler } from "./modules/ops/ops.reset.ts";
-import type { ResetDeps } from "./modules/ops/ops.reset.ts";
+import type { ResetDeps, ResetDispatcher } from "./modules/ops/ops.reset.ts";
 import { createSeeds, devSampleWriter } from "./modules/ops/ops.seeds.ts";
 import type { SeedDeps } from "./modules/ops/ops.seeds.ts";
 import type { AdaptersRepository } from "./modules/adapters/adapters.repository.ts";
@@ -101,12 +101,19 @@ export function resetHandler(
   bootstrap: (() => Promise<boolean>) | null,
   jobs: Pick<JobsService, "heartbeat">,
   resync: () => Promise<void>,
-  services: SeedServices
+  services: SeedServices,
+  dispatcher: ResetDispatcher,
+  audit: Pick<AuditService, "record">
 ): ReturnType<typeof createResetHandler> | null {
   if (config.TESTATE_ENV === "production") return null;
   return createResetHandler(
-    resetDeps(config, db, migrationsDir, bootstrap, jobs, services, resync)
+    resetDeps(config, db, migrationsDir, bootstrap, jobs, services, resync, dispatcher, audit)
   );
+}
+
+/** "It refuses while jobs run" (05 §5.15): queued jobs are about to run, not merely on file. */
+export function jobsRunningFrom(heartbeat: Heartbeat): boolean {
+  return heartbeat.running > 0 || heartbeat.queued > 0;
 }
 
 export function resetDeps(
@@ -116,15 +123,21 @@ export function resetDeps(
   bootstrap: (() => Promise<boolean>) | null,
   jobs: Pick<JobsService, "heartbeat">,
   services: SeedServices,
-  resync: () => Promise<void>
+  resync: () => Promise<void>,
+  dispatcher: ResetDispatcher,
+  audit: Pick<AuditService, "record">
 ): ResetDeps {
   return {
     db,
     migrationsDir,
+    dataDir: config.TESTATE_DATA_DIR,
+    dispatcher,
     defaultSeed: config.TESTATE_RESET_SEED,
-    jobsRunning: () => jobs.heartbeat().running > 0,
+    jobsRunning: () => jobsRunningFrom(jobs.heartbeat()),
     bootstrap,
     resync,
+    audit,
+    trustProxy: config.TESTATE_TRUST_PROXY,
     seed: createSeeds({
       users: services.users,
       projects: services.projects,
