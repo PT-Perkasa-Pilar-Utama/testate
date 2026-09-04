@@ -115,8 +115,8 @@ function Actions(props: {
 
 export function TakeDialog(props: {
   presenter: StatesPresenter;
-  /** Fires once a snapshot was queued: the page runs its shutter. */
-  onTaken?: (() => void) | undefined;
+  /** The page's shutter, awaited: the snapshot is taken once the iris has opened again. */
+  onShutter?: (() => Promise<void>) | undefined;
 }): JSX.Element {
   // `adapter_ids` is an array, and an array with no initial input has no item stores: submit
   // then fails validation with nothing on screen to say so.
@@ -130,10 +130,13 @@ export function TakeDialog(props: {
       if (open) onceSettled(() => reset(form, { initialInput: EMPTY_DRAFT }));
     }
   );
-  // The moment the snapshot is queued is the moment the shutter fires. The presenter says so in
-  // its answer: a signal read right after the await still holds the value from before the write.
+  // Like a camera: the form is the aim, Take is the shutter, and the picture is written after.
+  // The dialog closes first, since a <dialog> sits above any overlay; the shutter runs to its end;
+  // then the snapshot is queued and the toast says so. A refusal reopens the dialog with its reason.
   const take = async (input: StateDraftInput): Promise<void> => {
-    if (await props.presenter.take(input)) props.onTaken?.();
+    props.presenter.close();
+    await props.onShutter?.();
+    if (!(await props.presenter.take(input))) props.presenter.reopenTake();
   };
   return (
     <FormDialog

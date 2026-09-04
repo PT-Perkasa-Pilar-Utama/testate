@@ -34,6 +34,8 @@ export type StatesPresenter = Paged<StateListItem> & {
   deleting: () => State | null;
   error: () => string | null;
   openTake: () => void;
+  /** The take dialog back, error kept: a snapshot refused after the shutter has to say why. */
+  reopenTake: () => void;
   openEdit: (state: State) => void;
   openDelete: (state: State) => void;
   /** The whole state behind a tree node: from the loaded list when it is there, else fetched. */
@@ -198,6 +200,7 @@ export function createStatesPresenter(
       setError(null);
       setTaking(true);
     },
+    reopenTake: () => setTaking(true),
     openEdit: (state) => {
       setError(null);
       setEditing(state);
