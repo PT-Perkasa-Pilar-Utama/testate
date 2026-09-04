@@ -17,7 +17,7 @@ Kinds and statuses: [06 §6.6](../technical-specs/06-data-model.md). `result` an
 
 ## 14.2 `GET /jobs`
 
-**Access.** `viewer` (scope-filtered; instance-level jobs for `admin`). **Input.** Query: `cursor`, `limit`, `project_id`, `adapter_id`, `kind`, `status`, `sort` (`created_at`), `order`. **Output.** `200` list. **Traceability.** Story 106.
+**Access.** `viewer` (scope-filtered; instance-level jobs for `admin`). **Input.** Query: `cursor`, `limit`, `project_id`, `adapter_id`, `kind`, `status`, `q` (substring match against kind, status, or actor label), `created_from`, `created_to`, `sort` (`created_at`, `kind`, or `status`), `order`. **Output.** `200` list. **Traceability.** Story 106.
 
 ## 14.3 `GET /jobs/{id}`
 
@@ -33,7 +33,7 @@ Kinds and statuses: [06 §6.6](../technical-specs/06-data-model.md). `result` an
 
 **Access.** `viewer`, cookie or bearer.
 
-**Behavior.** `Content-Type: text/event-stream`; events `progress` (the `progress` object), `status` (the job with its new status; terminal statuses close the stream), `heartbeat` every 15 s; `Last-Event-ID` replays the latest status; nginx must disable buffering on this path.
+**Behavior.** `Content-Type: text/event-stream`; events `progress` (the `progress` object), `status` (the job with its new status; terminal statuses close the stream), `heartbeat` every 15 s. Opening without `Last-Event-ID` replays the latest `status` frame first. Opening with `Last-Event-ID` set suppresses that replay when the id is at or past the latest status's id; a lower id still replays it. nginx must disable buffering on this path.
 
 ```text
 event: progress

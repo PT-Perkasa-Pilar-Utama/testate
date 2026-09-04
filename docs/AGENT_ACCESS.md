@@ -4,11 +4,16 @@ Let an AI agent work on a test database through Testate. Every agent reads: rows
 
 ## Start with the guide
 
-An agent does not have to be told how to use Testate. Three doors lead to the same document:
+An agent does not have to be told how to use Testate. Two doors lead to the guide for its own
+role:
 
 - the `help` tool, first in `tools/list`
 - the `testate://guide` resource, first in `resources/list`
-- `GET /api/v1/agent/guide`, for whoever is wiring the integration up, with a `viewer` role token rather than an agent token
+
+A third door, `GET /api/v1/agent/guide`, is for a person wiring the integration up, signed in
+rather than carrying an agent token — but it always renders the reader (`viewer`) text, whatever
+role the person is signed in as. Preview a tester agent's guide by connecting an actual tester
+token and calling `help`.
 
 It covers the layout, the order to call the tools in, what an agent cannot do, and the limits that
 refuse a call. Every tool also carries its own description in `tools/list`, so an agent that reads
@@ -57,17 +62,22 @@ With a sub-path: `https://example.internal/testate/api/v1/mcp`.
 
 ## Tools
 
+15 tools answer for any agent token, Guest or Tester: 14 read tools, plus `get_job` below.
+
 | Tool | Use it to |
 | --- | --- |
+| `help` | Read the guide for your own role; call this first |
 | `list_projects`, `list_adapters` | Find the project and the database |
 | `list_tables`, `describe_table` | Learn the schema, keys, and foreign keys |
 | `page_rows`, `get_row` | Read rows; `get_row` adds the parent rows one level up |
-| `run_readonly_query` | Run SQL or a MongoDB find, read mode, capped |
+| `run_readonly_query` | Run a SELECT, read mode, capped. The schema also takes a `mongo` argument, but this build ignores it: `sql` is required regardless of the adapter |
 | `extract_fixture` | Copy a row and its relations as SQL `INSERT`s or JSON to reproduce locally |
 | `list_states`, `get_state`, `diff_summary` | See what the QA team snapshotted and what changed |
 | `list_files`, `preview_file` | Browse text files on an S3-compatible store, SFTP, or FTP |
+| `get_job` | Poll a snapshot or checkout that was still running when it answered. No role check — a Guest token can poll it too, useful once a Tester agent's job outlives its own session |
 
-Tester tokens get five more. A Guest token sees them in `tools/list` and gets `403 role` if it calls one, which is a clearer answer than a tool that is not there.
+Tester tokens get six more, gated on the `qa` role. A Guest token sees them in `tools/list` and
+gets `403 role` if it calls one, which is a clearer answer than a tool that is not there.
 
 | Tool | Use it to |
 | --- | --- |
@@ -75,7 +85,8 @@ Tester tokens get five more. A Guest token sees them in `tools/list` and gets `4
 | `end_write_session` | Close the session, so the next write takes a fresh stash |
 | `take_snapshot` | Keep the project's data as a named state |
 | `checkout_state` | Put a state back over the live databases |
-| `get_job` | Poll a snapshot or checkout that was still running when it answered |
+| `upload_file` | Write a file to a sandbox file adapter, overwriting whatever is at that path |
+| `delete_file` | Delete one file from a sandbox file adapter; final, nothing stashes a file store |
 
 Example session for a tester agent:
 
@@ -102,7 +113,7 @@ The developer pastes the fixture into a local database and reproduces the failur
 | --- | --- | --- |
 | HTTP 403 `agent_token_required` | A personal token on `/mcp` | Use an agent token |
 | HTTP 403 `agent_token_restricted` | An agent token on a REST route | Agents use `/mcp` only |
-| HTTP 429 with `Retry-After` | Over `limits.agent_requests_per_minute` (default 120) | Wait; raise the limit in Settings |
+| HTTP 429 with `Retry-After` | Over `limits.agent_requests_per_minute` (default 120, per agent token on `/mcp`) or `limits.token_requests_per_minute` (default 600, per bearer token, checked before `/mcp` even reads the body) | Wait; raise the limit in Settings |
 | JSON-RPC `-32602` | Invalid tool arguments | Read `tools/list`; the input schema is exact |
 | `isError: true` with `NOT_FOUND` | Unknown project, adapter, table, or state | Check scope and names |
 | `isError: true` with `FORBIDDEN` and `reason: "role"` | A Guest agent token called a write tool | Create a Tester agent token |

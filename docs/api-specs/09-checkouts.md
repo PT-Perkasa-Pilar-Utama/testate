@@ -21,11 +21,11 @@ Checkout object:
 
 **Input.** Body: `state_id` or `state_name` (exactly one); `force` boolean, default false; `adapter_ids` optional.
 
-**Behavior.** Resolve the state; for each adapter in the state: probe, introspect, `diffSchema`, `selectRestoreStrategy`; include atomicity and locking notice; removed adapters reported `included: false, removed: true`.
+**Behavior.** Resolve the state (`CONFLICT` unless it is `ready`); for each adapter in the state: probe, introspect, `diffSchema`, `selectRestoreStrategy`; include atomicity and locking notice; removed adapters reported `included: false, removed: true`. A project adapter the state does not cover, and a state adapter the caller's `adapter_ids` excludes, are both reported `included: false, removed: false`: untouched, never probed (story 79).
 
 **Output.** `200 { "data": { "state": {...}, "stash_will_be_taken": true, "adapters": [ { "adapter_id", "name", "engine", "included": true, "removed": false, "drift": { "changed": true, "tables": { "added": [], "removed": [] }, "columns": { "added": [ { "table": "public.orders", "column": "channel" } ], "removed": [], "type_changed": [], "nullability_changed": [] } }, "strategy": {...}, "atomic": true, "locking_notice": "Locks each table while it restores it.", "force_preview": { "skipped_tables": [], "skipped_columns": [], "defaulted_columns": [ { "table": "public.orders", "column": "channel" } ] } } ] } }`.
 
-**Errors.** `NOT_FOUND` (state), `VALIDATION_ERROR` (both or neither state fields), `ADAPTER_UNREACHABLE`. **Traceability.** Stories 77, 78, 79, 82, 84.
+**Errors.** `NOT_FOUND` (state), `VALIDATION_ERROR` (both or neither state fields), `CONFLICT` (state not `ready`), `ADAPTER_UNREACHABLE`. **Traceability.** Stories 77, 78, 79, 82, 84.
 
 ## 9.2 `POST .../checkouts`
 
@@ -39,15 +39,15 @@ Checkout object:
 
 **Output.** `202 { "data": { "checkout": {...}, "job": {...} } }`; with `wait` and a terminal job, `200` with the finished checkout.
 
-**Errors.** `ADAPTER_READ_ONLY`, `JOB_IN_PROGRESS`, `NOT_FOUND`, `VALIDATION_ERROR`, `CONFLICT` (idempotency mismatch). Job-level failures appear on the checkout: `SCHEMA_DRIFT` per adapter (result `skipped`, error code), `CHECKOUT_BLOCKED` (result `rolled_back`, `details.blocking_sessions`, `details.terminable`). **Traceability.** Stories 75 to 87, 113, 115.
+**Errors.** `ADAPTER_READ_ONLY`, `JOB_IN_PROGRESS`, `NOT_FOUND`, `VALIDATION_ERROR`, `CONFLICT` (the same `Idempotency-Key` reused with a different request body; state not `ready`; no adapter of the state is available for checkout, whether none exist or `adapter_ids` matched none). Job-level failures appear on the checkout: `SCHEMA_DRIFT` per adapter (result `skipped`, error code), `CHECKOUT_BLOCKED` (result `rolled_back`, `details.blocking_sessions`, `details.terminable`). **Traceability.** Stories 75 to 87, 113, 115.
 
 ## 9.3 `GET .../checkouts` and `GET .../checkouts/{id}`
 
-**Purpose.** History and detail (story 87). **Access.** `viewer`. **Input.** Query: `cursor`, `limit`, `status`, `state_id`, `purpose`. **Output.** `200` list or object. **Traceability.** Story 87.
+**Purpose.** History and detail (story 87). **Access.** `viewer`. **Input.** Query (list only): `cursor`, `limit`, `sort` (`created_at`, `state`, `status`, `actor`), `order`, `status`, `state_id`, `purpose`, `q` (matches the state's name, the status, or the actor's label), `created_from`, `created_to`. **Output.** `200` list or object. **Traceability.** Story 87.
 
 ## 9.4 `POST .../checkouts/{id}/retry`
 
-**Purpose.** Re-run the adapters that did not reach `restored` (story 80). **Access.** `qa`. **Behavior.** Same stash, same state, same force flag; only adapters with result other than `restored` and `skipped`-by-drift; new job; the checkout row is updated in place; audit `checkout.retried`. **Output.** `202 { "data": { "checkout", "job" } }`. **Errors.** `CONFLICT` (nothing to retry, checkout still running), `JOB_IN_PROGRESS`, `NOT_FOUND`. **Traceability.** Story 80.
+**Purpose.** Re-run the adapters that did not reach `restored` (story 80). **Access.** `qa`. **Input.** Query: `wait`, same as 9.2. **Behavior.** Same stash, same state, same force flag; only adapters with result other than `restored` and `skipped`-by-drift; new job; the checkout row is updated in place; audit `checkout.retried`. **Output.** `202 { "data": { "checkout", "job" } }`; with `wait` and a terminal job, `200` with the finished checkout, same as 9.2. **Errors.** `CONFLICT` (nothing to retry, checkout still running), `JOB_IN_PROGRESS`, `NOT_FOUND`. **Traceability.** Story 80.
 
 ## 9.5 `POST .../checkouts/{id}/terminate-blockers`
 

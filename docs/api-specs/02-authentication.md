@@ -16,10 +16,11 @@ them are a way out of the scope (09 §9.4).
 **Input.** Body: `username` string required; `password` string required.
 
 **Behavior.**
-1. Look up the user by username, case-insensitively. Missing or disabled users fail like a wrong password (story 1).
-2. If `locked_until` is in the future, answer `429` with `Retry-After` (story 7).
-3. Verify argon2id. On failure increment `failed_login_count`; at five set `locked_until` fifteen minutes ahead; audit `auth.login_failed`.
-4. On success reset the counter, insert a session (idle 12 h, absolute 7 d), set the cookie, audit `auth.login` (story 8).
+1. Before any lookup, check the client address against `limits.failed_logins_per_minute`; over budget answers `429` with `Retry-After` (07 §7.5). Only a failed guess spends budget, charged after step 4. A refusal that is itself a lockout does not spend it, so an already-locked account is not charged twice.
+2. Look up the user by username, case-insensitively. Missing or disabled users fail like a wrong password (story 1).
+3. If `locked_until` is in the future, answer `429` with `Retry-After` (story 7).
+4. Verify argon2id. On failure increment `failed_login_count`; audit `auth.login_failed`. At five, set `locked_until` fifteen minutes ahead and also audit `auth.locked`.
+5. On success reset the counter, insert a session (idle 12 h, absolute 7 d), set the cookie, audit `auth.login` (story 8).
 
 **Output.** `200`
 
@@ -28,7 +29,7 @@ them are a way out of the scope (09 §9.4).
             "must_change_password": true } }
 ```
 
-**Errors.** `UNAUTHORIZED` 401 wrong credential; `RATE_LIMITED` 429 locked; `VALIDATION_ERROR` 400.
+**Errors.** `UNAUTHORIZED` 401 wrong credential; `RATE_LIMITED` 429 locked account or over the per-address budget (07 §7.5); `VALIDATION_ERROR` 400.
 
 **Traceability.** Stories 1, 2, 7, 8.
 
@@ -53,21 +54,21 @@ them are a way out of the scope (09 §9.4).
 
 ## 2.4 `POST /auth/password`
 
-**Purpose.** Change the caller's own password; the only mutating route allowed while a change is required.
+**Purpose.** Change the caller's own password. This route carries no `requireRole`, which is what enforces the forced-change gate (09 §9.2). So it stays reachable while a change is required. `POST /auth/logout`, `GET /auth/me`, `GET /auth/sessions` and `DELETE /auth/sessions/{id}` carry no `requireRole` either, for the same reason.
 
 **Access.** Any user session. **Input.** Body: `current` string required; `next` string required, 12 characters minimum, different from `current`.
 
 **Behavior.** Verify `current`; hash `next`; clear `must_change_password`; revoke every other session of the user (story 9); audit `auth.password_changed`.
 
-**Output.** `204`. **Errors.** `UNAUTHORIZED` (wrong current); `VALIDATION_ERROR`. **Traceability.** Stories 2, 6, 9.
+**Output.** `204`. **Errors.** `UNAUTHORIZED` (wrong current); `VALIDATION_ERROR`; `FORBIDDEN` 403 `{ "reason": "session_required" }` for a bearer token. The route has no `requireRole`, so the service's `requireUser` check is the only thing that turns a token away. **Traceability.** Stories 2, 6, 9.
 
 ## 2.5 `GET /auth/sessions` and `DELETE /auth/sessions/{id}`
 
-**Purpose.** List the caller's sessions (id, created, last seen, ip, user agent, `current` flag) and revoke one. **Access.** Any user session. **Output.** `200` list; `204` on delete. **Errors.** `NOT_FOUND` for another user's session. **Traceability.** Story 8.
+**Purpose.** List the caller's sessions (id, created, last seen, ip, user agent, `current` flag) and revoke one. **Access.** Any user session. **Output.** `200` list; `204` on delete. **Errors.** `NOT_FOUND` for another user's session; `FORBIDDEN` 403 `{ "reason": "session_required" }` for a bearer token, for the same reason as `POST /auth/password`. **Traceability.** Story 8.
 
 ## 2.6 `GET /tokens`
 
-**Purpose.** List API tokens. **Access.** `admin`. **Input.** Query: `cursor`, `limit`, `kind` (`standard` | `agent`), `revoked` (boolean).
+**Purpose.** List API tokens. **Access.** `admin`. **Input.** Query: `cursor`, `limit`, `sort` (`name`, `created_at`, `last_used_at`, `expires_at`; default `created_at`), `order` (default `desc`), `q` (name or prefix contains), `kind` (`standard` | `agent`), `revoked` (boolean).
 
 **Output.** `200` list of `{ id, name, kind, role, project_ids, prefix, created_by, created_at, last_used_at, expires_at, revoked_at }`. Never the token.
 
@@ -85,9 +86,9 @@ them are a way out of the scope (09 §9.4).
 | --- | --- | --- | --- |
 | `name` | string | yes | 1 to 80 characters |
 | `kind` | `standard` \| `agent` | no | default `standard` |
-| `role` | `admin` \| `qa` \| `viewer` | yes for standard | agent tokens are always `viewer`; a role on an agent token is a validation error |
+| `role` | `admin` \| `qa` \| `viewer` | yes for standard | default `viewer` for an agent token; `qa` is allowed, `admin` on an agent token is a validation error |
 | `project_ids` | string[] \| null | no | null = all projects; each id must exist |
-| `expires_at` | timestamp | agent: yes | agent tokens: default 90 days, maximum 365 days ahead; standard: optional |
+| `expires_at` | timestamp \| `null` | no | absent takes a default: standard tokens never expire, agent tokens expire 90 days out. Explicit `null` on either kind means never-expires. A given value is capped at 365 days ahead for agent tokens only |
 
 **Behavior.** Generate 32 random bytes; store SHA-256 and the 8-character prefix; audit `token.created` (stories 111, 134).
 

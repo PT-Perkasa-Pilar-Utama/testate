@@ -24,13 +24,13 @@ Module: `imports` ([../technical-specs/05-module-definitions.md §5.7](../techni
 
 **Input.** Body: `source` required: `{ "upload_id" }` or `{ "adapter_id", "path" }` (Files adapter, story 51); `options` optional: `sheet`, `header_row` (default 1), `delimiter`, `encoding`.
 
-**Output.** `200 { "data": { "columns": ["Email", "Joined", "Password"], "rows": [ ["a@b.c", "2026-01-31", "..."] ], "sheets": ["Sheet1"], "detected": { "delimiter": ",", "encoding": "utf-8", "header_row": 1 }, "typed_cells": true } }`.
+**Output.** `200 { "data": { "columns": ["Email", "Joined", "Password"], "rows": [ ["a@b.c", "2026-01-31", "..."] ], "sheets": ["Sheet1"], "detected": { "delimiter": ",", "encoding": "utf-8", "header_row": 1 }, "typed_cells": false } }`. `typed_cells` is always `false` today — CSV and XLSX cells both come back as strings; nothing types them yet.
 
 **Errors.** `NOT_FOUND` (upload expired, file missing), `VALIDATION_ERROR`, `ADAPTER_UNREACHABLE`. **Traceability.** Stories 49, 50, 51.
 
 ## 7.3 Normalizers
 
-`GET /projects/{slug}/adapters/{id}/normalizers`, `POST` (body: `name`, `target` table, `columns[]`, `key_columns[]`, `mode`, `options`), `GET .../normalizers/{mid}`, `PATCH`, `DELETE`. Normalizer JSON per [19 §19.2](../technical-specs/19-import-pipeline.md).
+`GET /projects/{slug}/adapters/{id}/normalizers`, `POST` (body: `name`, `target` table, `columns[]`, `key_columns[]`, `mode`, `options`), `GET .../normalizers/{mid}`, `PATCH`, `DELETE`. Normalizer JSON per [19 §19.2](../technical-specs/19-import-pipeline.md); a column's `hash` transform carries `algorithm` (`bcrypt` | `argon2id` | `sha256` | `sha512` | `hmac_sha256`), an optional `secret` (the HMAC key, stored as it is), and an optional `salt`, prepended before a `sha256`/`sha512` digest; `bcrypt` and `argon2id` salt each value on their own. The normalizer saves without a `secret` even for `hmac_sha256`; the run fails then, at import time.
 
 **Access.** `viewer` reads; `qa` writes.
 
@@ -55,7 +55,7 @@ Module: `imports` ([../technical-specs/05-module-definitions.md §5.7](../techni
 | `dry_run` | boolean | no | default false |
 | `stash_first` | boolean | no | default: true for `replace`, false otherwise |
 | `foreign_key_checks` | boolean | no | default true |
-| `options` | object | no | overrides sheet, header row, delimiter |
+| `options` | object | no | overrides sheet, header row, delimiter, encoding |
 
 **Behavior.** Enqueue job `import` claiming the adapter (`JOB_IN_PROGRESS`); the job follows [19 §19.3](../technical-specs/19-import-pipeline.md): stash when required (story 57), policy check, parse, transforms, validation (story 56), batches with the FK setting (story 145), report, rejected rows file (story 58). Audit `import.run`.
 
@@ -65,7 +65,7 @@ Module: `imports` ([../technical-specs/05-module-definitions.md §5.7](../techni
 
 ## 7.5 `GET /projects/{slug}/imports`
 
-**Purpose.** Past runs. **Access.** `viewer`. **Input.** Query: `cursor`, `limit`, `adapter_id`, `dry_run`. **Output.** `200` list of `{ id, adapter_id, normalizer_id, job_id, source, dry_run, mode, stash_state_id, counts, rejected_available, actor, created_at, finished_at }`. **Traceability.** Story 60.
+**Purpose.** Past runs. **Access.** `viewer`. **Input.** Query: `limit` (default 50, max 200), `adapter_id`, `dry_run`. No `cursor` — the endpoint returns one page, newest first. **Output.** `200` list of `{ id, adapter_id, normalizer_id, job_id, source, dry_run, mode, stash_state_id, counts, rejected_available, actor, created_at, finished_at }`. **Traceability.** Story 60.
 
 ## 7.6 `GET /projects/{slug}/imports/{run_id}` and `GET .../imports/{run_id}/rejected`
 
@@ -81,4 +81,4 @@ Module: `imports` ([../technical-specs/05-module-definitions.md §5.7](../techni
 
 **Behavior.** Per [19 §19.4](../technical-specs/19-import-pipeline.md): header row, one typed example row, schema block; required columns marked; no real data.
 
-**Output.** `200` file stream, `Content-Disposition: attachment; filename="sample-<table>.csv"`. **Errors.** `NOT_FOUND`, `ENGINE_UNSUPPORTED`. **Traceability.** Story 149.
+**Output.** `200` file stream; `filename="sample-<table>.csv"`, `Content-Type: text/csv; charset=utf-8` for `format=csv`, or `filename="sample-<table>.xlsx"`, `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` for `format=xlsx`. **Errors.** `NOT_FOUND`, `ENGINE_UNSUPPORTED`. **Traceability.** Story 149.

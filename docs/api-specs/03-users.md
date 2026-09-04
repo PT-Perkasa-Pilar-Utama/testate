@@ -12,7 +12,7 @@ User object:
 
 ## 3.1 `GET /users`
 
-**Purpose.** List accounts. **Access.** `admin`. **Input.** Query: `cursor`, `limit`, `sort` (`username`, `created_at`, `last_login_at`), `order`, `role`, `disabled` (boolean), `q` (username or display name contains). **Output.** `200` list. **Traceability.** Stories 3, 4.
+**Purpose.** List accounts. **Access.** `admin`. **Input.** Query: `cursor`, `limit`, `sort` (`username`, `created_at`, `last_login_at`; default `username`), `order` (default `asc`), `role`, `disabled` (boolean), `q` (username or display name contains). This endpoint's `sort`/`order` defaults deviate from [01-conventions.md §1.7](01-conventions.md), which defaults to `created_at`/`desc`. **Output.** `200` list. **Traceability.** Stories 3, 4.
 
 ## 3.2 `POST /users`
 
