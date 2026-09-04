@@ -1,3 +1,4 @@
+import { deflateSync } from "node:zlib";
 import type { Actor, AdapterDraft } from "@testate/shared";
 
 import type { RequestMeta } from "../../lib/http/auth.ts";
@@ -26,7 +27,7 @@ export type SeedDeps = {
   /** Init snapshots run as jobs; the seeded state waits for them (16 §16.1 exclusivity). */
   jobs: Pick<JobsService, "wait">;
   /** Writes a sample file into the seeded storage adapter so the import wizard has a source (story 51). */
-  sample: (path: string, body: string) => Promise<void>;
+  sample: (path: string, body: string | Uint8Array) => Promise<void>;
   /** The bootstrap admin's row; seeds act as it. */
   admin: () => { id: string; username: string; role: Actor["role"] } | null;
 };
@@ -40,6 +41,64 @@ const INIT_WAIT_SECONDS = 60;
 /** The sample file the dev seed writes into the compose MinIO bucket, for the import wizard. */
 export const SAMPLE_CSV_PATH = "imports/customers.csv";
 const SAMPLE_CSV = "email,balance,big\nseed-1@x.io,1.5,1\nseed-2@x.io,2.5,2\n";
+/** An image beside the CSV, so the files screen has something to preview that is not text. */
+export const SAMPLE_PNG_PATH = "exports/checkout-flow.png";
+
+const CRC_TABLE = Uint32Array.from({ length: 256 }, (_item, n) => {
+  let c = n;
+  for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  return c >>> 0;
+});
+
+function crc32(bytes: Uint8Array): number {
+  let crc = 0xffffffff;
+  for (const byte of bytes) crc = (CRC_TABLE[(crc ^ byte) & 0xff] ?? 0) ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function chunk(type: string, data: Uint8Array): Uint8Array {
+  const typed = new TextEncoder().encode(type);
+  const out = new Uint8Array(12 + data.length);
+  const view = new DataView(out.buffer);
+  view.setUint32(0, data.length);
+  out.set(typed, 4);
+  out.set(data, 8);
+  view.setUint32(8 + data.length, crc32(out.subarray(4, 8 + data.length)));
+  return out;
+}
+
+/**
+ * A small PNG drawn here rather than checked in: a teal field with one white diagonal, the kind
+ * of screenshot an application drops into its own bucket. Truecolour, one filter byte per row.
+ */
+export function samplePng(width = 96, height = 64): Uint8Array {
+  const raw = new Uint8Array(height * (1 + width * 3));
+  for (let y = 0; y < height; y += 1) {
+    const row = y * (1 + width * 3);
+    for (let x = 0; x < width; x += 1) {
+      const on = Math.abs(x - Math.floor((y * width) / height)) < 3;
+      raw.set(on ? [255, 255, 255] : [13, 148, 136], row + 1 + x * 3);
+    }
+  }
+  const header = new Uint8Array(13);
+  const view = new DataView(header.buffer);
+  view.setUint32(0, width);
+  view.setUint32(4, height);
+  header.set([8, 2, 0, 0, 0], 8);
+  const parts = [
+    Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk("IHDR", header),
+    chunk("IDAT", new Uint8Array(deflateSync(raw))),
+    chunk("IEND", new Uint8Array(0)),
+  ];
+  const out = new Uint8Array(parts.reduce((total, part) => total + part.length, 0));
+  let at = 0;
+  for (const part of parts) {
+    out.set(part, at);
+    at += part.length;
+  }
+  return out;
+}
 
 /** The dev sample writer: the compose MinIO bucket the `exports` adapter reads. */
 export function devSampleWriter(): SeedDeps["sample"] {
@@ -140,6 +199,7 @@ async function devSeed(deps: SeedDeps, admin: Actor): Promise<SeedCounts> {
   }
   try {
     await deps.sample(SAMPLE_CSV_PATH, SAMPLE_CSV);
+    await deps.sample(SAMPLE_PNG_PATH, samplePng());
   } catch (cause: unknown) {
     counts.warnings.push(`exports: ${cause instanceof Error ? cause.message : String(cause)}`);
   }

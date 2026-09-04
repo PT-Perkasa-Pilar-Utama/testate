@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { formatWhen } from "@/lib/format.ts";
-import AdapterBreadcrumbs from "@/features/adapter/adapter.crumb.view.tsx";
-import BackLink from "@/components/back-link.tsx";
+import Breadcrumbs from "@/components/breadcrumbs.tsx";
+import type { Crumb } from "@/components/breadcrumbs.tsx";
 import { Errored, For, Loading, Show, createSignal } from "solid-js";
 import type { Entry } from "@testate/shared";
 
@@ -17,66 +17,36 @@ import { createStoragePresenter } from "./storage.presenter.ts";
 import type { StoragePresenter } from "./storage.presenter.ts";
 
 /**
- * A path bar, not a heading: the adapter you're in, then Up, then every folder between here and
- * root. The current folder is plain text, the way GitHub's own breadcrumb never links to itself.
+ * One crumb, from the Storage screen down to the open folder: the store is a link to its own
+ * page, each folder above the open one is a step back up, and the last is where you are. It
+ * replaces a project crumb and a second path bar that each said half of it.
  */
-function PathBar(props: { presenter: StoragePresenter; slug: string; id: string }): JSX.Element {
-  const atRoot = (): boolean => props.presenter.path() === "";
-  return (
-    <div class="flex flex-wrap items-center gap-1.5 text-base">
-      <BackLink to={`/projects/${props.slug}/adapters/${props.id}`} label="Back to the store" />
-      <Button
-        size="xs"
-        variant="ghost"
-        disabled={atRoot()}
-        title="Up one level"
-        aria-label="Up one level"
-        onClick={() => props.presenter.up()}
-      >
-        <Icon name="arrow-left" class="h-3.5 w-3.5" />
-      </Button>
-      <Show
-        when={!atRoot()}
-        fallback={
-          <span class="inline-flex items-center gap-1 font-medium text-heading">
-            <Icon name="house" class="h-3.5 w-3.5" />
-            root
-          </span>
-        }
-      >
-        <button
-          type="button"
-          class="inline-flex cursor-pointer items-center gap-1 text-muted hover:text-body hover:underline"
-          onClick={() => props.presenter.open("")}
-        >
-          <Icon name="house" class="h-3.5 w-3.5" />
-          root
-        </button>
-      </Show>
-      <For each={props.presenter.crumbs()}>
-        {(crumb, index) => (
-          <>
-            <Icon name="chevron-right" class="h-3.5 w-3.5 text-muted" aria-hidden="true" />
-            <Show
-              when={index() < props.presenter.crumbs().length - 1}
-              fallback={<span class="font-medium text-heading">{crumb.name}</span>}
-            >
-              <button
-                type="button"
-                class="cursor-pointer text-muted hover:text-body hover:underline"
-                onClick={() => props.presenter.open(crumb.path)}
-              >
-                {crumb.name}
-              </button>
-            </Show>
-          </>
-        )}
-      </For>
-    </div>
+function StoreCrumb(props: { presenter: StoragePresenter; slug: string; id: string }): JSX.Element {
+  const folder = (name: string, path: string): JSX.Element => (
+    <button
+      type="button"
+      class="cursor-pointer truncate transition-colors duration-[80ms] hover:text-accent"
+      onClick={() => props.presenter.open(path)}
+    >
+      {name}
+    </button>
   );
+  const crumbs = (): Crumb[] => {
+    const parts = props.presenter.crumbs();
+    const last = parts.length - 1;
+    const store = <Loading fallback="store">{props.presenter.adapter.value().name}</Loading>;
+    return [
+      { label: "Storage", href: "/storage" },
+      { label: store, href: `/projects/${props.slug}/adapters/${props.id}` },
+      parts.length === 0 ? { label: "root" } : { label: folder("root", "") },
+      ...parts.map((part, index) =>
+        index === last ? { label: part.name } : { label: folder(part.name, part.path) }
+      ),
+    ];
+  };
+  return <Breadcrumbs items={crumbs()} />;
 }
 
-/** One entry; a folder icon or a file icon says what a click does before the click happens. */
 function EntryRow(props: { presenter: StoragePresenter; entry: Entry }): JSX.Element {
   const writable = (): boolean => hasRole("qa") && props.presenter.writable();
   return (
@@ -212,8 +182,7 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
   return (
     <section class="grid gap-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <AdapterBreadcrumbs slug={props.slug} id={props.id} leaf="files" />
-        <PathBar presenter={presenter} slug={props.slug} id={props.id} />
+        <StoreCrumb presenter={presenter} slug={props.slug} id={props.id} />
         <div class="flex flex-wrap items-center gap-2">
           <TableSearch
             placeholder="Search files..."

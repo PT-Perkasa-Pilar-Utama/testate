@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import type { Adapter, AdapterDraft, Job, Project, User } from "@testate/shared";
 
-import { createSeeds, devAdapters } from "./ops.seeds.ts";
+import { createSeeds, devAdapters, samplePng } from "./ops.seeds.ts";
 import type { SeedDeps } from "./ops.seeds.ts";
 
 type Calls = {
@@ -108,5 +108,17 @@ describe("reset seeds", () => {
       "mongodb:url",
       "s3:http://127.0.0.1:9010",
     ]);
+  });
+});
+
+describe("the seed's image", () => {
+  it("is a PNG of the size it claims, with a valid header chunk", () => {
+    const png = samplePng(96, 64);
+    expect([...png.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+    const view = new DataView(png.buffer, png.byteOffset);
+    expect(new TextDecoder().decode(png.subarray(12, 16))).toBe("IHDR");
+    expect(view.getUint32(16)).toBe(96);
+    expect(view.getUint32(20)).toBe(64);
+    expect(new TextDecoder().decode(png.subarray(png.length - 8, png.length - 4))).toBe("IEND");
   });
 });

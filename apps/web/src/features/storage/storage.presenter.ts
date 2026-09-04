@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import type { Entry, PreviewPayload } from "@testate/shared";
+import type { Adapter, Entry, PreviewPayload } from "@testate/shared";
 import * as v from "valibot";
 
 import { attempt, showToast } from "@/lib/toast.ts";
@@ -16,6 +16,7 @@ export type Preview =
 
 export type StoragePresenter = {
   page: Refreshable<EntriesPage>;
+  adapter: Refreshable<Adapter>;
   path: () => string;
   crumbs: () => { name: string; path: string }[];
   open: (path: string) => void;
@@ -122,6 +123,7 @@ export function createStoragePresenter(slug: () => string, id: () => string): St
   };
   return {
     page,
+    adapter,
     path,
     crumbs: () => crumbsOf(path()),
     open: go,
