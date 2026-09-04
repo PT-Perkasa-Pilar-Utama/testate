@@ -64,6 +64,12 @@ export type ProjectPresenter = {
   save: (draft: ProjectDraft) => Promise<void>;
   plan: () => DeletionPlan | null;
   deleteError: () => string | null;
+  /**
+   * Leave every database as it is: a project on a running dev system holds work nobody wants
+   * restored to its starting point. Off by default, since a test database is meant to go back.
+   */
+  keepDatabases: () => boolean;
+  setKeepDatabases: (keep: boolean) => void;
   openDelete: () => Promise<void>;
   closeDelete: () => void;
   confirmDelete: (confirmSlug: string) => Promise<void>;
@@ -120,6 +126,7 @@ export function createProjectPresenter(slug: () => string): ProjectPresenter {
   const defaults = createRefreshable(() => projectsModel.defaults());
   const [editError, setEditError] = createSignal<string | null>(null);
   const [plan, setPlan] = createSignal<DeletionPlan | null>(null);
+  const [keepDatabases, setKeepDatabases] = createSignal(false);
   const [deleteError, setDeleteError] = createSignal<string | null>(null);
   return {
     overview,
@@ -163,9 +170,12 @@ export function createProjectPresenter(slug: () => string): ProjectPresenter {
       setPlan(null);
       setDeleteError(null);
     },
+    keepDatabases,
+    setKeepDatabases,
     confirmDelete: async (confirmSlug) => {
       const staticPlan = plan();
       const staticSlug = slug();
+      const staticKeep = keepDatabases();
       if (staticPlan === null) return;
       setDeleteError(null);
       try {
@@ -176,12 +186,17 @@ export function createProjectPresenter(slug: () => string): ProjectPresenter {
             .filter((adapter) => adapter.action !== "none")
             .map((adapter) => ({
               adapter_id: adapter.adapter_id,
-              action: adapter.action === "skip" ? "skip" : "restore",
+              action: staticKeep || adapter.action === "skip" ? "skip" : "restore",
             })),
         });
         showToast("Project deleted.", "success");
         setPlan(null);
-        showToast("Deletion job queued. Every database returns to its init state first.", "info");
+        showToast(
+          staticKeep
+            ? "Deletion job queued. The databases stay as they are."
+            : "Deletion job queued. Every database returns to its starting point first.",
+          "info"
+        );
         navigate("/projects");
       } catch (cause: unknown) {
         setDeleteError(humanMessage(cause, "Could not delete the project."));

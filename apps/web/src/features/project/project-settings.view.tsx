@@ -14,6 +14,7 @@ import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
+import Switch from "@/components/switch.tsx";
 import InputArea from "@/components/input-area.tsx";
 import { Truncated } from "@/components/table.tsx";
 import { engineLabel } from "@/lib/labels.ts";
@@ -204,9 +205,20 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
             onSubmit={(input) => props.presenter.confirmDelete(input.confirm_slug)}
           >
             <Banner variant="alert">
-              Every database returns to its starting point first, nothing is saved, and the project
-              is gone for good.
+              <Show
+                when={props.presenter.keepDatabases()}
+                fallback="Every database returns to its starting point first, nothing is saved, and the project is gone for good."
+              >
+                Every database stays exactly as it is. The project and its states are gone for good.
+              </Show>
             </Banner>
+            {/* A project on a running dev system holds work: the databases are someone's, not the
+                test's, and returning them to the starting point would throw that work away. */}
+            <Switch
+              label="Leave the databases as they are"
+              checked={props.presenter.keepDatabases()}
+              onChange={(keep) => props.presenter.setKeepDatabases(keep)}
+            />
             <AffectedList affected={plan().affected} />
             {/* Two columns of one-liners, not a table: the plan is read once, top to bottom, with
                 the confirm still in view under it. */}
@@ -217,11 +229,18 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
               <For each={plan().adapters}>
                 {(adapter) => (
                   <li class="flex min-w-0 items-center gap-2">
-                    <Badge variant={ACTION_VARIANT[adapter.action]}>
-                      {adapter.reason === undefined
-                        ? ACTION_LABEL[adapter.action]
-                        : `${ACTION_LABEL[adapter.action]} (${reasonLabel(adapter.reason)})`}
-                    </Badge>
+                    <Show
+                      when={props.presenter.keepDatabases() && adapter.action !== "none"}
+                      fallback={
+                        <Badge variant={ACTION_VARIANT[adapter.action]}>
+                          {adapter.reason === undefined
+                            ? ACTION_LABEL[adapter.action]
+                            : `${ACTION_LABEL[adapter.action]} (${reasonLabel(adapter.reason)})`}
+                        </Badge>
+                      }
+                    >
+                      <Badge variant="secondary">Kept as is</Badge>
+                    </Show>
                     <Truncated class="max-w-[12rem]">{adapter.name}</Truncated>
                     <span class="shrink-0 text-muted">{engineLabel(adapter.engine)}</span>
                   </li>
@@ -262,7 +281,9 @@ export function DeleteDialog(props: { presenter: ProjectPresenter; slug: string 
                 variant="destructive"
                 disabled={getInput(form, { path: ["confirm_slug"] }) !== props.slug}
               >
-                Restore and delete
+                {props.presenter.keepDatabases()
+                  ? "Delete, keep the databases"
+                  : "Restore and delete"}
               </Button>
             </DialogActions>
           </Form>
