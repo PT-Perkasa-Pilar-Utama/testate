@@ -2,7 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { For, Show } from "solid-js";
 import type { Adapter, Entry, Introspection } from "@testate/shared";
 
-import Button from "@/components/button.tsx";
+import Button, { buttonClass } from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
 import { Cell, EmptyRow, Head, Row, Table, Truncated } from "@/components/table.tsx";
 import { formatWhen } from "@/lib/format.ts";
@@ -55,7 +55,12 @@ function qualified(table: { schema: string | null; name: string }): string {
   return table.schema === null ? table.name : `${table.schema}.${table.name}`;
 }
 
-export function TablesView(props: { schema: Introspection; base: string }): JSX.Element {
+export function TablesView(props: {
+  schema: Introspection;
+  base: string;
+  /** A tester on a sandbox database: each row offers its own import (every table owns one). */
+  importable: boolean;
+}): JSX.Element {
   const tablePath = (name: string): string => `${props.base}/tables/${encodeURIComponent(name)}`;
   const open = (event: MouseEvent, name: string): void => {
     event.preventDefault();
@@ -69,6 +74,9 @@ export function TablesView(props: { schema: Introspection; base: string }): JSX.
           <Head numeric>Rows (est.)</Head>
           <Head numeric>Columns</Head>
           <Head>Primary key</Head>
+          <Show when={props.importable}>
+            <Head pinned />
+          </Show>
         </tr>
       </thead>
       <tbody>
@@ -100,6 +108,25 @@ export function TablesView(props: { schema: Introspection; base: string }): JSX.
                 <Cell>
                   <Truncated>{table.primary_key?.join(", ") ?? "none"}</Truncated>
                 </Cell>
+                <Show when={props.importable}>
+                  <Cell pinned>
+                    <a
+                      class={buttonClass("outline", "sm")}
+                      href={href(
+                        `${props.base}/imports?table=${encodeURIComponent(qualified(table))}`
+                      )}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        navigate(
+                          `${props.base}/imports?table=${encodeURIComponent(qualified(table))}`
+                        );
+                      }}
+                    >
+                      <Icon name="upload" class="h-3 w-3" />
+                      Import
+                    </a>
+                  </Cell>
+                </Show>
               </Row>
             )}
           </For>

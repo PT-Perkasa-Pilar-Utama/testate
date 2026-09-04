@@ -209,7 +209,11 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
                   <Show
                     when={tableView() === "list" && presenter.adapter.value().tier === "tabular"}
                   >
-                    <TablesView schema={schema()} base={base()} />
+                    <TablesView
+                      schema={schema()}
+                      base={base()}
+                      importable={hasRole("qa") && presenter.adapter.value().mode === "sandbox"}
+                    />
                   </Show>
                   <Show
                     when={tableView() === "diagram" && presenter.adapter.value().tier === "tabular"}
