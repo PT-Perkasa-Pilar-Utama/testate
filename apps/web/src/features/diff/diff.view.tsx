@@ -23,6 +23,7 @@ import {
 import type { DiffPresenter, Target } from "./diff.presenter.ts";
 import RowTable from "./diff.rows.view.tsx";
 import ValueDialog from "./diff.value.tsx";
+import { humanMessage } from "@/lib/api-error.ts";
 
 type DiffAdapter = Diff["adapters"][number];
 
@@ -142,7 +143,13 @@ export default function DiffView(props: { slug: string; id: string }): JSX.Eleme
   );
   return (
     <section class="grid gap-4">
-      <Errored fallback={(error) => <Banner variant="error">{String(error())}</Banner>}>
+      <Errored
+        fallback={(error) => (
+          <Banner variant="error">
+            {humanMessage(error(), "The comparison could not be read")}
+          </Banner>
+        )}
+      >
         <Loading fallback={<Pending>Loading the diff...</Pending>}>
           <Breadcrumbs
             items={[

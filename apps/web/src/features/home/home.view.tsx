@@ -11,6 +11,7 @@ import { ActivityRow, Card, JobRow, ProjectRow, Quiet, Stats } from "./home.card
 import { attention, greeting, uptime } from "./home.format.ts";
 import { createHomePresenter } from "./home.presenter.ts";
 import type { HomePresenter } from "./home.presenter.ts";
+import { humanMessage } from "@/lib/api-error.ts";
 
 /** Only what is wrong. A card that says "all green" is a card people learn to skip. */
 function Attention(props: { presenter: HomePresenter }): JSX.Element {
@@ -82,7 +83,11 @@ export default function HomeView(): JSX.Element {
         </h2>
         <p class="text-muted">Git for your test database. Reset the database, not the developer.</p>
       </div>
-      <Errored fallback={(error) => <Banner variant="error">{String(error())}</Banner>}>
+      <Errored
+        fallback={(error) => (
+          <Banner variant="error">{humanMessage(error(), "The home page could not load")}</Banner>
+        )}
+      >
         <Loading fallback={<p class="text-muted">Reading the instance...</p>}>
           <Stats presenter={presenter} />
           {/* Two rows of three: the wide card is the one with the list, the narrow column beside

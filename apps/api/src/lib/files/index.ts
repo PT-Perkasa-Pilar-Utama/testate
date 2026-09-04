@@ -1,3 +1,4 @@
+import * as v from "valibot";
 import type { Entry } from "@testate/shared";
 
 import { AppError, notFound } from "../http/index.ts";
@@ -110,10 +111,46 @@ export function missing(path: string): AppError {
   return notFound(`entry ${path}`);
 }
 
-/** Every driver failure that is not a missing entry becomes `ADAPTER_UNREACHABLE` with the driver code. */
-export function unreachable(cause: unknown, code: string | undefined): AppError {
-  const message = cause instanceof Error ? cause.message : String(cause);
-  return new AppError("ADAPTER_UNREACHABLE", message, { code: code ?? "unknown" });
+/** What a socket failure means, by the code Bun or Node put on it; the message is often nothing. */
+const REASONS: readonly [RegExp, string][] = [
+  [/refused/i, "refused the connection"],
+  [/ENOTFOUND|EAI_AGAIN|resolve/i, "does not resolve"],
+  [/timed?_?out/i, "did not answer in time"],
+  [/reset|closed|EPIPE/i, "closed the connection"],
+  [/unreach|FailedToOpenSocket|ENETDOWN/i, "could not be reached"],
+];
+/** Bun's placeholder message on a system error; the code beside it is the whole story. */
+const NO_MESSAGE = /^an unexpected error has occurred$/i;
+
+const codedError = v.object({ code: v.optional(v.string()), message: v.optional(v.string()) });
+type Coded = v.InferOutput<typeof codedError>;
+
+/** The message worth repeating, or null when there is none or it is Bun's placeholder. */
+function saidBy(coded: Coded): string | null {
+  const message = coded.message ?? "";
+  return message === "" || NO_MESSAGE.test(message) ? null : message;
+}
+
+function wording(where: string, coded: Coded, code: string | undefined): string {
+  const hint = `${code ?? ""} ${coded.code ?? ""} ${coded.message ?? ""}`;
+  const reason = REASONS.find(([pattern]) => pattern.test(hint))?.[1];
+  if (reason !== undefined) return `${where} ${reason}`;
+  const said = saidBy(coded);
+  if (said !== null) return `${where}: ${said}`;
+  return `${where} could not be reached (${code ?? coded.code ?? "unknown"})`;
+}
+
+/**
+ * Every driver failure that is not a missing entry becomes `ADAPTER_UNREACHABLE`, worded from
+ * where the store is and what the socket said: "minio:9000 refused the connection", not "an
+ * unexpected error has occurred" with the reason hidden in a code (11 §11.1).
+ */
+export function unreachable(cause: unknown, code: string | undefined, where: string): AppError {
+  const coded: Coded = v.is(codedError, cause) ? cause : {};
+  return new AppError("ADAPTER_UNREACHABLE", wording(where, coded, code), {
+    code: code ?? "unknown",
+    where,
+  });
 }
 
 export { createMemorySource } from "./memory.ts";

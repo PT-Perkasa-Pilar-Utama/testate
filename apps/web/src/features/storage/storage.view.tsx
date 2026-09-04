@@ -15,6 +15,7 @@ import { DeleteDialogs, FolderDialog, MoveDialog, RenameDialog } from "./storage
 import { PreviewDialog } from "./storage.preview.view.tsx";
 import { createStoragePresenter } from "./storage.presenter.ts";
 import type { StoragePresenter } from "./storage.presenter.ts";
+import { humanMessage } from "@/lib/api-error.ts";
 
 /**
  * One crumb, from the Storage screen down to the open folder: the store is a link to its own
@@ -251,7 +252,11 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
           </Banner>
         )}
       </Show>
-      <Errored fallback={(error) => <Banner variant="error">{String(error())}</Banner>}>
+      <Errored
+        fallback={(error) => (
+          <Banner variant="error">{humanMessage(error(), "The files could not be listed")}</Banner>
+        )}
+      >
         <Loading fallback={<p class="text-muted">Listing...</p>}>
           <Table>
             <thead>

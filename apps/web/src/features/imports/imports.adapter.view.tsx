@@ -23,6 +23,7 @@ import { reportCounts } from "./imports.helpers.ts";
 import ColumnPanel from "./imports.normalizer.panel.tsx";
 import { createImportPresenter } from "./imports.adapter.presenter.ts";
 import type { ImportPresenter } from "./imports.adapter.presenter.ts";
+import { humanMessage } from "@/lib/api-error.ts";
 
 /** The file to import, with the shape this table takes beside it (story 149). */
 function SourceRow(props: { presenter: ImportPresenter; table: string }): JSX.Element {
@@ -135,7 +136,13 @@ export default function AdapterImportsView(props: { slug: string; id: string }):
         title="Import a file"
         description={`A CSV or an Excel file into ${asked === "" ? "this table" : asked}. Testate stashes the database first, so the import can be undone.`}
       />
-      <Errored fallback={(error) => <Banner variant="error">{String(error())}</Banner>}>
+      <Errored
+        fallback={(error) => (
+          <Banner variant="error">
+            {humanMessage(error(), "The import could not be prepared")}
+          </Banner>
+        )}
+      >
         <Loading fallback={<Pending>Loading...</Pending>}>
           {/* Read so the refreshable runs: it is the call that loads a rejected-rows preview. */}
           {presenter.rejected.value()}

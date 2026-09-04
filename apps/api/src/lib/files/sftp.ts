@@ -51,6 +51,7 @@ function isMissing(cause: unknown): boolean {
  * ponytail: never add ssh2 to `trustedDependencies`; the native addon crashes under Bun.
  */
 export function createSftpSource(config: SftpSourceConfig): FileSource {
+  const where = `${config.host}:${config.port}`;
   let client: SftpClient | null = null;
   let rejected: HostKey | null = null;
   const connect = async (): Promise<SftpClient> => {
@@ -81,7 +82,7 @@ export function createSftpSource(config: SftpSourceConfig): FileSource {
           details: { fingerprint: rejected.fingerprint, key_type: rejected.type },
         });
       }
-      throw unreachable(cause, "ssh");
+      throw unreachable(cause, "ssh", where);
     }
     client = next;
     return next;
@@ -92,7 +93,7 @@ export function createSftpSource(config: SftpSourceConfig): FileSource {
       return await run(sftp);
     } catch (cause: unknown) {
       if (cause instanceof AppError) throw cause;
-      throw isMissing(cause) ? missing(path) : unreachable(cause, "sftp");
+      throw isMissing(cause) ? missing(path) : unreachable(cause, "sftp", where);
     }
   };
   const entryOf = (

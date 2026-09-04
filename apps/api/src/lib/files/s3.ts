@@ -30,9 +30,11 @@ function codeOf(cause: unknown): string | undefined {
   return v.is(s3Error, cause) ? cause.code : undefined;
 }
 
-function failure(cause: unknown, path: string): Error {
+function failure(cause: unknown, path: string, where: string): Error {
   const code = codeOf(cause);
-  return code === "NoSuchKey" || code === "NotFound" ? missing(path) : unreachable(cause, code);
+  return code === "NoSuchKey" || code === "NotFound"
+    ? missing(path)
+    : unreachable(cause, code, where);
 }
 
 function keyOf(prefix: string, path: string): string {
@@ -43,6 +45,7 @@ function keyOf(prefix: string, path: string): string {
 
 /** S3 and compatible stores through `Bun.S3Client` (10 §10.3); `/`-delimited keys are the tree. */
 export function createS3Source(config: S3SourceConfig): FileSource {
+  const where = `the bucket ${config.bucket} at ${config.endpoint ?? "Amazon S3"}`;
   const options: ConstructorParameters<typeof S3Client>[0] = {
     bucket: config.bucket,
     region: config.region,
@@ -124,10 +127,10 @@ export function createS3Source(config: S3SourceConfig): FileSource {
       };
     } catch (cause: unknown) {
       const code = codeOf(cause);
-      if (code !== "NoSuchKey" && code !== "NotFound") throw unreachable(cause, code);
+      if (code !== "NoSuchKey" && code !== "NotFound") throw unreachable(cause, code, where);
     }
     const page = await listDir(clean, 1, undefined).catch((cause: unknown) => {
-      throw failure(cause, clean);
+      throw failure(cause, clean, where);
     });
     if (page.data.length === 0) throw missing(clean);
     return asDirectory(clean);
@@ -147,14 +150,18 @@ export function createS3Source(config: S3SourceConfig): FileSource {
           page.data = page.data.filter((e) => e.name.includes(query.q ?? ""));
         return page;
       } catch (cause: unknown) {
-        throw failure(cause, dir);
+        throw failure(cause, dir, where);
       }
     },
     stat: statEntry,
     async read(path) {
       const clean = normalizePath(path);
       const file = client.file(keyOf(config.prefix, clean));
-      if (!(await file.exists().catch((cause: unknown) => Promise.reject(failure(cause, clean)))))
+      if (
+        !(await file
+          .exists()
+          .catch((cause: unknown) => Promise.reject(failure(cause, clean, where))))
+      )
         throw missing(clean);
       return file.stream();
     },
@@ -165,7 +172,7 @@ export function createS3Source(config: S3SourceConfig): FileSource {
       try {
         await client.write(keyOf(config.prefix, clean), body);
       } catch (cause: unknown) {
-        throw failure(cause, clean);
+        throw failure(cause, clean, where);
       }
     },
     async remove(path) {
@@ -177,7 +184,7 @@ export function createS3Source(config: S3SourceConfig): FileSource {
       await client
         .file(keyOf(config.prefix, clean))
         .delete()
-        .catch((cause: unknown) => Promise.reject(failure(cause, clean)));
+        .catch((cause: unknown) => Promise.reject(failure(cause, clean, where)));
     },
     async makeDirectory(path) {
       const clean = normalizePath(path);
@@ -190,7 +197,7 @@ export function createS3Source(config: S3SourceConfig): FileSource {
       try {
         await client.write(keyOf(config.prefix, `${clean}/${KEEP}`), new Uint8Array());
       } catch (cause: unknown) {
-        throw failure(cause, clean);
+        throw failure(cause, clean, where);
       }
     },
     async removeDirectory(path) {
@@ -204,7 +211,7 @@ export function createS3Source(config: S3SourceConfig): FileSource {
       await client
         .file(keyOf(config.prefix, `${clean}/${KEEP}`))
         .delete()
-        .catch((cause: unknown) => Promise.reject(failure(cause, clean)));
+        .catch((cause: unknown) => Promise.reject(failure(cause, clean, where)));
     },
     async move(from, to) {
       const source = normalizePath(from);
@@ -226,7 +233,7 @@ export function createS3Source(config: S3SourceConfig): FileSource {
         await client.write(keyOf(config.prefix, target), client.file(keyOf(config.prefix, source)));
         await client.file(keyOf(config.prefix, source)).delete();
       } catch (cause: unknown) {
-        throw failure(cause, source);
+        throw failure(cause, source, where);
       }
     },
     async close() {},

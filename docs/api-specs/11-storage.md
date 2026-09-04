@@ -4,7 +4,7 @@ Module: `storage` ([../technical-specs/05-module-definitions.md §5.11](../techn
 
 ## 11.1 `GET .../entries`
 
-**Purpose.** List a directory (story 94). **Access.** `viewer`. **Input.** Query: `path` (default the adapter's root or prefix), `cursor`, `limit` (default 200, max 1 000), `q` (name contains, within the directory). **Behavior.** Address check; host-key check for SFTP (`CONFLICT { "reason": "host_key_changed", "details": { "fingerprint" } }` when it changed, story 97). **Output.** `200 { "data": [ { "name": "export-2026-08-28.csv", "path": "exports/export-2026-08-28.csv", "kind": "file", "size_bytes": 12345, "modified_at": "..." } ], "page": {...} }`. **Errors.** `NOT_FOUND` (path), `CONFLICT`, `HOST_BLOCKED`, `ADAPTER_UNREACHABLE`. **Traceability.** Stories 94, 97.
+**Purpose.** List a directory (story 94). **Access.** `viewer`. **Input.** Query: `path` (default the adapter's root or prefix), `cursor`, `limit` (default 200, max 1 000), `q` (name contains, within the directory). **Behavior.** Address check; host-key check for SFTP (`CONFLICT { "reason": "host_key_changed", "details": { "fingerprint" } }` when it changed, story 97). **Output.** `200 { "data": [ { "name": "export-2026-08-28.csv", "path": "exports/export-2026-08-28.csv", "kind": "file", "size_bytes": 12345, "modified_at": "..." } ], "page": {...} }`. **Errors.** `NOT_FOUND` (path), `CONFLICT`, `HOST_BLOCKED`, `ADAPTER_UNREACHABLE`, worded from where the store is and what the socket said ("minio:9000 refused the connection", "files.internal:22 does not resolve", "ftp.local:21 did not answer in time"), with `details.code` from the driver and `details.where`. **Traceability.** Stories 94, 97.
 
 ## 11.2 `GET .../entries/stat`
 

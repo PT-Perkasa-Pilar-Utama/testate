@@ -24,6 +24,7 @@ import { eventsLabel, formatBytes, statePath } from "./states.format.ts";
 import { statesModel } from "./states.model.ts";
 import { checkoutBlockedReason, createStatesPresenter } from "./states.presenter.ts";
 import type { StatesPresenter } from "./states.presenter.ts";
+import { humanMessage } from "@/lib/api-error.ts";
 
 /** Where the databases stand against this state, in one badge; nothing when this is not HEAD. */
 function HeadBadge(props: { presenter: StatePresenter }): JSX.Element {
@@ -220,7 +221,7 @@ export default function StateView(props: { slug: string; id: string }): JSX.Elem
       <Errored
         fallback={(error) => (
           <div class="grid gap-3">
-            <Banner variant="error">{String(error())}</Banner>
+            <Banner variant="error">{humanMessage(error(), "The state could not be read")}</Banner>
             <a class="text-link hover:underline" href={href(`${projectPath()}?tab=states`)}>
               Back to the states
             </a>

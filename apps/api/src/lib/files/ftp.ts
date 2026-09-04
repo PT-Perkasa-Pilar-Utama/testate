@@ -61,6 +61,7 @@ async function download(ftp: Client, pipe: PassThrough, remote: string): Promise
 
 /** FTP and explicit FTPS through `basic-ftp` (10 §10.3), passive mode only. */
 export function createFtpSource(config: FtpSourceConfig): FileSource {
+  const where = `${config.host}:${config.port}`;
   let client: Client | null = null;
   const connectNew = async (): Promise<Client> => {
     const next = new Client(config.timeoutMs ?? 15000);
@@ -73,7 +74,7 @@ export function createFtpSource(config: FtpSourceConfig): FileSource {
         secure: config.tls,
       });
     } catch (cause: unknown) {
-      throw unreachable(cause, `ftp_${ftpError(cause).code ?? "connect"}`);
+      throw unreachable(cause, `ftp_${ftpError(cause).code ?? "connect"}`, where);
     }
     return next;
   };
@@ -89,7 +90,7 @@ export function createFtpSource(config: FtpSourceConfig): FileSource {
     } catch (cause: unknown) {
       if (cause instanceof AppError) throw cause;
       const { code } = ftpError(cause);
-      throw code === 550 ? missing(path) : unreachable(cause, `ftp_${code ?? "unknown"}`);
+      throw code === 550 ? missing(path) : unreachable(cause, `ftp_${code ?? "unknown"}`, where);
     }
   };
   const listDir = async (ftp: Client, dir: string): Promise<Entry[]> => {

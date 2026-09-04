@@ -17,6 +17,7 @@ import { CreateDialog } from "../adapters/adapters.create.view.tsx";
 import { createAdaptersPresenter } from "../adapters/adapters.presenter.ts";
 import { projectsModel } from "../projects/projects.model.ts";
 import { storageModel } from "./storage.model.ts";
+import { humanMessage } from "@/lib/api-error.ts";
 
 /**
  * One button, and the project is picked inside the dialog: a select beside the button was a
@@ -123,7 +124,11 @@ export default function StoresView(): JSX.Element {
           </Show>
         }
       />
-      <Errored fallback={(error) => <Banner variant="error">{String(error())}</Banner>}>
+      <Errored
+        fallback={(error) => (
+          <Banner variant="error">{humanMessage(error(), "The stores could not be listed")}</Banner>
+        )}
+      >
         <Loading fallback={<p class="text-muted">Listing...</p>}>
           <Show
             when={stores.value().length > 0}
