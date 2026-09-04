@@ -205,6 +205,23 @@ export async function insertRow(
     await context.delete(`projects/demo/adapters/${adapterId}/write-sessions/${session.data.id}`);
 }
 
+/**
+ * Checks out the starting point and waits: a database joins a project only while every database
+ * holds it, so a spec that adds one stands there first.
+ */
+export async function checkoutInit(context: APIRequestContext): Promise<void> {
+  const states: { data: { id: string; name: string }[] } = await (
+    await context.get("projects/demo/states?limit=200")
+  ).json();
+  const init = states.data.find((state) => state.name === "init");
+  if (init === undefined) throw new Error("the demo has no starting point");
+  const started = await context.post("projects/demo/checkouts", { data: { state_id: init.id } });
+  if (started.status() !== 202)
+    throw new Error(`checkout init: ${started.status()} ${await started.text()}`);
+  const body: { data: { job: { id: string } } } = await started.json();
+  await waitForJob(context, body.data.job.id);
+}
+
 export async function waitForJob(qa: APIRequestContext, jobId: string): Promise<JobRow> {
   for (let attempt = 0; attempt < 240; attempt += 1) {
     const body: { data: JobRow } = await (await qa.get(`jobs/${jobId}`)).json();

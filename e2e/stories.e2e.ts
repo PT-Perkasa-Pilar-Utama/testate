@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { demoAdapter, firstTable } from "./lib/api.ts";
+import { apiContext, checkoutInit, demoAdapter, firstTable } from "./lib/api.ts";
 import { openTab, rowMenu, settle, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
@@ -53,6 +53,10 @@ test.describe("qa stories", () => {
   }) => {
     const issues: Issue[] = [];
     watch(page, issues);
+    // A database joins only while every database holds the starting point: stand there first.
+    const qa = await apiContext("qa");
+    await checkoutInit(qa);
+    await qa.dispose();
     await page.goto("/projects/demo?tab=adapters");
     await settle(page);
     await page.getByRole("button", { name: "New adapter" }).click();

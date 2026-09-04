@@ -1,10 +1,15 @@
 import type { JSX } from "@solidjs/web";
+import type { Head as ProjectHead } from "@testate/shared";
 import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
 import Pending from "@/components/pending.tsx";
 import { statusReason } from "@/lib/api-error.ts";
+import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
+import { createPreflightPresenter } from "../checkouts/preflight.presenter.ts";
+import PreflightDialog from "../checkouts/preflight.view.tsx";
+import { statesModel } from "../states/states.model.ts";
 import { FilterField, FilterPanel, FilterToggle } from "@/components/filters.tsx";
 import Select from "@/components/select.tsx";
 import { Cell, EmptyRow, Head, Row, SortColumn, Table, TableSearch } from "@/components/table.tsx";
@@ -26,11 +31,47 @@ import {
 } from "./adapters.fields.ts";
 import { createAdaptersPresenter } from "./adapters.presenter.ts";
 
-export default function AdaptersView(props: { slug: string }): JSX.Element {
+/**
+ * A database joins the starting point only while every database holds it: HEAD on init and
+ * nothing moved since. A project never restored (HEAD empty) is there by definition.
+ */
+export function atStartingPoint(head: ProjectHead | undefined): boolean {
+  if (head === undefined || head.state_id === null) return true;
+  return head.state_name === "init" && !head.dirty && head.status !== "unknown";
+}
+
+export default function AdaptersView(props: {
+  slug: string;
+  /** The project's HEAD, which decides whether a database may join right now. */
+  head?: ProjectHead | undefined;
+  onChanged?: (() => void) | undefined;
+}): JSX.Element {
   const presenter = createAdaptersPresenter(() => props.slug);
   const path = (id: string): string => `/projects/${props.slug}/adapters/${id}`;
+  // Checking out the starting point goes through the same preflight as any checkout.
+  const preflight = createPreflightPresenter(
+    () => props.slug,
+    () => props.onChanged?.()
+  );
+  const toInit = async (): Promise<void> => {
+    const staticSlug = props.slug;
+    await preflight.open(await statesModel.get(staticSlug, "init"));
+  };
   return (
     <div class="grid gap-3">
+      <Show when={hasRole("qa") && !atStartingPoint(props.head)}>
+        <Banner variant="default">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <span>
+              A database can join only while every database holds its starting point. Check out the
+              starting point first, then add it.
+            </span>
+            <Button size="sm" variant="accent-outline" onClick={() => void toInit()}>
+              Check out the starting point
+            </Button>
+          </div>
+        </Banner>
+      </Show>
       <div class="flex flex-wrap items-center justify-end gap-2">
         <TableSearch
           placeholder="Search adapters..."
@@ -42,7 +83,7 @@ export default function AdaptersView(props: { slug: string }): JSX.Element {
           active={presenter.activeFilters()}
           onToggle={() => presenter.toggleFilters()}
         />
-        <Show when={hasRole("qa")}>
+        <Show when={hasRole("qa") && atStartingPoint(props.head)}>
           <Button variant="primary" onClick={() => presenter.openCreate()}>
             New adapter
           </Button>
@@ -172,6 +213,7 @@ export default function AdaptersView(props: { slug: string }): JSX.Element {
         </Table>
       </Loading>
       <CreateDialog presenter={presenter} kind="database" />
+      <PreflightDialog presenter={preflight} />
     </div>
   );
 }

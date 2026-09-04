@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import * as v from "valibot";
 import { adapterDeletionPlanSchema, adapterSchema, probeResultSchema } from "@testate/shared";
 
 import { TEST_META } from "../../../test/accounts.ts";
@@ -10,6 +11,17 @@ import {
   PROBE_MOCK,
   STORAGE_ADAPTER_MOCK,
 } from "./adapters.mock.ts";
+
+/** The shop project and its starting point, as rows: the gate under test reads both. */
+function shopInit(harness: Awaited<ReturnType<typeof createAdaptersHarness>>) {
+  const project = harness.projectsRepo.bySlug("shop");
+  if (project === null) throw new Error("no shop project");
+  const row = v.parse(
+    v.object({ id: v.string() }),
+    harness.db.query("SELECT id FROM states WHERE project_id = ? AND kind = 'init'").get(project.id)
+  );
+  return { projectId: project.id, initId: row.id };
+}
 
 describe("adapters", () => {
   it("mocks match the contract", () => {
@@ -41,6 +53,29 @@ describe("adapters", () => {
     expect(JSON.stringify(adapter)).not.toContain("pg-secret");
     expect(init_job?.kind).toBe("snapshot");
     expect(await storedSecrets(harness, adapter.id)).toStrictEqual({ password: "pg-secret" });
+  });
+
+  it("lets a database join only while every database holds the starting point", async () => {
+    const harness = await createAdaptersHarness();
+    await harness.adapters.create(harness.qa, "shop", PG, TEST_META);
+    const { projectId, initId } = shopInit(harness);
+    // HEAD on init, then the databases move off it: a second one may not join until a checkout.
+    harness.projectsRepo.setHead(projectId, initId, "at_state", new Date().toISOString());
+    harness.projectsRepo.markHeadDirty(projectId, true, new Date().toISOString());
+    await expect(
+      harness.adapters.create(harness.qa, "shop", { ...PG, name: "pg-two" }, TEST_META)
+    ).rejects.toThrow("check out the starting point first");
+    harness.projectsRepo.markHeadDirty(projectId, false, new Date().toISOString());
+    const { adapter } = await harness.adapters.create(
+      harness.qa,
+      "shop",
+      { ...PG, name: "pg-two" },
+      TEST_META
+    );
+    expect(adapter.name).toBe("pg-two");
+    // A file store never enters a state, so it joins whenever.
+    harness.projectsRepo.markHeadDirty(projectId, true, new Date().toISOString());
+    await expect(harness.adapters.create(harness.qa, "shop", S3, TEST_META)).resolves.toBeDefined();
   });
 
   it("leaves a storage adapter read-only unless asked, and never takes an init state", async () => {

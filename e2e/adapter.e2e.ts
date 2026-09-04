@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
+import { apiContext, checkoutInit } from "./lib/api.ts";
 import { openStatesList, settle, stateRow, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
@@ -35,6 +36,10 @@ test.describe("adapter settings stories", () => {
     test.setTimeout(180_000);
     const issues: Issue[] = [];
     watch(page, issues);
+    // A database joins only while every database holds the starting point: stand there first.
+    const qa = await apiContext("qa");
+    await checkoutInit(qa);
+    await qa.dispose();
     // A project opens on States now; adapters are plumbing and no longer the front door.
     await page.goto("/projects/demo?tab=adapters");
     await settle(page);

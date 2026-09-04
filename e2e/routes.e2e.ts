@@ -243,9 +243,10 @@ for (const role of ROLES) {
       // A project now opens on States; the adapter list lives at ?tab=adapters.
       await page.goto("/projects/demo?tab=adapters");
       await settle(page);
-      await expect(page.getByRole("button", { name: "New adapter" })).toBeVisible({
-        visible: allows(role, "qa"),
-      });
+      // New adapter, or the way to the starting point when the databases are not on it.
+      await expect(
+        page.getByRole("button", { name: /New adapter|Check out the starting point/ })
+      ).toBeVisible({ visible: allows(role, "qa") });
     });
   });
 }

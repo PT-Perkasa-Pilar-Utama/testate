@@ -143,6 +143,24 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
       meta,
     });
   const initJob = createInitJob({ states: deps.states, jobs: deps.jobs, now: deps.now });
+  /**
+   * A database joins the starting point, or is repointed at another one, only while every
+   * database holds its starting point: HEAD on init and nothing moved since. That is what makes
+   * init one moment for every database, whenever each was connected. A project that has never
+   * been restored (HEAD empty) is at its start by definition; the first init job moves HEAD there.
+   */
+  const assertAtInit = (project: { id: string; head: Project["head"] }): void => {
+    const init = deps.states.initOf(project.id);
+    if (init === null || project.head.state_id === null) return;
+    const there =
+      project.head.state_id === init.id && !project.head.dirty && project.head.status !== "unknown";
+    if (!there) {
+      throw conflict(
+        "check out the starting point first: a database joins it only while every database holds it",
+        { head: project.head.state_id, init: init.id }
+      );
+    }
+  };
   const failRetest = (id: string, cause: unknown): void => {
     if (!(cause instanceof AppError)) return;
     if (cause.code === "HOST_BLOCKED") repo.setStatus(id, "disabled", "policy", nowIso());
@@ -171,6 +189,7 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
       const project = projectOf(slug);
       if (repo.byName(project.id, draft.name) !== null)
         throw conflict("adapter name is taken", { name: draft.name });
+      if (draft.kind === "database") assertAtInit(project);
       const validated = validateConfig(draft.engine, draft.kind, draft.config, draft.secrets);
       const outcome = await probe(draft.engine, validated, draft.secrets);
       const id = Bun.randomUUIDv7();
@@ -222,6 +241,7 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
         current,
         patch
       );
+      if (change.newTarget) assertAtInit(project);
       repo.updateConfig(id, change.columns, nowIso());
       if (change.outcome !== null)
         repo.setProbe(id, probeColumns(change.outcome, nowIso()), nowIso());
