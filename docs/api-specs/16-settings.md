@@ -2,6 +2,8 @@
 
 Module: `settings` ([../technical-specs/05-module-definitions.md §5.16](../technical-specs/05-module-definitions.md)). Keys and defaults: [06 §6.8](../technical-specs/06-data-model.md). Precedence over environment: [11 §11.2](../technical-specs/11-environment-configuration.md).
 
+Every route below requires `admin` **and** an unscoped credential; a project-scoped token, even an admin one, gets `FORBIDDEN`.
+
 ## 16.1 `GET /settings`
 
 **Access.** `admin`.
@@ -27,7 +29,7 @@ S3 secrets appear as sealed fields. **Traceability.** Stories 118, 120.
 
 ## 16.3 `POST /settings/store-migration`
 
-**Purpose.** Move every referenced blob to a new store and switch (story 119). **Access.** `admin`. **Input.** Body: `target` `{ "driver": "s3", "s3": { "bucket", "prefix", "region", "endpoint"?, "virtual_hosted", "access_key_id", "secret_access_key" } }` or `{ "driver": "local" }`. **Behavior.** Refused while any job runs (`JOB_IN_PROGRESS`) or when the store is locked by the environment (`CONFLICT`); address check on the endpoint; enqueue job `storage_migration` per [15 §15.7](../technical-specs/15-snapshot-store.md). **Output.** `202` job. **Errors.** `JOB_IN_PROGRESS`, `CONFLICT`, `HOST_BLOCKED`, `VALIDATION_ERROR`. **Traceability.** Story 119.
+**Purpose.** Move every referenced blob to a new store and switch (story 119). **Access.** `admin`. **Input.** Body: `target` `{ "driver": "s3", "s3": { "bucket", "prefix", "region"?, "endpoint"?, "virtual_hosted"?, "access_key_id", "secret_access_key" } }` or `{ "driver": "local" }`. `region` and `endpoint` are both optional; `virtual_hosted` defaults to `true` when omitted. **Behavior.** Refused while any job runs (`JOB_IN_PROGRESS`) or when the store is locked by the environment (`CONFLICT`); address check on the endpoint; enqueue job `storage_migration` per [15 §15.7](../technical-specs/15-snapshot-store.md). **Output.** `202` job. **Errors.** `JOB_IN_PROGRESS`, `CONFLICT`, `HOST_BLOCKED`, `VALIDATION_ERROR`. **Traceability.** Story 119.
 
 ## 16.4 `POST /settings/backup`
 

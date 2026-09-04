@@ -17,9 +17,11 @@ State object:
 
 Kinds: `init`, `manual`, `stash`; `diff` states are hidden and never listed (story 89, [20](../technical-specs/20-diff-engine.md)).
 
+Every `{id}` below (8.4 to 8.7) accepts the state's id or its exact name, case-insensitively.
+
 ## 8.1 `GET .../states`
 
-**Purpose.** List states. **Access.** `viewer`. **Input.** Query: `cursor`, `limit`, `sort` (`created_at`, `name`, `size_bytes`), `order`, `kind`, `tag`, `name` (exact, case-insensitive, for lookups by name), `include_stash` (default false), `protected`. **Output.** `200` list. **Traceability.** Stories 64, 66.
+**Purpose.** List states. **Access.** `viewer`. **Input.** Query: `cursor`, `limit`, `sort` (`created_at`, `name`, `size_bytes`), `order`, `kind`, `tag`, `name` (exact, case-insensitive, for lookups by name), `include_stash` (default false), `protected`, `created_from`, `created_to`. **Output.** `200` list; each item is the state object plus `checkout_count` and `diff_count` (how many checkouts and diffs reference it). **Traceability.** Stories 64, 66.
 
 ## 8.2 `GET .../states/tree`
 
@@ -31,18 +33,36 @@ Kinds: `init`, `manual`, `stash`; `diff` states are hidden and never listed (sto
 
 **Access.** `qa`.
 
-**Input.** Body: `name` required, 1 to 80 characters, unique per project case-insensitively, not matching the UUID pattern; `notes` optional; `tags` string[] optional; `adapter_ids` string[] optional (default every database adapter). Headers: `Idempotency-Key` optional; query `wait` optional.
+**Input.** Body: `name` required, 1 to 80 characters, unique per project case-insensitively, not matching the UUID pattern; `notes` optional; `tags` string[] optional; `adapter_ids` string[] optional, every database adapter of the project when omitted. Headers: `Idempotency-Key` optional; query `wait` optional.
 
 **Behavior.**
 1. Validate the name (`CONFLICT` on collision or UUID look-alike, story 64); quota check (`QUOTA_EXCEEDED`).
-2. Create the state `creating` with `parent_state_id` = HEAD; enqueue job `snapshot` claiming the adapters (`JOB_IN_PROGRESS`).
-3. The job reads each adapter at one instant (story 63), writes blobs with pins, commits manifests, sets `ready`, moves HEAD to the state; progress per table (story 74). Audit `state.created`.
+2. Resolve `adapter_ids`: an unknown adapter id answers `NOT_FOUND`; an explicit empty list answers `CONFLICT` ("pick at least one database to snapshot"); a project with no database adapter at all answers `CONFLICT` the same way when the field is omitted.
+3. Create the state `creating` with `parent_state_id` = HEAD; enqueue job `snapshot` claiming the adapters (`JOB_IN_PROGRESS`).
+4. The job reads each adapter at one instant (story 63), writes blobs with pins, commits manifests, sets `ready`, moves HEAD to the state; progress per table (story 74). Audit `state.created`.
 
-**Output.** `202 { "data": { "state": {...creating}, "job": {...} } }`. **Errors.** `CONFLICT`, `QUOTA_EXCEEDED`, `JOB_IN_PROGRESS`, `ADAPTER_UNREACHABLE`, `VALIDATION_ERROR`. **Traceability.** Stories 61, 62, 63, 64, 65, 70, 72, 73, 74, 114.
+**Output.** `202 { "data": { "state": {...creating}, "job": {...} } }`. **Errors.** `CONFLICT`, `NOT_FOUND` (unknown `adapter_ids` entry), `QUOTA_EXCEEDED`, `JOB_IN_PROGRESS`, `ADAPTER_UNREACHABLE`, `VALIDATION_ERROR`. **Traceability.** Stories 61, 62, 63, 64, 65, 70, 72, 73, 74, 114.
 
 ## 8.4 `GET .../states/{id}`
 
-**Purpose.** Detail with per-adapter manifests (table list with rows, bytes, sort, warnings). **Access.** `viewer`. **Output.** `200` state plus `adapters[].tables[]`. **Errors.** `NOT_FOUND`. **Traceability.** Stories 66, 73.
+**Purpose.** Detail with per-adapter manifests (table list with rows, bytes, sort, warnings) and what changed against the parent state.
+
+**Access.** `viewer`.
+
+**Output.** `200`, the state object plus:
+
+```json
+{ "checkout_count": 3, "diff_count": 1,
+  "last_checkout_at": "2026-08-29T09:10:00.000Z",
+  "adapters": [ { "adapter_id": "01J...", "adapter_name": "orders-db", ...,
+    "removed_tables": ["public.legacy_orders"],
+    "tables": [ { "schema": "public", "name": "orders", "rows": 120433, "bytes": 812300,
+      "blob_hash": "sha256:...", "sort": "primary-key", "warnings": [], "change": "changed" } ] } ] }
+```
+
+`last_checkout_at` is null when the state was never checked out. Per table, `change` is `"same"`, `"changed"`, or `"added"` against the parent's manifest for that table, or `null` when the state has no parent (a root state); a table the parent had and this state's adapter lacks is named in that adapter's `removed_tables` instead of appearing in `tables`.
+
+**Errors.** `NOT_FOUND`. **Traceability.** Stories 66, 73.
 
 ## 8.5 `PATCH .../states/{id}`
 

@@ -21,7 +21,7 @@ Module: `ops` ([../technical-specs/05-module-definitions.md §5.17](../technical
     "sealed_keys": { "status": "ok", "active_fingerprint": "9f3c...", "extra_values": 0 } } } }
 ```
 
-`status` is `down` when `metadata_db` or `data_dir` fails (HTTP `503`), `degraded` when the store, sink, or dispatcher fails (HTTP `200`). **Traceability.** Story 129.
+`status` is `down` when `metadata_db` or `data_dir` fails (HTTP `503`), `degraded` when the store, sink, dispatcher, or `sealed_keys` check is not `ok` (HTTP `200`). **Traceability.** Story 129.
 
 ## 19.2 `GET /health/live` and `GET /health/ready`
 
@@ -35,10 +35,10 @@ Module: `ops` ([../technical-specs/05-module-definitions.md §5.17](../technical
 
 **Input.** Body: `seed` `dev` | `qa` optional (default `TESTATE_RESET_SEED`); `confirm` string required, must equal `"reset"`.
 
-**Behavior.** Refuse while jobs run (`JOB_IN_PROGRESS`); pause the dispatcher; delete every metadata table, local blobs, uploads, import artifacts, and diff blobs; re-apply migrations; run the seed (`dev`: admin, `qa` and `viewer` users with known passwords, project `demo` with adapters at the compose engines, a storage adapter at MinIO, one manual state; `qa`: admin only); resume the dispatcher; audit `reset_state.run`. Sessions other than the caller's are gone.
+**Behavior.** Refuse while jobs run (`JOB_IN_PROGRESS`, checked only against jobs already `running`, not `queued`); refuse when `TESTATE_ADMIN_PASSWORD` is unset (`CONFLICT`), since the reset recreates the bootstrap admin from it; drop every metadata table; re-apply migrations; recreate the bootstrap admin; run the seed (`dev`: admin, `qa` and `viewer` users with known passwords, project `demo` with adapters at the compose engines, a storage adapter at MinIO, one manual state; `qa`: admin only); re-apply the settings that were just dropped to whatever the live process holds in memory. All sessions go with the metadata tables, the caller's included. The code does not pause the dispatcher, does not delete local blobs, uploads, import artifacts, or diff blobs, and does not write an audit row for the reset itself, whatever earlier prose or the tech spec may say.
 
-**Output.** `200 { "data": { "seed": "dev", "users": 3, "projects": 1, "adapters": 5, "states": 1, "duration_ms": 4120 } }`. **Errors.** `JOB_IN_PROGRESS`, `VALIDATION_ERROR`, `NOT_FOUND` in production. **Traceability.** Testing decisions in `../PRD.md` §5; [05 §5.17](../technical-specs/05-module-definitions.md).
+**Output.** `200 { "data": { "seed": "dev", "users": 3, "projects": 1, "adapters": 5, "states": 1, "warnings": [], "sessions_revoked": true, "duration_ms": 4120 } }`. `warnings` lists adapters the compose engines refused (not running, wrong port) — never fatal. **Errors.** `JOB_IN_PROGRESS`, `CONFLICT` (`TESTATE_ADMIN_PASSWORD` unset), `VALIDATION_ERROR`, `NOT_FOUND` in production. **Traceability.** Testing decisions in `../PRD.md` §5; [05 §5.17](../technical-specs/05-module-definitions.md).
 
 ## 19.4 `GET /openapi.json` and `GET /docs`
 
-**Purpose.** The generated OpenAPI document and the interactive reference (story 116). **Access.** Any authenticated actor (`docs` also in development without auth). **Output.** `200 application/json`; `200 text/html`. **Traceability.** Story 116.
+**Purpose.** The generated OpenAPI document and the interactive reference (story 116). **Access.** Any authenticated, non-agent actor — a session or bearer token, in every environment; there is no unauthenticated development bypass. An HTML request with no actor redirects to `/login` instead of `401`. **Output.** `200 application/json`; `200 text/html`. **Traceability.** Story 116.

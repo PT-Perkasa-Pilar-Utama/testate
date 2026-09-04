@@ -26,7 +26,7 @@ Draft body (create, test, update):
 | `kind` | `database` \| `storage` | create | immutable after create |
 | `engine` | `postgres` \| `mysql` \| `mariadb` \| `mongodb` \| `s3` \| `sftp` \| `ftp` | create | immutable |
 | `name` | string | create | unique per project, case-insensitive |
-| `mode` | `sandbox` \| `read_only` | no | database kind only; default `sandbox` |
+| `mode` | `sandbox` \| `read_only` | no | either kind; default `sandbox` for a database, `read_only` for a storage adapter — a tester sets it at create, only an admin changes it after (5.6) |
 | `config` | object | create | public fields per kind as above |
 | `secrets` | object | create | sealed fields per kind: `password` or `connection_string`; `access_key_id` and `secret_access_key`; `password` or `private_key` (+ `passphrase`). On update each value is a new value or `"keep"` |
 | `readonly_secrets` | object | no | database kind; same shape; `null` removes |
@@ -71,7 +71,7 @@ Draft body (create, test, update):
 **Behavior.**
 1. Address check, probe as in 5.2; store capabilities, strategy, version, dialect, tier, `target_hash`.
 2. Seal `secrets` and `readonly_secrets` (story 34).
-3. Storage kind is always `read_only`.
+3. Storage kind defaults to `read_only` unless the draft names `mode: "sandbox"`; a database defaults to `sandbox`. Either kind can be moved later, only by an admin (5.6).
 4. Database kind: enqueue job `snapshot` into the project's one protected state named `init`, creating it for the first adapter and adding an entry to it for every later one; a change of host, port, or database replaces that adapter's entry. Return-to-init resolves the adapter's entry in that state by the adapter's immutable id, so a rename changes nothing.
 5. Audit `adapter.created`.
 
@@ -91,22 +91,22 @@ Draft body (create, test, update):
 
 **Behavior.**
 1. Address check and probe when host, port, database, or secrets change.
-2. A change of host, port, or database (new `target_hash`) enqueues a new init state (story 28); a rename changes nothing else (story 29).
+2. A change of host, port, or database (new `target_hash`) snapshots this adapter into the project's one existing init state, replacing its entry there — it does not create a new init state (story 28); a rename changes nothing else (story 29).
 3. Credential replacement evicts the connection pool; audit `adapter.credential_replaced` (story 34); other changes audit `adapter.updated`.
 
 **Output.** `200 { "data": { "adapter": {...}, "init_job": job | null } }`. **Errors.** As 5.2 plus `CONFLICT`, `NOT_FOUND`. **Traceability.** Stories 24, 26, 28, 29, 34.
 
 ## 5.6 `POST /projects/{slug}/adapters/{id}/mode`
 
-**Purpose.** Tighten or loosen the mode.
+**Purpose.** Tighten or loosen the mode. Applies to either kind: a file store's mode means the same thing a database's does, `read_only` refuses every write.
 
-**Access.** `qa` for `read_only`; `admin` for `sandbox` (story 22).
+**Access.** `admin`, in either direction (story 22).
 
 **Input.** Body: `mode` required.
 
-**Behavior.** Loosening audits `adapter.mode_loosened`; tightening audits `adapter.mode_tightened`; tightening ends open write sessions on the adapter.
+**Behavior.** Loosening audits `adapter.mode_loosened`; tightening audits `adapter.mode_tightened`; tightening ends open write sessions on the adapter (none, for a file store).
 
-**Output.** `200` adapter. **Errors.** `FORBIDDEN` (qa loosening), `NOT_FOUND`, `VALIDATION_ERROR` (storage kind). **Traceability.** Stories 21, 22.
+**Output.** `200` adapter. **Errors.** `FORBIDDEN` (non-admin), `NOT_FOUND`, `VALIDATION_ERROR`. **Traceability.** Stories 21, 22.
 
 ## 5.7 `POST /projects/{slug}/adapters/{id}/retest`
 
@@ -114,7 +114,13 @@ Draft body (create, test, update):
 
 ## 5.8 `GET /projects/{slug}/adapters/{id}/deletion-plan`
 
-**Purpose.** What deleting this adapter will do. **Access.** `qa`. **Behavior.** As 4.6 for one adapter; states referencing it are counted. **Output.** `200 { "data": { "plan_id", "expires_at", "adapter": { "action": "restore" | "force" | "skip", "reason"?, "drift"? }, "states_referencing": 12 } }`. **Errors.** `NOT_FOUND`, `JOB_IN_PROGRESS`. **Traceability.** Stories 14, 30.
+**Purpose.** What deleting this adapter will do.
+
+**Access.** `qa`.
+
+**Behavior.** As 4.7 for this one adapter: a database adapter not in `read_only` mode gets action `restore`; a `read_only` database adapter or a storage adapter gets `skip` with `reason: "read_only"`. There is no reachability probe or fingerprint comparison: `drift` is always `null`, and `force` and the other listed reasons (`unreachable`, `no_init_state`, `removed`) are never produced, though the schema still allows them. `states_referencing` counts the states whose manifest still names this adapter.
+
+**Output.** `200 { "data": { "plan_id", "expires_at", "adapter": { "action": "restore" | "skip", "reason"?, "drift": null }, "states_referencing": 12 } }`. **Errors.** `NOT_FOUND`. **Traceability.** Stories 14, 30.
 
 ## 5.9 `POST /projects/{slug}/adapters/{id}/deletion`
 
@@ -122,8 +128,28 @@ Draft body (create, test, update):
 
 **Access.** `qa`.
 
-**Input.** Body: `plan_id` required; `action` required: `restore` | `force` | `skip`.
+**Input.** Body: `plan_id` required; `action` required: `restore` | `force` | `skip`. `plan_id` must match the plan from 5.8 and be unexpired, and `action` must be one the plan allows (`CONFLICT` otherwise): a `restore`-planned adapter accepts `restore` or `skip`; a `skip`-planned one accepts only `skip`. `force` is never allowed by the plan today — sending it always answers `CONFLICT`.
 
-**Behavior.** Enqueue job `adapter_delete`; the job restores per the action (no stash), then marks the adapter removed in every manifest, deletes normalizers, saved queries, policies, and the adapter row only after the restore succeeded or was skipped (stories 30, 31). Audit `adapter.deleted` with the result.
+**Behavior.** Enqueue job `adapter_delete`; the job restores for a `restore` action (no stash, `skip` leaves the database as it is), then marks the adapter removed in every manifest, deletes normalizers, saved queries, policies, and the adapter row only after the restore succeeded or was skipped (stories 30, 31). Audit `adapter.deleted` with the result.
 
-**Output.** `202` job. **Errors.** `CONFLICT` (stale plan), `JOB_IN_PROGRESS`, `NOT_FOUND`. **Traceability.** Stories 30, 31.
+**Output.** `202` job. **Errors.** `CONFLICT` (stale plan or action not allowed), `JOB_IN_PROGRESS`, `NOT_FOUND`. **Traceability.** Stories 30, 31.
+
+## 5.10 `GET /adapter-hosts`
+
+**Purpose.** Addresses worth offering under the Host field when creating or editing a database adapter. Not project-scoped: it describes the machine Testate runs on, not anything inside a project — the browser cannot answer this, since the engine dials from the server, not from wherever the browser sits.
+
+**Access.** `qa`.
+
+**Behavior.** Every non-internal IPv4 address of a local network interface, labelled with the interface name; `host.docker.internal` is added only when it resolves, so a container gets the button and a native install does not get a name that would only fail for it.
+
+**Output.** `200` array of `{ "host": "...", "label": "..." }`. **Traceability.** Story 20.
+
+## 5.11 `GET /storage-adapters`
+
+**Purpose.** Every file store this caller may see, across every project — a file store is not a project primitive, since it never enters a state and is never checked out, so its screen lists the whole instance and names the owning project on each row.
+
+**Access.** `viewer`.
+
+**Behavior.** Adapters of `kind: "storage"` across the projects in the caller's scope (a project-scoped token sees only its own), sorted by name.
+
+**Output.** `200` array of adapter objects, each with `project_slug` and `project_name` added. **Traceability.** Story 12.

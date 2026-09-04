@@ -32,9 +32,9 @@ Masks: responses to `viewer` users and agent tokens apply column masks; `masked_
 
 **Input.** Query: `cursor`, `limit` (default 100, max 500), `sort` (column), `order`, `filter` repeated as `filter=<column>:<op>:<value>` with ops `eq`, `ne`, `lt`, `le`, `gt`, `ge`, `like`, `in` (comma list), `null`, `notnull`.
 
-**Behavior.** Keyset paging when the table has a primary key, offset paging otherwise (`page.kind`); read-only session; masks by role; FK columns carry `display` when a display column exists (story 140).
+**Behavior.** Keyset paging when the table has a primary key, offset paging otherwise (`page.kind`); read-only session; masks by role. A row does not carry an FK's display value on this page yet. `_display` is not in the response; resolve a display value with 6.4 lookup instead. This part of story 140 is not built.
 
-**Output.** `200 { "data": [ { "id": "88213", "status": "paid", "customer_id": 5120, "_display": { "customer_id": "Dina Putri" } } ], "page": { "next_cursor": "...", "limit": 100, "kind": "keyset" }, "columns": [...], "masked_columns": [] }`.
+**Output.** `200 { "data": [ { "id": "88213", "status": "paid", "customer_id": 5120 } ], "page": { "next_cursor": "...", "limit": 100, "kind": "keyset" }, "columns": [...], "masked_columns": [] }`.
 
 **Errors.** `VALIDATION_ERROR` (unknown column), `ADAPTER_UNREACHABLE`, `NOT_FOUND`. **Traceability.** Stories 36, 140.
 
@@ -62,15 +62,15 @@ Masks: responses to `viewer` users and agent tokens apply column masks; `masked_
 
 **Input.** Body: `foreign_key_checks` boolean optional (default true).
 
-**Behavior.** Refuse on `read_only` (`ADAPTER_READ_ONLY`); one open session per user per adapter; the first write in the session takes a stash (story 41); the session warns that policies do not cover raw SQL; audit `write_session.started`.
+**Behavior.** Refuse on `read_only` (`ADAPTER_READ_ONLY`); refuse while the adapter has not taken its starting state yet (`CONFLICT`); one open session per user per adapter (`CONFLICT`); the first write in the session takes a stash (story 41); the session warns that policies do not cover raw SQL; audit `write_session.started`.
 
 **Output.** `201 { "data": { "id": "01J...", "adapter_id": "...", "started_at": "...", "foreign_key_checks": true, "fk_checks_mapping": "SET FOREIGN_KEY_CHECKS = 0", "stash_state_id": null, "expires_at": "..." } }`.
 
-**Errors.** `ADAPTER_READ_ONLY`, `CONFLICT` (session open), `NOT_FOUND`. **Traceability.** Stories 40, 41, 145.
+**Errors.** `ADAPTER_READ_ONLY`, `CONFLICT` (session already open, or the adapter has no starting state yet), `NOT_FOUND`. **Traceability.** Stories 40, 41, 145.
 
 ## 6.6 `PATCH .../write-sessions/{sid}` and `DELETE .../write-sessions/{sid}`
 
-**Purpose.** Toggle foreign-key checks; end the session. **Access.** `qa`, the session's owner. **Input.** `PATCH` body: `foreign_key_checks` boolean. **Behavior.** Off maps per [12 §12.3](../technical-specs/12-engine-port.md); refused with the reason when the engine cannot honor it (`ENGINE_UNSUPPORTED { "reason": "fk_toggle" }`); audit `write_session.fk_checks_off`. Delete ends the session; audit `write_session.ended`. **Output.** `200` session; `204`. **Errors.** `ENGINE_UNSUPPORTED`, `NOT_FOUND`. **Traceability.** Story 145.
+**Purpose.** Toggle foreign-key checks; end the session. **Access.** `qa`, the session's owner. **Input.** `PATCH` body: `foreign_key_checks` boolean. **Behavior.** Off maps per [12 §12.3](../technical-specs/12-engine-port.md); refused with the reason when the engine cannot honor it (`ENGINE_UNSUPPORTED { "reason": "fk_toggle" }`); audit `write_session.fk_checks_off`. Delete ends the session; audit `write_session.ended`. **Output.** `200` session; `204`. **Errors.** `ENGINE_UNSUPPORTED`, `FORBIDDEN` (not the session's owner), `NOT_FOUND`. **Traceability.** Story 145.
 
 ## 6.7 `POST .../tables/{table}/row-edits` (Tabular)
 
@@ -99,7 +99,7 @@ Masks: responses to `viewer` users and agent tokens apply column masks; `masked_
 
 **Output.** `200 { "data": { "results": [ { "index": 0, "kind": "insert", "pk": { "id": "88214" }, "row": {...} } ], "stash_state_id": "01J..." } }`.
 
-**Errors.** `VALIDATION_ERROR` (policy, shape), `CONFLICT` (no primary key, session closed), `ADAPTER_READ_ONLY`, `ADAPTER_UNREACHABLE` (`details.failed_index`, `details.engine_message`). **Traceability.** Stories 42, 141, 143, 144, 146.
+**Errors.** `VALIDATION_ERROR` (policy, shape), `CONFLICT` (no primary key, session closed or expired), `ADAPTER_READ_ONLY`, `ADAPTER_UNREACHABLE` (`details.failed_index`, `details.engine_message`). **Traceability.** Stories 42, 141, 143, 144, 146.
 
 ## 6.8 `POST .../query`
 
@@ -122,15 +122,15 @@ Masks: responses to `viewer` users and agent tokens apply column masks; `masked_
 | `time_budget_ms` | integer | no | default 30 000, max `limits.query_timeout_max_ms` |
 | `tag` | string | no | shown in running queries |
 
-**Behavior.** Read mode runs in a read-only transaction (SQL) or with the read credential or filter (MongoDB, `read_only_enforcement` in the response) (stories 37, 38, 39); write mode takes the stash on the session's first write; the row cap wraps the statement; history row written with the text; masks by role; the wide event carries the hash and byte count only.
+**Behavior.** Read mode runs in a read-only transaction (SQL) or with the read credential or filter (MongoDB, `read_only_enforcement` in the response) (stories 37, 38, 39); write mode takes the stash on the session's first write; the row cap wraps the statement; a history row is written with the text (6.12); masks by role; the wide event carries the hash and byte count only.
 
 **Output.** `200 { "data": { "query_id": "01J...", "columns": [ { "name": "id", "type": "bigint" } ], "rows": [...], "rows_affected": null, "truncated": { "rows": false, "bytes": false, "time": false }, "duration_ms": 41, "read_only_enforcement": "transaction", "masked_columns": [] } }`.
 
-**Errors.** `VALIDATION_ERROR`, `FORBIDDEN` (write without session, viewer write), `ADAPTER_READ_ONLY`, `RATE_LIMITED`, `ADAPTER_UNREACHABLE` (`details.engine_message` for syntax errors, `details.cancelled: true`). **Traceability.** Stories 37, 38, 39, 40, 43, 44.
+**Errors.** `VALIDATION_ERROR`, `FORBIDDEN` (write without session, viewer write), `ADAPTER_READ_ONLY`, `ENGINE_UNSUPPORTED` (`{ "reason": "dialect" }`, dialect does not match the adapter's engine), `CONFLICT` (write session closed or expired), `RATE_LIMITED`, `ADAPTER_UNREACHABLE` (`details.engine_message` for syntax errors, `details.cancelled: true`). **Traceability.** Stories 37, 38, 39, 40, 43, 44.
 
 ## 6.9 `POST .../query/export`
 
-**Purpose.** The same query streamed as a file. **Access.** As 6.8, read mode only. **Input.** 6.8 body plus `format`: `csv` | `json`. **Output.** `200` stream, `Content-Disposition: attachment; filename="<adapter>-<timestamp>.csv"`; masks apply. **Traceability.** Story 47.
+**Purpose.** The same query streamed as a file. **Access.** As 6.8, read mode only. **Input.** 6.8 body plus `format`: `csv` | `json`, required. **Output.** `200` stream, `Content-Disposition: attachment; filename="query-<query_id>.<format>"`; masks apply. **Traceability.** Story 47.
 
 ## 6.10 `GET .../queries` and `DELETE .../queries/{query_id}`
 
@@ -142,15 +142,15 @@ Masks: responses to `viewer` users and agent tokens apply column masks; `masked_
 
 ## 6.12 `GET .../query-history`
 
-**Purpose.** The caller's history. **Access.** `viewer` (own rows); `admin` sees all with `user_id`. **Input.** Query: `cursor`, `limit`, `mode`. **Output.** `200` list of `{ id, query_hash, query_text, mode, duration_ms, row_count, error, created_at }`. **Traceability.** Story 46.
+**Purpose.** The caller's history. **Access.** `viewer` (own rows only); `admin` sees every user's rows for the adapter. **Input.** Query: `limit` (default 50, max 200), `mode`. No `cursor` — the endpoint returns one page, newest first, and does not paginate further. **Output.** `200` list of `{ id, query_hash, query_text, mode, duration_ms, row_count, error, created_at }`; for a `mongo` dialect run, `query_text` holds the operation as JSON text (`JSON.stringify` of the request's `mongo` object), not a structured object. **Traceability.** Story 46.
 
 ## 6.13 Column policies (Tabular)
 
-`GET .../policies` lists; `PUT .../policies/{table}/{column}` upserts `{ "required_function": { "name", "params" } | null, "mask": "redact" | "partial" | "hash" | null, "display": boolean }`; `DELETE .../policies/{table}/{column}` removes; `POST .../policies/{table}/{column}/lock` and `/unlock` (admin).
+`GET .../policies` lists, query `table` optional (narrows to one table); `PUT .../policies/{table}/{column}` upserts `{ "required_function": { "name", "params" } | null, "mask": "redact" | "partial" | "hash" | null, "display"?: boolean }` (`display` defaults to `false`); `DELETE .../policies/{table}/{column}` removes; `POST .../policies/{table}/{column}/lock` and `/unlock` (admin).
 
 **Access.** `viewer` reads; `qa` writes unlocked policies; `admin` locks and edits locked ones.
 
-**Behavior.** A locked policy answers `FORBIDDEN` to `qa` on `PUT` and `DELETE`; `display: true` on a column makes it the table's lookup display column (one per table); audit `policy.created`, `policy.updated`, `policy.removed`, `policy.locked`.
+**Behavior.** A locked policy answers `FORBIDDEN` to `qa` on `PUT` and `DELETE`; `display: true` on a column makes it the table's lookup display column (one per table); audit `policy.created`, `policy.updated`, `policy.removed`, `policy.locked`, `policy.unlocked`.
 
 **Output.** `200` policy `{ "table", "column", "required_function", "mask", "display", "locked", "updated_at" }`; `204` on delete. **Errors.** `FORBIDDEN`, `NOT_FOUND` (column), `VALIDATION_ERROR`. **Traceability.** Stories 146, 147, 148.
 
