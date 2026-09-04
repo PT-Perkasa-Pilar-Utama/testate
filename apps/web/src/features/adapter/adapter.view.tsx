@@ -48,24 +48,34 @@ function AdminActions(props: { presenter: AdapterPresenter; adapter: Adapter }):
         >
           Retest connection
         </Button>
-        <Show when={hasRole("admin") && a().kind === "database" && a().mode === "sandbox"}>
+        {/* A file store has a mode too, and until now no screen could loosen one: the seeded
+            store came read-only and every write control on its files screen stayed hidden. */}
+        <Show when={hasRole("admin") && a().mode === "sandbox"}>
           <Button
             size="sm"
             variant="outline"
-            title="Refuse restores, imports and write sessions on this database"
+            title={
+              a().kind === "storage"
+                ? "Refuse uploads, new folders, renames and deletes on this store"
+                : "Refuse restores, imports and write sessions on this database"
+            }
             onClick={() => void props.presenter.setMode("read_only")}
           >
             Make read-only
           </Button>
         </Show>
-        <Show when={hasRole("admin") && a().kind === "database" && a().mode === "read_only"}>
+        <Show when={hasRole("admin") && a().mode === "read_only"}>
           <Button
             size="sm"
             variant="outline"
-            title="Back to sandbox: restores, imports and write sessions allowed again, with its own audit event"
+            title={
+              a().kind === "storage"
+                ? "Uploads, new folders, renames and deletes allowed again, with its own audit event"
+                : "Back to sandbox: restores, imports and write sessions allowed again, with its own audit event"
+            }
             onClick={() => void props.presenter.setMode("sandbox")}
           >
-            Allow restores
+            {a().kind === "storage" ? "Allow writes" : "Allow restores"}
           </Button>
         </Show>
         <Button size="sm" variant="danger" onClick={() => void props.presenter.openDelete()}>

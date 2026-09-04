@@ -142,7 +142,8 @@ export function devAdapters(): AdapterDraft[] {
       kind: "storage",
       engine: "s3",
       name: "exports",
-      mode: "read_only",
+      // A sandbox, so the files screen shows what a store can do: upload, folders, rename, delete.
+      mode: "sandbox",
       config: {
         bucket: "exports",
         region: "us-east-1",
