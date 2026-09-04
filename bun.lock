@@ -19,7 +19,7 @@
     },
     "apps/api": {
       "name": "@testate/api",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "dependencies": {
         "@hono/standard-validator": "0.2.0",
         "@scalar/hono-api-reference": "0.11.16",
@@ -40,7 +40,7 @@
     },
     "apps/web": {
       "name": "@testate/web",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "dependencies": {
         "@formisch/solid": "1.0.0",
         "@solidjs/web": "2.0.0-rc.6",
@@ -57,7 +57,7 @@
     },
     "packages/shared": {
       "name": "@testate/shared",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "dependencies": {
         "cizgile": "0.1.1",
         "valibot": "1.4.2",

@@ -34,7 +34,7 @@
         "name": "Testate",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Docker",
-        "softwareVersion": "1.0.1",
+        "softwareVersion": "1.1.0",
         "license": "https://opensource.org/licenses/MIT",
         "url": "https://pt-perkasa-pilar-utama.github.io/testate/",
         "codeRepository": "https://github.com/PT-Perkasa-Pilar-Utama/testate",
@@ -102,7 +102,7 @@
 
         <div class="wrap">
           <div class="copy">
-            <p class="eyebrow fade">Self-hosted · v1.0.1 · MIT</p>
+            <p class="eyebrow fade">Self-hosted · v1.1.0 · MIT</p>
             <h1 aria-label="Git for your test database.">
               <span class="w"><span style="animation-delay: 0ms">Git</span></span>
               <span class="w"><span style="animation-delay: 60ms">for</span></span>
@@ -422,7 +422,7 @@
               data-cmd='docker run -d --name testate -p 7378:7378 -v testate-data:/data \
   -e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
   -e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
-  ghcr.io/pt-perkasa-pilar-utama/testate:1.0.1'
+  ghcr.io/pt-perkasa-pilar-utama/testate:1.1.0'
             >
               <div class="bar" aria-hidden="true"><i></i><i></i><i></i></div>
               <button class="copy" type="button">copy</button>
@@ -430,7 +430,7 @@
               <div class="c">-p 7378:7378 -v testate-data:/data \</div>
               <div class="c">-e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \</div>
               <div class="c">-e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \</div>
-              <div class="c">ghcr.io/pt-perkasa-pilar-utama/testate:1.0.1</div>
+              <div class="c">ghcr.io/pt-perkasa-pilar-utama/testate:1.1.0</div>
               <div class="o">&nbsp;</div>
               <div class="p">curl -s -o /dev/null -w '%{http_code}\n' \</div>
               <div class="c">localhost:7378/api/v1/health/live</div>

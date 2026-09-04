@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.1.0
+
+An audit row can show what was sent and what came back. Upgrading applies one migration on boot
+and adds one retention setting with its default; nothing else changes shape.
+
+### New
+
+**The request and the response behind an audit row.** An admin opens them from the Audit screen,
+request left and response right, as coloured JSON with a Copy button each. The API keeps both
+bodies for any request that wrote an audit row, redacted before they are stored: a secret is
+replaced whole (any key naming a password, token, secret, passphrase, authorization or cookie,
+everything under `secrets`), an identifier keeps its first and last three characters (username,
+email, user, host, ip), a password change keeps no body at all, and each body is cut at 64 KiB.
+A failed request keeps its error envelope too. The bodies roll off on their own clock,
+`retention.audit_payload_days` (default 30), apart from the rows, which keep their 365 and say
+"expired" once the bodies are gone. `GET /audit-logs/{id}/payload` is admin only: a stored
+response was masked by the column policies for whoever asked, not for whoever reads it.
+
+### Fixed
+
+- An unreachable file store answered "an unexpected error has occurred" with the reason hidden in
+  a code. The message now says where and why: "the bucket exports at http://minio:9000 refused the
+  connection", "files.internal:22 does not resolve", "ftp.local:21 did not answer in time".
+- Six screens printed an API error raw, class name and all: home, a comparison, a state, the
+  files of a store, the stores list, and the import screen. Each reads as one sentence now.
+
 ## 1.0.1
 
 One fix, for the first thing a person does after the quick start: pointing Testate at a database.
