@@ -13,7 +13,7 @@ export type Choice =
   | { kind: "text" }
   | { kind: "number"; locale: string }
   | { kind: "date"; format: string; timezone: string }
-  | { kind: "hash"; algorithm: HashAlgorithm };
+  | { kind: "hash"; algorithm: HashAlgorithm; salt: string };
 
 export type HashAlgorithm = "bcrypt" | "argon2id" | "sha256" | "sha512";
 
@@ -69,7 +69,9 @@ export function toTransforms(choice: Choice, nullable: boolean): Transform[] {
       ? [...head, { kind: "date", format: choice.format }]
       : [...head, { kind: "date", format: choice.format, timezone: choice.timezone }];
   }
-  return [...head, { kind: "hash", algorithm: choice.algorithm }];
+  return choice.salt === ""
+    ? [...head, { kind: "hash", algorithm: choice.algorithm }]
+    : [...head, { kind: "hash", algorithm: choice.algorithm, salt: choice.salt }];
 }
 
 /** A saved normalizer's transforms back into the one question, so an old normalizer still opens. */
@@ -84,7 +86,7 @@ export function toChoice(transforms: readonly Transform[]): Choice {
     }
     if (transform.kind === "number") return { kind: "number", locale: transform.locale ?? "" };
     if (transform.kind === "hash" && transform.algorithm !== "hmac_sha256") {
-      return { kind: "hash", algorithm: transform.algorithm };
+      return { kind: "hash", algorithm: transform.algorithm, salt: transform.salt ?? "" };
     }
   }
   return AUTO;

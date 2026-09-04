@@ -115,9 +115,14 @@ describe("imports", () => {
     ).toBe(true);
     expect(await applyTransforms("", [{ kind: "emptyToNull" }, { kind: "uppercase" }])).toBeNull();
     await expect(applyTransforms("x", [{ kind: "number" }])).rejects.toThrow("not a number");
-    expect(
-      String(await applyTransforms("pw", [{ kind: "hash", algorithm: "sha256" }]))
-    ).toHaveLength(64);
+    const plain = String(await applyTransforms("pw", [{ kind: "hash", algorithm: "sha256" }]));
+    expect(plain).toHaveLength(64);
+    // A salt changes the digest: the same password does not hash the same across two tables.
+    const salted = String(
+      await applyTransforms("pw", [{ kind: "hash", algorithm: "sha256", salt: "pepper" }])
+    );
+    expect(salted).toHaveLength(64);
+    expect(salted).not.toBe(plain);
   });
 
   it("validates normalizers against the live schema and column policies", async () => {

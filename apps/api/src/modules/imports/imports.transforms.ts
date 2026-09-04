@@ -145,6 +145,7 @@ const APPLIERS = {
       value: text(value),
     };
     if (transform.secret !== undefined) input.secret = transform.secret;
+    if (transform.salt !== undefined) input.salt = transform.salt;
     return tools.hash(input);
   },
 } satisfies Record<Transform["kind"], Applier>;

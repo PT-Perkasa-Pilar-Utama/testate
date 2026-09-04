@@ -35,7 +35,7 @@ describe("how a column is read", () => {
   });
 
   test("a blank password is never hashed into a hash of nothing", () => {
-    const kinds = KINDS({ kind: "hash", algorithm: "bcrypt" }, true);
+    const kinds = KINDS({ kind: "hash", algorithm: "bcrypt", salt: "" }, true);
     expect(kinds).toEqual(["trim", "emptyToNull", "hash"]);
   });
 
@@ -47,6 +47,13 @@ describe("how a column is read", () => {
       locale: "id",
     });
     expect(toChoice(toTransforms(AUTO, true))).toEqual(AUTO);
+    // A salt on a digest survives the round trip; none is sent when none was typed.
+    const salted: Choice = { kind: "hash", algorithm: "sha256", salt: "pepper" };
+    expect(toChoice(toTransforms(salted, false))).toEqual(salted);
+    expect(toTransforms({ kind: "hash", algorithm: "bcrypt", salt: "" }, false).at(-1)).toEqual({
+      kind: "hash",
+      algorithm: "bcrypt",
+    });
   });
 
   test("the dropdown says which setting was chosen, not just the kind", () => {
@@ -54,7 +61,7 @@ describe("how a column is read", () => {
     expect(choiceLabel({ kind: "date", format: "dd/MM/yyyy", timezone: "" })).toBe(
       "Date · dd/MM/yyyy"
     );
-    expect(choiceLabel({ kind: "hash", algorithm: "bcrypt" })).toBe("Hash · bcrypt");
+    expect(choiceLabel({ kind: "hash", algorithm: "bcrypt", salt: "" })).toBe("Hash · bcrypt");
   });
 
   test("a column nobody knows about is treated as nullable, which is the safer read", () => {

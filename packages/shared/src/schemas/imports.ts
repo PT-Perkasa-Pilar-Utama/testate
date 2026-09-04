@@ -62,7 +62,10 @@ export const transformSchema = v.variant("kind", [
   v.object({
     kind: v.literal("hash"),
     algorithm: v.picklist(["bcrypt", "argon2id", "sha256", "sha512", "hmac_sha256"]),
+    /** HMAC's key. Kept in the normalizer as it is, so it is not a secret worth much. */
     secret: v.optional(v.string()),
+    /** Prepended before a SHA digest; bcrypt and Argon2id salt each value on their own. */
+    salt: v.optional(v.string()),
   }),
 ]);
 
