@@ -7,7 +7,7 @@
 <rect width="2400" height="1200" fill="url(#g1)"/>
 <g transform="translate(112 64) scale(0.48)"><g fill="none" stroke="#7dd3c0" stroke-width="9" stroke-linecap="round"><line x1="44" y1="104" x2="44" y2="30"/><path d="M44 66 C44 48 84 60 84 42"/></g><circle cx="44" cy="104" r="11" fill="#7dd3c0"/><circle cx="84" cy="42" r="11" fill="#7dd3c0"/><circle cx="44" cy="30" r="15" fill="#10b981"/><circle cx="44" cy="30" r="6" fill="#0b1017"/></g>
 <text x="188" y="108" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="40" font-weight="650" letter-spacing="-0.8" fill="#eef2f5">Test<tspan fill="#10b981">ate</tspan></text>
-<text x="120" y="372" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="22" fill="#7dd3c0" letter-spacing="2.6">SELF-HOSTED · V1.0.0 · MIT</text>
+<text x="120" y="372" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="22" fill="#7dd3c0" letter-spacing="2.6">SELF-HOSTED · V1.0.1 · MIT</text>
 <text x="114" y="520" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="150" fill="#eef2f5" font-weight="650" letter-spacing="-5">Git for your</text>
 <text x="114" y="670" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="150" fill="#eef2f5" font-weight="650" letter-spacing="-5">test database.</text>
 <text x="120" y="770" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="36" fill="#8b96a3" letter-spacing="-0.4">Snapshot the databases behind a system under test.</text>

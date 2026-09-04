@@ -62,6 +62,12 @@ const SLOTS: Slot[] = [
     render: (version: string) => `Version ${version}.`,
   },
   {
+    file: "docs/CONNECTING.md",
+    pattern: /ghcr\.io\/pt-perkasa-pilar-utama\/testate:([^\s"'`]+)/,
+    render: (version: string) => `ghcr.io/pt-perkasa-pilar-utama/testate:${version}`,
+    all: true,
+  },
+  {
     file: "docs/index.html",
     pattern: /ghcr\.io\/pt-perkasa-pilar-utama\/testate:([^\s"'`<]+)/,
     render: (version: string) => `ghcr.io/pt-perkasa-pilar-utama/testate:${version}`,

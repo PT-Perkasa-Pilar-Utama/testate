@@ -10,7 +10,7 @@
 
 **Website:** [pt-perkasa-pilar-utama.github.io/testate](https://pt-perkasa-pilar-utama.github.io/testate/)
 
-Testate runs beside the system under test, takes data-only snapshots of its databases, and puts any of them back on demand. One container, one volume, no account, no telemetry. Version 1.0.0.
+Testate runs beside the system under test, takes data-only snapshots of its databases, and puts any of them back on demand. One container, one volume, no account, no telemetry. Version 1.0.1.
 
 ## The problem
 
@@ -41,7 +41,7 @@ Nothing gets added to your application. Testate is a separate service that talks
 docker run -d --name testate -p 7378:7378 -v testate-data:/data \
   -e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
   -e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
-  ghcr.io/pt-perkasa-pilar-utama/testate:1.0.0
+  ghcr.io/pt-perkasa-pilar-utama/testate:1.0.1
 ```
 
 The same image is on Docker Hub as `snowfluke/testate`, under the same tags.
@@ -166,14 +166,14 @@ It listens on 7378 and keeps everything under `TESTATE_DATA_DIR`, which has to b
 Every release is built by this repository's own workflow and leaves a trail you can check without trusting us: SLSA build provenance and a keyless Sigstore signature on the image and on every binary, plus a CycloneDX SBOM.
 
 ```sh
-gh attestation verify oci://ghcr.io/pt-perkasa-pilar-utama/testate:1.0.0 \
+gh attestation verify oci://ghcr.io/pt-perkasa-pilar-utama/testate:1.0.1 \
   --repo PT-Perkasa-Pilar-Utama/testate
-cosign verify ghcr.io/pt-perkasa-pilar-utama/testate:1.0.0 \
+cosign verify ghcr.io/pt-perkasa-pilar-utama/testate:1.0.1 \
   --certificate-identity-regexp 'https://github.com/PT-Perkasa-Pilar-Utama/testate/' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
-Both commands hold for `docker.io/snowfluke/testate:1.0.0` too: it is the same manifest, copied by digest and signed again where it lives.
+Both commands hold for `docker.io/snowfluke/testate:1.0.1` too: it is the same manifest, copied by digest and signed again where it lives.
 
 For a binary, run the same two commands on the archive, with `--bundle <archive>.sigstore.json` for cosign; the release also carries `testate-<version>.intoto.jsonl`, the provenance statement for every archive, for a check without network access (`gh attestation verify <archive> --bundle <that file>`). A download that fails either check is not ours; [SECURITY.md](SECURITY.md) says how to report it.
 

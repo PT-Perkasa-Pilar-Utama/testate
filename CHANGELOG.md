@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.0.1
+
+One fix, for the first thing a person does after the quick start: pointing Testate at a database.
+
+### Fixed
+
+- Inside a container, the chips under the Host field offered the container's own bridge address,
+  which no database sits behind. A container offers only `host.docker.internal`, and only when the
+  name resolves; a native install keeps its own addresses.
+- A host that does not resolve, or a loopback address, was refused with the bare reason. The
+  refusal now names the way out for the side of Docker Testate runs on: from a container, the
+  database container's name on a shared network or `host.docker.internal` with
+  `--add-host=host.docker.internal:host-gateway`; from the binary, this machine's address and
+  the port the container publishes, or the loopback entry removed from the deny list.
+
+### Changed
+
+- The image is mirrored to Docker Hub as `snowfluke/testate`, under the same tags and the same
+  digest, with its own signature. `docs/CONNECTING.md` gains the `docker run` form of the host
+  alias, another machine on the network, and Testate running as the binary against a database in
+  Docker.
+
 ## 1.0.0
 
 The first release without a suffix. Upgrading from the beta keeps the volume: no migration was
