@@ -112,6 +112,9 @@ describe("audit", () => {
     });
     const page = await audit.list({ limit: 10 });
     expect(page.rows[0]?.actor).toStrictEqual({ kind: "system", id: null, label: "system" });
+    // A row with no project is instance administration: out of a non-admin's list.
+    const scoped = await audit.list({ limit: 10, includeInstance: false });
+    expect(scoped.rows.some((row) => row.action === "boot")).toBe(false);
   });
 
   it("filters by action prefix and outcome", async () => {

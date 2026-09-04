@@ -162,6 +162,17 @@ export function requireReader(basePath: string): MiddlewareHandler {
   };
 }
 
+/**
+ * A session route is a person's: it must stay reachable while a password change is required, so
+ * it takes no role, but an agent token has no business on it either (07 §7.1: `/mcp` only).
+ */
+export function requireHuman(): MiddlewareHandler {
+  return async (c, next) => {
+    if (currentActor(c).agent) throw forbidden("agent_token_restricted");
+    await next();
+  };
+}
+
 /** The MCP endpoint accepts agent tokens only. */
 export function requireAgentToken(): MiddlewareHandler {
   return async (c, next) => {

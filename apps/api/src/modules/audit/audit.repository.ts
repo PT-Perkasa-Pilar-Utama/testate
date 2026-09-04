@@ -60,6 +60,11 @@ export type AuditListQuery = {
   outcome?: "succeeded" | "failed" | "partial";
   /** Rows limited to these project ids for scoped tokens; null means every row (09 §9.5). */
   scope?: string[] | null;
+  /**
+   * Whether rows with no project (boot, settings, users, keys) are in: the admin's, as the jobs
+   * list already holds; absent means yes, which is what the service's own callers expect.
+   */
+  includeInstance?: boolean;
 };
 
 export type AuditPage = { rows: AuditRow[]; nextCursor: string | null };
@@ -163,6 +168,8 @@ function conditions(query: AuditListQuery): Condition[] {
   if (query.scope !== undefined && query.scope !== null) {
     const marks = query.scope.map(() => "?").join(",");
     found.push({ sql: `project_id IN (${marks === "" ? "NULL" : marks})`, params: query.scope });
+  } else if (query.includeInstance === false) {
+    found.push({ sql: "project_id IS NOT NULL", params: [] });
   }
   return found;
 }

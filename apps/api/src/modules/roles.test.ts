@@ -312,3 +312,12 @@ describe("who may reach what", () => {
     expect(await scopedReachedAdmin()).toEqual([]);
   });
 });
+
+describe("the session routes", () => {
+  it("refuse an agent token, which reaches /mcp and nothing else", async () => {
+    expect(await status("agentToken", "GET", "/auth/me")).toBe(403);
+    expect(await status("agentToken", "GET", "/auth/sessions")).toBe(403);
+    expect(await status("agentToken", "POST", "/auth/logout")).toBe(403);
+    expect(await status("tester", "GET", "/auth/me")).not.toBe(403);
+  });
+});

@@ -1,5 +1,6 @@
 import * as v from "valibot";
 
+import { currentActor } from "../../lib/http/auth.ts";
 import { okPage, parseQuery } from "../../lib/http/index.ts";
 import type { Handler } from "../../lib/http/index.ts";
 import type { AuditListQuery } from "./audit.repository.ts";
@@ -28,9 +29,10 @@ const TEXT_KEYS = ["cursor", "project_id", "q", "actor", "action", "from", "to"]
 
 export function toListQuery(
   parsed: v.InferOutput<typeof listQuery>,
-  scope: string[] | null
+  scope: string[] | null,
+  includeInstance: boolean
 ): AuditListQuery {
-  const query: AuditListQuery = { limit: parsed.limit?.[0] ?? 50, scope };
+  const query: AuditListQuery = { limit: parsed.limit?.[0] ?? 50, scope, includeInstance };
   for (const key of TEXT_KEYS) {
     const value = parsed[key]?.[0];
     if (value !== undefined) query[key] = value;
@@ -42,14 +44,23 @@ export function toListQuery(
 
 export function createAuditHandlers(service: AuditService): AuditHandlers {
   return {
+    // Rows with no project are instance administration; a tester or guest reads their projects'.
     list: async (c) => {
-      const query = toListQuery(parseQuery(c, listQuery), c.get("projectScope"));
+      const query = toListQuery(
+        parseQuery(c, listQuery),
+        c.get("projectScope"),
+        currentActor(c).role === "admin"
+      );
       const page = await service.list(query);
       const total = await service.total(query);
       return okPage(c, page.rows, page.nextCursor, query.limit, total);
     },
     exportCsv: async (c) => {
-      const query = toListQuery(parseQuery(c, listQuery), c.get("projectScope"));
+      const query = toListQuery(
+        parseQuery(c, listQuery),
+        c.get("projectScope"),
+        currentActor(c).role === "admin"
+      );
       c.header("Content-Type", "text/csv; charset=utf-8");
       c.header("Content-Disposition", 'attachment; filename="audit.csv"');
       return c.body(await service.exportCsv(query), 200);
