@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Locator } from "@playwright/test";
 
-import { demoAdapter, firstTable } from "./lib/api.ts";
+import { apiContext, demoAdapter, firstTable, takeState } from "./lib/api.ts";
 import { openStatesList, rowMenu, settle, stateRow, watch } from "./lib/crawl.ts";
 import type { Issue } from "./lib/crawl.ts";
 import { statePath } from "./lib/roles.ts";
@@ -310,15 +310,13 @@ test.describe("state stories", () => {
     watch(page, issues);
     const postgres = await demoAdapter({ engine: "postgres" });
     const name = `partial-${STAMP}`;
+    // A subset is the API's to take (story 62): the dialog snapshots every database, always.
+    const qa = await apiContext("qa");
+    await takeState(qa, name, postgres.id);
+    await qa.dispose();
     await page.goto("/projects/demo");
     await settle(page);
     await openStatesList(page);
-    await page.getByRole("button", { name: "Snapshot" }).click();
-    const take = page.locator("dialog[open]");
-    await take.getByLabel("Name").fill(name);
-    // Ticking one adapter turns the default "every adapter" into that subset (story 62).
-    await take.locator("fieldset label", { hasText: postgres.name }).locator("input").click();
-    await take.getByRole("button", { name: "Take" }).click();
     const row = stateRow(page, name);
     await ready(row);
     await expect(row).not.toContainText("shop-mongo");

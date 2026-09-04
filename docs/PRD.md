@@ -131,7 +131,7 @@ apart on what a checkout does.
 ### States
 
 61. As a QA engineer, I want to take a state with a name, notes, and tags, so that the snapshot is findable later.
-62. As a QA engineer, I want a state to cover every database adapter in the project by default, with the option to pick a subset, so that one state captures the whole system.
+62. As a QA engineer, I want a state to cover every database adapter in the project by default, with the option to pick a subset, so that one state captures the whole system. *Since 2026-09-04 the dashboard takes every database, always: a snapshot is the project at one moment. `adapter_ids` stays on the API for automation.*
 63. As a QA engineer, I want each adapter's snapshot to be consistent at one point in time across its tables, so that a state never mixes rows from before and after a write.
 64. As a QA engineer, I want state names to be unique inside a project and never look like an id, so that CI can refer to `seeded-baseline` by name without ambiguity.
 65. As a QA engineer, I want Testate to record the parent of each state (the HEAD at the time), so that I see the history as a tree.

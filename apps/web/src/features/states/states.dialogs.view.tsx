@@ -144,51 +144,33 @@ export function TakeDialog(props: {
       onClose={props.presenter.close}
       title="Snapshot"
       size="lg"
-      description="A picture of every database as it is right now."
+      description="Every database of the project, as it is right now."
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => take(input)}>
         <DraftFields form={form} hints />
-        <Field of={form} path={["adapter_ids"]}>
-          {(field) => (
-            <fieldset class="viewfinder grid gap-2 p-4 text-sm">
-              <legend class="px-1 font-mono text-[11px] tracking-[0.12em] text-accent uppercase">
-                In the frame
-              </legend>
-              <p class="text-xs text-muted">Every database is in. Untick one to leave it out.</p>
-              <Loading fallback={<p class="text-muted">Listing adapters...</p>}>
-                <div class="flex flex-wrap gap-2">
-                  <For each={props.presenter.databases.value()}>
-                    {(adapter) => (
-                      <label class="flex min-w-0 cursor-pointer items-center gap-2 rounded-md bg-fill px-2.5 py-1.5 ring ring-line has-checked:ring-accent">
-                        <input
-                          type="checkbox"
-                          checked={
-                            (field.input ?? []).length === 0 ||
-                            (field.input ?? []).includes(adapter.id)
-                          }
-                          onChange={() => {
-                            const current = field.input ?? [];
-                            field.onInput(
-                              current.includes(adapter.id)
-                                ? current.filter((id) => id !== adapter.id)
-                                : [...current, adapter.id]
-                            );
-                          }}
-                        />
-                        <span class="flex min-w-0 items-center gap-1">
-                          <span class="max-w-[12rem] truncate" title={adapter.name}>
-                            {adapter.name}
-                          </span>
-                          <span class="shrink-0 text-muted">{engineLabel(adapter.engine)}</span>
-                        </span>
-                      </label>
-                    )}
-                  </For>
-                </div>
-              </Loading>
-            </fieldset>
-          )}
-        </Field>
+        {/* Every database, always: a snapshot is the project at one moment, and a state that
+            skips a database is not that. The list says what is in the frame; it is not a choice.
+            The API keeps `adapter_ids` for automation that knows what it is doing. */}
+        <div class="viewfinder grid gap-2 p-4 text-sm">
+          <span class="px-1 font-mono text-[11px] tracking-[0.12em] text-accent uppercase">
+            In the frame
+          </span>
+          <Loading fallback={<p class="text-muted">Listing databases...</p>}>
+            <ul class="flex flex-wrap gap-2" aria-label="Databases in this snapshot">
+              <For each={props.presenter.databases.value()}>
+                {(adapter) => (
+                  <li class="flex min-w-0 items-center gap-1.5 rounded-md bg-fill px-2.5 py-1.5 ring ring-line">
+                    <Icon name="database" class="h-3.5 w-3.5 shrink-0 text-muted" />
+                    <span class="max-w-[12rem] truncate" title={adapter.name}>
+                      {adapter.name}
+                    </span>
+                    <span class="shrink-0 text-muted">{engineLabel(adapter.engine)}</span>
+                  </li>
+                )}
+              </For>
+            </ul>
+          </Loading>
+        </div>
         <Show when={props.presenter.error()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>
