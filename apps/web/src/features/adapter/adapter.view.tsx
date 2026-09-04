@@ -46,7 +46,7 @@ function AdminActions(props: { presenter: AdapterPresenter; adapter: Adapter }):
           title="Run the connection test again: engine version, privileges, restore strategy, table count"
           onClick={() => void props.presenter.retest()}
         >
-          Retest
+          Retest connection
         </Button>
         <Show when={hasRole("admin") && a().kind === "database" && a().mode === "sandbox"}>
           <Button
