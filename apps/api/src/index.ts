@@ -254,8 +254,9 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
 
   const app = new Hono();
   app.use("*", logger.middleware());
-  app.use("*", captureAudit);
   installHardening(app, hardeningFor(config, prefix, auth, now));
+  // Below the hardening so the body limits and the rate limits have said no before a body is read.
+  app.use("*", captureAudit);
   app.onError((cause, c) => errorResponse(c, cause, c.get("event"), config.TESTATE_LOG_STACKS));
   app.notFound((c) => errorResponse(c, notFound("route"), c.get("event"), false));
 

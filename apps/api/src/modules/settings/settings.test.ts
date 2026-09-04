@@ -79,6 +79,7 @@ describe("settings", () => {
       )
       .run();
     const removed: string[] = [];
+    const pruned: string[] = [];
     const settings = createSettingsService({
       repo: createSettingsRepository(h.harness.db),
       config: { TESTATE_MAX_UPLOAD_MB: 7, TESTATE_JOB_CONCURRENCY: 3, TESTATE_STORE: undefined },
@@ -88,7 +89,10 @@ describe("settings", () => {
       retention: {
         db: h.harness.db,
         removeState: async (id) => void removed.push(id),
-        pruneAuditPayloads: () => 0,
+        pruneAuditPayloads: (before) => {
+          pruned.push(before);
+          return 4;
+        },
         dataDir: h.harness.dataDir,
       },
       now: h.harness.now,
@@ -102,7 +106,14 @@ describe("settings", () => {
         .run(name, name, `2026-08-2${name.slice(-1)}T00:00:00.000Z`, "2026-08-29T00:00:00.000Z");
     }
     const report = await settings.runRetention();
-    expect(report).toMatchObject({ query_history: 1, stashes: 2, import_runs: 0 });
+    expect(report).toMatchObject({
+      query_history: 1,
+      stashes: 2,
+      import_runs: 0,
+      audit_payloads: 4,
+    });
+    // 30 days before the harness clock: the bodies' own clock, shorter than the rows' 365.
+    expect(pruned).toEqual([new Date(h.harness.now().getTime() - 30 * 86400000).toISOString()]);
     expect(removed).toEqual(["s2", "s1"]);
   });
 });

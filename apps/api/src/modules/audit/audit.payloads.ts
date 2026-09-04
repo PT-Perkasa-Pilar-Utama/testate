@@ -49,8 +49,9 @@ export function redact(value: JsonValue): JsonValue {
   if (!v.is(jsonObjectSchema, value)) return value;
   const out: Record<string, JsonValue> = {};
   for (const [key, inner] of Object.entries(value)) {
-    // A flag such as `must_change_password` says nothing about the password itself.
-    if (v.is(v.union([v.boolean(), v.null()]), inner)) out[key] = inner;
+    // `must_change_password: false` and `token_requests_per_minute: 600` say nothing secret;
+    // only text and what holds text can.
+    if (v.is(v.union([v.boolean(), v.number(), v.null()]), inner)) out[key] = inner;
     else if (SECRET_TREES.has(key) || isSecretKey(key)) out[key] = REDACTED;
     else if (IDENTIFIER_KEYS.has(key) && v.is(v.string(), inner)) out[key] = shorten(inner);
     else out[key] = redact(inner);
@@ -126,6 +127,8 @@ function bodyOf(text: string | null, truncated: boolean): JsonValue | null {
 }
 
 export function createPayloadStore(db: MetadataDb): PayloadStore {
+  // ponytail: a client that reuses X-Request-Id keeps the first payload under every later row.
+  // Ceiling: a deliberately repeated id shows stale bodies; upgrade path: key by the row id instead.
   const insert = db.query(
     `INSERT OR IGNORE INTO audit_payloads (request_id, method, path, status, request, response, request_truncated, response_truncated, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`

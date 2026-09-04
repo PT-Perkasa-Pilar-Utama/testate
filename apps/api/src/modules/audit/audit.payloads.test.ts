@@ -48,15 +48,9 @@ describe("audit payload redaction", () => {
     });
   });
 
-  it("leaves ordinary fields alone, and a flag named after a secret", () => {
-    expect(
-      redact({ state_name: "seeded-baseline", force: false, n: 3, must_change_password: false })
-    ).toStrictEqual({
-      state_name: "seeded-baseline",
-      force: false,
-      n: 3,
-      must_change_password: false,
-    });
+  it("leaves ordinary fields alone, and a flag or a count named after a secret", () => {
+    const value = { name: "x", must_change_password: false, token_requests_per_minute: 600 };
+    expect(redact(value)).toStrictEqual(value);
   });
 
   it("never keeps text it could not parse, and cuts a body at the cap", () => {
@@ -129,6 +123,43 @@ describe("audit payload store", () => {
     expect(payloads.prune("2026-09-05T00:00:00Z")).toBe(1);
     expect((await audit.payload(idOf(row), { scope: null }))?.state).toBe("expired");
     expect(await audit.payload("missing", { scope: null })).toBeNull();
+  });
+
+  it("keeps the error envelope of a request that failed after recording", async () => {
+    const db = createTestDb();
+    const payloads = createPayloadStore(db);
+    const audit = createAuditService({ repo: createAuditRepository(db), payloads });
+    const app = new Hono();
+    app.use("*", async (c, next) => {
+      c.set("requestId", "req-4");
+      c.set("event", new WideEvent("request", () => undefined));
+      await next();
+    });
+    app.use("*", captureAuditPayloads(payloads));
+    app.onError((cause, c) =>
+      c.json({ error: { code: "UNAUTHORIZED", message: cause.message } }, 401)
+    );
+    app.post("/auth/login", async () => {
+      audit.record({
+        actor: null,
+        action: "auth.login_failed",
+        target_type: "user",
+        target_id: "admin",
+        outcome: "failed",
+        meta: { ...META, request_id: "req-4" },
+      });
+      throw new Error("wrong password");
+    });
+    await app.request("/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username: "administrator", password: "nope" }),
+    });
+    expect(payloads.get("req-4")).toMatchObject({
+      status: 401,
+      request: { username: "adm*******tor", password: REDACTED },
+      response: { error: { code: "UNAUTHORIZED", message: "wrong password" } },
+    });
   });
 
   it("does not keep the body of a password change, and answers none for a job's row", async () => {

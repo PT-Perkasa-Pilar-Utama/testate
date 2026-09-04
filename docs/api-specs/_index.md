@@ -28,7 +28,7 @@ Legend: `OK` implemented and tested · `WIP` in progress · `TODO` not started �
 | Diffs | `POST .../diffs`, `GET .../diffs`, `GET .../diffs/{id}`, `GET .../rows`, `GET .../export`, `DELETE` | OK |
 | Storage | `GET .../entries`, `GET .../entries/stat`, `GET .../entries/preview`, `GET .../entries/download`, `POST .../entries`, `PATCH .../entries`, `DELETE .../entries`, `POST .../entries/directory`, `DELETE .../entries/directory`, `POST .../host-key/accept` | Real (S3 via `Bun.S3Client`, SFTP via ssh2, FTP via basic-ftp; host-key TOFU and accept; 5 MB preview cap) |
 | Jobs | `GET /jobs`, `GET /jobs/{id}`, `POST /jobs/{id}/cancel`, `GET /jobs/{id}/events` | OK |
-| Audit logs | `GET /audit-logs`, `GET /audit-logs/export` | OK |
+| Audit logs | `GET /audit-logs`, `GET /audit-logs/export`, `GET /audit-logs/{id}/payload` | OK |
 | Settings | `GET /settings`, `PATCH /settings`, `POST /settings/store-migration`, `POST /settings/backup`, `GET /settings/backups/{job_id}` | OK: sealed `store.s3` keys, `storage_migration` job (S3 store via `Bun.S3Client`); `backup` job to a 24-hour download tar or the store, with download |
 | Tools | `POST /tools/hash`, `POST /tools/random`, `POST /tools/uuid` | OK |
 | Agent (MCP) | `POST /mcp`, `GET /mcp`: `initialize`, `tools/list`, `tools/call` (14 read tools, and 7 more a Tester token reaches), `resources/list`, `resources/read`, `ping`. `GET /agent/guide` serves the same agent guide as Markdown to a role token | Real (per-token rate limit, scope, masks, storage tools) |

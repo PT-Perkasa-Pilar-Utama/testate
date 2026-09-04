@@ -4,10 +4,13 @@ import { Errored, Loading, Match, Show, Switch } from "solid-js";
 import * as v from "valibot";
 
 import Banner from "@/components/banner.tsx";
+import Button from "@/components/button.tsx";
 import Dialog from "@/components/dialog.tsx";
+import Icon from "@/components/icon.tsx";
 import JsonView from "@/components/json-view.tsx";
 import Pending from "@/components/pending.tsx";
 import { humanMessage } from "@/lib/api-error.ts";
+import { showToast } from "@/lib/toast.ts";
 import type { AuditPresenter } from "./audit.presenter.ts";
 
 /**
@@ -70,9 +73,27 @@ function Pane(props: {
   // Boxed so a JSON `false` or `0` still counts as a body: `Match` narrows on truthiness.
   const boxed = (): { value: JsonValue } | null =>
     props.body === null ? null : { value: props.body };
+  const copy = async (): Promise<void> => {
+    const body = props.body;
+    if (body === null) return;
+    const text = v.is(v.string(), body) ? body : JSON.stringify(body, null, 2);
+    await navigator.clipboard.writeText(text);
+    showToast(`${props.label} copied`, "success");
+  };
   return (
     <div class="grid min-w-0 content-start gap-2">
-      <div class="font-mono text-xs tracking-wide text-muted uppercase">{props.label}</div>
+      <div class="flex items-center justify-between">
+        <span class="font-mono text-xs tracking-wide text-muted uppercase">{props.label}</span>
+        <Button
+          size="xs"
+          variant="ghost"
+          disabled={props.body === null}
+          onClick={() => void copy()}
+        >
+          <Icon name="copy" class="h-3.5 w-3.5" />
+          Copy
+        </Button>
+      </div>
       <div class="max-h-[60vh] overflow-auto rounded-md p-3 ring ring-hairline">
         <Switch>
           <Match when={props.body === null}>
