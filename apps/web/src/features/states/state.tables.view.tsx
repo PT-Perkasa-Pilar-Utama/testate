@@ -13,12 +13,18 @@ import type { DetailAdapter, StatePresenter } from "./state.presenter.ts";
 import type { DetailTable } from "@testate/shared";
 import { formatBytes } from "./states.format.ts";
 
+/** A root state has no parent to have changed against, so it has no "changes first" to offer. */
 const sortsFor = (adapter: DetailAdapter) =>
   [
-    { id: "changes", label: "Changes" },
-    { id: "name", label: "Name" },
-    { id: "rows", label: adapter.engine === "mongodb" ? "Documents" : "Rows" },
+    ...(adapter.tables.some((table) => table.change !== null)
+      ? [{ id: "changes", label: "Changes first" } as const]
+      : []),
+    { id: "name", label: "By name" } as const,
+    { id: "rows", label: adapter.engine === "mongodb" ? "Most documents" : "Most rows" } as const,
   ] as const;
+
+/** Eight is where a list stops being read top to bottom and starts being searched and sorted. */
+const MANY = 8;
 
 const CHANGE_VARIANT = { changed: "warning", added: "success", same: "secondary" } as const;
 
@@ -172,24 +178,29 @@ export function TablesPane(props: {
           <code>{a().removed_tables.join(", ")}</code>
         </p>
       </Show>
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <Input
-          ref={props.searchRef}
-          size="sm"
-          class="w-64"
-          placeholder={`Find a ${noun(a(), 1)}... ( / )`}
-          aria-label={`Find a ${noun(a(), 1)}`}
-          value={props.presenter.needle()}
-          onInput={(event) => props.presenter.setNeedle(event.currentTarget.value)}
-        />
-        <Tabs
-          items={sortsFor(a())}
-          value={props.presenter.sort()}
-          onChange={(sort) => props.presenter.setSort(sort)}
-          label="Sort tables"
-          variant="segmented"
-        />
-      </div>
+      <Show when={a().tables.length > MANY}>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <Input
+            ref={props.searchRef}
+            size="sm"
+            class="w-64"
+            placeholder={`Find a ${noun(a(), 1)}... ( / )`}
+            aria-label={`Find a ${noun(a(), 1)}`}
+            value={props.presenter.needle()}
+            onInput={(event) => props.presenter.setNeedle(event.currentTarget.value)}
+          />
+          <span class="flex items-center gap-2 text-sm text-muted">
+            Sort
+            <Tabs
+              items={sortsFor(a())}
+              value={props.presenter.sort()}
+              onChange={(sort) => props.presenter.setSort(sort)}
+              label="Sort"
+              variant="segmented"
+            />
+          </span>
+        </div>
+      </Show>
       <Show
         when={a().engine !== "mongodb"}
         fallback={
