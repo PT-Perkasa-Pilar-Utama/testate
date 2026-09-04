@@ -129,7 +129,7 @@ export default function ImportsView(props: { slug: string }): JSX.Element {
                             <a
                               class={LINK}
                               href={href(
-                                `/projects/${props.slug}/adapters/${run.adapter_id}/imports?rejected=${run.id}`
+                                `/projects/${props.slug}/adapters/${run.adapter_id}/imports?rejected=${run.id}&normalizer=${run.normalizer_id}`
                               )}
                             >
                               Re-import rejected

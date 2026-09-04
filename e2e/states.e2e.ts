@@ -224,9 +224,9 @@ test.describe("state stories", () => {
     const good = `email,balance,big\nimp-${STAMP}-2@x.io,1.5,1\nimp-${STAMP}-2@x.io,2.5,2\n`;
     const postgres = await demoAdapter({ engine: "postgres" });
     const table = await firstTable(postgres.id);
-    // Importing belongs to the database it writes into, so it is that adapter's own screen now
-    // and no longer a wizard over the project.
-    await page.goto(`/projects/demo/adapters/${postgres.id}/imports`);
+    // Every table owns its import: the screen opens with the table in its address.
+    const importPath = `/projects/demo/adapters/${postgres.id}/imports?table=${encodeURIComponent(table)}`;
+    await page.goto(importPath);
     await settle(page);
     const pick = async (name: string, body: string): Promise<void> => {
       await page.locator('input[type="file"]').setInputFiles({
@@ -235,7 +235,6 @@ test.describe("state stories", () => {
         buffer: Buffer.from(body),
       });
       await expect(page.getByRole("columnheader", { name: "email" })).toBeVisible();
-      await page.getByLabel(/^Table/).selectOption(table);
     };
 
     await pick("wrong.csv", bad);
@@ -296,7 +295,7 @@ test.describe("state stories", () => {
     await expect(page.getByRole("columnheader", { name: "email" })).toBeVisible();
 
     // The normalizer that run saved is offered back, on the table it was saved for.
-    await page.goto(`/projects/demo/adapters/${postgres.id}/imports`);
+    await page.goto(importPath);
     await settle(page);
     await pick("again.csv", good);
     await page.getByLabel("Reuse a saved normalizer").selectOption({ label: `weekly-${STAMP}` });

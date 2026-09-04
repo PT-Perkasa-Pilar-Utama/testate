@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { Errored, For, Loading, Show, untrack } from "solid-js";
+import { Errored, For, Loading, Show, createEffect, untrack } from "solid-js";
 
 import SubScreen from "@/features/adapter/adapter.subscreen.view.tsx";
 import Banner from "@/components/banner.tsx";
@@ -24,10 +24,20 @@ import ColumnPanel from "./imports.normalizer.panel.tsx";
 import { createImportPresenter } from "./imports.adapter.presenter.ts";
 import type { ImportPresenter } from "./imports.adapter.presenter.ts";
 
-/** The file to import. */
-function SourceRow(props: { presenter: ImportPresenter }): JSX.Element {
+/** The file to import, with the shape this table takes beside it (story 149). */
+function SourceRow(props: { presenter: ImportPresenter; table: string }): JSX.Element {
   return (
     <div class="grid gap-3">
+      <p class="text-sm text-muted">
+        Not sure of the shape?{" "}
+        <a class="underline" href={props.presenter.sampleUrlFor(props.table, "csv")}>
+          Sample CSV
+        </a>{" "}
+        ·{" "}
+        <a class="underline" href={props.presenter.sampleUrlFor(props.table, "xlsx")}>
+          Sample XLSX
+        </a>
+      </p>
       <label class="grid content-start gap-1.5 text-base">
         <FieldLabel required={true}>File</FieldLabel>
         <input
@@ -100,18 +110,28 @@ export default function AdapterImportsView(props: { slug: string; id: string }):
   // opens; the presenter takes the id as a value and builds its refreshable from it, so a later
   // read would change nothing and only makes this body re-run.
   const rejected = untrack(() => new URLSearchParams(search()).get("rejected") ?? undefined);
+  // Every table owns its import: the table comes in the address from the grid that opened this,
+  // or, for a re-import, from the normalizer the run used.
+  const asked = untrack(() => new URLSearchParams(search()).get("table") ?? "");
+  const normalizer = untrack(() => new URLSearchParams(search()).get("normalizer") ?? "");
   const presenter = createImportPresenter(
     () => props.slug,
     () => props.id,
     () => undefined,
     rejected
   );
-  const tables = (): { value: string; label: string }[] => [
-    { value: "", label: "choose a table" },
-    ...presenter.schema
-      .value()
-      .map((table) => ({ value: tableKey(table), label: tableKey(table) })),
-  ];
+  const table = (): string => {
+    if (asked !== "") return asked;
+    return normalizer === "" ? "" : (presenter.targetOf(normalizer) ?? "");
+  };
+  // The table is fixed before any file: once a preview lands, its columns are matched to it. On
+  // the next turn, since `setTable` reads the presenter's own signals.
+  createEffect(
+    () => ({ preview: presenter.preview(), table: table() }),
+    ({ preview, table: name }) => {
+      if (preview !== null && name !== "") queueMicrotask(() => presenter.setTable(name));
+    }
+  );
   const ready = (): string | null => blockedReason(presenter.draft(), presenter.preview() !== null);
   const blocked = (): string | null =>
     importBlockedReason(presenter.draft(), presenter.preview() !== null, presenter.report());
@@ -123,7 +143,7 @@ export default function AdapterImportsView(props: { slug: string; id: string }):
         leaf="import a file"
         icon="upload"
         title="Import a file"
-        description="A CSV or an Excel file into one table. Testate stashes the database first, so the import can be undone."
+        description={`A CSV or an Excel file into ${asked === "" ? "this table" : asked}. Testate stashes the database first, so the import can be undone.`}
       />
       <Errored fallback={(error) => <Banner variant="error">{String(error())}</Banner>}>
         <Loading fallback={<Pending>Loading...</Pending>}>
@@ -133,114 +153,103 @@ export default function AdapterImportsView(props: { slug: string; id: string }):
             when={hasRole("qa")}
             fallback={<Banner variant="default">Importing needs the Tester role.</Banner>}
           >
-            <div class="grid gap-4 rounded-lg bg-surface p-4 ring ring-line">
-              <Show when={rejected === undefined} fallback={<RejectedNote />}>
-                <SourceRow presenter={presenter} />
-              </Show>
-              <Show when={presenter.preview()}>
-                <div class="grid gap-3 sm:grid-cols-2">
-                  <label class="grid content-start gap-1.5 text-base">
-                    <FieldLabel required={true}>Table</FieldLabel>
-                    <Select
-                      options={tables()}
-                      value={presenter.draft().table}
-                      onChange={(table) => presenter.setTable(table)}
-                    />
-                  </label>
-                  <label class="grid content-start gap-1.5 text-base">
-                    <span>What happens</span>
-                    <Select
-                      options={MODE_OPTIONS.map((mode) => ({
-                        value: mode.value,
-                        label: mode.label,
-                      }))}
-                      value={presenter.draft().mode}
-                      onChange={(mode) => presenter.setDraft({ mode })}
-                    />
-                  </label>
-                </div>
-                <p class="text-sm text-muted">
-                  {MODE_OPTIONS.find((mode) => mode.value === presenter.draft().mode)?.description}
-                </p>
-                {/* A normalizer is the saved answer to "how is this file read into this table":
+            <Show
+              when={table() !== ""}
+              fallback={
+                <Banner variant="default">
+                  Open Import from the table it goes into: every table owns its own.
+                </Banner>
+              }
+            >
+              <div class="grid gap-4 rounded-lg bg-surface p-4 ring ring-line">
+                <Show when={rejected === undefined} fallback={<RejectedNote />}>
+                  <SourceRow presenter={presenter} table={table()} />
+                </Show>
+                <Show when={presenter.preview()}>
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    <label class="grid content-start gap-1.5 text-base">
+                      <span>What happens</span>
+                      <Select
+                        options={MODE_OPTIONS.map((mode) => ({
+                          value: mode.value,
+                          label: mode.label,
+                        }))}
+                        value={presenter.draft().mode}
+                        onChange={(mode) => presenter.setDraft({ mode })}
+                      />
+                    </label>
+                  </div>
+                  <p class="text-sm text-muted">
+                    {
+                      MODE_OPTIONS.find((mode) => mode.value === presenter.draft().mode)
+                        ?.description
+                    }
+                  </p>
+                  {/* A normalizer is the saved answer to "how is this file read into this table":
                     which column goes where, how each value is converted, what happens to a row
                     that already exists. It is named within its table, so a weekly one for
                     customers and a weekly one for orders can both be called weekly. */}
-                <div class="grid gap-3 sm:grid-cols-2">
-                  <label class="grid content-start gap-1.5 text-base">
-                    <span>Reuse a saved normalizer</span>
-                    <Select
-                      options={[
-                        { value: "", label: "start fresh" },
-                        ...presenter.saved().map((one) => ({ value: one.id, label: one.name })),
-                      ]}
-                      value={presenter.savedId()}
-                      onChange={(id) => presenter.reuse(id)}
-                    />
-                  </label>
-                  <label class="grid content-start gap-1.5 text-base">
-                    <span>Save this as</span>
-                    <Input
-                      placeholder={tableKey({ schema: null, name: presenter.draft().table })}
-                      value={presenter.draft().name}
-                      onInput={(event) => presenter.setDraft({ name: event.currentTarget.value })}
-                    />
-                  </label>
-                </div>
-                {/* Story 149: the shape of a file this table would accept, so the first import is
-                    not a guess. The wizard offered it and the screen that replaced the wizard
-                    dropped it; the presenter never stopped answering for it. */}
-                <Show when={presenter.draft().table !== ""}>
-                  <p class="text-sm text-muted">
-                    Not sure of the shape?{" "}
-                    <a class="underline" href={presenter.sampleUrl("csv")}>
-                      Sample CSV
-                    </a>{" "}
-                    ·{" "}
-                    <a class="underline" href={presenter.sampleUrl("xlsx")}>
-                      Sample XLSX
-                    </a>
-                  </p>
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    <label class="grid content-start gap-1.5 text-base">
+                      <span>Reuse a saved normalizer</span>
+                      <Select
+                        options={[
+                          { value: "", label: "start fresh" },
+                          ...presenter.saved().map((one) => ({ value: one.id, label: one.name })),
+                        ]}
+                        value={presenter.savedId()}
+                        onChange={(id) => presenter.reuse(id)}
+                      />
+                    </label>
+                    <label class="grid content-start gap-1.5 text-base">
+                      <span>Save this as</span>
+                      <Input
+                        placeholder={tableKey({ schema: null, name: presenter.draft().table })}
+                        value={presenter.draft().name}
+                        onInput={(event) => presenter.setDraft({ name: event.currentTarget.value })}
+                      />
+                    </label>
+                  </div>
+                  <Show when={presenter.draft().table !== ""}>
+                    <ColumnPanel presenter={presenter} />
+                  </Show>
+                  <PreviewRows presenter={presenter} />
                 </Show>
-                <Show when={presenter.draft().table !== ""}>
-                  <ColumnPanel presenter={presenter} />
+                <Show when={presenter.error()}>
+                  {(message) => <Banner variant="error">{message()}</Banner>}
                 </Show>
-                <PreviewRows presenter={presenter} />
-              </Show>
-              <Show when={presenter.error()}>
-                {(message) => <Banner variant="error">{message()}</Banner>}
-              </Show>
-              <Show when={presenter.report()}>
-                {(report) => (
-                  <Banner variant={report().failed > 0 ? "alert" : "default"}>
-                    {reportSummary(reportCounts(report()), report().dry_run)}
-                  </Banner>
-                )}
-              </Show>
-              {/* Check, then Import. The check reads every row against the table and says what
+                <Show when={presenter.report()}>
+                  {(report) => (
+                    <Banner variant={report().failed > 0 ? "alert" : "default"}>
+                      {reportSummary(reportCounts(report()), report().dry_run)}
+                    </Banner>
+                  )}
+                </Show>
+                {/* Check, then Import. The check reads every row against the table and says what
                   would be refused; Import stays shut until it comes back clean, and every edit
                   above clears the last report, so it shuts again the moment the file changes. */}
-              <div class="flex flex-wrap items-center justify-end gap-2">
-                <Show when={blocked()}>
-                  {(reason) => <span class="text-sm text-muted">{reason()}</span>}
-                </Show>
-                <Button
-                  variant="secondary"
-                  disabled={ready() !== null || presenter.busy()}
-                  onClick={() => void presenter.check()}
-                >
-                  Check the file
-                </Button>
-                <Button
-                  variant="primary"
-                  disabled={blocked() !== null || presenter.busy()}
-                  onClick={() => void presenter.commit()}
-                >
-                  <Icon name="upload" class="h-3.5 w-3.5" />
-                  Import
-                </Button>
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                  <Show when={blocked()}>
+                    {(reason) => <span class="text-sm text-muted">{reason()}</span>}
+                  </Show>
+                  <Button
+                    variant="secondary"
+                    disabled={ready() !== null || presenter.busy()}
+                    onClick={() => void presenter.check()}
+                  >
+                    Check the file
+                  </Button>
+                  <Button
+                    variant="primary"
+                    disabled={blocked() !== null || presenter.busy()}
+                    onClick={() => void presenter.commit()}
+                  >
+                    <Icon name="upload" class="h-3.5 w-3.5" />
+                    Import
+                  </Button>
+                </div>
               </div>
-            </div>
+            </Show>
           </Show>
         </Loading>
       </Errored>

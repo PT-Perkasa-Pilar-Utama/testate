@@ -1,14 +1,15 @@
 import type { JSX } from "@solidjs/web";
 import AdapterBreadcrumbs from "@/features/adapter/adapter.crumb.view.tsx";
-import type { JsonObject, TableSchema } from "@testate/shared";
+import type { Adapter, JsonObject, TableSchema } from "@testate/shared";
 import { For, Loading, Show } from "solid-js";
 
 import Pending from "@/components/pending.tsx";
-import Button from "@/components/button.tsx";
+import Button, { buttonClass } from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
 import { Menu, MenuItem } from "@/components/menu.tsx";
 import BackLink from "@/components/back-link.tsx";
-import { navigate } from "@/lib/router.ts";
+import { href, navigate } from "@/lib/router.ts";
+import { hasRole } from "@/lib/session.ts";
 import { Cell, EmptyRow, Head, Row, Table, TableToolbar } from "@/components/table.tsx";
 import FixtureDialog from "./fixture.view.tsx";
 import { NUMERIC_TYPE, cellText, createGridPresenter } from "./grid.presenter.ts";
@@ -72,6 +73,11 @@ function RowActions(props: { presenter: GridPresenter; row: JsonObject }): JSX.E
   );
 }
 
+/** A file lands only in a tabular database that may be written to. */
+function importable(adapter: Adapter): boolean {
+  return adapter.kind === "database" && adapter.tier === "tabular" && adapter.mode === "sandbox";
+}
+
 export default function GridView(props: { slug: string; id: string; table: string }): JSX.Element {
   const presenter = createGridPresenter(
     () => props.slug,
@@ -98,9 +104,25 @@ export default function GridView(props: { slug: string; id: string; table: strin
             />
             <code>{props.table}</code>
           </h2>
-          <Show when={presenter.adapter.value().tier !== "document"}>
-            <ForeignKeys presenter={presenter} />
-          </Show>
+          <div class="flex flex-wrap items-center gap-2">
+            <Show when={presenter.adapter.value().tier !== "document"}>
+              <ForeignKeys presenter={presenter} />
+            </Show>
+            {/* Every table owns its import: the screen opens from here with the table in hand. */}
+            <Show when={hasRole("qa") && importable(presenter.adapter.value())}>
+              <a
+                class={buttonClass("secondary", "sm")}
+                href={href(`${adapterPath()}/imports?table=${encodeURIComponent(props.table)}`)}
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigate(`${adapterPath()}/imports?table=${encodeURIComponent(props.table)}`);
+                }}
+              >
+                <Icon name="upload" class="h-3.5 w-3.5" />
+                Import a file
+              </a>
+            </Show>
+          </div>
         </div>
         <Show
           when={presenter.adapter.value().tier !== "document"}

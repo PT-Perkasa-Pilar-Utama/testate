@@ -54,6 +54,8 @@ export type ImportPresenter = {
   upload: (file: File) => Promise<void>;
   setSheet: (sheet: string) => Promise<void>;
   setTable: (table: string) => void;
+  /** The table a saved normalizer writes into, or null for one this adapter does not hold. */
+  targetOf: (normalizerId: string) => string | null;
   setDraft: (patch: Partial<ImportDraft>) => void;
   setColumn: (target: string, patch: Partial<Column>) => void;
   /** Dry run first; if nothing would be rejected it commits without asking twice. */
@@ -62,6 +64,7 @@ export type ImportPresenter = {
   commit: () => Promise<void>;
   clear: () => void;
   sampleUrl: (format: "csv" | "xlsx") => string;
+  sampleUrlFor: (table: string, format: "csv" | "xlsx") => string;
 };
 
 const EMPTY: ImportDraft = {
@@ -300,6 +303,8 @@ export function createImportPresenter(
         ? Promise.resolve()
         : guarded(() => loadPreview(staticSource, sheet));
     },
+    targetOf: (normalizerId) =>
+      normalizers.value().find((one) => one.id === normalizerId)?.target ?? null,
     setTable: (table) => {
       const found = tableOf(table);
       const staticFileColumns = preview()?.columns ?? [];
@@ -339,5 +344,6 @@ export function createImportPresenter(
       setError(null);
     },
     sampleUrl: (format) => importsModel.sampleUrl(slug(), adapterId(), draft().table, format),
+    sampleUrlFor: (table, format) => importsModel.sampleUrl(slug(), adapterId(), table, format),
   };
 }

@@ -33,12 +33,6 @@ export function JunctionToolbar(props: { adapter: Adapter; base: string }): JSX.
             Query console
           </Button>
         </Show>
-        <Show when={a().tier === "tabular" && hasRole("qa")}>
-          <Button size="sm" variant="secondary" onClick={() => navigate(`${props.base}/imports`)}>
-            <Icon name="upload" class="h-3.5 w-3.5" />
-            Import a file
-          </Button>
-        </Show>
         {/* Masks stay load-bearing for the grid, diffs and agents; only the screen hides behind admin. */}
         <Show when={a().tier === "tabular" && hasRole("admin")}>
           <Button size="sm" variant="secondary" onClick={() => navigate(`${props.base}/masks`)}>
