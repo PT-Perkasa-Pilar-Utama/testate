@@ -7,6 +7,18 @@ import { createStatesHarness, snapshotSettled } from "../../../test/states-harne
 import { readTar, writeTar } from "../../lib/snapshot/tar.ts";
 import type { TarEntry } from "../../lib/snapshot/tar.ts";
 
+/**
+ * Puts HEAD on the starting point: a database joins a project only there, and an archive that
+ * creates its adapter is such a join. The snapshot above moved HEAD to the state it took.
+ */
+function standAtInit(h: Awaited<ReturnType<typeof createStatesHarness>>): void {
+  const project = h.harness.projectsRepo.bySlug("shop");
+  if (project === null) throw new Error("no shop project");
+  const init = h.harness.states.initOf(project.id);
+  if (init === null) throw new Error("no starting point");
+  h.harness.projectsRepo.setHead(project.id, init.id, "at_state", new Date().toISOString());
+}
+
 function idOf(item: { id: string } | undefined): string {
   if (item === undefined) throw new Error("the adapter was not created");
   return item.id;
@@ -165,6 +177,7 @@ describe("archive verification", () => {
       created_at: "2026-08-29T00:00:00.000Z",
     });
     await Bun.write(`${h.harness.dataDir}/golden2.tar`, tar);
+    standAtInit(h);
     const wrongEngine: AdapterDraft = { ...PG, engine: "mysql", name: "m" };
     const copyDraft: AdapterDraft = { ...PG, name: "orders-db-copy" };
     await expect(
