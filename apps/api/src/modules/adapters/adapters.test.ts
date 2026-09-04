@@ -121,7 +121,7 @@ describe("adapters", () => {
       adapters.testDraft("shop", { ...PG, config: { ...PG.config, host: "gone.invalid" } })
     ).rejects.toMatchObject({
       code: "ADAPTER_UNREACHABLE",
-      message: expect.stringContaining("reached by its container name"),
+      message: expect.stringContaining("does not resolve"),
     });
     await expect(
       adapters.testDraft("shop", { ...PG, config: { ...PG.config, database: "ancient" } })
