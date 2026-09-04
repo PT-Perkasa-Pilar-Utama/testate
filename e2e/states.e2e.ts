@@ -36,7 +36,7 @@ test.describe("state stories", () => {
     await page.getByRole("button", { name: "Snapshot" }).click();
     const take = page.locator("dialog[open]");
     await take.getByLabel("Name").fill(name);
-    await take.getByLabel("Tags (comma separated)").fill("e2e, smoke");
+    await take.getByLabel(/^Tags/).fill("e2e, smoke");
     await take.getByRole("button", { name: "Take" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
     const row = stateRow(page, name);

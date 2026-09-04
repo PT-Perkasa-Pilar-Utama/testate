@@ -1,22 +1,15 @@
-import { createSignal } from "solid-js";
+import { createSignal, untrack } from "solid-js";
 import { showToast } from "@/lib/toast.ts";
-import type {
-  ImportReport,
-  JsonObject,
-  JsonValue,
-  Normalizer,
-  Preview,
-  TableSchema,
-} from "@testate/shared";
+import type { ImportReport, JsonObject, Normalizer, Preview, TableSchema } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
 import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { createJobFollower } from "@/lib/sse.ts";
 import { adapterModel } from "../adapter/adapter.model.ts";
-import { AUTO, isNullable, toTransforms } from "./imports.columns.ts";
+import { AUTO } from "./imports.columns.ts";
 import type { Choice } from "./imports.columns.ts";
-import { defaultNormalizerName, runBody, sourceBody, tableKey } from "./imports.helpers.ts";
+import { nameOf, runBody, sourceBody, tableKey, wireBody } from "./imports.helpers.ts";
 import type { Source } from "./imports.helpers.ts";
 import { importsModel } from "./imports.model.ts";
 
@@ -54,8 +47,8 @@ export type ImportPresenter = {
   upload: (file: File) => Promise<void>;
   setSheet: (sheet: string) => Promise<void>;
   setTable: (table: string) => void;
-  /** The table a saved normalizer writes into, or null for one this adapter does not hold. */
-  targetOf: (normalizerId: string) => string | null;
+  /** The table this import goes into, once known; "" until the normalizer named it. */
+  fixedTable: () => string;
   setDraft: (patch: Partial<ImportDraft>) => void;
   setColumn: (target: string, patch: Partial<Column>) => void;
   /** Dry run first; if nothing would be rejected it commits without asking twice. */
@@ -93,7 +86,9 @@ export function createImportPresenter(
   adapterId: () => string,
   onDone: () => void,
   /** A run whose rejected rows are the source, from `?rejected=` on the way in. */
-  rejectedRun?: string
+  rejectedRun?: string,
+  /** The table this import goes into: named in the address, or through the run's normalizer. */
+  fixed?: { table: string; normalizer: string }
 ): ImportPresenter {
   // Created here, in the presenter's own body: the follower registers its cleanup with the
   // owner that is current at this moment, and there is none inside an effect or after an await.
@@ -113,6 +108,7 @@ export function createImportPresenter(
   const rejected = createRefreshable(async () => {
     if (initial === null) return null;
     setPreview(await importsModel.preview(slug(), { source: sourceBody(initial) }));
+    await settleTable();
     return null;
   });
   const schema = createRefreshable(
@@ -129,38 +125,54 @@ export function createImportPresenter(
       setBusy(false);
     }
   };
+  const [fixedTable, setFixedTable] = createSignal(fixed?.table ?? "");
+  // A plain promise, not a signal: it is awaited from the preview loaders, which run outside any
+  // tracking scope, where a pending async memo would throw rather than wait.
+  // Read once, untracked: the address names the adapter for this screen's whole life.
+  const at = untrack(() => ({ slug: slug(), adapter: adapterId() }));
+  const fixedReady = (async (): Promise<string> => {
+    if (fixed === undefined || fixed.table !== "" || fixed.normalizer === "")
+      return fixed?.table ?? "";
+    const staticNormalizer = fixed.normalizer;
+    const list = await importsModel.normalizers(at.slug, at.adapter);
+    const name = list.find((one) => one.id === staticNormalizer)?.target ?? "";
+    setFixedTable(name);
+    return name;
+  })();
+  // The same tables the memo holds, as a promise: a read of the memo after an `await` does not
+  // register, so the loaders below take them from here.
+  const schemaReady = (async () => (await adapterModel.schema(at.slug, at.adapter)).tables)();
+  /** The table is fixed before any file: once a preview lands, its columns are matched to it. */
+  const settleTable = async (): Promise<void> => {
+    const name = await fixedReady;
+    if (name === "") return;
+    const tables = await schemaReady;
+    matchTo(
+      name,
+      tables.find((candidate) => tableKey(candidate) === name)
+    );
+  };
   const loadPreview = async (next: Source, sheet: string): Promise<void> => {
     const body: JsonObject = { source: sourceBody(next) };
     if (sheet !== "") body["options"] = { sheet };
     setPreview(await importsModel.preview(slug(), body));
+    await settleTable();
   };
+  /** Matches the file's columns to a table's, and forgets the report and the saved pick. */
+  const matchTo = (table: string, found: TableSchema | undefined): void => {
+    const staticFileColumns = preview()?.columns ?? [];
+    setNormalizerId("");
+    setReport(null);
+    setDraftSignal((current) => ({
+      ...current,
+      table,
+      columns: found === undefined ? [] : match(staticFileColumns, found),
+    }));
+  };
+  const applyTable = (table: string): void => matchTo(table, tableOf(table));
   const tableOf = (name: string): TableSchema | undefined =>
     schema.value().find((candidate) => tableKey(candidate) === name);
-  /** What this run saves under: the name if one was typed, else the table's own. */
-  const nameOf = (current: ImportDraft): string =>
-    current.name.trim() === "" ? defaultNormalizerName(current.table) : current.name.trim();
-  const wire = (): JsonObject => {
-    const current = draft();
-    const columns = tableOf(current.table)?.columns ?? [];
-    const body: JsonObject = {
-      name: nameOf(current),
-      target: current.table,
-      columns: current.columns.map((column) => ({
-        source: column.source === "" ? null : column.source,
-        target: column.target,
-        // SAFETY: `toTransforms` returns the wire shape itself, parsed from `transformSchema` at
-        // the other end; the cast only tells the JSON body's type what it already is.
-        transforms: toTransforms(column.choice, isNullable(columns, column.target)) as JsonValue,
-      })),
-      key_columns: current.key_columns
-        .split(",")
-        .map((name) => name.trim())
-        .filter((name) => name !== ""),
-      mode: current.mode,
-    };
-    if (current.sheet !== "") body["options"] = { sheet: current.sheet };
-    return body;
-  };
+  const wire = (): JsonObject => wireBody(draft(), tableOf(draft().table)?.columns ?? []);
   /**
    * One attempt, from values read before it starts.
    *
@@ -303,19 +315,8 @@ export function createImportPresenter(
         ? Promise.resolve()
         : guarded(() => loadPreview(staticSource, sheet));
     },
-    targetOf: (normalizerId) =>
-      normalizers.value().find((one) => one.id === normalizerId)?.target ?? null,
-    setTable: (table) => {
-      const found = tableOf(table);
-      const staticFileColumns = preview()?.columns ?? [];
-      setNormalizerId("");
-      setReport(null);
-      setDraftSignal((current) => ({
-        ...current,
-        table,
-        columns: found === undefined ? [] : match(staticFileColumns, found),
-      }));
-    },
+    fixedTable,
+    setTable: applyTable,
     setDraft: (patch) => {
       setNormalizerId("");
       setReport(null);

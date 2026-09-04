@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { Errored, For, Loading, Show, createEffect, untrack } from "solid-js";
+import { Errored, For, Loading, Show, untrack } from "solid-js";
 
 import SubScreen from "@/features/adapter/adapter.subscreen.view.tsx";
 import Banner from "@/components/banner.tsx";
@@ -118,20 +118,10 @@ export default function AdapterImportsView(props: { slug: string; id: string }):
     () => props.slug,
     () => props.id,
     () => undefined,
-    rejected
+    rejected,
+    { table: asked, normalizer }
   );
-  const table = (): string => {
-    if (asked !== "") return asked;
-    return normalizer === "" ? "" : (presenter.targetOf(normalizer) ?? "");
-  };
-  // The table is fixed before any file: once a preview lands, its columns are matched to it. On
-  // the next turn, since `setTable` reads the presenter's own signals.
-  createEffect(
-    () => ({ preview: presenter.preview(), table: table() }),
-    ({ preview, table: name }) => {
-      if (preview !== null && name !== "") queueMicrotask(() => presenter.setTable(name));
-    }
-  );
+  const table = (): string => presenter.fixedTable();
   const ready = (): string | null => blockedReason(presenter.draft(), presenter.preview() !== null);
   const blocked = (): string | null =>
     importBlockedReason(presenter.draft(), presenter.preview() !== null, presenter.report());

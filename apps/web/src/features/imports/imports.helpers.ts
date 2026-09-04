@@ -1,6 +1,16 @@
-import type { ImportReport, ImportRun, JsonObject, Normalizer, TableSchema } from "@testate/shared";
+import type {
+  ColumnSchema,
+  ImportReport,
+  ImportRun,
+  JsonObject,
+  JsonValue,
+  Normalizer,
+  TableSchema,
+} from "@testate/shared";
 
 import { IMPORT_MODE_LABEL } from "@/lib/labels.ts";
+import type { ImportDraft } from "./imports.adapter.presenter.ts";
+import { isNullable, toTransforms } from "./imports.columns.ts";
 
 export type Source =
   | { kind: "upload"; upload_id: string }
@@ -185,4 +195,31 @@ export function reportSummary(counts: ReportCounts, dryRun: boolean): string {
   }
   if (counts.rejected === 0) return `Imported ${plural(counts.ready, "row")}.`;
   return `Imported ${plural(counts.ready, "row")}. ${plural(counts.rejected, "row")} ${verb(counts.rejected, "was", "were")} rejected.`;
+}
+
+/** What this run saves under: the name if one was typed, else the table's own. */
+export function nameOf(current: ImportDraft): string {
+  return current.name.trim() === "" ? defaultNormalizerName(current.table) : current.name.trim();
+}
+
+/** The normalizer body on the wire, from the draft and the target table's columns. */
+export function wireBody(current: ImportDraft, columns: readonly ColumnSchema[]): JsonObject {
+  const body: JsonObject = {
+    name: nameOf(current),
+    target: current.table,
+    columns: current.columns.map((column) => ({
+      source: column.source === "" ? null : column.source,
+      target: column.target,
+      // SAFETY: `toTransforms` returns the wire shape itself, parsed from `transformSchema` at
+      // the other end; the cast only tells the JSON body's type what it already is.
+      transforms: toTransforms(column.choice, isNullable(columns, column.target)) as JsonValue,
+    })),
+    key_columns: current.key_columns
+      .split(",")
+      .map((name) => name.trim())
+      .filter((name) => name !== ""),
+    mode: current.mode,
+  };
+  if (current.sheet !== "") body["options"] = { sheet: current.sheet };
+  return body;
 }

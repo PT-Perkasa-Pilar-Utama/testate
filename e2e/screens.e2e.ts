@@ -61,7 +61,7 @@ test.describe("README screens", () => {
       await page.getByRole("button", { name: "Snapshot" }).click();
       const form = page.locator("dialog[open]");
       await form.getByLabel("Name").fill(name);
-      await form.getByLabel("Tags (comma separated)").fill(tags);
+      await form.getByLabel(/^Tags/).fill(tags);
       await form.getByRole("button", { name: "Take" }).click();
       await expect(page.locator("dialog[open]")).toHaveCount(0);
       // A ready state prints no badge; it becomes checkout-able, and that is what to wait for.
