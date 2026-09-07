@@ -38,7 +38,7 @@ line up before an adapter connects:
 | --- | --- | --- |
 | Another server | its address or DNS name | a route and an open firewall between the two |
 | On this machine, in a container | the service name on a shared compose network | put both on the same network |
-| On this machine, installed natively | `host.docker.internal` | uncomment `extra_hosts` in `deploy/docker-compose.yml`; the database must listen on that interface, not only on localhost |
+| On this machine, installed natively | `host.docker.internal` | uncomment `extra_hosts` in `deploy/docker-compose.yml`; the database must listen on that interface, not only on localhost. Docker Engine inside WSL2 with the database on Windows needs the Windows address in place of `host-gateway`, [Connecting, B](CONNECTING.md#b-a-database-running-as-a-native-binary-on-the-host) |
 
 `127.0.0.1` inside the container means the container, never the host. The deny list blocks
 `127.0.0.0/8` and `::1/128` by default so an adapter cannot point back at Testate itself; leave it

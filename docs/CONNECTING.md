@@ -34,7 +34,45 @@ services:
       - "host.docker.internal:host-gateway"
 ```
 
-Adapter form: Host `host.docker.internal`, Port whatever the native process listens on (`5432` for a default Postgres install). The database must also listen on that interface. A Postgres bound only to `127.0.0.1` in `postgresql.conf` is unreachable from the container even with `extra_hosts` set; bind it to `0.0.0.0` or the Docker bridge address instead.
+Adapter form: Host `host.docker.internal`, Port whatever the native process listens on (`5432` for a default Postgres install).
+
+### The database must listen beyond localhost
+
+Every native install ships bound to `127.0.0.1`, and a database bound there answers nobody outside the machine, the container included. `extra_hosts` does not change that. Open the listener, then restart the engine:
+
+| Engine   | File              | Change                                                                                       |
+| -------- | ----------------- | -------------------------------------------------------------------------------------------- |
+| Postgres | `postgresql.conf` | `listen_addresses = '*'`                                                                     |
+| Postgres | `pg_hba.conf`     | add `host all all 172.16.0.0/12 scram-sha-256` (Docker and WSL subnets live in that range)   |
+| MySQL    | `my.ini`, `my.cnf` | `bind-address = 0.0.0.0`; the user must exist as `'name'@'%'`, not only `'name'@'localhost'` |
+| MariaDB  | same as MySQL     | same as MySQL                                                                                |
+| MongoDB  | `mongod.conf`     | `net.bindIp: 0.0.0.0`                                                                        |
+
+### Docker Engine inside WSL2, the database on Windows (Laragon, XAMPP, a plain installer)
+
+If the probe says `host.docker.internal does not resolve`, you are not on Docker Desktop: Docker Desktop defines the name always. You are on Docker Engine installed inside WSL2, which is Linux Docker, and `host-gateway` there points at the WSL2 VM, not at Windows. A database installed by Laragon runs on Windows, so the alias needs the Windows address instead:
+
+```sh
+# inside WSL
+ip route show default | awk '{print $3}'      # e.g. 172.28.16.1
+```
+
+Recreate Testate with that address in place of `host-gateway`, in `docker run`:
+
+```sh
+docker run -d --name testate ... --add-host=host.docker.internal:172.28.16.1 ghcr.io/pt-perkasa-pilar-utama/testate:1.1.0
+```
+
+or in `deploy/docker-compose.yml`:
+
+```yaml
+services:
+  testate:
+    extra_hosts:
+      - "host.docker.internal:172.28.16.1"
+```
+
+Under WSL mirrored networking (`networkingMode=mirrored` in `.wslconfig`), use the Windows LAN address from `ipconfig` instead; the route above shows nothing useful there. The listener changes in the table apply too, and Windows Firewall must allow the port inbound from the `vEthernet (WSL)` adapter. Laragon's default database is MySQL on `3306`, not Postgres on `5432`; pick the engine you actually run.
 
 ## C. A database on another machine, or in the cloud (managed or remote)
 
