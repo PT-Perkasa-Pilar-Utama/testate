@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.1.1
+
+One fix, for pointing a Testate container at a Supabase database.
+
+### Fixed
+
+- The direct Supabase host, `db.<ref>.supabase.co`, has only an IPv6 address. Docker Desktop's
+  resolver drops it on a machine without IPv6, so the probe said the name does not resolve and
+  sent the person to container names and `host.docker.internal`, neither of which applies. A
+  dotted name that fails to resolve inside a container now leads with the IPv6-only cause and the
+  provider's IPv4 endpoint: on Supabase, the Session pooler on port 5432.
+- Where the resolver does return the IPv6 address, Linux Docker fails the connect with
+  `ENETUNREACH`. The Postgres and MySQL engines reported that as a failed batch; it is now an
+  unreachable host, like a refused connection.
+- `docs/CONNECTING.md` said to use the direct Supabase host and avoid the pooler. It now says the
+  reverse: the Session pooler on 5432 with user `postgres.<ref>` probes and restores cleanly; the
+  transaction pooler on 6543 stays the one to avoid.
+
 ## 1.1.0
 
 An audit row can show what was sent and what came back. Upgrading applies one migration on boot
