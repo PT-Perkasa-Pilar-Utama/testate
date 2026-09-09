@@ -39,7 +39,7 @@ export function translate(cause: unknown, context: string): EngineError {
   const known = fromSqlstate(sqlstate, context, message);
   if (known !== null) return known;
   if (
-    /ECONNREFUSED|ENOTFOUND|ETIMEDOUT|ECONNRESET|CONNECTION_CLOSED|timeout/i.test(
+    /ECONNREFUSED|ENOTFOUND|ENETUNREACH|EHOSTUNREACH|ETIMEDOUT|ECONNRESET|CONNECTION_CLOSED|timeout/i.test(
       `${code} ${message}`
     )
   ) {

@@ -28,6 +28,14 @@ describe("the way out of a name that does not resolve", () => {
     expect(unresolvable("host.docker.internal", true)).toContain("host-gateway");
   });
 
+  it("leads a container to the IPv4 endpoint when the name is a cloud host", () => {
+    const message = unresolvable("db.abc.supabase.co", true);
+    expect(message).toContain("only to an IPv6 address");
+    expect(message).toContain("Session pooler");
+    expect(message).toContain("container name");
+    expect(unresolvable("shop-postgres", true)).not.toContain("IPv6");
+  });
+
   it("tells a native install to use the machine's address and the published port", () => {
     expect(unresolvable("shop-postgres", false)).toContain("port the container publishes");
     expect(unresolvable("shop-postgres", false)).not.toContain("container name once");

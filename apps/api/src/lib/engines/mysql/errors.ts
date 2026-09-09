@@ -34,7 +34,7 @@ export function translate(cause: unknown, context: string): EngineError {
   if (known !== undefined)
     return new EngineError(known[0], `${context}: ${message}`, { errno }, known[1]);
   if (
-    /ECONNREFUSED|ENOTFOUND|ETIMEDOUT|ECONNRESET|Failed to connect|timeout/i.test(
+    /ECONNREFUSED|ENOTFOUND|ENETUNREACH|EHOSTUNREACH|ETIMEDOUT|ECONNRESET|Failed to connect|timeout/i.test(
       `${code} ${message}`
     )
   ) {

@@ -78,7 +78,18 @@ Under WSL mirrored networking (`networkingMode=mirrored` in `.wslconfig`), use t
 
 Adapter form: Host is the machine's address or DNS name, Port its usual port. Another machine on your network is the same case as a cloud provider: the database must listen on an interface that machine exposes (a Postgres bound to `127.0.0.1` answers nobody else), and its firewall must let the port through. Nothing extra to configure on the Testate side beyond a route from the host running Testate to that address (an open firewall, a VPN, a public endpoint, whatever your provider needs).
 
-On Supabase specifically, use the direct connection string, not the pooler, and a role that owns the tables. The pooler refuses the transaction shape a restore needs.
+### Supabase
+
+Use the **Session pooler**, not the direct host. The direct host, `db.<ref>.supabase.co`, has only an IPv6 address, and a Docker container on a machine without IPv6 cannot reach it: Docker Desktop's resolver drops the answer (the probe says the name does not resolve) and Linux Docker refuses the connect. The Session pooler answers on IPv4 and takes the transaction shape a restore needs. Copy the values from the dashboard under **Connect**, "Session pooler":
+
+| Field    | Value                                                            |
+| -------- | ---------------------------------------------------------------- |
+| Host     | `aws-<n>-<region>.pooler.supabase.com`, as the dashboard shows it |
+| Port     | `5432`                                                           |
+| User     | `postgres.<ref>`, the project ref appended, not plain `postgres` |
+| Database | `postgres`                                                       |
+
+Do not use the Transaction pooler on `6543`: it drops prepared statements and session state between queries. The direct host still works from a machine with an IPv6 route, or with Supabase's paid IPv4 add-on.
 
 ## D. An object store that is not Amazon's
 
@@ -115,7 +126,7 @@ files you browse: `TESTATE_STORE=s3` with `TESTATE_S3_ENDPOINT` points it at any
 
 Before saving, click **Test connection** in the New adapter dialog. Testate opens the connection with the values in the form, reports the engine and version, whether it meets the minimum supported version, its capabilities (can it truncate, disable triggers, run inside one transaction), and any warnings. Nothing is written until you click **Create**; the test is a dry run.
 
-A blocked or unreachable host fails here with the reason (address policy, authentication, timeout), before you commit to a broken adapter. A name that does not resolve, or a loopback address from inside the container, fails with the way out for where Testate runs: sections A and B from a container, section F from the binary.
+A blocked or unreachable host fails here with the reason (address policy, authentication, timeout), before you commit to a broken adapter. A name that does not resolve, or a loopback address from inside the container, fails with the way out for where Testate runs: sections A and B from a container, section F from the binary. A cloud host that resolves on your machine but not in the container is IPv6-only; see the Supabase note in section C.
 
 Once an adapter is saved, `POST /api/v1/projects/{slug}/adapters/{id}/retest` re-runs the same probe with the stored credentials. This is useful after a password rotation or a privilege change on the database side. There is no retest button in the dashboard yet; call the endpoint directly with a `qa` or `admin` token.
 

@@ -26,12 +26,15 @@ const HOST_GATEWAY = "--add-host=host.docker.internal:host-gateway";
 const BY_NAME =
   "A database in another container is reached by its container name once both share a network (docker network connect)";
 const BY_HOST = `one on the machine itself by host.docker.internal, which Docker on Linux defines only when Testate starts with ${HOST_GATEWAY}`;
+const IPV6_ONLY =
+  "If the name resolves on your machine, it points only to an IPv6 address, which Docker's resolver drops when the host has no IPv6; use the provider's IPv4 endpoint (on Supabase, the Session pooler on port 5432)";
 
 /**
  * A name that does not resolve is nearly always Docker in the way, and the way out depends on
  * which side of it Testate runs: a container reaches a database by container name or through the
  * host alias; a native install reaches a container at this machine's address and the port it
- * publishes.
+ * publishes. A dotted name inside a container is more often a cloud host whose only address is
+ * IPv6, and that lead comes first.
  */
 export function unresolvable(host: string, contained: boolean): string {
   if (!contained) {
@@ -39,6 +42,9 @@ export function unresolvable(host: string, contained: boolean): string {
   }
   if (host.toLowerCase() === "host.docker.internal") {
     return `${host} does not resolve: Docker on Linux defines it only when Testate starts with ${HOST_GATEWAY}. ${BY_NAME}.`;
+  }
+  if (host.includes(".")) {
+    return `${host} does not resolve from inside the container. ${IPV6_ONLY}. ${BY_NAME}; ${BY_HOST}.`;
   }
   return `${host} does not resolve. ${BY_NAME}; ${BY_HOST}.`;
 }
