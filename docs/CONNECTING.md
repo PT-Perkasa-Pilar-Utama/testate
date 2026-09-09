@@ -22,7 +22,7 @@ Once connected, a container's own name is its DNS name on that network. Adapter 
 Docker on Linux defines `host.docker.internal` only when you ask for it; Docker Desktop on macOS and Windows defines it always. With `docker run`, add the flag and recreate the container:
 
 ```sh
-docker run -d --name testate ... --add-host=host.docker.internal:host-gateway ghcr.io/pt-perkasa-pilar-utama/testate:1.1.0
+docker run -d --name testate ... --add-host=host.docker.internal:host-gateway ghcr.io/pt-perkasa-pilar-utama/testate:1.1.1
 ```
 
 With compose, uncomment `extra_hosts` in `deploy/docker-compose.yml` and restart:
@@ -60,7 +60,7 @@ ip route show default | awk '{print $3}'      # e.g. 172.28.16.1
 Recreate Testate with that address in place of `host-gateway`, in `docker run`:
 
 ```sh
-docker run -d --name testate ... --add-host=host.docker.internal:172.28.16.1 ghcr.io/pt-perkasa-pilar-utama/testate:1.1.0
+docker run -d --name testate ... --add-host=host.docker.internal:172.28.16.1 ghcr.io/pt-perkasa-pilar-utama/testate:1.1.1
 ```
 
 or in `deploy/docker-compose.yml`:
