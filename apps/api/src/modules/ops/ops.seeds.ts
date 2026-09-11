@@ -135,7 +135,7 @@ export function devAdapters(): AdapterDraft[] {
       mode: "sandbox",
       config: { connection_string_set: true },
       secrets: {
-        connection_string: "mongodb://testate:testate@127.0.0.1:27017/shop?authSource=admin",
+        connection_string: "mongodb://testate:testate@127.0.0.1:17017/shop?authSource=admin",
       },
     },
     {

@@ -15,11 +15,11 @@ import type {
 import { parseVersion } from "./probe.ts";
 import { createMongodbEngine, decodeRow } from "./engine.ts";
 
-/** Contract test against `deploy/compose.engines.yml` (mongo on 27017, standalone); skipped when absent. */
+/** Contract test against `deploy/compose.engines.yml` (mongo on 17017, standalone); skipped when absent. */
 const CONFIG: MongodbConfig = {
   engine: "mongodb",
   host: "127.0.0.1",
-  port: 27017,
+  port: 17017,
   database: "shop",
   user: "testate",
   password: "testate",

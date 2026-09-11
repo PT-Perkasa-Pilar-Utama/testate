@@ -16,7 +16,7 @@ const SQL_URLS = [
 /** The shape the seed touches; `_id` is the integer the contract fixture gives an order. */
 type Order = { _id: number; total: number; status?: string; note?: string };
 
-const MONGO_URL = "mongodb://testate:testate@127.0.0.1:27017/shop?authSource=admin";
+const MONGO_URL = "mongodb://testate:testate@127.0.0.1:17017/shop?authSource=admin";
 
 /** Applies the story. Returns the engines it reached; a refused one is named, never fatal. */
 export async function applyRefundStory(say: (line: string) => void): Promise<string[]> {

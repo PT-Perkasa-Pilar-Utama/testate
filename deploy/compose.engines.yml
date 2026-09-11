@@ -67,7 +67,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: testate
       MONGO_INITDB_ROOT_PASSWORD: testate
     ports:
-      - "27017:27017"
+      - "17017:27017"
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
       interval: 5s
