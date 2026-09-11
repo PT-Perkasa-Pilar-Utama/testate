@@ -100,13 +100,14 @@ test.describe("qa gap stories", () => {
     const postgres = await demoAdapter({ engine: "postgres" });
     await page.goto(`/projects/demo/adapters/${postgres.id}/query`);
     await settle(page);
-    await page.getByPlaceholder("SELECT ...").fill(`select 1 as h${STAMP}`);
+    await page.getByLabel("SQL").fill(`select 1 as h${STAMP}`);
     await page.getByRole("button", { name: "Run (read-only)" }).click();
     await expect(page.getByText(/1 row\(s\)/)).toBeVisible();
     // The console's own side panel, not a project tab: Saved, History and Running sit beside the
     // editor since the rework.
     await page.getByRole("tab", { name: "History" }).click();
-    await expect(page.locator("main").getByText(`select 1 as h${STAMP}`)).toBeVisible();
+    // The history row, not the editor: the editor shows the same text now that it is not a textarea.
+    await expect(page.getByRole("button", { name: `select 1 as h${STAMP}` })).toBeVisible();
     const slow = swallow(
       page.request.post(
         `http://localhost:${API_PORT}/api/v1/projects/demo/adapters/${postgres.id}/query`,

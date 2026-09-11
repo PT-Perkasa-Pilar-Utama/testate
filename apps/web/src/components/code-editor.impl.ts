@@ -87,7 +87,11 @@ export function mount(parent: HTMLElement, options: MountOptions): EditorHandle 
         THEME,
         EditorView.theme({ ".cm-content": { minHeight: `${options.rows * LINE_REM}rem` } }),
         EditorView.lineWrapping,
-        EditorView.contentAttributes.of({ "aria-label": options.label }),
+        // A contenteditable has no placeholder attribute; the ARIA one carries the hint instead.
+        EditorView.contentAttributes.of({
+          "aria-label": options.label,
+          "aria-placeholder": options.hint,
+        }),
         placeholder(options.hint),
         language.of([]),
         completions.of([]),
