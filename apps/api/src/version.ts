@@ -4,4 +4,4 @@
  * tags the image with. `bun run bump-version` writes both, and `version.test.ts` fails if they
  * ever drift apart.
  */
-export const VERSION = "1.1.1";
+export const VERSION = "1.2.0";

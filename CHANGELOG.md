@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.2.0
+
+The query console completes what you type. Upgrading changes nothing on disk: no migration, no
+new setting.
+
+### New
+
+**Completion and highlighting in the query console.** The SQL box is a CodeMirror 6 editor: it
+completes keywords in the engine's dialect and the adapter's tables and columns, under their
+schema, and colours what you wrote. The Mongo filter and pipeline complete operators on `$` and
+the chosen collection's fields on a bare word, and the Collection box offers the collection names.
+The completion data loads beside the editor, never in front of it. The editor is its own chunk,
+fetched the first time a console is opened, so the app's own bundle stays the size it was.
+
+### Changed
+
+- The compose MongoDB for development publishes on 17017, not 27017, beside Postgres on 15432
+  and MySQL on 13306, so it no longer collides with any other MongoDB on the machine. MongoDB's
+  own default of 27017 stays where it belongs: in the adapter form and the protocol defaults.
+
 ## 1.1.1
 
 One fix, for pointing a Testate container at a Supabase database.
