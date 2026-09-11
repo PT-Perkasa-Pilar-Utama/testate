@@ -37,6 +37,7 @@ Every choice below was confirmed in the architecture grill on 2026-08-28. Versio
 | Framework | `solid-js` 2.0.0-rc.3 + `@solidjs/web` 2.0.0-rc.3 (verified), pinned exact | Chosen by the owner; fine-grained reactivity, async memos with `Loading` and `Errored` |
 | Bundler | Vite 8.2.2 + `@solidjs/vite-plugin` 3.0.0-next.34 (verified) | Bun's bundler cannot compile Solid JSX; the plugin is the only Solid 2 compiler |
 | Styling | Tailwind CSS 4.3.3, tokens in a project-owned `@theme` block (verified) | GitHub's design language with hand-rolled Solid components; no component library supports Solid 2 |
+| Query console editor | CodeMirror 6 (`@codemirror/lang-sql` 6.10.0, `@codemirror/lang-json` 6.0.2, verified), behind a dynamic import | Schema-driven SQL completion and highlighting that a textarea cannot give; framework-agnostic, so Solid 2 is no obstacle; its own chunk, so the SPA's stays the size it was |
 | Components | Hand-rolled, one per file, plus data-grid, tree, code-editor, json-viewer, file-tree, command-palette | See the `design-system` skill |
 | Code editor | CodeMirror 6 (pinned at scaffold) wrapped in one component | Framework-agnostic, SQL and JSON modes, keymaps |
 | Router | In-house `lib/router.ts` over the history API | The Solid 2 line of `@solidjs/router` is a prerelease; the one deliberate shortcut in the plan |

@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import SubScreen from "@/features/adapter/adapter.subscreen.view.tsx";
-import { Loading, Show } from "solid-js";
+import { For, Loading, Show } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
 import Pending from "@/components/pending.tsx";
@@ -10,9 +10,10 @@ import EmptyState from "@/components/empty-state.tsx";
 import Icon from "@/components/icon.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
-import InputArea from "@/components/input-area.tsx";
+import CodeEditor from "@/components/code-editor.tsx";
 import Select from "@/components/select.tsx";
-import { MONGO_OPS, createQueryPresenter } from "./query.presenter.ts";
+import { MONGO_OPS } from "./query.draft.ts";
+import { createQueryPresenter } from "./query.presenter.ts";
 import ResultTable from "./query-result.view.tsx";
 import SidePanel from "./query-side.view.tsx";
 import type { QueryPresenter } from "./query.presenter.ts";
@@ -31,33 +32,39 @@ function MongoForm(props: { presenter: QueryPresenter }): JSX.Element {
         <Input
           aria-label="Collection"
           placeholder="collection"
+          list="query-collections"
           value={draft().collection}
           onInput={(event) => props.presenter.setMongo({ collection: event.currentTarget.value })}
         />
+        <datalist id="query-collections">
+          <For each={props.presenter.collections()}>{(name) => <option value={name} />}</For>
+        </datalist>
       </div>
       <Show
         when={draft().op === "find"}
         fallback={
-          <label class="grid content-start gap-1.5 text-base">
+          <div class="grid content-start gap-1.5 text-base">
             <FieldLabel required={false}>Pipeline (JSON array)</FieldLabel>
-            <InputArea
+            <CodeEditor
               rows={8}
-              class="bg-sunken! font-mono"
+              aria-label="Pipeline (JSON array)"
+              language={props.presenter.mongoLanguage()}
               value={draft().pipeline}
-              onInput={(event) => props.presenter.setMongo({ pipeline: event.currentTarget.value })}
+              onInput={(pipeline) => props.presenter.setMongo({ pipeline })}
             />
-          </label>
+          </div>
         }
       >
-        <label class="grid content-start gap-1.5 text-base">
+        <div class="grid content-start gap-1.5 text-base">
           <FieldLabel required={false}>Filter (JSON)</FieldLabel>
-          <InputArea
+          <CodeEditor
             rows={4}
-            class="bg-sunken! font-mono"
+            aria-label="Filter (JSON)"
+            language={props.presenter.mongoLanguage()}
             value={draft().filter}
-            onInput={(event) => props.presenter.setMongo({ filter: event.currentTarget.value })}
+            onInput={(filter) => props.presenter.setMongo({ filter })}
           />
-        </label>
+        </div>
         <div class="grid gap-3 sm:grid-cols-2">
           <label class="grid content-start gap-1.5 text-base">
             <FieldLabel required={false}>Projection (JSON)</FieldLabel>
@@ -143,13 +150,13 @@ export default function QueryView(props: { slug: string; id: string }): JSX.Elem
               fallback={
                 <div class="grid gap-1.5">
                   <ConsoleLabel mongo={false} />
-                  <InputArea
+                  <CodeEditor
                     rows={8}
-                    class="bg-sunken! font-mono"
                     aria-label="SQL"
                     placeholder="SELECT ..."
+                    language={presenter.sqlLanguage()}
                     value={presenter.sql()}
-                    onInput={(event) => presenter.setSql(event.currentTarget.value)}
+                    onInput={presenter.setSql}
                   />
                 </div>
               }

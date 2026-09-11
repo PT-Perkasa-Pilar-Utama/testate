@@ -114,6 +114,7 @@ Twenty-two files under `apps/web/src/components/`. Reuse before you write.
 | `empty-state.tsx` | `EmptyState` — the icon, line, and one action a screen with nothing on it shows |
 | `field-error.tsx` | `FieldError` — one field's own message, under the field (see the `formisch-forms` skill) |
 | `input.tsx` / `input-area.tsx` | `Input`, `InputArea` |
+| `code-editor.tsx` | `CodeEditor` — an `InputArea` that speaks SQL or JSON (`EditorLanguage`), CodeMirror behind a dynamic import; theme in `code-editor.impl.ts` reads the tokens as CSS variables |
 | `kbd.tsx` | `Kbd` |
 | `layer-card.tsx` | `LayerCard` |
 | `load-more.tsx` | `LoadMore` |

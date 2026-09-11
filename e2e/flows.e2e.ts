@@ -44,7 +44,7 @@ test.describe("qa flows", () => {
     await expect(page.getByRole("button", { name: "e2e answer" })).toBeVisible();
     await page.getByLabel("SQL").fill("");
     await page.getByRole("button", { name: "e2e answer" }).click();
-    await expect(page.getByLabel("SQL")).toHaveValue("SELECT 42 AS answer");
+    await expect(page.getByLabel("SQL")).toHaveText("SELECT 42 AS answer");
     await page.getByRole("button", { name: "Delete" }).first().click();
     await expect(page.getByRole("button", { name: "e2e answer" })).toHaveCount(0);
     expect(issues).toStrictEqual([]);

@@ -15,7 +15,7 @@ import {
 import { editsFor, pkOf, toFormValue, valuesOf } from "./editing.presenter.ts";
 import { NONE, policyBody } from "./policies.presenter.ts";
 import { tokensOf } from "@/lib/json-tokens.ts";
-import { buildRequest, mongoSample } from "./query.presenter.ts";
+import { buildRequest, mongoSample } from "./query.draft.ts";
 
 const MONGO = {
   op: "find" as const,
