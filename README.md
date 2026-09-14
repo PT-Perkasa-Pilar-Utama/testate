@@ -38,13 +38,16 @@ Nothing gets added to your application. Testate is a separate service that talks
 ## Quick start
 
 ```sh
+openssl rand -base64 32 > testate.key     # keep this file; every upgrade needs the same key
 docker run -d --name testate -p 7378:7378 -v testate-data:/data \
-  -e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
+  -e TESTATE_SECRETS_ACTIVE_KEY="$(cat testate.key)" \
   -e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
   ghcr.io/pt-perkasa-pilar-utama/testate:1.2.0
 ```
 
 The same image is on Docker Hub as `snowfluke/testate`, under the same tags.
+
+The key encrypts the stored database credentials. Lose it and every saved connection has to be entered again, so keep `testate.key` out of the volume and out of git. If you started a container with a key generated inline, read it back before you remove that container: `docker inspect testate --format '{{range .Config.Env}}{{println .}}{{end}}' | grep TESTATE_SECRETS_ACTIVE_KEY`.
 
 Testate dials the database from inside its container, so `localhost` there means Testate itself. A database in another container on the same machine is reached by its container name once both share a network: `docker network create testate-net`, then `docker network connect testate-net testate` and the same for the database container, and the host is that container's name with the engine's own port. A database running natively on the machine is `host.docker.internal`, which Docker on Linux defines only when the run command above carries `--add-host=host.docker.internal:host-gateway`.
 
@@ -179,7 +182,7 @@ For a binary, run the same two commands on the archive, with `--bundle <archive>
 
 ## Operate it
 
-Upgrades, rolling back a failed migration, backups, and rotating the sealing key: [Deployment plan](docs/DEPLOYMENT_PLAN.md) and [Key rotation](docs/KEY_ROTATION.md). Health lives at `/api/v1/health/live` and `/api/v1/health/ready`, with no credential, for the probes.
+To upgrade a `docker run` install: pull the new tag, remove the container, run the same command again with the same key and volume and without `TESTATE_ADMIN_PASSWORD`, then reconnect any network. The exact steps are under "Upgrade" in the [Deployment plan](docs/DEPLOYMENT_PLAN.md). Rolling back a failed migration, backups, and rotating the sealing key: the same plan and [Key rotation](docs/KEY_ROTATION.md). Health lives at `/api/v1/health/live` and `/api/v1/health/ready`, with no credential, for the probes.
 
 ## Run it from source
 

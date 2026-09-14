@@ -100,10 +100,26 @@ boot with exit 78 and changes nothing.
 
 ## Upgrade
 
+With compose:
+
 ```sh
 docker compose pull
 docker compose up -d
 ```
+
+With plain `docker run`, a container is bound to its image, so the container is replaced. The volume and the key carry over; the network attachment does not.
+
+```sh
+docker pull ghcr.io/pt-perkasa-pilar-utama/testate:<version>
+docker stop testate
+docker rm testate
+docker run -d --name testate -p 7378:7378 -v testate-data:/data \
+  -e TESTATE_SECRETS_ACTIVE_KEY="$(cat testate.key)" \
+  ghcr.io/pt-perkasa-pilar-utama/testate:<version>
+docker network connect testate-net testate   # if the database is reached over a Docker network
+```
+
+Same volume name, same key, same extra flags (`--add-host`, `-e TESTATE_PUBLIC_URL`, ...). Leave `TESTATE_ADMIN_PASSWORD` out; the users table is no longer empty, so it is ignored. If the key was generated inline on the first run, read it off the old container before `docker rm`: `docker inspect testate --format '{{range .Config.Env}}{{println .}}{{end}}' | grep TESTATE_SECRETS_ACTIVE_KEY`.
 
 Boot copies `metadata.db` to `run/metadata-<boot_id>.db` before migrations (last three kept), migrates, sweeps sealed values, rebuilds the web assets, recovers interrupted jobs, and only then listens. A failed migration leaves the copy in place: stop, restore the copy over `metadata.db`, run the previous image.
 
