@@ -10,10 +10,6 @@ no component library. Every
 component is hand-rolled under `apps/web/src/components/`, and every colour comes from a token
 defined in `apps/web/src/styles/app.css`.
 
-`@cloudflare/kumo` used to supply the token namespace and was removed on 2026-08-31: it carried a
-whole component library nobody imported. Nothing replaced it. Tailwind 4 generates a utility for
-every custom property in an `@theme` block, which is all we ever used it for.
-
 Read ADR 0003 for why each token is what it is; it is not restated here.
 ## Tokens
 
@@ -48,8 +44,8 @@ focus-visible:outline-offset-2 focus-visible:outline-accent`.
 
 ### Status: three tokens, never one
 
-Kumo kept two namespaces, so `bg-kumo-danger` and `text-kumo-danger` were different reds. One
-`@theme` name cannot do that. So a status is three tokens and you must pick the right one:
+One `@theme` name gives `bg-` and `text-` the same colour, but a status needs one red for a fill and
+another for text. So a status is three tokens and you must pick the right one:
 
 | Token | Value (danger) | For |
 | --- | --- | --- |
@@ -99,7 +95,7 @@ running text. Table heads use the same face without the colour.
 
 ## Components
 
-Twenty-two files under `apps/web/src/components/`. Reuse before you write.
+Files under `apps/web/src/components/`. Reuse before you write.
 
 | File | Exports |
 | --- | --- |
@@ -128,6 +124,14 @@ Twenty-two files under `apps/web/src/components/`. Reuse before you write.
 | `tabs.tsx` | `Tabs` |
 | `toast.tsx` | `Toaster` (the host; `showToast` and `attempt` are in `lib/toast.ts`) |
 | `icon.tsx` | `Icon` — 67 lucide icons, vendored |
+| `back-link.tsx` | `BackLink` (default export) |
+| `company-footer.tsx` | `CompanyFooter` (default export) |
+| `crashed.tsx` | `Crashed` (default export) |
+| `field-label.tsx` | `FieldLabel` (default export) |
+| `filters.tsx` | `FilterToggle`, `FilterPanel`, `FilterField` |
+| `form-dialog.tsx` | `FormDialog` (default export) |
+| `json-view.tsx` | `JsonView` (default export) |
+| `slider.tsx` | `Slider` (default export) |
 
 Conventions every one of them follows:
 
@@ -159,8 +163,6 @@ To add one: find it at <https://lucide.dev>, take its entry from `icon-nodes.jso
 the list sorted. An icon nobody uses is bytes for nothing.
 
 ## Rules
-
-These are the design language, not the old vendor's house style. They survive it.
 
 - **14px is content text.** `text-base` for body, buttons, data, and anything interactive. 16px and
   up is for headings only.

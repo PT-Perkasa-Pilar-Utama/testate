@@ -1,6 +1,6 @@
 ---
 name: formisch-forms
-description: How every form in Testate is built - Formisch driven by a shared valibot schema, per-field errors under their own control, server errors as a banner. Covers the Solid 2 patch Formisch needs, the migration recipe from the old createFormGuard, and the traps. Use whenever you add, change, or review a form in apps/web.
+description: How every form in Testate is built - Formisch driven by a shared valibot schema, per-field errors under their own control, server errors as a banner. Covers the Solid 2 patch Formisch needs and the traps. Use whenever you add, change, or review a form in apps/web.
 ---
 
 # Forms
@@ -74,22 +74,6 @@ There is nothing to check first.
   with `getByLabel("Username")`, and Formisch is headless, so the markup is entirely yours to keep.
 - **Spread `field.props` first**, then your own attributes. `value={field.input}` comes after the
   spread on purpose.
-
-## Migrating a form off `createFormGuard`
-
-`grep -rl createFormGuard apps/web/src` is the work list. Per form:
-
-1. Find or add the valibot schema in `packages/shared`, with messages.
-2. `const form = createForm({ schema })` replaces `createFormGuard()`.
-3. `<form ref={guard.ref} novalidate onSubmit={...}>` becomes `<Form of={form} onSubmit={...}>`;
-   `<Form>` sets `novalidate` itself.
-4. Delete `<FormErrors errors={guard.errors()} />` and the `guard.accepts(event)` branch.
-5. Wrap each control in `<Field of={form} path={["name"]}>` and take `value`/`onInput` off the
-   presenter: the form holds them now.
-6. The presenter keeps `error`, `busy` and a `submit(input)` that takes the parsed output.
-
-`components/form-errors.tsx` is gone with the last form that used it, and `lib/form.ts` now holds
-one thing: `onceSettled`, the reason a reset runs just outside the effect that triggered it.
 
 ## Traps
 

@@ -59,4 +59,4 @@ export function createThingsPresenter(slug: () => string): ThingsPresenter {
 
 ## Add or change a component
 
-See `.claude/skills/design-system/SKILL.md` for the tokens and the rules. Components live in `components/`, take `ComponentProps<"...">` plus variant props, use `class` arrays, and never import `features/`. There is no component library: reuse one of the nineteen that exist before writing a twentieth.
+See `.claude/skills/design-system/SKILL.md` for the tokens and the rules. Components live in `components/`, take `ComponentProps<"...">` plus variant props, use `class` arrays, and never import `features/`. There is no component library: reuse an existing one before writing a new one.
