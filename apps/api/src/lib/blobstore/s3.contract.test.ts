@@ -55,3 +55,19 @@ describe.skipIf(!(await reachable()))("s3 blob store (contract)", () => {
     expect(await store.stat(first.hash)).toBeNull();
   });
 });
+
+describe("s3 blob store outbound policy", () => {
+  test("checks the target before opening a client", async () => {
+    let checked: { host: string; port: number; purpose: string } | undefined;
+    const store = createS3BlobStore(
+      CONFIG,
+      async () => undefined,
+      async (input) => {
+        checked = input;
+        return { allowed: false, reason: "policy", matched: "127.0.0.1" };
+      }
+    );
+    await expect(store.has("a".repeat(64))).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(checked).toEqual({ host: "127.0.0.1", port: 9010, purpose: "store" });
+  });
+});

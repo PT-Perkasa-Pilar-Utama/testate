@@ -21,6 +21,8 @@ import type { FileSource } from "./index.ts";
 
 export type FtpSourceConfig = {
   host: string;
+  /** The address returned by netguard for this source lifetime. */
+  address?: string;
   port: number;
   user: string;
   password: string;
@@ -67,7 +69,7 @@ export function createFtpSource(config: FtpSourceConfig): FileSource {
     const next = new Client(config.timeoutMs ?? 15000);
     try {
       await next.access({
-        host: config.host,
+        host: config.address ?? config.host,
         port: config.port,
         user: config.user,
         password: config.password,

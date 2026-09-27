@@ -45,7 +45,7 @@ export async function bootStore(
   now: () => Date,
   version: string
 ): Promise<StoreTarget> {
-  const stores = createStoreFactory(config);
+  const stores = createStoreFactory(config, wiring.netguard.check);
   const target = await bootStoreTarget(config, db, ring);
   if (target.driver === "s3") wiring.blobs.swap(stores(target));
   dispatcher.registerKind(
