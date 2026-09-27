@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { check, matchesDenyList, parseDenyList } from "./index.ts";
+import { check, matchesDenyList, parseDenyList, pinEndpoint } from "./index.ts";
 
 const SELF = { addresses: ["10.0.0.9"], port: 3000 };
 const DEFAULT = parseDenyList(["127.0.0.0/8", "::1/128"]);
@@ -28,6 +28,17 @@ describe("deny list parsing and matching", () => {
     const policy = parseDenyList(["", " *.PROD.internal "]);
     expect(matchesDenyList("Api.prod.Internal", [], 80, policy)).not.toBeNull();
     expect(policy.raw.length).toBe(2);
+  });
+});
+
+describe("endpoint pinning", () => {
+  it("preserves the endpoint path and pins IPv4 and IPv6 addresses", () => {
+    expect(pinEndpoint("https://store.example.test:9443/base", "192.0.2.8", 9443)).toBe(
+      "https://192.0.2.8:9443/base"
+    );
+    expect(pinEndpoint("https://store.example.test:9443/base", "2001:db8::8", 9443)).toBe(
+      "https://[2001:db8::8]:9443/base"
+    );
   });
 });
 

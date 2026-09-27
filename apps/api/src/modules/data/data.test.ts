@@ -169,4 +169,18 @@ describe("data", () => {
       code: "NOT_FOUND",
     });
   });
+
+  it("refuses an adapter when the project in the route does not own it", async () => {
+    const h = await createDataHarness();
+    h.harness.projectsRepo.insert({
+      id: "01991f00-0000-7000-8000-000000000011",
+      slug: "other",
+      name: "Other",
+      description: null,
+      quota_bytes: null,
+      created_by: h.harness.admin.id,
+      created_at: h.harness.now().toISOString(),
+    });
+    expect(() => h.data.assertAdapter("other", h.adapterId)).toThrow("adapter not found");
+  });
 });

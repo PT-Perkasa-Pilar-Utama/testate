@@ -8,6 +8,18 @@ export type Check = {
   purpose: "database" | "files" | "store";
 };
 
+/** A target whose hostname was resolved and approved for this connection attempt. */
+export type CheckedTarget = Check & { address: string };
+
+/** Rewrites an endpoint to the address approved by netguard while preserving its scheme/port. */
+export function pinEndpoint(endpoint: string | undefined, address: string, port: number): string {
+  const url = new URL(endpoint ?? "https://s3.amazonaws.com");
+  // WHATWG URL ignores a bare IPv6 hostname assignment; brackets make it a valid host literal.
+  url.hostname = isIP(address) === 6 ? `[${address}]` : address;
+  url.port = String(port);
+  return url.toString().replace(/\/$/, "");
+}
+
 export type Verdict =
   | { allowed: true; addresses: string[] }
   | { allowed: false; reason: "fixed" | "policy" | "self" | "unresolvable"; matched: string };

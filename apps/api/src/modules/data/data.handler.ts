@@ -14,32 +14,8 @@ import type { Handler } from "../../lib/http/index.ts";
 import { firstQuery } from "../../lib/http/query.ts";
 import { exportStream, pagedExportStream } from "./data.export.ts";
 import type { DataService, SavedQueryInput } from "./data.service.ts";
-
-export type DataHandlers = {
-  schema: Handler;
-  rows: Handler;
-  lookup: Handler;
-  startWriteSession: Handler;
-  setWriteSessionOptions: Handler;
-  endWriteSession: Handler;
-  rowEdits: Handler;
-  query: Handler;
-  tableExport: Handler;
-  queryExport: Handler;
-  runningQueries: Handler;
-  cancelQuery: Handler;
-  savedQueries: Handler;
-  createSavedQuery: Handler;
-  updateSavedQuery: Handler;
-  removeSavedQuery: Handler;
-  history: Handler;
-  policies: Handler;
-  upsertPolicy: Handler;
-  removePolicy: Handler;
-  lockPolicy: Handler;
-  unlockPolicy: Handler;
-  fixture: Handler;
-};
+import type { DataHandlers } from "./data.handlers.ts";
+export type { DataHandlers } from "./data.handlers.ts";
 
 const FILTER_OPS = ["eq", "ne", "lt", "le", "gt", "ge", "like", "in", "null", "notnull"] as const;
 const filterOpSchema = v.picklist(FILTER_OPS);
@@ -115,6 +91,11 @@ export function createDataHandlers(service: DataService, trustProxy: boolean): D
   const meta = (c: Parameters<Handler>[0]): ReturnType<typeof requestMeta> =>
     requestMeta(c, trustProxy);
   return {
+    assertAdapter: async (c, next) => {
+      currentActor(c);
+      service.assertAdapter(param(c, "slug"), param(c, "id"));
+      await next();
+    },
     schema: async (c) => ok(c, await service.schema(param(c, "id"))),
     rows: async (c) => {
       const page = await service.rows(

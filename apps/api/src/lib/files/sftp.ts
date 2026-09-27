@@ -19,6 +19,8 @@ import type { FileSource, HostKey, HostKeyVerifier } from "./index.ts";
 
 export type SftpSourceConfig = {
   host: string;
+  /** The address returned by netguard for this source lifetime. */
+  address?: string;
   port: number;
   user: string;
   root_path: string;
@@ -58,7 +60,7 @@ export function createSftpSource(config: SftpSourceConfig): FileSource {
     if (client !== null) return client;
     const next = new SftpClient();
     const options: Parameters<SftpClient["connect"]>[0] = {
-      host: config.host,
+      host: config.address ?? config.host,
       port: config.port,
       username: config.user,
       readyTimeout: config.timeoutMs ?? 15000,
