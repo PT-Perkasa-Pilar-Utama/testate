@@ -3,7 +3,7 @@ import type { Engine, FileProbeResult, JsonObject } from "@testate/shared";
 import type { FileSource, HostKey } from "../../lib/files/index.ts";
 import type { OpenFileSource } from "../../lib/files/open.ts";
 import { AppError, notFound } from "../../lib/http/index.ts";
-import type { Check, Verdict } from "../../lib/netguard/index.ts";
+import type { CheckedTarget, Check, Verdict } from "../../lib/netguard/index.ts";
 import type { KeyRing } from "../../lib/sealed/index.ts";
 import { TIER_OF_ENGINE, validateConfig } from "./adapters.config.ts";
 import { refusal } from "./adapters.helpers.ts";
@@ -61,24 +61,37 @@ export function createFilesResolver(deps: FilesResolverDeps): FilesResolver {
       const validated = validateConfig(adapter.engine, adapter.kind, adapter.config, secrets);
       const verdict = await deps.netguard.check({ ...validated.target, purpose: "files" });
       if (!verdict.allowed) throw refusal(verdict, validated.target);
+      const address = verdict.addresses[0];
+      if (address === undefined) throw new AppError("CONFLICT", "no address was resolved");
+      const target: CheckedTarget = {
+        ...validated.target,
+        purpose: "files",
+        address,
+      };
       let presented: HostKey | null = null;
       let untrusted = false;
-      const source = deps.open(adapter.engine, validated.config, secrets, (key) => {
-        presented = key;
-        const known = deps.hostKeys.byAdapter(adapter.id);
-        if (known !== null) return known.fingerprint === key.fingerprint;
-        if (trustAs === null) {
-          untrusted = true;
-          return false;
-        }
-        deps.hostKeys.replace(adapter.id, {
-          key_type: key.type,
-          fingerprint: key.fingerprint,
-          accepted_by: trustAs,
-          accepted_at: deps.now().toISOString(),
-        });
-        return true;
-      });
+      const source = deps.open(
+        adapter.engine,
+        validated.config,
+        secrets,
+        (key) => {
+          presented = key;
+          const known = deps.hostKeys.byAdapter(adapter.id);
+          if (known !== null) return known.fingerprint === key.fingerprint;
+          if (trustAs === null) {
+            untrusted = true;
+            return false;
+          }
+          deps.hostKeys.replace(adapter.id, {
+            key_type: key.type,
+            fingerprint: key.fingerprint,
+            accepted_by: trustAs,
+            accepted_at: deps.now().toISOString(),
+          });
+          return true;
+        },
+        target
+      );
       return {
         adapter,
         source: untrustedAware(source, () => untrusted),
@@ -122,9 +135,14 @@ function untrustedAware(source: FileSource, untrusted: () => boolean): FileSourc
 
 /** Probes a storage target by listing its root (10 §10.3); any host key passes because no row exists yet. */
 export function createFileProbe(open: OpenFileSource, fallback: FileProbeFn): FileProbeFn {
-  return async (engine: Engine, config: JsonObject, secrets: Secrets): Promise<FileProbeResult> => {
-    if (TIER_OF_ENGINE[engine] !== "files") return fallback(engine, config, secrets);
-    const source = open(engine, config, secrets, () => true);
+  return async (
+    engine: Engine,
+    config: JsonObject,
+    secrets: Secrets,
+    target?: CheckedTarget
+  ): Promise<FileProbeResult> => {
+    if (TIER_OF_ENGINE[engine] !== "files") return fallback(engine, config, secrets, target);
+    const source = open(engine, config, secrets, () => true, target);
     try {
       await source.list("", { limit: 1 });
     } finally {

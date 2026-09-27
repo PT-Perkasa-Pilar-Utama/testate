@@ -48,6 +48,7 @@ import type { StatesDeps, StatesService } from "./modules/states/states.service.
 import type { JobsService } from "./modules/jobs/jobs.service.ts";
 
 export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now" | "blobs"> & {
+  netguard: Netguard;
   blobs: SwitchableBlobStore;
   data: DataRepository;
   policies: PoliciesRepository;
@@ -73,6 +74,7 @@ export function createEngineWiring(
   const hostKeys = createHostKeysRepository(db);
   const now = (): Date => new Date();
   return {
+    netguard,
     engines,
     adapterLanes: config.TESTATE_JOB_CONCURRENCY,
     probe: createEngineProbe(engines, createScaffoldProbe()),

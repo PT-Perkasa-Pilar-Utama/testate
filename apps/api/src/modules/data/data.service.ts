@@ -32,7 +32,7 @@ import type { SessionDeps } from "./data.sessions.ts";
 export type DataDeps = RestoreDeps & {
   repo: DataRepository;
   policies: PoliciesRepository;
-  projects: Pick<ProjectsRepository, "markHeadDirty" | "byId" | "setHead" | "usedBytes">;
+  projects: Pick<ProjectsRepository, "markHeadDirty" | "byId" | "bySlug" | "setHead" | "usedBytes">;
   jobs: Pick<JobsService, "enqueue" | "wait">;
   settings: { get(): Promise<Settings> };
   audit: SessionDeps["audit"];
@@ -49,6 +49,11 @@ export function parseTableRef(table: string): { schema: string | null; name: str
 
 export function createDataService(deps: DataDeps): DataService {
   const { repo } = deps;
+  const projectOf = (slug: string) => {
+    const project = deps.projects.bySlug(slug);
+    if (project === null) throw notFound("project");
+    return project;
+  };
   const adapterOf = (adapterId: string): AdapterRecord => {
     const adapter = deps.adapters.byId(adapterId);
     if (adapter === null) throw notFound("adapter");
@@ -57,6 +62,12 @@ export function createDataService(deps: DataDeps): DataService {
         reason: "kind",
       });
     }
+    return adapter;
+  };
+  const adapterInProject = (projectSlug: string, adapterId: string): AdapterRecord => {
+    const project = projectOf(projectSlug);
+    const adapter = adapterOf(adapterId);
+    if (adapter.project_id !== project.id) throw notFound("adapter");
     return adapter;
   };
   /** Decrypted config plus engine; the config never leaves this closure (12 §12.8). */
@@ -115,6 +126,9 @@ export function createDataService(deps: DataDeps): DataService {
   };
 
   return {
+    assertAdapter(projectSlug, adapterId) {
+      adapterInProject(projectSlug, adapterId);
+    },
     async schema(adapterId) {
       return schemaOf(adapterOf(adapterId));
     },
