@@ -1,17 +1,6 @@
-import type { ESTree, Scope, SourceCode, Variable } from "@oxlint/plugins";
+import { resolveVariable } from "./scope.ts";
 
-function resolveVariable(
-  sourceCode: SourceCode,
-  identifier: ESTree.IdentifierReference
-): Variable | null {
-  let scope: Scope | null = sourceCode.getScope(identifier);
-  while (scope !== null) {
-    const variable = scope.set.get(identifier.name);
-    if (variable !== undefined) return variable;
-    scope = scope.upper;
-  }
-  return null;
-}
+import type { ESTree, SourceCode } from "@oxlint/plugins";
 
 function isGlobalReflect(sourceCode: SourceCode, expression: ESTree.Expression): boolean {
   if (expression.type !== "Identifier" || expression.name !== "Reflect") return false;
@@ -24,7 +13,7 @@ function isGlobalReflect(sourceCode: SourceCode, expression: ESTree.Expression):
 export function isGlobalReflectMethodCall(
   sourceCode: SourceCode,
   callee: ESTree.Expression,
-  methodName: string
+  methodName: string,
 ): boolean {
   if (!("property" in callee) || !("object" in callee) || !("computed" in callee)) return false;
   if (!isGlobalReflect(sourceCode, callee.object)) return false;

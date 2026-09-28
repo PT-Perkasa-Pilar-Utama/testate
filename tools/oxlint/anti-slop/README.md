@@ -10,3 +10,6 @@ consuming repository, which is what this is. The plugin's own tests and its
 Effect-specific rules were left out; this project uses neither.
 
 To update, copy `src/` from upstream again and re-run `bun run lint`.
+
+Last updated from upstream `c44ef22` (2026-09-10) on 2026-09-28. The vendored
+copy includes `vendor/`, which the `require-readable-spacing` rule needs.
