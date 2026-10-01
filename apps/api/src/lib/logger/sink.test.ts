@@ -39,13 +39,20 @@ describe("log sink", () => {
     ]);
   });
 
-  it("sweeps files past retention but never the one it is writing", () => {
+  it("sweeps files past retention", () => {
     const dir = mkdtempSync(join(tmpdir(), "testate-sink-"));
     writeFileSync(join(dir, "testate-2026-01-01.jsonl"), "{}\n");
     const sink = new FileSink({ dir, retentionDays: 1, stdout: false });
     sink.write(record("replayed"));
     sink.close();
     expect(existsSync(join(dir, "testate-2026-01-01.jsonl"))).toBe(false);
+  });
+
+  it("never sweeps the file it is writing", () => {
+    const dir = mkdtempSync(join(tmpdir(), "testate-sink-"));
+    const sink = new FileSink({ dir, retentionDays: 1, stdout: false });
+    sink.write(record("replayed"));
+    sink.close();
     const kept = readFileSync(join(dir, "testate-2026-08-29.jsonl"), "utf8").trim();
     expect(JSON.parse(kept).op.name).toBe("replayed");
   });
