@@ -1,7 +1,7 @@
 name: reviewer-chan
 
 # Request a review from the "reviewer-chan" team on a PR, and the Reviewer-chan app posts a
-# tech-lead review. The job itself lives in PT-Perkasa-Pilar-Utama/review-chan-setup.
+# tech-lead review. The job itself lives in PT-Perkasa-Pilar-Utama/reviewer-chan.
 # pull_request_target runs this file from the base branch, so a PR cannot change it.
 on:
   pull_request_target:
@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   review:
-    uses: PT-Perkasa-Pilar-Utama/review-chan-setup/.github/workflows/review.yml@main
+    uses: PT-Perkasa-Pilar-Utama/reviewer-chan/.github/workflows/review.yml@main
     with:
       daily_cap: 10
     secrets:
