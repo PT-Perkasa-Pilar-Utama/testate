@@ -18,7 +18,7 @@ jobs:
   review:
     # A cheap filter, so most comments start no job; the shared job checks the exact command.
     if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/reviewer-chan')
-    uses: PT-Perkasa-Pilar-Utama/reviewer-chan/.github/workflows/review.yml@debf23b3dda8fb185e4c7dc00f10b4d3fc98b1cd # v2.2.0
+    uses: PT-Perkasa-Pilar-Utama/reviewer-chan/.github/workflows/review.yml@6b0d4c9d56301d2a7796f9b07c74b348a268ce0c # v2.3.0
     with:
       daily_cap: 10
       # The tech leads' GitHub logins, separated by spaces or commas.
