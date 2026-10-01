@@ -4,7 +4,7 @@ import type { Preflight, SchemaDrift, State } from "@testate/shared";
 import { humanMessage } from "@/lib/api-error.ts";
 import { EMPTY_MODE_LABEL, FK_HANDLING_LABEL } from "@/lib/labels.ts";
 import { showToast } from "@/lib/toast.ts";
-import { createJobFollower } from "@/lib/sse.ts";
+import { jobsModel } from "../jobs/jobs.model.ts";
 import { checkoutsModel } from "./checkouts.model.ts";
 
 export type PreflightAdapter = Preflight["adapters"][number];
@@ -66,13 +66,28 @@ function messageOf(cause: unknown): string {
   return humanMessage(cause, "Could not check out that state.");
 }
 
+/**
+ * Waits through the long poll, not the screen's event stream: the user may leave the tab before
+ * the checkout ends, and the refresh after it is what moves the project's HEAD.
+ */
+async function announceWhenDone(jobId: string, name: string, onDone: () => void): Promise<void> {
+  try {
+    const done = await jobsModel.settled(jobId);
+    const ok = done.status === "succeeded";
+    showToast(
+      ok ? `Checked out ${name}` : `Checkout of ${name} ${done.status}`,
+      ok ? "success" : "error"
+    );
+    onDone();
+  } catch (cause: unknown) {
+    showToast(messageOf(cause), "error");
+  }
+}
+
 export function createPreflightPresenter(
   slug: () => string,
   onQueued: () => void
 ): PreflightPresenter {
-  // Created here, in the presenter's own body: the follower registers its cleanup with the
-  // owner that is current at this moment, and there is none inside an effect or after an await.
-  const jobs = createJobFollower();
   const [target, setTarget] = createSignal<State | null>(null);
   const [preflight, setPreflight] = createSignal<Preflight | null>(null);
   const [force, setForceSignal] = createSignal(false);
@@ -138,15 +153,7 @@ export function createPreflightPresenter(
         close();
         showToast(`Checkout of ${staticState.name} queued`, "info");
         onQueued();
-        jobs.follow(job, (done) => {
-          showToast(
-            done.status === "succeeded"
-              ? `Checked out ${staticState.name}`
-              : `Checkout of ${staticState.name} ${done.status}`,
-            done.status === "succeeded" ? "success" : "error"
-          );
-          onQueued();
-        });
+        void announceWhenDone(job.id, staticState.name, onQueued);
       } catch (cause: unknown) {
         setError(messageOf(cause));
       } finally {
