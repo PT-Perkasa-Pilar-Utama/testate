@@ -1,21 +1,11 @@
 name: reviewer-chan
 
-# A tech-lead review by the Reviewer-chan app, on request: add the "reviewer-chan" team as a
-# reviewer on a PR. It runs the lead-review skill unattended, on the tech lead's own Claude
-# subscription token.
-#
-# Safety: this job holds that token, so it never runs the PR's code. It checks out the base
-# commit, reads the PR's files as text through a git worktree, and takes the gate from the
-# required CI checks, which ran without secrets. Claude may run only the commands listed in
-# --allowedTools below. pull_request_target runs this file as it is on the base branch, so a PR
-# cannot edit the workflow that holds the token; the job still never checks out the PR's code.
+# Request a review from the "reviewer-chan" team on a PR, and the Reviewer-chan app posts a
+# tech-lead review. The job itself lives in PT-Perkasa-Pilar-Utama/review-chan-setup.
+# pull_request_target runs this file from the base branch, so a PR cannot change it.
 on:
   pull_request_target:
     types: [review_requested]
-
-concurrency:
-  group: reviewer-chan-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -23,102 +13,12 @@ permissions:
   checks: read
   actions: read
 
-env:
-  # The lead-review version this repo trusts. Bump it on purpose, after reading the change.
-  LEAD_REVIEW_REF: 8160f686d354451674c1835da4941e6f47e78301
-  # Reviews per UTC day. Each one uses the tech lead's subscription limits.
-  DAILY_CAP: 10
-
 jobs:
   review:
-    # Only when the reviewer-chan team is the one requested. Never for a fork, whose PR gets no
-    # secrets anyway, and never for a bot's PR: a Dependabot body carries outside text, the
-    # riskiest input to hand a job that holds the token.
-    if: >-
-      github.event.requested_team.slug == 'reviewer-chan' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.user.type != 'Bot'
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - name: Reviewer-chan token
-        id: app
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          client-id: Iv23ligcErlDxeTcwF4c # the Reviewer-chan app (ID 5145047); a client ID is not a secret
-          private-key: ${{ secrets.REVIEWER_CHAN_PRIVATE_KEY }}
-
-      - name: Daily cap
-        env:
-          GH_TOKEN: ${{ github.token }}
-          APP_TOKEN: ${{ steps.app.outputs.token }}
-          PR: ${{ github.event.pull_request.number }}
-        run: |
-          used=$(gh run list -R "$GITHUB_REPOSITORY" --workflow reviewer-chan.yml --created ">=$(date -u +%F)" \
-            --limit 100 --json databaseId --jq "[.[] | select(.databaseId != $GITHUB_RUN_ID)] | length")
-          if [ "$used" -ge "$DAILY_CAP" ]; then
-            GH_TOKEN="$APP_TOKEN" gh pr comment "$PR" -R "$GITHUB_REPOSITORY" \
-              --body "Reviewer-chan has used today's $DAILY_CAP reviews for this repo. Request again tomorrow (UTC), or ask the tech lead."
-            exit 1
-          fi
-
-      # The base commit, not the PR: nothing the PR changes runs in this job.
-      - name: Check out the base commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-          fetch-depth: 0
-
-      - name: Wait for the required CI checks
-        timeout-minutes: 30
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh pr checks ${{ github.event.pull_request.number }} -R "$GITHUB_REPOSITORY" --required --watch --interval 30 || true
-
-      - name: Note the start time
-        id: start
-        run: echo "at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
-
-      - name: Install the pinned lead-review skill
-        run: |
-          mkdir -p .claude/skills
-          curl -fsSL "https://github.com/snowfluke/tech-lead-skills/archive/$LEAD_REVIEW_REF.tar.gz" | tar -xz -C "$RUNNER_TEMP"
-          cp -r "$RUNNER_TEMP/tech-lead-skills-$LEAD_REVIEW_REF/lead-review" .claude/skills/
-
-      - name: Review
-        uses: anthropics/claude-code-action@12dd8d74c712f5f3669365b2369b558c495b1104 # v1
-        env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
-          LEAD_REVIEW_UNATTENDED: "1"
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_ENGINEERPPU }}
-          github_token: ${{ steps.app.outputs.token }}
-          # Claude chains shell commands and reads worktrees under /tmp by habit; the allowlist
-          # below admits only simple read-only commands, so the prompt asks for those.
-          prompt: |
-            You are Reviewer-chan. Review pull request #${{ github.event.pull_request.number }} of
-            ${{ github.repository }} with the lead-review skill: read .claude/skills/lead-review/SKILL.md
-            first and follow it exactly, in its unattended mode (LEAD_REVIEW_UNATTENDED=1 is set).
-            The working directory is the base commit. Put the worktrees under /tmp. Run one simple
-            command per Bash call, with absolute paths: no cd, no &&, no pipes, no shell variables.
-            Read files with the Read, Grep and Glob tools. Fetch the PR head with:
-            git fetch origin pull/${{ github.event.pull_request.number }}/head. Post with gh pr review.
-          claude_args: |
-            --add-dir /tmp
-            --allowedTools "Read,Write,Edit,Glob,Grep,Task,Skill,Bash(ls *),Bash(cat *),Bash(head *),Bash(tail *),Bash(wc *),Bash(grep *),Bash(find *),Bash(sed -n *),Bash(sort *),Bash(diff *),Bash(mkdir -p /tmp/*),Bash(git fetch *),Bash(git worktree *),Bash(git diff *),Bash(git show *),Bash(git log *),Bash(git rev-parse *),Bash(git status *),Bash(git config --get *),Bash(gh pr view *),Bash(gh pr diff *),Bash(gh pr checks *),Bash(gh pr review *),Bash(gh pr comment *),Bash(gh repo view *),Bash(python3 *lead-review/scripts/*),Bash(rm -f /tmp/pr*)"
-
-      # A run that ends without posting is a failure, even when Claude reports success.
-      - name: Check that Reviewer-chan posted
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number }}
-          SINCE: ${{ steps.start.outputs.at }}
-        run: |
-          posted=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" --paginate \
-            --jq "[.[] | select(.user.login == \"reviewer-chan[bot]\" and .submitted_at >= \"$SINCE\")] | length")
-          commented=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments?since=$SINCE" --paginate \
-            --jq '[.[] | select(.user.login == "reviewer-chan[bot]")] | length')
-          if [ "$posted" -eq 0 ] && [ "$commented" -eq 0 ]; then
-            echo "::error::Reviewer-chan finished without posting a review or a comment."
-            exit 1
-          fi
+    uses: PT-Perkasa-Pilar-Utama/review-chan-setup/.github/workflows/review.yml@main
+    with:
+      daily_cap: 10
+    secrets:
+      # The repo tech lead's token (docs/03-token.md in review-chan-setup).
+      claude_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_ENGINEERPPU }}
+      reviewer_chan_key: ${{ secrets.REVIEWER_CHAN_PRIVATE_KEY }}
