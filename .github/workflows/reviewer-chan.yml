@@ -31,11 +31,13 @@ env:
 
 jobs:
   review:
-    # Only when the reviewer-chan team is the one requested, and never for a fork, whose PR
-    # gets no secrets anyway.
+    # Only when the reviewer-chan team is the one requested. Never for a fork, whose PR gets no
+    # secrets anyway, and never for a bot's PR: a Dependabot body carries outside text, the
+    # riskiest input to hand a job that holds the token.
     if: >-
       github.event.requested_team.slug == 'reviewer-chan' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -73,6 +75,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh pr checks ${{ github.event.pull_request.number }} -R "$GITHUB_REPOSITORY" --required --watch --interval 30 || true
 
+      - name: Note the start time
+        id: start
+        run: echo "at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
       - name: Install the pinned lead-review skill
         run: |
           mkdir -p .claude/skills
@@ -87,10 +93,32 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_ENGINEERPPU }}
           github_token: ${{ steps.app.outputs.token }}
+          # Claude chains shell commands and reads worktrees under /tmp by habit; the allowlist
+          # below admits only simple read-only commands, so the prompt asks for those.
           prompt: |
             You are Reviewer-chan. Review pull request #${{ github.event.pull_request.number }} of
-            ${{ github.repository }} with the lead-review skill in .claude/skills/lead-review, in its
-            unattended mode (LEAD_REVIEW_UNATTENDED=1 is set). The working directory is the base
-            commit. Follow the skill exactly, and post with gh pr review.
+            ${{ github.repository }} with the lead-review skill: read .claude/skills/lead-review/SKILL.md
+            first and follow it exactly, in its unattended mode (LEAD_REVIEW_UNATTENDED=1 is set).
+            The working directory is the base commit. Put the worktrees under /tmp. Run one simple
+            command per Bash call, with absolute paths: no cd, no &&, no pipes, no shell variables.
+            Read files with the Read, Grep and Glob tools. Fetch the PR head with:
+            git fetch origin pull/${{ github.event.pull_request.number }}/head. Post with gh pr review.
           claude_args: |
-            --allowedTools "Read,Write,Edit,Glob,Grep,Task,Bash(git fetch *),Bash(git worktree *),Bash(git diff *),Bash(git show *),Bash(git log *),Bash(git rev-parse *),Bash(gh pr view *),Bash(gh pr diff *),Bash(gh pr checks *),Bash(gh pr review *),Bash(gh pr comment *),Bash(gh repo view *),Bash(python3 *lead-review/scripts/*),Bash(rm -f /tmp/pr*)"
+            --add-dir /tmp
+            --allowedTools "Read,Write,Edit,Glob,Grep,Task,Skill,Bash(ls *),Bash(cat *),Bash(head *),Bash(tail *),Bash(wc *),Bash(grep *),Bash(find *),Bash(sed -n *),Bash(sort *),Bash(diff *),Bash(mkdir -p /tmp/*),Bash(git fetch *),Bash(git worktree *),Bash(git diff *),Bash(git show *),Bash(git log *),Bash(git rev-parse *),Bash(git status *),Bash(git config --get *),Bash(gh pr view *),Bash(gh pr diff *),Bash(gh pr checks *),Bash(gh pr review *),Bash(gh pr comment *),Bash(gh repo view *),Bash(python3 *lead-review/scripts/*),Bash(rm -f /tmp/pr*)"
+
+      # A run that ends without posting is a failure, even when Claude reports success.
+      - name: Check that Reviewer-chan posted
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          SINCE: ${{ steps.start.outputs.at }}
+        run: |
+          posted=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" --paginate \
+            --jq "[.[] | select(.user.login == \"reviewer-chan[bot]\" and .submitted_at >= \"$SINCE\")] | length")
+          commented=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments?since=$SINCE" --paginate \
+            --jq '[.[] | select(.user.login == "reviewer-chan[bot]")] | length')
+          if [ "$posted" -eq 0 ] && [ "$commented" -eq 0 ]; then
+            echo "::error::Reviewer-chan finished without posting a review or a comment."
+            exit 1
+          fi
