@@ -15,9 +15,11 @@ permissions:
 
 jobs:
   review:
-    # The job reads both secrets from this repo's reviewer-chan environment, limited to main.
     uses: PT-Perkasa-Pilar-Utama/reviewer-chan/.github/workflows/review.yml@231a78e02d0af9f954d396157945577aa987db5a # v1.3.0
     with:
       daily_cap: 10
       # A review request to the tech lead also starts Reviewer-chan.
       also_on_reviewer: snowfluke
+    # A called workflow sees a secret only when it is passed or inherited; the job's
+    # reviewer-chan environment then supplies the value. The job reads only its two secrets.
+    secrets: inherit
