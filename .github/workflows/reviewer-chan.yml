@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   review:
-    uses: PT-Perkasa-Pilar-Utama/reviewer-chan/.github/workflows/review.yml@231a78e02d0af9f954d396157945577aa987db5a # v1.3.0
+    uses: PT-Perkasa-Pilar-Utama/reviewer-chan/.github/workflows/review.yml@2e78cff934b5bcac214a2df648a198f199db6464 # v1.3.1
     with:
       daily_cap: 10
       # A review request to the tech lead also starts Reviewer-chan.
