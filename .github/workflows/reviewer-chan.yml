@@ -1,6 +1,6 @@
 name: reviewer-chan
 
-# Comment "/reviewer-chan review" on a pull request, and the Reviewer-chan app posts a tech-lead
+# Comment "/reviewer-chan" on a pull request, and the Reviewer-chan app posts a tech-lead
 # review. Only the PR author with write access, a tech lead below, or a repo admin can start it.
 # The job itself lives in PT-Perkasa-Pilar-Utama/reviewer-chan. issue_comment runs this file
 # from the default branch, so a PR cannot change it.
@@ -18,7 +18,7 @@ jobs:
   review:
     # A cheap filter, so most comments start no job; the shared job checks the exact command.
     if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/reviewer-chan')
-    uses: PT-Perkasa-Pilar-Utama/reviewer-chan/.github/workflows/review.yml@a8708ea68cecad233f2ef7a36b0a89eb38a0e282 # v2.1.0
+    uses: PT-Perkasa-Pilar-Utama/reviewer-chan/.github/workflows/review.yml@debf23b3dda8fb185e4c7dc00f10b4d3fc98b1cd # v2.2.0
     with:
       daily_cap: 10
       # The tech leads' GitHub logins, separated by spaces or commas.
