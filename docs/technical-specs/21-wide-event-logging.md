@@ -75,7 +75,7 @@ write(line):
   if day != currentDay: close current; open logs/testate-<day>.jsonl (append); currentDay = day; sweep()
   append line + "\n"; on failure: stdout.write(line); service.sink_degraded = true
 sweep():
-  for each logs/testate-*.jsonl older than TESTATE_LOG_RETENTION_DAYS by file date: unlink; count into the next boot or sweep event
+  for each logs/testate-*.jsonl older than TESTATE_LOG_RETENTION_DAYS by file date, except the currentDay file: unlink; count into the next boot or sweep event
 ```
 
 Boot runs `sweep()` once; the daily retention timer runs it again with the other sweeps.
