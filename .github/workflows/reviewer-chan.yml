@@ -16,6 +16,8 @@ permissions:
 jobs:
   review:
     # The job reads both secrets from this repo's reviewer-chan environment, limited to main.
-    uses: PT-Perkasa-Pilar-Utama/reviewer-chan/.github/workflows/review.yml@a9dc5d3801d66936ac6f39381de5042a45a255f5 # v1.2.0
+    uses: PT-Perkasa-Pilar-Utama/reviewer-chan/.github/workflows/review.yml@231a78e02d0af9f954d396157945577aa987db5a # v1.3.0
     with:
       daily_cap: 10
+      # A review request to the tech lead also starts Reviewer-chan.
+      also_on_reviewer: snowfluke
