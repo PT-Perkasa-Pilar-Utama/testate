@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   review:
-    uses: PT-Perkasa-Pilar-Utama/reviewer-chan/.github/workflows/review.yml@3a8ccc595456afa9638b65dfe781d8ad49e4d29f # v1.0.0
+    uses: PT-Perkasa-Pilar-Utama/reviewer-chan/.github/workflows/review.yml@825b2e84b80aa878a64dfc7b312b3f77bb9e6c7c # v1.1.0
     with:
       daily_cap: 10
     secrets:
