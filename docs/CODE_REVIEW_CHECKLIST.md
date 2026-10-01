@@ -2,6 +2,8 @@
 
 What a reviewer checks by hand. Everything the toolchain enforces (`bun run complete-check`) is assumed green before review starts. Standard: [CODING_STANDARD.md](CODING_STANDARD.md).
 
+**Reviewer-chan walks this list for you.** Request a review from the `reviewer-chan` team on a pull request, and the Reviewer-chan app posts a review against this checklist and the standard, in the same round format each time (`.github/workflows/reviewer-chan.yml`). It waits for the required checks, never runs the pull request's code, and skips bot pull requests. It allows ten reviews a day. Its review does not replace the human approval that `main` requires.
+
 ## Tests
 
 - [ ] Each test names one behaviour and fails when it breaks. Ask: which line of the implementation kills this test?
