@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -37,5 +37,16 @@ describe("log sink", () => {
       "second",
       "third",
     ]);
+  });
+
+  it("sweeps files past retention but never the one it is writing", () => {
+    const dir = mkdtempSync(join(tmpdir(), "testate-sink-"));
+    writeFileSync(join(dir, "testate-2026-01-01.jsonl"), "{}\n");
+    const sink = new FileSink({ dir, retentionDays: 1, stdout: false });
+    sink.write(record("replayed"));
+    sink.close();
+    expect(existsSync(join(dir, "testate-2026-01-01.jsonl"))).toBe(false);
+    const kept = readFileSync(join(dir, "testate-2026-08-29.jsonl"), "utf8").trim();
+    expect(JSON.parse(kept).op.name).toBe("replayed");
   });
 });

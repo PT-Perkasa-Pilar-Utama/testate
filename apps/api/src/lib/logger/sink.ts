@@ -56,13 +56,17 @@ export class FileSink {
     this.sweep();
   }
 
-  /** Deletes files older than the retention window. Returns the deleted file names. */
+  /**
+   * Deletes files older than the retention window, except the one being written: a record can
+   * carry an old day (a replay), and deleting its open file would lose every later line.
+   * Returns the deleted file names.
+   */
   sweep(now = Date.now()): string[] {
     const deleted: string[] = [];
     const cutoff = now - this.options.retentionDays * DAY_MS;
     for (const name of readdirSync(this.options.dir)) {
       const match = /^testate-(\d{4}-\d{2}-\d{2})\.jsonl$/.exec(name);
-      if (match === null) continue;
+      if (match === null || match[1] === this.currentDay) continue;
       const fileDay = Date.parse(`${match[1]}T00:00:00.000Z`);
       const path = join(this.options.dir, name);
       if (fileDay < cutoff && statSync(path).isFile()) {
