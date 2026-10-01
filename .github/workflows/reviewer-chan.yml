@@ -1,11 +1,12 @@
 name: reviewer-chan
 
-# Request a review from the "reviewer-chan" team on a PR, and the Reviewer-chan app posts a
-# tech-lead review. The job itself lives in PT-Perkasa-Pilar-Utama/reviewer-chan.
-# pull_request_target runs this file from the base branch, so a PR cannot change it.
+# Comment "/reviewer-chan review" on a pull request, and the Reviewer-chan app posts a tech-lead
+# review. Only the PR author with write access, a tech lead below, or a repo admin can start it.
+# The job itself lives in PT-Perkasa-Pilar-Utama/reviewer-chan. issue_comment runs this file
+# from the default branch, so a PR cannot change it.
 on:
-  pull_request_target:
-    types: [review_requested]
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
@@ -15,11 +16,18 @@ permissions:
 
 jobs:
   review:
-    uses: PT-Perkasa-Pilar-Utama/reviewer-chan/.github/workflows/review.yml@231a78e02d0af9f954d396157945577aa987db5a # v1.3.0
+    # A cheap filter, so most comments start no job; the shared job checks the exact command.
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/reviewer-chan')
+    uses: PT-Perkasa-Pilar-Utama/reviewer-chan/.github/workflows/review.yml@a8708ea68cecad233f2ef7a36b0a89eb38a0e282 # v2.1.0
     with:
       daily_cap: 10
-      # A review request to the tech lead also starts Reviewer-chan.
-      also_on_reviewer: snowfluke
+      # The tech leads' GitHub logins, separated by spaces or commas.
+      tech_leads: snowfluke
+      # Repo variables (docs/03-token.md). Empty means the job's default.
+      claude_model: ${{ vars.REVIEWER_CHAN_CLAUDE_MODEL }}
+      claude_effort: ${{ vars.REVIEWER_CHAN_CLAUDE_EFFORT }}
+      opencode_model: ${{ vars.REVIEWER_CHAN_OPENCODE_MODEL }}
+      opencode_effort: ${{ vars.REVIEWER_CHAN_OPENCODE_EFFORT }}
     # A called workflow sees a secret only when it is passed or inherited; the job's
-    # reviewer-chan environment then supplies the value. The job reads only its two secrets.
+    # reviewer-chan environment then supplies the value.
     secrets: inherit
