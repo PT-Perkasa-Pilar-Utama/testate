@@ -15,10 +15,7 @@ permissions:
 
 jobs:
   review:
-    uses: PT-Perkasa-Pilar-Utama/reviewer-chan/.github/workflows/review.yml@825b2e84b80aa878a64dfc7b312b3f77bb9e6c7c # v1.1.0
+    # The job reads both secrets from this repo's reviewer-chan environment, limited to main.
+    uses: PT-Perkasa-Pilar-Utama/reviewer-chan/.github/workflows/review.yml@a9dc5d3801d66936ac6f39381de5042a45a255f5 # v1.2.0
     with:
       daily_cap: 10
-    secrets:
-      # The repo tech lead's token (docs/03-token.md in review-chan-setup).
-      claude_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_ENGINEERPPU }}
-      reviewer_chan_key: ${{ secrets.REVIEWER_CHAN_PRIVATE_KEY }}
