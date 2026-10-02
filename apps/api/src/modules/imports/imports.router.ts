@@ -18,6 +18,7 @@ const M = `${P}/adapters/:id/normalizers`;
 
 export function createImportsRouter(h: ImportsHandlers): Hono {
   const router = new Hono();
+  router.use(`${P}/adapters/:id/*`, h.assertAdapter);
   router.post(
     `${P}/uploads`,
     requireRole("qa"),

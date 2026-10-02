@@ -4,6 +4,7 @@ import {
   previewRequestSchema,
 } from "@testate/shared";
 import * as v from "valibot";
+import type { MiddlewareHandler } from "hono";
 
 import { currentActor, requestMeta } from "../../lib/http/auth.ts";
 import {
@@ -21,6 +22,7 @@ import type { RunsFilter } from "./imports.repository.ts";
 import type { ImportsService, NormalizerBody } from "./imports.service.ts";
 
 export type ImportsHandlers = {
+  assertAdapter: MiddlewareHandler;
   upload: Handler;
   preview: Handler;
   listNormalizers: Handler;
@@ -79,6 +81,11 @@ export function createImportsHandlers(
   const meta = (c: Parameters<Handler>[0]): ReturnType<typeof requestMeta> =>
     requestMeta(c, trustProxy);
   return {
+    assertAdapter: async (c, next) => {
+      currentActor(c);
+      service.assertAdapter(param(c, "slug"), param(c, "id"));
+      await next();
+    },
     upload: async (c) => {
       const form = await c.req.formData().catch(() => null);
       const file = form?.get("file");

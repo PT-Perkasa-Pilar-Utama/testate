@@ -1,27 +1,11 @@
-import type {
-  Actor,
-  ImportReport,
-  ImportRun,
-  Job,
-  Normalizer,
-  Preview,
-  Project,
-  TableSchema,
-  Upload,
-} from "@testate/shared";
+import type { Normalizer, Project, TableSchema } from "@testate/shared";
 import { importModeSchema, jsonObjectSchema } from "@testate/shared";
-import type {
-  importRunRequestSchema,
-  normalizerBodySchema,
-  previewRequestSchema,
-} from "@testate/shared";
 import * as v from "valibot";
 
 import { toConnectionConfig } from "../../lib/engines/connection.ts";
 import { sameTable } from "../../lib/engines/index.ts";
 import type { EngineRegistry } from "../../lib/engines/index.ts";
 import { AppError, conflict, notFound } from "../../lib/http/index.ts";
-import type { RequestMeta } from "../../lib/http/auth.ts";
 import type { KeyRing } from "../../lib/sealed/index.ts";
 import type { FilesResolver } from "../adapters/adapters.files.ts";
 import { ERRORS_PREVIEW, toReport } from "./imports.runs.ts";
@@ -36,39 +20,18 @@ import type {
   ImportSource,
   ImportsRepository,
   NormalizerPatch,
-  RunsFilter,
   UploadRecord,
 } from "./imports.repository.ts";
 import { createFileOps } from "./imports.files.ts";
 import { validateNormalizer } from "./imports.validate.ts";
-
-export type NormalizerBody = v.InferOutput<typeof normalizerBodySchema>;
-export type PreviewRequest = v.InferOutput<typeof previewRequestSchema>;
-export type ImportRunRequest = v.InferOutput<typeof importRunRequestSchema>;
-
-export type ImportsService = {
-  upload(slug: string, file: File, purpose: "import" | "archive"): Promise<Upload>;
-  preview(slug: string, request: PreviewRequest): Promise<Preview>;
-  listNormalizers(adapterId: string): Promise<Normalizer[]>;
-  createNormalizer(actor: Actor, adapterId: string, body: NormalizerBody): Promise<Normalizer>;
-  getNormalizer(adapterId: string, id: string): Promise<Normalizer>;
-  updateNormalizer(
-    adapterId: string,
-    id: string,
-    patch: Partial<NormalizerBody>
-  ): Promise<Normalizer>;
-  removeNormalizer(adapterId: string, id: string): Promise<void>;
-  run(actor: Actor, slug: string, request: ImportRunRequest, meta: RequestMeta): Promise<Job>;
-  listRuns(slug: string, filter: RunsFilter): Promise<ImportRun[]>;
-  report(slug: string, runId: string): Promise<ImportReport>;
-  rejectedRows(slug: string, runId: string): Promise<string>;
-  sample(
-    adapterId: string,
-    table: string,
-    format: "csv" | "xlsx",
-    normalizerId: string | undefined
-  ): Promise<{ fileName: string; body: string | Uint8Array }>;
-};
+import { assertAdapterInProject } from "./imports.scope.ts";
+import type { ImportRunRequest, ImportsService } from "./imports.contract.ts";
+export type {
+  ImportRunRequest,
+  ImportsService,
+  NormalizerBody,
+  PreviewRequest,
+} from "./imports.contract.ts";
 
 export type ImportsDeps = {
   repo: ImportsRepository;
@@ -158,8 +121,8 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
     return fetchStorageSource(deps, project, source.adapter_id, source.path);
   };
   const files = createFileOps({ ...deps, sourcePath, tableOf });
-
   return {
+    assertAdapter: assertAdapterInProject(projectOf, deps.adapters.byId),
     upload: (slug, file, purpose) => files.upload(projectOf(slug), file, purpose),
     preview: (slug, request) => files.preview(projectOf(slug), request),
     async listNormalizers(adapterId) {

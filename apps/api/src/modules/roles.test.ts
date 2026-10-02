@@ -22,21 +22,28 @@ import { requireProjectInScope } from "./projects/projects.scope.ts";
 import type { SlugLookup } from "./projects/projects.scope.ts";
 
 /**
- * A handler bag of any depth, where every leaf answers 204.
+ * A handler bag of any depth, where every leaf answers 204. Middleware leaves can be configured to
+ * call their next function so router-level middleware stubs do not short-circuit the route under test.
  *
  * The proxy wraps a function so it is both a bag to reach into and a handler to call: `createV1`
  * takes bags of bags, and writing every field out would make this test a copy of the route table
  * it exists to check.
  */
-function stubs<T>(): T {
+function stubs<T>(middleware = false): T {
   // SAFETY: two assertions with the same justification. The proxy answers every property with
   // another proxy and every call with a 204, so it satisfies any bag-of-handlers shape a router
   // asks for; nothing here reads a real field off it.
   const target = ((): void => undefined) as never;
   // SAFETY: as above.
   return new Proxy(target, {
-    get: () => stubs(),
-    apply: () => Promise.resolve(new Response(null, { status: 204 })),
+    get: (_target, key) => (middleware && key === "assertAdapter" ? stubs(true) : stubs()),
+    apply: (_target, _thisArg, args) => {
+      if (middleware) {
+        // SAFETY: Hono supplies `next` as the second argument to a middleware handler.
+        return (args[1] as () => Promise<Response>)();
+      }
+      return Promise.resolve(new Response(null, { status: 204 }));
+    },
   }) as T;
 }
 
@@ -69,8 +76,6 @@ function appFor(caller: Caller): Hono {
     createUsersRouter,
     createProjectsRouter,
     createAdaptersRouter,
-    createDataRouter,
-    createImportsRouter,
     createStatesRouter,
     createCheckoutsRouter,
     createDiffsRouter,
@@ -82,6 +87,8 @@ function appFor(caller: Caller): Hono {
   ]) {
     app.route("/", make(stubs()));
   }
+  app.route("/", createDataRouter(stubs<Parameters<typeof createDataRouter>[0]>(true)));
+  app.route("/", createImportsRouter(stubs<Parameters<typeof createImportsRouter>[0]>(true)));
   app.onError((cause, c) => errorResponse(c, cause, undefined, false));
   return app;
 }
@@ -229,6 +236,8 @@ function scopedApp(): Hono {
     get: (_target, key) => {
       if (key === "resetState") return null;
       if (key === "projectScope") return requireProjectInScope(ONE_PROJECT);
+      if (key === "data") return stubs<Parameters<typeof createDataRouter>[0]>(true);
+      if (key === "imports") return stubs<Parameters<typeof createImportsRouter>[0]>(true);
       return stubs();
     },
   });

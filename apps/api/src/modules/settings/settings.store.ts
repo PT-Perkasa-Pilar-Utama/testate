@@ -4,6 +4,7 @@ import * as v from "valibot";
 
 import { createLocalBlobStore, createS3BlobStore } from "../../lib/blobstore/index.ts";
 import type { BlobStore, S3StoreConfig } from "../../lib/blobstore/index.ts";
+import type { StoreAddressCheck } from "../../lib/blobstore/s3.ts";
 import type { Config } from "../../lib/config/index.ts";
 import { conflict } from "../../lib/http/index.ts";
 import { isSealed, kidOfSealed, open, seal } from "../../lib/sealed/index.ts";
@@ -32,11 +33,11 @@ const publicS3 = v.object({
   virtual_hosted: v.boolean(),
 });
 
-export function createStoreFactory(config: Config): StoreFactory {
+export function createStoreFactory(config: Config, check?: StoreAddressCheck): StoreFactory {
   return (target) =>
     target.driver === "local"
       ? createLocalBlobStore(join(config.TESTATE_DATA_DIR, "blobs"))
-      : createS3BlobStore(target.s3);
+      : createS3BlobStore(target.s3, undefined, check);
 }
 
 /** `TESTATE_STORE=s3` builds the store from the environment and locks the settings (11 §11.2). */

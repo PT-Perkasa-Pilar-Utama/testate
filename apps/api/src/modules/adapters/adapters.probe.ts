@@ -8,7 +8,7 @@ import type {
 
 import { toConnectionConfig } from "../../lib/engines/connection.ts";
 import { AppError } from "../../lib/http/index.ts";
-import type { Check, Verdict } from "../../lib/netguard/index.ts";
+import type { CheckedTarget, Check, Verdict } from "../../lib/netguard/index.ts";
 import type { EngineRegistry } from "../../lib/engines/index.ts";
 import { toAppError } from "../checkouts/checkouts.return-to-init.ts";
 import { TIER_OF_ENGINE } from "./adapters.config.ts";
@@ -28,7 +28,8 @@ export type ProbeFn = (
 export type FileProbeFn = (
   engine: Engine,
   config: JsonObject,
-  secrets: Secrets
+  secrets: Secrets,
+  target?: CheckedTarget
 ) => Promise<FileProbeResult>;
 
 type Floor = { floor: string; version: string; dialect: ProbeResult["dialect"] };
@@ -106,7 +107,15 @@ export async function probeTarget(
     purpose: purposeOf(validated.kind),
   });
   if (!verdict.allowed) throw refusal(verdict, validated.target);
-  if (validated.kind !== "database") return deps.fileProbe(engine, validated.config, secrets);
+  const address = verdict.addresses[0];
+  if (address === undefined) throw new AppError("CONFLICT", "no address was resolved");
+  if (validated.kind !== "database") {
+    return deps.fileProbe(engine, validated.config, secrets, {
+      ...validated.target,
+      purpose: purposeOf(validated.kind),
+      address,
+    });
+  }
   const result = await deps.probe(engine, validated.config, secrets);
   if (!result.meets_floor) {
     throw new AppError("ENGINE_UNSUPPORTED", `${engine} ${result.version} is below the floor`, {

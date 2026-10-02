@@ -187,6 +187,20 @@ describe("imports", () => {
     ).toStrictEqual(["public.customers", "public.orders"]);
   });
 
+  it("refuses an adapter when the project in the route does not own it", async () => {
+    const h = await createImportsHarness();
+    h.harness.projectsRepo.insert({
+      id: "01991f00-0000-7000-8000-000000000011",
+      slug: "other",
+      name: "Other",
+      description: null,
+      quota_bytes: null,
+      created_by: h.harness.admin.id,
+      created_at: h.harness.now().toISOString(),
+    });
+    expect(() => h.imports.assertAdapter("other", h.adapterId)).toThrow("adapter not found");
+  });
+
   it("previews an upload, dry-runs without writing, and reports row errors", async () => {
     const h = await createImportsHarness();
     const normalizer = await h.imports.createNormalizer(h.harness.qa, h.adapterId, NORMALIZER);

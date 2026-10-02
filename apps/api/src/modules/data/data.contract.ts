@@ -23,6 +23,8 @@ import type { HistoryRow, SavedQueryRecord } from "./data.repository.ts";
 export type SavedQueryInput = { name: string; body: JsonObject };
 
 export type DataService = {
+  /** Refuses an adapter that is not owned by the project in the request path. */
+  assertAdapter(projectSlug: string, adapterId: string): void;
   schema(adapterId: string): Promise<Introspection>;
   rows(
     actor: Actor,
