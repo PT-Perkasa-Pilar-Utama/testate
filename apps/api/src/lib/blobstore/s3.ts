@@ -107,11 +107,9 @@ export function createS3BlobStore(
     const key = config.endpoint === null ? "aws" : `${address}:${target.port}`;
     const existing = clients.get(key);
     if (existing !== undefined) return existing;
-    const endpoint =
-      config.endpoint === null ? null : pinHttpEndpoint(config.endpoint, address, target.port);
     const options: ConstructorParameters<typeof S3Client>[0] = { ...baseOptions };
-    if (endpoint !== null && endpoint !== config.endpoint) {
-      options.endpoint = endpoint;
+    if (config.endpoint !== null && new URL(config.endpoint).protocol === "http:") {
+      options.endpoint = pinHttpEndpoint(config.endpoint, address, target.port);
       options.virtualHostedStyle = false;
     }
     const client = new S3Client(options);

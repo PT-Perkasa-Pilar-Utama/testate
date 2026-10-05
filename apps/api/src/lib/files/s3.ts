@@ -50,8 +50,10 @@ function keyOf(prefix: string, path: string): string {
 /** S3 and compatible stores through `Bun.S3Client` (10 §10.3); `/`-delimited keys are the tree. */
 export function createS3Source(config: S3SourceConfig): FileSource {
   const where = `the bucket ${config.bucket} at ${config.endpoint ?? "Amazon S3"}`;
+  const plainHttp =
+    config.endpoint !== undefined && new URL(config.endpoint).protocol === "http:";
   const endpoint =
-    config.address === undefined || config.endpoint === undefined
+    config.address === undefined || config.endpoint === undefined || !plainHttp
       ? config.endpoint
       : pinHttpEndpoint(config.endpoint, config.address, config.port ?? 443);
   const options: ConstructorParameters<typeof S3Client>[0] = {
@@ -62,7 +64,7 @@ export function createS3Source(config: S3SourceConfig): FileSource {
     // An IP endpoint cannot safely use DNS-derived virtual hosting. Path style keeps the
     // bucket in the signed path while the socket is pinned to the checked address.
     virtualHostedStyle:
-      (config.address === undefined || endpoint === config.endpoint) && config.virtual_hosted,
+      (config.address === undefined || !plainHttp) && config.virtual_hosted,
   };
   if (endpoint !== undefined) options.endpoint = endpoint;
   const client = new S3Client(options);
