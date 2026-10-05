@@ -199,6 +199,7 @@ describe("imports", () => {
       created_at: h.harness.now().toISOString(),
     });
     expect(() => h.imports.assertAdapter("other", h.adapterId)).toThrow("adapter not found");
+    expect(() => h.imports.assertAdapter("shop", h.adapterId)).not.toThrow();
   });
 
   it("previews an upload, dry-runs without writing, and reports row errors", async () => {

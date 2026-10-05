@@ -20,6 +20,11 @@ export function pinEndpoint(endpoint: string | undefined, address: string, port:
   return url.toString().replace(/\/$/, "");
 }
 
+/** Pins plaintext HTTP endpoints. HTTPS retains its hostname for TLS certificate verification. */
+export function pinHttpEndpoint(endpoint: string, address: string, port: number): string {
+  return new URL(endpoint).protocol === "http:" ? pinEndpoint(endpoint, address, port) : endpoint;
+}
+
 export type Verdict =
   | { allowed: true; addresses: string[] }
   | { allowed: false; reason: "fixed" | "policy" | "self" | "unresolvable"; matched: string };

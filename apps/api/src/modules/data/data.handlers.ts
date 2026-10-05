@@ -1,9 +1,6 @@
-import type { MiddlewareHandler } from "hono";
-
 import type { Handler } from "../../lib/http/index.ts";
 
 export type DataHandlers = {
-  assertAdapter: MiddlewareHandler;
   schema: Handler;
   rows: Handler;
   lookup: Handler;

@@ -22,8 +22,8 @@ import { requireProjectInScope } from "./projects/projects.scope.ts";
 import type { SlugLookup } from "./projects/projects.scope.ts";
 
 /**
- * A handler bag of any depth, where every leaf answers 204. Middleware leaves can be configured to
- * call their next function so router-level middleware stubs do not short-circuit the route under test.
+ * A handler bag of any depth, where every leaf answers 204. Middleware stubs can call `next` so
+ * the adapter-scope middleware does not short-circuit the route under test.
  *
  * The proxy wraps a function so it is both a bag to reach into and a handler to call: `createV1`
  * takes bags of bags, and writing every field out would make this test a copy of the route table
@@ -36,7 +36,7 @@ function stubs<T>(middleware = false): T {
   const target = ((): void => undefined) as never;
   // SAFETY: as above.
   return new Proxy(target, {
-    get: (_target, key) => (middleware && key === "assertAdapter" ? stubs(true) : stubs()),
+    get: () => stubs(),
     apply: (_target, _thisArg, args) => {
       if (middleware) {
         // SAFETY: Hono supplies `next` as the second argument to a middleware handler.
@@ -236,6 +236,7 @@ function scopedApp(): Hono {
     get: (_target, key) => {
       if (key === "resetState") return null;
       if (key === "projectScope") return requireProjectInScope(ONE_PROJECT);
+      if (key === "adapterScope") return stubs(true);
       if (key === "data") return stubs<Parameters<typeof createDataRouter>[0]>(true);
       if (key === "imports") return stubs<Parameters<typeof createImportsRouter>[0]>(true);
       return stubs();

@@ -23,7 +23,12 @@ import {
   serve,
   sweepSealed,
 } from "./boot.ts";
-import { createEngineWiring, createStateServices, settingsDeps } from "./wiring.ts";
+import {
+  createAdapterScope,
+  createEngineWiring,
+  createStateServices,
+  settingsDeps,
+} from "./wiring.ts";
 import { bootStore, lazyJobs, opsDeps, resetHandler, storageDeps } from "./wiring.store.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import { openMetadataDb } from "./lib/db/index.ts";
@@ -221,6 +226,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     users: createUsersHandlers(users, config.TESTATE_TRUST_PROXY),
     projects: createProjectsHandlers(projects, prefix, config.TESTATE_TRUST_PROXY, jobs),
     projectScope: requireProjectInScope(projectsRepo),
+    adapterScope: createAdapterScope(projectsRepo, wiring.adapters),
     adapters: createAdaptersHandlers(adapters, prefix, config.TESTATE_TRUST_PROXY, jobs),
     data: createDataHandlers(core.data, config.TESTATE_TRUST_PROXY),
     imports: createImportsHandlers(core.imports, prefix, config.TESTATE_TRUST_PROXY),

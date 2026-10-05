@@ -2,13 +2,15 @@ import { describe, expect, it } from "bun:test";
 import { Hono } from "hono";
 import type { Actor } from "@testate/shared";
 
-import { errorResponse, notFound } from "../lib/http/index.ts";
-import { createDataHandlers } from "./data/data.handler.ts";
-import { createDataRouter } from "./data/data.router.ts";
-import type { DataService } from "./data/data.service.ts";
-import { createImportsHandlers } from "./imports/imports.handler.ts";
-import { createImportsRouter } from "./imports/imports.router.ts";
-import type { ImportsService } from "./imports/imports.service.ts";
+import { errorResponse } from "../lib/http/index.ts";
+import type { Handler } from "../lib/http/index.ts";
+import { createAdapterScope } from "../wiring.ts";
+import { S3, createAdaptersHarness, createSettled } from "../../test/adapters.ts";
+import type { DataHandlers } from "./data/data.handlers.ts";
+import { createV1 } from "./index.ts";
+import type { V1Deps } from "./index.ts";
+import { requireProjectInScope } from "./projects/projects.scope.ts";
+import type { StorageHandlers } from "./storage/storage.handler.ts";
 
 const ACTOR: Actor = {
   kind: "user",
@@ -18,53 +20,48 @@ const ACTOR: Actor = {
   agent: false,
 };
 
-type GuardState = { checked: number; handled: number };
+type RouteState = { data: number; storage: number };
 
-function dataService(state: GuardState): DataService {
-  // SAFETY: the proxy supplies every service method used by these route tests; only the guard and
-  // schema methods have behavior, while all other methods are unreachable from the request.
-  return new Proxy({} as DataService, {
-    get: (_target, key: string) => {
-      if (key === "assertAdapter") {
-        return () => {
-          state.checked += 1;
-          throw notFound("adapter");
-        };
-      }
-      if (key === "schema") {
-        return async () => {
-          state.handled += 1;
-          return [];
-        };
-      }
-      return async () => [];
-    },
-  });
+function handlerBag<T>(state: RouteState, kind: "data" | "storage" | null = null): T {
+  const bag = new Proxy(
+    {},
+    {
+      get: (_target, key: PropertyKey) => {
+        if (kind === "data" && key === "schema")
+          return async (c: Parameters<Handler>[0]) => {
+            state.data += 1;
+            return c.text("data reached");
+          };
+        if (kind === "storage" && key === "list")
+          return async (c: Parameters<Handler>[0]) => {
+            state.storage += 1;
+            return c.text("storage reached");
+          };
+        return async (c: Parameters<Handler>[0]) => c.body(null, 204);
+      },
+    }
+  );
+  // SAFETY: each route handler lookup receives a function; the tested routes have explicit handlers.
+  return bag as T;
 }
 
-function importsService(state: GuardState): ImportsService {
-  // SAFETY: the proxy supplies every service method used by these route tests; only the guard and
-  // normalizer-list methods have behavior, while all other methods are unreachable from the request.
-  return new Proxy({} as ImportsService, {
-    get: (_target, key: string) => {
-      if (key === "assertAdapter") {
-        return () => {
-          state.checked += 1;
-          throw notFound("adapter");
-        };
-      }
-      if (key === "listNormalizers") {
-        return async () => {
-          state.handled += 1;
-          return [];
-        };
-      }
-      return async () => [];
+function appWith(
+  harness: Awaited<ReturnType<typeof createAdaptersHarness>>,
+  state: RouteState,
+  actor: Actor | null
+): Hono {
+  // SAFETY: the proxy supplies each dependency property read while createV1 mounts its routers.
+  const deps = new Proxy({} as V1Deps, {
+    get: (_target, key: PropertyKey) => {
+      if (key === "projectScope") return requireProjectInScope(harness.projectsRepo);
+      if (key === "adapterScope")
+        return createAdapterScope(harness.projectsRepo, harness.repo);
+      if (key === "data") return handlerBag<DataHandlers>(state, "data");
+      if (key === "storage") return handlerBag<StorageHandlers>(state, "storage");
+      if (key === "resetState") return async (c: Parameters<Handler>[0]) => c.body(null, 204);
+      return handlerBag<Record<string, Handler>>(state);
     },
   });
-}
-
-function appWith(router: Hono, actor: Actor | null): Hono {
   const app = new Hono();
   app.use("*", async (c, next) => {
     c.set("actor", actor);
@@ -73,42 +70,57 @@ function appWith(router: Hono, actor: Actor | null): Hono {
     c.set("projectScope", null);
     await next();
   });
-  app.route("/", router);
+  app.route("/", createV1(deps));
   app.onError((cause, c) => errorResponse(c, cause, undefined, false));
   return app;
 }
 
-describe("adapter ownership route guards", () => {
-  it("runs the data ownership guard before the schema handler", async () => {
-    const state: GuardState = { checked: 0, handled: 0 };
-    const app = appWith(createDataRouter(createDataHandlers(dataService(state), false)), ACTOR);
+describe("adapter ownership route guard", () => {
+  it("lets an owned Files adapter reach the data and storage routers", async () => {
+    const harness = await createAdaptersHarness();
+    const adapter = await createSettled(harness, S3);
+    const state: RouteState = { data: 0, storage: 0 };
+    const app = appWith(harness, state, ACTOR);
 
-    const response = await app.request("/projects/other/adapters/a1/schema");
+    const data = await app.request(`/projects/shop/adapters/${adapter.id}/schema`);
+    const storage = await app.request(`/projects/shop/adapters/${adapter.id}/entries`);
 
-    expect(response.status).toBe(404);
-    expect(state).toEqual({ checked: 1, handled: 0 });
+    expect(adapter.kind).toBe("storage");
+    expect(await data.text()).toBe("data reached");
+    expect(await storage.text()).toBe("storage reached");
+    expect(state).toEqual({ data: 1, storage: 1 });
   });
 
-  it("runs the import ownership guard before the normalizer handler", async () => {
-    const state: GuardState = { checked: 0, handled: 0 };
-    const app = appWith(
-      createImportsRouter(createImportsHandlers(importsService(state), "/api", false)),
-      ACTOR
-    );
+  it("refuses a Files adapter owned by a different project before the storage handler", async () => {
+    const harness = await createAdaptersHarness();
+    const adapter = await createSettled(harness, S3);
+    harness.projectsRepo.insert({
+      id: "01991f00-0000-7000-8000-000000000011",
+      slug: "other",
+      name: "Other",
+      description: null,
+      quota_bytes: null,
+      created_by: harness.admin.id,
+      created_at: harness.now().toISOString(),
+    });
+    const state: RouteState = { data: 0, storage: 0 };
+    const app = appWith(harness, state, ACTOR);
 
-    const response = await app.request("/projects/other/adapters/a1/normalizers");
+    const response = await app.request(`/projects/other/adapters/${adapter.id}/entries`);
 
     expect(response.status).toBe(404);
-    expect(state).toEqual({ checked: 1, handled: 0 });
+    expect(state.storage).toBe(0);
   });
 
-  it("requires authentication before consulting adapter ownership", async () => {
-    const state: GuardState = { checked: 0, handled: 0 };
-    const app = appWith(createDataRouter(createDataHandlers(dataService(state), false)), null);
+  it("requires authentication before checking adapter ownership", async () => {
+    const harness = await createAdaptersHarness();
+    const adapter = await createSettled(harness, S3);
+    const state: RouteState = { data: 0, storage: 0 };
+    const app = appWith(harness, state, null);
 
-    const response = await app.request("/projects/other/adapters/a1/schema");
+    const response = await app.request(`/projects/shop/adapters/${adapter.id}/entries`);
 
     expect(response.status).toBe(401);
-    expect(state).toEqual({ checked: 0, handled: 0 });
+    expect(state.storage).toBe(0);
   });
 });

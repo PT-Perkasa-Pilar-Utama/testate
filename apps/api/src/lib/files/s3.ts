@@ -2,7 +2,7 @@ import { S3Client } from "bun";
 import type { Entry } from "@testate/shared";
 import * as v from "valibot";
 
-import { pinEndpoint } from "../netguard/index.ts";
+import { pinHttpEndpoint } from "../netguard/index.ts";
 import {
   alreadyThere,
   byName,
@@ -53,7 +53,7 @@ export function createS3Source(config: S3SourceConfig): FileSource {
   const endpoint =
     config.address === undefined || config.endpoint === undefined
       ? config.endpoint
-      : pinEndpoint(config.endpoint, config.address, config.port ?? 443);
+      : pinHttpEndpoint(config.endpoint, config.address, config.port ?? 443);
   const options: ConstructorParameters<typeof S3Client>[0] = {
     bucket: config.bucket,
     region: config.region,
@@ -62,7 +62,7 @@ export function createS3Source(config: S3SourceConfig): FileSource {
     // An IP endpoint cannot safely use DNS-derived virtual hosting. Path style keeps the
     // bucket in the signed path while the socket is pinned to the checked address.
     virtualHostedStyle:
-      (config.address === undefined || config.endpoint === undefined) && config.virtual_hosted,
+      (config.address === undefined || endpoint === config.endpoint) && config.virtual_hosted,
   };
   if (endpoint !== undefined) options.endpoint = endpoint;
   const client = new S3Client(options);

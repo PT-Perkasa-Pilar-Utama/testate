@@ -1,7 +1,7 @@
 import type { Project } from "@testate/shared";
 
 import { notFound } from "../../lib/http/index.ts";
-import type { AdapterRecord } from "../adapters/adapters.repository.ts";
+import type { AdapterRecord } from "./adapters.repository.ts";
 
 export function assertAdapterInProject(
   projectOf: (slug: string) => Project,

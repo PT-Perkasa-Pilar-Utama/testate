@@ -32,6 +32,21 @@ export type FtpSourceConfig = {
 };
 
 type FtpFailure = { code: number | undefined; message: string };
+export type FtpClient = {
+  access(options: Parameters<Client["access"]>[0]): Promise<unknown>;
+  closed: boolean;
+  close(): void;
+  list(path: string): Promise<FileInfo[]>;
+  size(path: string): Promise<number>;
+  downloadTo(destination: PassThrough, remote: string): Promise<unknown>;
+  ensureDir(path: string): Promise<unknown>;
+  cd(path: string): Promise<unknown>;
+  uploadFrom(source: Readable, remote: string): Promise<unknown>;
+  remove(path: string): Promise<unknown>;
+  removeDir(path: string): Promise<unknown>;
+  rename(from: string, to: string): Promise<unknown>;
+};
+export type FtpClientFactory = (timeoutMs: number) => FtpClient;
 const withCode = v.object({ code: v.number() });
 
 function ftpError(cause: unknown): FtpFailure {
@@ -51,7 +66,7 @@ function entryOf(dir: string, item: FileInfo): Entry {
 }
 
 /** Streams one file into the pipe; a transfer failure destroys the pipe so the reader sees it. */
-async function download(ftp: Client, pipe: PassThrough, remote: string): Promise<void> {
+async function download(ftp: FtpClient, pipe: PassThrough, remote: string): Promise<void> {
   try {
     await ftp.downloadTo(pipe, remote);
   } catch (cause: unknown) {
@@ -62,11 +77,14 @@ async function download(ftp: Client, pipe: PassThrough, remote: string): Promise
 }
 
 /** FTP and explicit FTPS through `basic-ftp` (10 §10.3), passive mode only. */
-export function createFtpSource(config: FtpSourceConfig): FileSource {
+export function createFtpSource(
+  config: FtpSourceConfig,
+  createClient: FtpClientFactory = (timeoutMs) => new Client(timeoutMs)
+): FileSource {
   const where = `${config.host}:${config.port}`;
-  let client: Client | null = null;
-  const connectNew = async (): Promise<Client> => {
-    const next = new Client(config.timeoutMs ?? 15000);
+  let client: FtpClient | null = null;
+  const connectNew = async (): Promise<FtpClient> => {
+    const next = createClient(config.timeoutMs ?? 15000);
     try {
       await next.access({
         host: config.address ?? config.host,
@@ -74,18 +92,19 @@ export function createFtpSource(config: FtpSourceConfig): FileSource {
         user: config.user,
         password: config.password,
         secure: config.tls,
+        ...(config.tls ? { secureOptions: { host: config.host } } : {}),
       });
     } catch (cause: unknown) {
       throw unreachable(cause, `ftp_${ftpError(cause).code ?? "connect"}`, where);
     }
     return next;
   };
-  const connect = async (): Promise<Client> => {
+  const connect = async (): Promise<FtpClient> => {
     if (client !== null && !client.closed) return client;
     client = await connectNew();
     return client;
   };
-  const guard = async <T>(path: string, run: (ftp: Client) => Promise<T>): Promise<T> => {
+  const guard = async <T>(path: string, run: (ftp: FtpClient) => Promise<T>): Promise<T> => {
     const ftp = await connect();
     try {
       return await run(ftp);
@@ -95,7 +114,7 @@ export function createFtpSource(config: FtpSourceConfig): FileSource {
       throw code === 550 ? missing(path) : unreachable(cause, `ftp_${code ?? "unknown"}`, where);
     }
   };
-  const listDir = async (ftp: Client, dir: string): Promise<Entry[]> => {
+  const listDir = async (ftp: FtpClient, dir: string): Promise<Entry[]> => {
     const items = await ftp.list(joinPath(config.root_path, dir));
     return items
       .filter((item) => item.name !== "." && item.name !== "..")

@@ -2,7 +2,7 @@ import { S3Client } from "bun";
 import * as v from "valibot";
 
 import { AppError } from "../http/index.ts";
-import { pinEndpoint } from "../netguard/index.ts";
+import { pinHttpEndpoint } from "../netguard/index.ts";
 import type { Check, Verdict } from "../netguard/index.ts";
 import { assertHash, collectHashed } from "./index.ts";
 import type { BlobStore } from "./index.ts";
@@ -72,7 +72,10 @@ export function createS3BlobStore(
         }
       : (() => {
           const url = new URL(config.endpoint);
-          return { host: url.hostname, port: url.port === "" ? 443 : Number(url.port) };
+          return {
+            host: url.hostname,
+            port: url.port === "" ? (url.protocol === "http:" ? 80 : 443) : Number(url.port),
+          };
         })();
   const clients = new Map<string, S3Client>();
   const clientOf = async (): Promise<S3Client> => {
@@ -86,14 +89,15 @@ export function createS3BlobStore(
     }
     const verdict = await check({ ...target, purpose: "store" });
     if (!verdict.allowed) {
-      throw new AppError("CONFLICT", "the snapshot store target is blocked by outbound policy", {
+      const code = verdict.reason === "unresolvable" ? "ADAPTER_UNREACHABLE" : "HOST_BLOCKED";
+      throw new AppError(code, "the snapshot store target is blocked by outbound policy", {
         reason: verdict.reason,
         matched: verdict.matched,
       });
     }
     const address = verdict.addresses[0];
     if (address === undefined) {
-      throw new AppError("CONFLICT", "the snapshot store target has no usable address", {
+      throw new AppError("ADAPTER_UNREACHABLE", "the snapshot store target has no usable address", {
         reason: "unresolvable",
         matched: target.host,
       });
@@ -103,14 +107,13 @@ export function createS3BlobStore(
     const key = config.endpoint === null ? "aws" : `${address}:${target.port}`;
     const existing = clients.get(key);
     if (existing !== undefined) return existing;
-    const options: ConstructorParameters<typeof S3Client>[0] =
-      config.endpoint === null
-        ? baseOptions
-        : {
-            ...baseOptions,
-            endpoint: pinEndpoint(config.endpoint, address, target.port),
-            virtualHostedStyle: false,
-          };
+    const endpoint =
+      config.endpoint === null ? null : pinHttpEndpoint(config.endpoint, address, target.port);
+    const options: ConstructorParameters<typeof S3Client>[0] = { ...baseOptions };
+    if (endpoint !== null && endpoint !== config.endpoint) {
+      options.endpoint = endpoint;
+      options.virtualHostedStyle = false;
+    }
     const client = new S3Client(options);
     clients.set(key, client);
     return client;
@@ -146,9 +149,7 @@ export function createS3BlobStore(
         async pull(controller) {
           try {
             reader ??= (await clientOf()).file(keyOf(config.prefix, hash)).stream().getReader();
-            const active = reader;
-            if (active === null) throw new Error("S3 stream was not opened");
-            const next = await active.read();
+            const next = await reader.read();
             if (next.done) controller.close();
             else controller.enqueue(next.value);
           } catch (cause: unknown) {

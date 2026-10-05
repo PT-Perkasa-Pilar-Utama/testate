@@ -50,6 +50,8 @@ export type V1Deps = {
   projects: ProjectsHandlers;
   /** 404 for `/projects/:slug/**` outside a scoped token's projects (09 §9.5). */
   projectScope: MiddlewareHandler;
+  /** Kind-agnostic ownership guard shared by every adapter route. */
+  adapterScope: MiddlewareHandler;
   adapters: AdaptersHandlers;
   data: DataHandlers;
   imports: ImportsHandlers;
@@ -68,6 +70,7 @@ export function createV1(deps: V1Deps): Hono {
   const v1 = new Hono();
   v1.use("/projects/:slug", deps.projectScope);
   v1.use("/projects/:slug/*", deps.projectScope);
+  v1.use("/projects/:slug/adapters/:id/*", deps.adapterScope);
   v1.route("/", createOpsRouter(deps.ops, deps.resetState));
   v1.route("/", createAuthRouter(deps.auth));
   v1.route("/", createUsersRouter(deps.users));

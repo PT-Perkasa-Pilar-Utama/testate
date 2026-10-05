@@ -91,11 +91,6 @@ export function createDataHandlers(service: DataService, trustProxy: boolean): D
   const meta = (c: Parameters<Handler>[0]): ReturnType<typeof requestMeta> =>
     requestMeta(c, trustProxy);
   return {
-    assertAdapter: async (c, next) => {
-      currentActor(c);
-      service.assertAdapter(param(c, "slug"), param(c, "id"));
-      await next();
-    },
     schema: async (c) => ok(c, await service.schema(param(c, "id"))),
     rows: async (c) => {
       const page = await service.rows(

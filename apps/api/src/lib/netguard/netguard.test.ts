@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { check, matchesDenyList, parseDenyList, pinEndpoint } from "./index.ts";
+import { check, matchesDenyList, parseDenyList, pinEndpoint, pinHttpEndpoint } from "./index.ts";
 
 const SELF = { addresses: ["10.0.0.9"], port: 3000 };
 const DEFAULT = parseDenyList(["127.0.0.0/8", "::1/128"]);
@@ -38,6 +38,15 @@ describe("endpoint pinning", () => {
     );
     expect(pinEndpoint("https://store.example.test:9443/base", "2001:db8::8", 9443)).toBe(
       "https://[2001:db8::8]:9443/base"
+    );
+  });
+
+  it("pins HTTP endpoints and keeps HTTPS hostnames for TLS verification", () => {
+    expect(pinHttpEndpoint("http://store.example.test:9000/base", "192.0.2.8", 9000)).toBe(
+      "http://192.0.2.8:9000/base"
+    );
+    expect(pinHttpEndpoint("https://store.example.test:9443/base", "192.0.2.8", 9443)).toBe(
+      "https://store.example.test:9443/base"
     );
   });
 });
