@@ -67,7 +67,22 @@ describe("s3 blob store outbound policy", () => {
         return { allowed: false, reason: "policy", matched: "127.0.0.1" };
       }
     );
-    await expect(store.has("a".repeat(64))).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(store.has("a".repeat(64))).rejects.toMatchObject({
+      code: "HOST_BLOCKED",
+      details: { reason: "policy", matched: "127.0.0.1" },
+    });
     expect(checked).toEqual({ host: "127.0.0.1", port: 9010, purpose: "store" });
+  });
+
+  test("reports an unresolvable target as unreachable with its reason and host", async () => {
+    const store = createS3BlobStore(
+      CONFIG,
+      async () => undefined,
+      async () => ({ allowed: true, addresses: [] })
+    );
+    await expect(store.has("a".repeat(64))).rejects.toMatchObject({
+      code: "ADAPTER_UNREACHABLE",
+      details: { reason: "unresolvable", matched: "127.0.0.1" },
+    });
   });
 });

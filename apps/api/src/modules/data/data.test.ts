@@ -182,5 +182,6 @@ describe("data", () => {
       created_at: h.harness.now().toISOString(),
     });
     expect(() => h.data.assertAdapter("other", h.adapterId)).toThrow("adapter not found");
+    expect(() => h.data.assertAdapter("shop", h.adapterId)).not.toThrow();
   });
 });

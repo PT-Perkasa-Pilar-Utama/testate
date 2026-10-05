@@ -24,7 +24,7 @@ import type {
 } from "./imports.repository.ts";
 import { createFileOps } from "./imports.files.ts";
 import { validateNormalizer } from "./imports.validate.ts";
-import { assertAdapterInProject } from "./imports.scope.ts";
+import { assertAdapterInProject } from "../adapters/adapters.scope.ts";
 import type { ImportRunRequest, ImportsService } from "./imports.contract.ts";
 export type {
   ImportRunRequest,

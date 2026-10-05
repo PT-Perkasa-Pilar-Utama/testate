@@ -21,7 +21,6 @@ const A = "/projects/:slug/adapters/:id";
 
 export function createDataRouter(h: DataHandlers): Hono {
   const router = new Hono();
-  router.use(`${A}/*`, h.assertAdapter);
   router.get(
     `${A}/schema`,
     requireRole("viewer"),

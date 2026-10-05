@@ -6,6 +6,7 @@ import type { ConnectionRef, DbEngine, PageQuery } from "../../lib/engines/index
 import { AppError, conflict, forbidden, notFound } from "../../lib/http/index.ts";
 import { tableKey } from "../../lib/engines/index.ts";
 import type { AdapterRecord } from "../adapters/adapters.repository.ts";
+import { assertAdapterInProject } from "../adapters/adapters.scope.ts";
 import { CONFIG_COLUMN, openSecrets } from "../adapters/adapters.secrets.ts";
 import { toAppError } from "../checkouts/checkouts.restore.ts";
 import type { RestoreDeps } from "../checkouts/checkouts.restore.ts";
@@ -64,12 +65,7 @@ export function createDataService(deps: DataDeps): DataService {
     }
     return adapter;
   };
-  const adapterInProject = (projectSlug: string, adapterId: string): AdapterRecord => {
-    const project = projectOf(projectSlug);
-    const adapter = adapterOf(adapterId);
-    if (adapter.project_id !== project.id) throw notFound("adapter");
-    return adapter;
-  };
+  const assertOwnedAdapter = assertAdapterInProject(projectOf, deps.adapters.byId);
   /** Decrypted config plus engine; the config never leaves this closure (12 §12.8). */
   const connect = async (
     adapter: AdapterRecord
@@ -127,7 +123,7 @@ export function createDataService(deps: DataDeps): DataService {
 
   return {
     assertAdapter(projectSlug, adapterId) {
-      adapterInProject(projectSlug, adapterId);
+      assertOwnedAdapter(projectSlug, adapterId);
     },
     async schema(adapterId) {
       return schemaOf(adapterOf(adapterId));

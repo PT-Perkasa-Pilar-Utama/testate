@@ -1,6 +1,10 @@
 /** Composition helpers: repositories, engines, and the services built on them (22 §22.2). */
+import type { MiddlewareHandler } from "hono";
 import { join } from "node:path";
 import type { Settings } from "@testate/shared";
+
+import { currentActor } from "./lib/http/auth.ts";
+import { notFound, param } from "./lib/http/index.ts";
 import type { Config } from "./lib/config/index.ts";
 import type { MetadataDb } from "./lib/db/index.ts";
 import type { KeyRing } from "./lib/sealed/index.ts";
@@ -22,6 +26,8 @@ import type { HostKeysRepository } from "./modules/adapters/adapters.hostkeys.ts
 import type { FileProbeFn, ProbeFn } from "./modules/adapters/adapters.probe.ts";
 import { openFileSource } from "./lib/files/open.ts";
 import { createAdaptersRepository } from "./modules/adapters/adapters.repository.ts";
+import type { AdaptersRepository } from "./modules/adapters/adapters.repository.ts";
+import { assertAdapterInProject } from "./modules/adapters/adapters.scope.ts";
 import type { ProjectsRepository } from "./modules/projects/projects.repository.ts";
 import { createCheckoutsRepository } from "./modules/checkouts/checkouts.repository.ts";
 import { createCheckoutsService } from "./modules/checkouts/checkouts.service.ts";
@@ -60,6 +66,24 @@ export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now" | "blobs"> & 
   hostKeys: HostKeysRepository;
   files: FilesResolver;
 };
+
+/** One authenticated, kind-agnostic adapter ownership check for all v1 adapter routes. */
+export function createAdapterScope(
+  projects: Pick<ProjectsRepository, "bySlug">,
+  adapters: Pick<AdaptersRepository, "byId">
+): MiddlewareHandler {
+  const projectOf = (slug: string) => {
+    const project = projects.bySlug(slug);
+    if (project === null) throw notFound("project");
+    return project;
+  };
+  const assertInProject = assertAdapterInProject(projectOf, adapters.byId);
+  return async (c, next) => {
+    currentActor(c);
+    assertInProject(param(c, "slug"), param(c, "id"));
+    await next();
+  };
+}
 
 /** The engine registry, blob store, and repositories the job runners share with the services (12 §12.9, 15 §15.2). */
 export function createEngineWiring(

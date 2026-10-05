@@ -166,9 +166,9 @@ function databaseTarget(
 }
 
 function s3Target(config: v.InferOutput<typeof s3ConfigSchema>): Target {
-  return config.endpoint === undefined
-    ? { host: `s3.${config.region}.amazonaws.com`, port: 443 }
-    : hostOfUrl(config.endpoint, 443);
+  if (config.endpoint === undefined) return { host: `s3.${config.region}.amazonaws.com`, port: 443 };
+  const url = new URL(config.endpoint);
+  return hostOfUrl(config.endpoint, url.protocol === "http:" ? 80 : 443);
 }
 
 /**
