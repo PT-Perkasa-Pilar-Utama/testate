@@ -43,15 +43,15 @@
     "check:contrast": "bun scripts/check-contrast.ts"
   },
   "devDependencies": {
-    "@oxlint/plugins": "1.80.0",
-    "@playwright/test": "1.58.2",
-    "@types/bun": "1.4.0",
+    "@oxlint/plugins": "1.86.0",
+    "@playwright/test": "1.63.0",
+    "@types/bun": "1.4.2",
     "@types/node": "25.2.3",
-    "eslint-plugin-solid": "0.16.1",
-    "fast-check": "4.9.0",
-    "lefthook": "2.1.10",
-    "oxfmt": "0.65.0",
-    "oxlint": "1.80.0",
+    "eslint-plugin-solid": "0.18.1",
+    "fast-check": "4.10.2",
+    "lefthook": "2.1.16",
+    "oxfmt": "0.71.0",
+    "oxlint": "1.86.0",
     "typescript": "7.0.2"
   },
   "overrides": {
