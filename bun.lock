@@ -53,7 +53,7 @@
         "@lezer/highlight": "1.2.3",
         "@solidjs/web": "2.0.0-rc.6",
         "@testate/shared": "workspace:*",
-        "solid-js": "2.0.0-rc.6",
+        "solid-js": "2.0.0-rc.13",
         "valibot": "1.4.2",
       },
       "devDependencies": {
