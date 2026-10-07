@@ -2,6 +2,8 @@
 import type { MiddlewareHandler } from "hono";
 import { join } from "node:path";
 import type { Settings } from "@testate/shared";
+import type { V1Deps } from "./modules/index.ts";
+import { requireProjectInScope } from "./modules/projects/projects.scope.ts";
 
 import { currentActor } from "./lib/http/auth.ts";
 import { notFound, param } from "./lib/http/index.ts";
@@ -82,6 +84,17 @@ export function createAdapterScope(
     currentActor(c);
     assertInProject(param(c, "slug"), param(c, "id"));
     await next();
+  };
+}
+
+/** Project token scope and adapter ownership are wired together at the v1 boundary. */
+export function scopeDeps(
+  projects: Pick<ProjectsRepository, "bySlug">,
+  adapters: Pick<AdaptersRepository, "byId">
+): Pick<V1Deps, "projectScope" | "adapterScope"> {
+  return {
+    projectScope: requireProjectInScope(projects),
+    adapterScope: createAdapterScope(projects, adapters),
   };
 }
 

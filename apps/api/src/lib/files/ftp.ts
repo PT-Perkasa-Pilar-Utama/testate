@@ -32,20 +32,21 @@ export type FtpSourceConfig = {
 };
 
 type FtpFailure = { code: number | undefined; message: string };
-export type FtpClient = {
-  access(options: Parameters<Client["access"]>[0]): Promise<unknown>;
-  closed: boolean;
-  close(): void;
-  list(path: string): Promise<FileInfo[]>;
-  size(path: string): Promise<number>;
-  downloadTo(destination: PassThrough, remote: string): Promise<unknown>;
-  ensureDir(path: string): Promise<unknown>;
-  cd(path: string): Promise<unknown>;
-  uploadFrom(source: Readable, remote: string): Promise<unknown>;
-  remove(path: string): Promise<unknown>;
-  removeDir(path: string): Promise<unknown>;
-  rename(from: string, to: string): Promise<unknown>;
-};
+export type FtpClient = Pick<
+  Client,
+  | "access"
+  | "closed"
+  | "close"
+  | "list"
+  | "size"
+  | "downloadTo"
+  | "ensureDir"
+  | "cd"
+  | "uploadFrom"
+  | "remove"
+  | "removeDir"
+  | "rename"
+>;
 export type FtpClientFactory = (timeoutMs: number) => FtpClient;
 const withCode = v.object({ code: v.number() });
 
@@ -86,14 +87,16 @@ export function createFtpSource(
   const connectNew = async (): Promise<FtpClient> => {
     const next = createClient(config.timeoutMs ?? 15000);
     try {
-      await next.access({
+      const options: Parameters<Client["access"]>[0] = {
         host: config.address ?? config.host,
         port: config.port,
         user: config.user,
         password: config.password,
         secure: config.tls,
-        ...(config.tls ? { secureOptions: { host: config.host } } : {}),
-      });
+      };
+      await next.access(
+        config.tls ? { ...options, secureOptions: { host: config.host } } : options
+      );
     } catch (cause: unknown) {
       throw unreachable(cause, `ftp_${ftpError(cause).code ?? "connect"}`, where);
     }
