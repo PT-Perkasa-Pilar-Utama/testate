@@ -23,12 +23,7 @@ import {
   serve,
   sweepSealed,
 } from "./boot.ts";
-import {
-  createAdapterScope,
-  createEngineWiring,
-  createStateServices,
-  settingsDeps,
-} from "./wiring.ts";
+import { createEngineWiring, createStateServices, scopeDeps, settingsDeps } from "./wiring.ts";
 import { bootStore, lazyJobs, opsDeps, resetHandler, storageDeps } from "./wiring.store.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import { openMetadataDb } from "./lib/db/index.ts";
@@ -59,7 +54,6 @@ import { unpackEmbedded } from "./modules/ops/ops.embedded.ts";
 import { createOpsHandlers } from "./modules/ops/ops.handler.ts";
 import { createProjectsHandlers } from "./modules/projects/projects.handler.ts";
 import { createProjectsRepository } from "./modules/projects/projects.repository.ts";
-import { requireProjectInScope } from "./modules/projects/projects.scope.ts";
 import { createProjectsService } from "./modules/projects/projects.service.ts";
 import { createSettingsHandlers } from "./modules/settings/settings.handler.ts";
 import { createSettingsService } from "./modules/settings/settings.service.ts";
@@ -225,8 +219,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     }),
     users: createUsersHandlers(users, config.TESTATE_TRUST_PROXY),
     projects: createProjectsHandlers(projects, prefix, config.TESTATE_TRUST_PROXY, jobs),
-    projectScope: requireProjectInScope(projectsRepo),
-    adapterScope: createAdapterScope(projectsRepo, wiring.adapters),
+    ...scopeDeps(projectsRepo, wiring.adapters),
     adapters: createAdaptersHandlers(adapters, prefix, config.TESTATE_TRUST_PROXY, jobs),
     data: createDataHandlers(core.data, config.TESTATE_TRUST_PROXY),
     imports: createImportsHandlers(core.imports, prefix, config.TESTATE_TRUST_PROXY),

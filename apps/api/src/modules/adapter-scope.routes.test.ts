@@ -4,12 +4,11 @@ import type { Actor } from "@testate/shared";
 
 import { errorResponse } from "../lib/http/index.ts";
 import type { Handler } from "../lib/http/index.ts";
-import { createAdapterScope } from "../wiring.ts";
+import { scopeDeps } from "../wiring.ts";
 import { S3, createAdaptersHarness, createSettled } from "../../test/adapters.ts";
 import type { DataHandlers } from "./data/data.handlers.ts";
 import { createV1 } from "./index.ts";
 import type { V1Deps } from "./index.ts";
-import { requireProjectInScope } from "./projects/projects.scope.ts";
 import type { StorageHandlers } from "./storage/storage.handler.ts";
 
 const ACTOR: Actor = {
@@ -50,12 +49,11 @@ function appWith(
   state: RouteState,
   actor: Actor | null
 ): Hono {
+  const scopes = scopeDeps(harness.projectsRepo, harness.repo);
   // SAFETY: the proxy supplies each dependency property read while createV1 mounts its routers.
   const deps = new Proxy({} as V1Deps, {
     get: (_target, key: PropertyKey) => {
-      if (key === "projectScope") return requireProjectInScope(harness.projectsRepo);
-      if (key === "adapterScope")
-        return createAdapterScope(harness.projectsRepo, harness.repo);
+      if (key === "projectScope" || key === "adapterScope") return scopes[key];
       if (key === "data") return handlerBag<DataHandlers>(state, "data");
       if (key === "storage") return handlerBag<StorageHandlers>(state, "storage");
       if (key === "resetState") return async (c: Parameters<Handler>[0]) => c.body(null, 204);

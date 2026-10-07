@@ -54,7 +54,9 @@ function keyOf(prefix: string, hash: string): string {
 export function createS3BlobStore(
   config: S3StoreConfig,
   sleep: (ms: number) => Promise<void> = (ms) => Bun.sleep(ms),
-  check?: StoreAddressCheck
+  check?: StoreAddressCheck,
+  createClient: (options: ConstructorParameters<typeof S3Client>[0]) => S3Client = (options) =>
+    new S3Client(options)
 ): BlobStore {
   const baseOptions: ConstructorParameters<typeof S3Client>[0] = {
     bucket: config.bucket,
@@ -72,9 +74,10 @@ export function createS3BlobStore(
         }
       : (() => {
           const url = new URL(config.endpoint);
+          const defaultPort = url.protocol === "http:" ? 80 : 443;
           return {
             host: url.hostname,
-            port: url.port === "" ? (url.protocol === "http:" ? 80 : 443) : Number(url.port),
+            port: url.port === "" ? defaultPort : Number(url.port),
           };
         })();
   const clients = new Map<string, S3Client>();
@@ -83,7 +86,7 @@ export function createS3BlobStore(
       const key = "default";
       const existing = clients.get(key);
       if (existing !== undefined) return existing;
-      const client = new S3Client(baseOptions);
+      const client = createClient(baseOptions);
       clients.set(key, client);
       return client;
     }
@@ -112,7 +115,7 @@ export function createS3BlobStore(
       options.endpoint = pinHttpEndpoint(config.endpoint, address, target.port);
       options.virtualHostedStyle = false;
     }
-    const client = new S3Client(options);
+    const client = createClient(options);
     clients.set(key, client);
     return client;
   };

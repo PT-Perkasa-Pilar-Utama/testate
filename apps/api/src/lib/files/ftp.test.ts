@@ -9,6 +9,7 @@ describe("FTP outbound address pinning", () => {
     const client: FtpClient = {
       async access(options) {
         accesses.push(options);
+        return { code: 230, message: "Logged in" };
       },
       closed: false,
       close() {},
@@ -18,13 +19,23 @@ describe("FTP outbound address pinning", () => {
       async size() {
         return 0;
       },
-      async downloadTo() {},
+      async downloadTo() {
+        return { code: 226, message: "Transfer complete" };
+      },
       async ensureDir() {},
-      async cd() {},
-      async uploadFrom() {},
-      async remove() {},
+      async cd() {
+        return { code: 250, message: "Directory changed" };
+      },
+      async uploadFrom() {
+        return { code: 226, message: "Transfer complete" };
+      },
+      async remove() {
+        return { code: 250, message: "Removed" };
+      },
       async removeDir() {},
-      async rename() {},
+      async rename() {
+        return { code: 250, message: "Renamed" };
+      },
     };
     const source = createFtpSource(
       {
@@ -39,7 +50,7 @@ describe("FTP outbound address pinning", () => {
       () => client
     );
 
-    await source.list("");
+    await source.list("", { limit: 10 });
 
     expect(accesses).toHaveLength(1);
     expect(accesses[0]).toMatchObject({

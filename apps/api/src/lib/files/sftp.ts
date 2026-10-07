@@ -52,13 +52,16 @@ function isMissing(cause: unknown): boolean {
  * no lifecycle scripts, so ssh2 stays on its pure-JS crypto.
  * ponytail: never add ssh2 to `trustedDependencies`; the native addon crashes under Bun.
  */
-export function createSftpSource(config: SftpSourceConfig): FileSource {
+export function createSftpSource(
+  config: SftpSourceConfig,
+  createClient: () => SftpClient = () => new SftpClient()
+): FileSource {
   const where = `${config.host}:${config.port}`;
   let client: SftpClient | null = null;
   let rejected: HostKey | null = null;
   const connect = async (): Promise<SftpClient> => {
     if (client !== null) return client;
-    const next = new SftpClient();
+    const next = createClient();
     const options: Parameters<SftpClient["connect"]>[0] = {
       host: config.address ?? config.host,
       port: config.port,
