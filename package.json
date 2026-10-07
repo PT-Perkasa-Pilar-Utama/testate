@@ -46,7 +46,7 @@
     "@oxlint/plugins": "1.80.0",
     "@playwright/test": "1.58.2",
     "@types/bun": "1.4.0",
-    "@types/node": "25.2.3",
+    "@types/node": "26.6.4",
     "eslint-plugin-solid": "0.16.1",
     "fast-check": "4.9.0",
     "lefthook": "2.1.10",
