@@ -62,6 +62,31 @@ The crawl and the bundle walk one adapter per kind, tier, and mode (`representat
 engine's screens once per role. A crawl over every engine spent a third of its time clicking the
 same table screen four times.
 
+## CI shards
+
+The project list and its order live in `e2e/lib/shards.ts`, and CI splits it into four shards, one
+job each, every one on its own runner with its own engines and a fresh instance:
+
+| Shard     | Projects                                   |
+| --------- | ------------------------------------------ |
+| `screens` | `coverage`, `routes`, `api`, `tables`      |
+| `flows`   | `flows`                                    |
+| `states`  | `states`, `state-api`, `adapter`           |
+| `tail`    | `crawl`, `screens`, `stress`, `bundle`, `boot` |
+
+The order between projects only matters where they share an instance, so a shard keeps the order
+inside it and drops dependencies on projects in other shards. Run one shard locally with
+`E2E_SHARD=states bun run e2e`; unset, `bun run e2e` runs the whole chain.
+
+A flaky shard is re-run alone with "Re-run failed jobs". A shard also skips itself when it already
+passed on the same inputs: `bun e2e/lib/shard-key.ts <shard>` hashes every tracked file the shard
+depends on (everything but the documentation and the specs only other shards run), and CI stores a
+pass under that key. A change to one spec file therefore runs only its own shard; a change to the
+app runs all four. The required check `browser end-to-end` is a job that fails when any shard did.
+
+Add a new project to `PROJECTS` and to a shard in `SHARDS`; `e2e/lib/shards.test.ts` fails when a
+project or a spec file belongs to no shard.
+
 ## Instances of their own
 
 The `boot` project spawns API processes (`e2e/lib/boot.ts`, ports 3101-3113), each on its own data
