@@ -64,7 +64,12 @@ whether the two shims are still needed rather than to force it through.
 ## The `overrides` block in the root `package.json`
 
 ```json
-"overrides": { "solid-js": "2.0.0-rc.13", "@solidjs/signals": "2.0.0-rc.13" }
+"overrides": {
+  "solid-js": "2.0.0-rc.6",
+  "@solidjs/signals": "2.0.0-rc.6",
+  "@solidjs/babel-plugin": "2.0.0-rc.3",
+  "@solidjs/compiler": "2.0.0-rc.3"
+}
 ```
 
 The same wrong peer range, spending a second time. Formisch asks for `solid-js >=1.6 <2`, and
@@ -86,3 +91,11 @@ ls node_modules/.bun | grep -E 'solidjs\+signals|^solid-js@'
 One entry each. Two means the override stopped doing its job. `bun install` alone will not tell
 you: it reported "no changes" while `node_modules` still held the old tree, and only a clean
 install made the disk match the lockfile.
+
+### The compiler pin
+
+The vite plugin takes `@solidjs/babel-plugin` through a range, and the babel plugin takes
+`@solidjs/compiler` the same way. A fresh lockfile therefore picks the newest compiler, not the
+one that matches the runtime. Compiler rc.14 emits `readShallow` from `@solidjs/web`, which rc.6
+does not export, and the web build fails with 40 `MISSING_EXPORT` errors. That is why Dependabot's
+grouped bump failed. The compiler moves with the runtime: bump all four entries together.

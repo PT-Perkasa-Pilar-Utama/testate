@@ -55,8 +55,10 @@
     "typescript": "7.0.2"
   },
   "overrides": {
-    "solid-js": "2.0.0-rc.13",
-    "@solidjs/signals": "2.0.0-rc.13"
+    "solid-js": "2.0.0-rc.6",
+    "@solidjs/signals": "2.0.0-rc.6",
+    "@solidjs/babel-plugin": "2.0.0-rc.3",
+    "@solidjs/compiler": "2.0.0-rc.3"
   },
   "patchedDependencies": {
     "@formisch/solid@1.1.0": "patches/@formisch%2Fsolid@1.1.0.patch"
