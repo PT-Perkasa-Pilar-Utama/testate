@@ -2,7 +2,7 @@ import { autocompletion, closeBrackets } from "@codemirror/autocomplete";
 import type { CompletionSource } from "@codemirror/autocomplete";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { HighlightStyle, bracketMatching, syntaxHighlighting } from "@codemirror/language";
-import { Compartment, EditorState } from "@codemirror/state";
+import { Annotation, Compartment, EditorState } from "@codemirror/state";
 import { EditorView, keymap, placeholder } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 
@@ -13,6 +13,13 @@ import type { EditorLanguage } from "./code-editor.language.ts";
  * Everything of CodeMirror's, behind one dynamic import: the SPA's chunk stays the size it was and
  * this one arrives with the first console a person opens.
  */
+
+/**
+ * Marks a document replaced from outside. That text came from the owner's signal, so echoing it
+ * back through `onInput` writes the signal that just drove the change: the effect that set it runs
+ * twice, and Solid 2.0 rc.7 and later report it as `EFFECT_WRITES_OWN_SOURCE`.
+ */
+const EXTERNAL = Annotation.define<boolean>();
 
 /** The console's colours are the design tokens, read at paint time so the light theme remaps them. */
 const THEME = EditorView.theme({
@@ -96,7 +103,8 @@ export function mount(parent: HTMLElement, options: MountOptions): EditorHandle 
         language.of([]),
         completions.of([]),
         EditorView.updateListener.of((update) => {
-          if (update.docChanged) options.onInput(update.state.doc.toString());
+          const external = update.transactions.some((tr) => tr.annotation(EXTERNAL) === true);
+          if (update.docChanged && !external) options.onInput(update.state.doc.toString());
         }),
       ],
     }),
@@ -104,7 +112,10 @@ export function mount(parent: HTMLElement, options: MountOptions): EditorHandle 
   return {
     setValue: (text) => {
       if (view.state.doc.toString() === text) return;
-      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: text },
+        annotations: EXTERNAL.of(true),
+      });
     },
     setLanguage: (spec) => {
       const built = languageOf(spec);

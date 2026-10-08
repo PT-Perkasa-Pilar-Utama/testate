@@ -33,10 +33,10 @@ export default function Select<T extends string>(props: SelectProps<T>): JSX.Ele
       value={local.value}
       onChange={(event) => pick(event.currentTarget.value)}
     >
-      <For each={local.options}>
+      <For each={local.options} keyed={(option) => option.value}>
         {(option) => (
-          <option value={option.value} selected={option.value === local.value}>
-            {option.label}
+          <option value={option().value} selected={option().value === local.value}>
+            {option().label}
           </option>
         )}
       </For>

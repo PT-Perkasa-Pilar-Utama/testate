@@ -277,8 +277,8 @@ export default function StorageView(props: { slug: string; id: string }): JSX.El
                   </EmptyRow>
                 }
               >
-                <For each={presenter.page.value().data}>
-                  {(entry) => <EntryRow presenter={presenter} entry={entry} />}
+                <For each={presenter.page.value().data} keyed={(entry) => entry.path}>
+                  {(entry) => <EntryRow presenter={presenter} entry={entry()} />}
                 </For>
               </Show>
             </tbody>

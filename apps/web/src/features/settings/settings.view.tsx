@@ -104,13 +104,13 @@ function Section(props: {
             </tr>
           </thead>
           <tbody>
-            <For each={props.presenter.rows(props.name)}>
+            <For each={props.presenter.rows(props.name)} keyed={(row) => row.key}>
               {(row) => (
                 <Row>
                   <Cell>
                     <div class="grid gap-0.5">
-                      <span>{labelFor(row)}</span>
-                      <code class="text-xs text-muted">{row.key}</code>
+                      <span>{labelFor(row())}</span>
+                      <code class="text-xs text-muted">{row().key}</code>
                     </div>
                   </Cell>
                   <Cell>
@@ -118,17 +118,17 @@ function Section(props: {
                       size="sm"
                       type="number"
                       min="0"
-                      aria-label={labelFor(row)}
-                      disabled={row.locked}
-                      value={props.presenter.drafts().get(row.key) ?? row.value}
+                      aria-label={labelFor(row())}
+                      disabled={row().locked}
+                      value={props.presenter.drafts().get(row().key) ?? row().value}
                       onInput={(event) =>
-                        props.presenter.setValue(row.key, event.currentTarget.value)
+                        props.presenter.setValue(row().key, event.currentTarget.value)
                       }
                     />
                   </Cell>
                   <Cell>
                     <Show
-                      when={row.locked}
+                      when={row().locked}
                       fallback={<span class="text-xs text-muted">editable</span>}
                     >
                       <Badge variant="outline">
