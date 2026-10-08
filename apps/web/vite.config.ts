@@ -1,6 +1,6 @@
 import { Agent } from "node:http";
 import { fileURLToPath } from "node:url";
-import { version } from "./package.json" with { type: "json" };
+import webPackage from "./package.json" with { type: "json" };
 import solidPlugin from "@solidjs/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
@@ -19,7 +19,7 @@ export default defineConfig(({ command }) => ({
   optimizeDeps: { exclude: ["@formisch/solid", "@formisch/core"] },
   // The version a bug report quotes. `bun run bump-version` already keeps this package.json in
   // step with the others, so there is no second place to forget.
-  define: { "import.meta.env.VITE_TESTATE_VERSION": JSON.stringify(version) },
+  define: { "import.meta.env.VITE_TESTATE_VERSION": JSON.stringify(webPackage.version) },
   server: {
     // The e2e suite runs its own pair on 7479/7478 so it never fights `bun run dev`, and
     // `strictPort` makes a clash say so instead of quietly moving to the next free port.

@@ -4,10 +4,11 @@ One patch, and it is here because the package's peer range is wrong rather than 
 is. Solid's own was removed on 2026-09-03: `@solidjs/signals@2.0.0-rc.6` ships the fix upstream
 (`solidjs/solid#3143`), and rc.5 carried it too.
 
-## `@formisch/solid@1.0.0`
+## `@formisch/solid@1.1.0`
 
-Two functions restored to `dist/index.jsx` and `dist/dev.jsx`, the raw-JSX builds that Formisch
-serves through its `solid` export condition:
+Two functions restored: `splitProps` in `dist/index.jsx` and `dist/dev.jsx`, the raw-JSX builds that
+Formisch serves through its `solid` export condition, and `batch` in `dist/internals.js`, which 1.1.0
+split out of those builds and which both import:
 
 ```js
 const batch = (fn) => fn();          // Solid 2 batches on a microtask and dropped `batch`
@@ -63,7 +64,7 @@ whether the two shims are still needed rather than to force it through.
 ## The `overrides` block in the root `package.json`
 
 ```json
-"overrides": { "solid-js": "2.0.0-rc.6", "@solidjs/signals": "2.0.0-rc.6" }
+"overrides": { "solid-js": "2.0.0-rc.13", "@solidjs/signals": "2.0.0-rc.13" }
 ```
 
 The same wrong peer range, spending a second time. Formisch asks for `solid-js >=1.6 <2`, and

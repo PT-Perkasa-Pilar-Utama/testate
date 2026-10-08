@@ -1,48 +1,25 @@
-diff --git a/node_modules/@formisch/solid/.bun-tag-1bbd9491120cf952 b/.bun-tag-1bbd9491120cf952
-new file mode 100644
-index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
-diff --git a/node_modules/@formisch/solid/.bun-tag-ca5b0f871225aafe b/.bun-tag-ca5b0f871225aafe
-new file mode 100644
-index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/dist/dev.jsx b/dist/dev.jsx
-index 072c789496528b582417203a6e8a61a6ce9701d8..253a1b501013844cc429ea1a1deab954e83016f2 100644
+index 2e26f0728a5d82ec2afbae6f2fc50e4d25df4166..42af212696e5dc595c4555126665df5fb67adb5a 100644
 --- a/dist/dev.jsx
 +++ b/dist/dev.jsx
-@@ -1,6 +1,15 @@
- // ../../packages/core/dist/index.solid.js
- import * as v from "valibot";
--import { batch, createSignal as createSignal$1, createUniqueId as createId, untrack } from "solid-js";
-+import { createSignal as createSignal$1, createUniqueId as createId, untrack, flush } from "solid-js";
-+// Solid 2 dropped `batch` and batches to a microtask instead, so a read after a write returns
-+// the previous value ("Reads update only after flush" - solid-js CHEATSHEET). Formisch writes
-+// and then reads inside one batch, `reset` above all, so calling through is not enough: Solid 1's
-+// batch flushed on exit and this has to do the same, or a reset silently keeps the old input.
-+const batch = (fn) => {
-+  const result = fn();
-+  flush();
-+  return result;
-+};
- var framework = "solid";
- // @__NO_SIDE_EFFECTS__
- function createSignal(initialValue) {
-@@ -781,7 +790,7 @@ function createForm(config) {
- }
- 
- // src/primitives/useField/useField.ts
+@@ -392,7 +392,7 @@ import {
+   setFieldInput as setFieldInput2,
+   validateIfRequired as validateIfRequired2
+ } from "./internals.js";
 -import { createMemo as createMemo2, onCleanup } from "solid-js";
 +import { createMemo as createMemo2, getOwner, onCleanup, runWithOwner } from "solid-js";
  
  // src/utils/unwrap/unwrap.ts
  function unwrap(value) {
-@@ -794,6 +803,7 @@ function unwrap(value) {
+@@ -405,6 +405,7 @@ function unwrap(value) {
  // src/primitives/useField/useField.ts
  // @__NO_SIDE_EFFECTS__
  function useField(form, config) {
 +  const fieldOwner = getOwner();
    const getPath = createMemo2(() => unwrap(config).path);
-   const getInternalFormStore = createMemo2(() => unwrap(form)[INTERNAL]);
+   const getInternalFormStore = createMemo2(() => unwrap(form)[INTERNAL3]);
    const getInternalFieldStore = createMemo2(
-@@ -846,14 +856,19 @@ function useField(form, config) {
+@@ -457,14 +458,19 @@ function useField(form, config) {
        get name() {
          return getInternalFieldStore().name;
        },
@@ -65,7 +42,7 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..253a1b501013844cc429ea1a1deab954
            const elements = internalFieldStore.elements.filter(
              (el) => el !== element
            );
-@@ -863,7 +878,7 @@ function useField(form, config) {
+@@ -474,7 +480,7 @@ function useField(form, config) {
              internalFieldStore.initialElements = internalFieldStore.initialElements.filter((el) => el !== element);
            }
            internalFieldStore.elements = elements;
@@ -74,10 +51,10 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..253a1b501013844cc429ea1a1deab954
        },
        onFocus() {
          setFieldBool(getInternalFieldStore(), "isTouched", true);
-@@ -968,7 +983,19 @@ function FieldArray(props) {
- }
- 
- // src/components/Form/Form.tsx
+@@ -587,7 +593,19 @@ function FieldArray(props) {
+ import {
+   INTERNAL as INTERNAL5
+ } from "./internals.js";
 -import { splitProps } from "solid-js";
 +// Solid 2 dropped splitProps. This is the only place Formisch uses it, and the shim keeps the
 +// remaining keys as getters so the props it spreads onto <form> stay reactive.
@@ -96,44 +73,27 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..253a1b501013844cc429ea1a1deab954
  function Form(props) {
    const [, other] = splitProps(props, ["of", "onSubmit"]);
 diff --git a/dist/index.jsx b/dist/index.jsx
-index 072c789496528b582417203a6e8a61a6ce9701d8..253a1b501013844cc429ea1a1deab954e83016f2 100644
+index 2e26f0728a5d82ec2afbae6f2fc50e4d25df4166..42af212696e5dc595c4555126665df5fb67adb5a 100644
 --- a/dist/index.jsx
 +++ b/dist/index.jsx
-@@ -1,6 +1,15 @@
- // ../../packages/core/dist/index.solid.js
- import * as v from "valibot";
--import { batch, createSignal as createSignal$1, createUniqueId as createId, untrack } from "solid-js";
-+import { createSignal as createSignal$1, createUniqueId as createId, untrack, flush } from "solid-js";
-+// Solid 2 dropped `batch` and batches to a microtask instead, so a read after a write returns
-+// the previous value ("Reads update only after flush" - solid-js CHEATSHEET). Formisch writes
-+// and then reads inside one batch, `reset` above all, so calling through is not enough: Solid 1's
-+// batch flushed on exit and this has to do the same, or a reset silently keeps the old input.
-+const batch = (fn) => {
-+  const result = fn();
-+  flush();
-+  return result;
-+};
- var framework = "solid";
- // @__NO_SIDE_EFFECTS__
- function createSignal(initialValue) {
-@@ -781,7 +790,7 @@ function createForm(config) {
- }
- 
- // src/primitives/useField/useField.ts
+@@ -392,7 +392,7 @@ import {
+   setFieldInput as setFieldInput2,
+   validateIfRequired as validateIfRequired2
+ } from "./internals.js";
 -import { createMemo as createMemo2, onCleanup } from "solid-js";
 +import { createMemo as createMemo2, getOwner, onCleanup, runWithOwner } from "solid-js";
  
  // src/utils/unwrap/unwrap.ts
  function unwrap(value) {
-@@ -794,6 +803,7 @@ function unwrap(value) {
+@@ -405,6 +405,7 @@ function unwrap(value) {
  // src/primitives/useField/useField.ts
  // @__NO_SIDE_EFFECTS__
  function useField(form, config) {
 +  const fieldOwner = getOwner();
    const getPath = createMemo2(() => unwrap(config).path);
-   const getInternalFormStore = createMemo2(() => unwrap(form)[INTERNAL]);
+   const getInternalFormStore = createMemo2(() => unwrap(form)[INTERNAL3]);
    const getInternalFieldStore = createMemo2(
-@@ -846,14 +856,19 @@ function useField(form, config) {
+@@ -457,14 +458,19 @@ function useField(form, config) {
        get name() {
          return getInternalFieldStore().name;
        },
@@ -156,7 +116,7 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..253a1b501013844cc429ea1a1deab954
            const elements = internalFieldStore.elements.filter(
              (el) => el !== element
            );
-@@ -863,7 +878,7 @@ function useField(form, config) {
+@@ -474,7 +480,7 @@ function useField(form, config) {
              internalFieldStore.initialElements = internalFieldStore.initialElements.filter((el) => el !== element);
            }
            internalFieldStore.elements = elements;
@@ -165,10 +125,10 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..253a1b501013844cc429ea1a1deab954
        },
        onFocus() {
          setFieldBool(getInternalFieldStore(), "isTouched", true);
-@@ -968,7 +983,19 @@ function FieldArray(props) {
- }
- 
- // src/components/Form/Form.tsx
+@@ -587,7 +593,19 @@ function FieldArray(props) {
+ import {
+   INTERNAL as INTERNAL5
+ } from "./internals.js";
 -import { splitProps } from "solid-js";
 +// Solid 2 dropped splitProps. This is the only place Formisch uses it, and the shim keeps the
 +// remaining keys as getters so the props it spreads onto <form> stay reactive.
@@ -186,3 +146,23 @@ index 072c789496528b582417203a6e8a61a6ce9701d8..253a1b501013844cc429ea1a1deab954
  // @__NO_SIDE_EFFECTS__
  function Form(props) {
    const [, other] = splitProps(props, ["of", "onSubmit"]);
+diff --git a/dist/internals.js b/dist/internals.js
+index bc88d05c90a49e843a88fac7d15122984fb1e75d..c597fc666cd1e6753407d35bb848519e79fc11d0 100644
+--- a/dist/internals.js
++++ b/dist/internals.js
+@@ -1,5 +1,14 @@
+ import * as v from "valibot";
+-import { batch, createSignal as createSignal$1, createUniqueId as createId, untrack } from "solid-js";
++import { createSignal as createSignal$1, createUniqueId as createId, untrack, flush } from "solid-js";
++// Solid 2 dropped `batch` and batches to a microtask instead, so a read after a write returns
++// the previous value ("Reads update only after flush" - solid-js CHEATSHEET). Formisch writes
++// and then reads inside one batch, `reset` above all, so calling through is not enough: Solid 1's
++// batch flushed on exit and this has to do the same, or a reset silently keeps the old input.
++const batch = (fn) => {
++  const result = fn();
++  flush();
++  return result;
++};
+ 
+ //#region src/framework/index.solid.ts
+ /**

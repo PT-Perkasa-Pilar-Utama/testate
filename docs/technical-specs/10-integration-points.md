@@ -27,7 +27,7 @@ A store switch runs the migration job (copy every referenced blob, verify, then 
 | Protocol | Library | Contract | Failure modes | Fallback |
 | --- | --- | --- | --- | --- |
 | S3 and compatible | `Bun.S3Client` | `list(prefix, cursor)`, `stat(key)`, `read(key)` streaming; virtual-hosted or path style | Auth, bucket policy, throttling | Error surfaced as `ADAPTER_UNREACHABLE` with the S3 error code in details |
-| SFTP | `ssh2` 1.17.0 + `ssh2-sftp-client` 11.x with the Simulflow `bun patch` (pure-JS crypto) | `list(path)`, `stat(path)`, `read(path)` streaming; password or private key; host key trust on first use, block on change | Host key changed, auth, crash of the native addon (prevented by the patch) | Pure-JavaScript SSH implementation if the spike fails |
+| SFTP | `ssh2` 1.17.0 + `ssh2-sftp-client` 12.x with the Simulflow `bun patch` (pure-JS crypto) | `list(path)`, `stat(path)`, `read(path)` streaming; password or private key; host key trust on first use, block on change | Host key changed, auth, crash of the native addon (prevented by the patch) | Pure-JavaScript SSH implementation if the spike fails |
 | FTP and FTPS | `basic-ftp` 6.2.1 | `list`, `size` + `lastMod`, `downloadTo` stream; explicit TLS optional | Passive-mode firewalls, TLS reuse quirks | Documented as passive only; an alternative pure-JS client if the spike fails |
 
 Previews stream through Testate with a 5 MB cap; the browser never receives storage credentials.

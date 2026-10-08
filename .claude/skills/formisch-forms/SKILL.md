@@ -14,9 +14,9 @@ against it and the browser validates against it, so nothing is written twice.
 ## Formisch needs a patch to run here, and it is not optional
 
 Formisch declares `"solid-js": ">=1.6 <2"`. That upper bound is real: its Solid adapter imports
-`batch` and `splitProps`, which Solid 2 removed. `patches/@formisch%2Fsolid@1.0.0.patch` restores
-both in the two raw-JSX builds, and `patches/README.md` explains why those builds and not the
-compiled ones. Two things follow:
+`batch` and `splitProps`, which Solid 2 removed. `patches/@formisch%2Fsolid@1.1.0.patch` restores
+both, in the two raw-JSX builds and in `dist/internals.js`; `patches/README.md` explains why those
+builds and not the compiled ones. Two things follow:
 
 - `apps/web/vite.config.ts` keeps `@formisch/solid` out of `optimizeDeps`. Remove that and esbuild
   resolves the compiled build, which imports `solid-js/web` - a subpath Solid 2 does not have. The
