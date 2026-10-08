@@ -94,7 +94,7 @@ test.describe("qa gap stories", () => {
 
   test("@story-46 @story-48 the query console keeps a history and cancels a running query", async ({
     page,
-  }) => {
+  }, testInfo) => {
     const issues: Issue[] = [];
     watch(page, issues);
     const postgres = await demoAdapter({ engine: "postgres" });
@@ -108,28 +108,34 @@ test.describe("qa gap stories", () => {
     await page.getByRole("tab", { name: "History" }).click();
     // The history row, not the editor: the editor shows the same text now that it is not a textarea.
     await expect(page.getByRole("button", { name: `select 1 as h${STAMP}` })).toBeVisible();
+    // Its own tag, so the Running list can be read for this query alone: every running query on
+    // the adapter is listed there, and a query another spec runs meanwhile used to keep a Cancel
+    // button on screen and fail the "nothing left running" check below.
+    const tag = `cancel-${STAMP}-${testInfo.workerIndex}-${testInfo.repeatEachIndex}`;
+    const started = Date.now();
     const slow = swallow(
       page.request.post(
         `http://localhost:${API_PORT}/api/v1/projects/demo/adapters/${postgres.id}/query`,
         {
           headers: { "X-Testate-Request": "1" },
-          data: { dialect: "sql", mode: "read", row_cap: 10, text: "select pg_sleep(20)" },
+          data: { dialect: "sql", mode: "read", row_cap: 10, text: "select pg_sleep(20)", tag },
         }
       )
     );
+    const ours = page.locator("li", { hasText: tag });
     await page.getByRole("tab", { name: "Running" }).click();
     await expect(async () => {
       await page.getByRole("button", { name: "Refresh" }).click();
-      await expect(page.getByRole("button", { name: "Cancel" }).first()).toBeVisible({
-        timeout: 2_000,
-      });
+      await expect(ours).toBeVisible({ timeout: 2_000 });
     }).toPass({ timeout: 20_000 });
-    await page.getByRole("button", { name: "Cancel" }).first().click();
+    await ours.getByRole("button", { name: "Cancel" }).click();
     await expect(async () => {
       await page.getByRole("button", { name: "Refresh" }).click();
-      await expect(page.getByRole("button", { name: "Cancel" })).toHaveCount(0, { timeout: 2_000 });
+      await expect(ours).toHaveCount(0, { timeout: 2_000 });
     }).toPass({ timeout: 20_000 });
     await slow;
+    // The query ended because it was cancelled: left alone, pg_sleep(20) answers after 20 s.
+    expect(Date.now() - started).toBeLessThan(18_000);
     expect(issues).toStrictEqual([]);
   });
 
