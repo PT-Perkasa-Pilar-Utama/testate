@@ -2,6 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { For, Show } from "solid-js";
 import type { JsonValue } from "@testate/shared";
 
+import { CELL_WIDTH, ValueCell } from "@/components/value-viewer.tsx";
 import { href, navigate } from "@/lib/router.ts";
 import { cellText, qualifiedName } from "./grid.presenter.ts";
 import type { GridPresenter } from "./grid.presenter.ts";
@@ -45,12 +46,14 @@ export function FkCell(props: {
     navigate(path);
   };
   return (
-    <Show
-      when={link()}
-      fallback={<span class={{ "text-muted": props.value === null }}>{cellText(props.value)}</span>}
-    >
+    <Show when={link()} fallback={<ValueCell value={props.value} title={props.column} />}>
       {(path) => (
-        <a class="underline" href={href(path())} onClick={(event) => onClick(event, path())}>
+        <a
+          class={["block truncate underline", CELL_WIDTH]}
+          title={cellText(props.value)}
+          href={href(path())}
+          onClick={(event) => onClick(event, path())}
+        >
           {cellText(props.value)}
         </a>
       )}

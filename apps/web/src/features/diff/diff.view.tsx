@@ -70,7 +70,7 @@ function TableRail(props: { presenter: DiffPresenter }): JSX.Element {
   const touched = (): DiffAdapter[] =>
     props.presenter.diff.value().adapters.filter((adapter) => adapter.tables.some(moved));
   return (
-    <nav class="grid gap-5" aria-label="What moved">
+    <nav class="grid content-start gap-5 lg:sticky lg:top-4" aria-label="What moved">
       <For each={touched()} fallback={<p class="px-2 text-sm text-muted">Nothing moved.</p>}>
         {(adapter) => (
           <div class="grid gap-1">
@@ -168,7 +168,9 @@ export default function DiffView(props: { slug: string; id: string }): JSX.Eleme
             title={`${presenter.diff.value().base.name} → ${targetName(presenter.diff.value())}`}
             description={`Made ${formatWhen(presenter.diff.value().created_at)}. Kept until ${formatWhen(presenter.diff.value().expires_at)}.`}
           />
-          <div class="grid gap-4 lg:grid-cols-[16rem_1fr]">
+          {/* `minmax(0, 1fr)`, not `1fr`: a bare `1fr` grows to the widest row, and the table ran
+              past the right edge. `items-start` keeps the rail as tall as its own list. */}
+          <div class="grid items-start gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
             <TableRail presenter={presenter} />
             <div class="grid content-start gap-3">
               <Show

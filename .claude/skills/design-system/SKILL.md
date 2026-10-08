@@ -122,6 +122,7 @@ Files under `apps/web/src/components/`. Reuse before you write.
 | `switch.tsx` | `Switch` |
 | `table.tsx` | `Table`, `TableToolbar`, `TableFooter`, `Head` (`identifier` for a column name), `Row`, `EmptyRow`, `Cell` |
 | `tabs.tsx` | `Tabs` |
+| `value-viewer.tsx` | `ValueCell` — any data value in a table: one line at `CELL_WIDTH`, and a long, multi-line or JSON value opens in full; `ValueViewer` — the one dialog it opens, mounted beside `Toaster`; `openValue` |
 | `toast.tsx` | `Toaster` (the host; `showToast` and `attempt` are in `lib/toast.ts`) |
 | `icon.tsx` | `Icon` — 67 lucide icons, vendored |
 | `back-link.tsx` | `BackLink` (default export) |

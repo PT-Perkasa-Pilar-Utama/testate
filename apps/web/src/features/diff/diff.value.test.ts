@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import { pretty, unified } from "./diff.text.ts";
+import { pretty } from "../../lib/value-view.ts";
+import { unified } from "./diff.text.ts";
 
 describe("comparing one value", () => {
   test("JSON is laid out over lines, and a string holding JSON is too", () => {

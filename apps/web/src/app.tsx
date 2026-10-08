@@ -5,6 +5,7 @@ import Banner from "@/components/banner.tsx";
 import Pending from "@/components/pending.tsx";
 import Crashed from "@/components/crashed.tsx";
 import Toaster from "@/components/toast.tsx";
+import { ValueViewer } from "@/components/value-viewer.tsx";
 import AdapterView from "@/features/adapter/adapter.view.tsx";
 import GridView from "@/features/data/grid.view.tsx";
 import PoliciesView from "@/features/data/policies.view.tsx";
@@ -157,6 +158,7 @@ export default function App(): JSX.Element {
           </Errored>
         </main>
         <Toaster />
+        <ValueViewer />
       </div>
     </Show>
   );

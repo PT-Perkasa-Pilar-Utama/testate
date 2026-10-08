@@ -7,8 +7,8 @@ import Icon from "@/components/icon.tsx";
 import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import EmptyState from "@/components/empty-state.tsx";
 import JsonView from "@/components/json-view.tsx";
+import { ValueCell } from "@/components/value-viewer.tsx";
 import { plain } from "@/lib/plain-value.ts";
-import { cellText } from "./grid.presenter.ts";
 
 const ENFORCEMENT_VARIANT = {
   transaction: "success",
@@ -85,7 +85,11 @@ export default function ResultTable(props: {
                   {(row) => (
                     <Row>
                       <For each={props.result.columns}>
-                        {(column) => <Cell>{cellText(row[column.name])}</Cell>}
+                        {(column) => (
+                          <Cell>
+                            <ValueCell value={row[column.name]} title={column.name} />
+                          </Cell>
+                        )}
                       </For>
                     </Row>
                   )}

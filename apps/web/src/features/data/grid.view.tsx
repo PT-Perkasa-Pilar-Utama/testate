@@ -12,7 +12,7 @@ import { href, navigate } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { Cell, EmptyRow, Head, Row, Table, TableToolbar } from "@/components/table.tsx";
 import FixtureDialog from "./fixture.view.tsx";
-import { NUMERIC_TYPE, cellText, createGridPresenter } from "./grid.presenter.ts";
+import { NUMERIC_TYPE, createGridPresenter } from "./grid.presenter.ts";
 import DocumentBrowser from "./document.view.tsx";
 import { ExportLinks, FilterBar, Pager, WriteControls, WriteStrip } from "./grid-toolbar.view.tsx";
 import type { GridPresenter } from "./grid.presenter.ts";
@@ -214,19 +214,12 @@ function GridTable(props: {
                     {(column) => (
                       <Cell numeric={NUMERIC_TYPE.test(column().type)}>
                         {/* A cell holds whatever the table holds: a one-word flag or a page of
-                              JSON. FkCell renders a link for a foreign key, so the truncation
-                              wraps it from outside rather than editing what it returns; 18rem is
-                              this table's own default width for an unbounded string. */}
-                        <span
-                          class="block max-w-[18rem] truncate"
-                          title={cellText(row()[column().name])}
-                        >
-                          <FkCell
-                            presenter={props.presenter}
-                            column={column().name}
-                            value={row()[column().name]}
-                          />
-                        </span>
+                            JSON. FkCell cuts it at the shared width and opens a long value. */}
+                        <FkCell
+                          presenter={props.presenter}
+                          column={column().name}
+                          value={row()[column().name]}
+                        />
                       </Cell>
                     )}
                   </For>
