@@ -2,8 +2,17 @@ name: Deploy image
 
 # Manually-triggered. Reads the version from package.json and skips entirely if
 # that version is already published - bump the version to release.
+#
+# `ref` builds from a tag instead of the branch, with this workflow file: a release that is
+# missing its binaries is backfilled from its own source (`ref: v1.2.0`). The image jobs skip a
+# version that is already published, so such a run only builds, boots and attaches the binaries.
 on:
   workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag or commit to build from; empty builds the branch the run is on"
+        required: false
+        default: ""
 
 # Least-privilege default; the jobs opt into the `packages: write` they need
 # to push to ghcr.io.
@@ -35,6 +44,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Resolve image name + version
         id: img
@@ -216,6 +227,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Resolve image name + version
         id: img
@@ -387,6 +400,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
@@ -429,6 +444,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -476,6 +493,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -534,19 +553,31 @@ jobs:
           upload-artifact: false
           upload-release-assets: false
 
-      - name: Create the release, unless it exists
+      # A release someone already made, by hand or with the release notes, gets the assets it is
+      # missing; one this run makes gets them all. Assets already there are left as they are, so a
+      # re-run never swaps a signed archive for a rebuilt one. v1.1.1 and v1.2.0 shipped with none
+      # because this step used to stop at "already exists" (#53).
+      - name: Create the release, or attach what it is missing
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           version=$(jq -r .version package.json)
           tag="v${version}"
-          if gh release view "$tag" > /dev/null 2>&1; then
-            echo "::notice::release ${tag} already exists - leaving it alone."
+          if ! gh release view "$tag" > /dev/null 2>&1; then
+            gh release create "$tag" \
+              --title "$tag" \
+              --generate-notes \
+              --target "$(git rev-parse HEAD)" \
+              dist/*
+            echo "published ${tag} with $(find dist -type f | wc -l) assets"
             exit 0
           fi
-          gh release create "$tag" \
-            --title "$tag" \
-            --generate-notes \
-            --target "${{ github.sha }}" \
-            dist/*
-          echo "published ${tag} with $(ls dist | wc -l) assets"
+          have=$(gh release view "$tag" --json assets --jq '.assets[].name')
+          added=0
+          for f in dist/*; do
+            name=$(basename "$f")
+            if printf '%s\n' "$have" | grep -qxF "$name"; then continue; fi
+            gh release upload "$tag" "$f"
+            added=$((added + 1))
+          done
+          echo "release ${tag} existed; attached ${added} missing assets"
