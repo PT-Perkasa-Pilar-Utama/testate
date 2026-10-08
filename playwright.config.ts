@@ -98,7 +98,11 @@ export default defineConfig({
   workers: WORKERS,
   retries: 0,
   timeout: 60_000,
-  reporter: [["list"], ["html", { outputFolder: join(E2E_DIR, "report"), open: "never" }]],
+  reporter: [
+    ["list"],
+    ["html", { outputFolder: join(E2E_DIR, "report"), open: "never" }],
+    ["./e2e/lib/timing.ts"],
+  ],
   use: {
     // CI uses the Chrome that GitHub runners preinstall; this skips `playwright install`.
     channel: process.env.CI === undefined ? undefined : "chrome",
