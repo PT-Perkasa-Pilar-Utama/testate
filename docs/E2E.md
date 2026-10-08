@@ -71,11 +71,13 @@ job each, every one on its own runner with its own engines and a fresh instance:
 | --------- | ------------------------------------------ |
 | `screens` | `coverage`, `routes`, `api`, `tables`      |
 | `flows`   | `flows`                                    |
-| `states`  | `states`, `state-api`, `adapter`           |
-| `tail`    | `crawl`, `screens`, `stress`, `bundle`, `boot` |
+| `states`  | `states`, `state-api`, `adapter`, `bundle`, `boot` |
+| `tail`    | `crawl`, `screens`, `stress`               |
 
 The order between projects only matters where they share an instance, so a shard keeps the order
-inside it and drops dependencies on projects in other shards. Run one shard locally with
+inside it: a dependency on a project in another shard becomes that project's nearest predecessors
+in the shard. `bundle` and `boot` sit with `states` and follow `adapter`, because neither reads what
+the crawl leaves and the crawl alone is the longest project in the suite (110 s on CI). Run one shard locally with
 `E2E_SHARD=states bun run e2e`; unset, `bun run e2e` runs the whole chain.
 
 A flaky shard is re-run alone with "Re-run failed jobs". A shard also skips itself when it already

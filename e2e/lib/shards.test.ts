@@ -18,12 +18,23 @@ describe("splitting the suite into CI shards", () => {
     expect(orphans).toEqual([]);
   });
 
-  test("a shard keeps the order inside it and drops the dependencies outside it", () => {
+  test("a shard keeps the chain order inside it, through projects outside it", () => {
     const states = projectsFor("states");
+    // bundle and boot wait for the crawl in the full chain; the crawl waits for adapter.
     expect(states.map((project) => [project.name, project.dependencies])).toEqual([
       ["states", []],
       ["state-api", ["states"]],
       ["adapter", ["state-api"]],
+      ["bundle", ["adapter"]],
+      ["boot", ["adapter"]],
+    ]);
+  });
+
+  test("a project whose whole chain is in other shards starts first", () => {
+    expect(projectsFor("tail").map((project) => [project.name, project.dependencies])).toEqual([
+      ["crawl", []],
+      ["screens", []],
+      ["stress", []],
     ]);
   });
 

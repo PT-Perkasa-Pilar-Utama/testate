@@ -48,14 +48,17 @@ export const PROJECTS: ProjectSpec[] = [
 
 /**
  * Each shard is one CI job on its own runner, with its own engines and a fresh instance, so the
- * shared state that forces the chain above only has to be ordered inside a shard. Keep a shard's
- * projects in chain order; a dependency on a project in another shard is dropped.
+ * shared state that forces the chain above only has to be ordered inside a shard. A dependency on
+ * a project in another shard stands for that project's own place in the chain, so it becomes the
+ * nearest projects before it that are in the shard (none, at the head of the chain).
  */
 export const SHARDS = {
   screens: ["coverage", "routes", "api", "tables"],
   flows: ["flows"],
-  states: ["states", "state-api", "adapter"],
-  tail: ["crawl", "screens", "stress", "bundle", "boot"],
+  // bundle and boot follow adapter here rather than the crawl: neither reads what the crawl
+  // leaves, and the crawl alone is the longest project in the suite.
+  states: ["states", "state-api", "adapter", "bundle", "boot"],
+  tail: ["crawl", "screens", "stress"],
 } as const satisfies Record<string, readonly string[]>;
 
 export type Shard = keyof typeof SHARDS;
@@ -64,7 +67,15 @@ export function isShard(name: string): name is Shard {
   return Object.hasOwn(SHARDS, name);
 }
 
-/** Every project for a full run, or one shard's projects with its outside dependencies dropped. */
+/** The projects in the shard that `name` waits for, directly or through projects outside it. */
+function nearestInShard(name: string, inShard: ReadonlySet<string>): string[] {
+  const project = PROJECTS.find((one) => one.name === name);
+  return (project?.dependencies ?? []).flatMap((dependency) =>
+    inShard.has(dependency) ? [dependency] : nearestInShard(dependency, inShard)
+  );
+}
+
+/** Every project for a full run, or one shard's projects with the chain order kept inside it. */
 export function projectsFor(shard: string | undefined): ProjectSpec[] {
   if (shard === undefined || shard === "") return PROJECTS;
   if (!isShard(shard))
@@ -72,10 +83,9 @@ export function projectsFor(shard: string | undefined): ProjectSpec[] {
   const inShard = new Set<string>(SHARDS[shard]);
   return PROJECTS.filter((project) => inShard.has(project.name)).map((project) => ({
     ...project,
-    dependencies: (project.dependencies ?? []).filter((name) => inShard.has(name)),
+    dependencies: [...new Set(nearestInShard(project.name, inShard))],
   }));
 }
-
 const SPEC = /^e2e\/[^/]+\.e2e\.ts$/;
 
 /** The shards whose projects run a spec file, by its path from the repository root. */
