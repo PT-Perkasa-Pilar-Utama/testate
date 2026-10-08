@@ -5,10 +5,10 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "@playwright/test";
 
 import { describeCapacity, workersFor } from "./e2e/lib/capacity.ts";
-import { projectsFor } from "./e2e/lib/shards.ts";
+import { projectsFor, spaFor } from "./e2e/lib/shards.ts";
 
 /**
- * End-to-end suite over the real API, Vite dev server, and the compose engines. `bun run e2e`.
+ * End-to-end suite over the real API, the SPA it serves, and the compose engines. `bun run e2e`.
  * The API boots on a scratch data dir with a fresh secrets key; global setup seeds `dev` and
  * signs in each role once (storage state per role under `.e2e/`).
  */
@@ -24,13 +24,24 @@ const CAPACITY = {
 const WORKERS = workersFor(CAPACITY);
 process.stdout.write(`${describeCapacity(CAPACITY, WORKERS)}\n`);
 /**
- * Not the dev server's 7378/7379. The suite spawns an API and a Vite of its own, and Playwright
+ * Not the dev server's 7378/7379. The suite spawns an API of its own, and Playwright
  * refuses to start when the port is taken, so running `bun run e2e` beside `bun run dev` used to
  * mean stopping the dev server first. Worse before that: a suite that reached the dev instance
  * instead ran its stories against a developer's own data and locked the admin account out of it.
  */
 export const API_PORT = 7478;
-export const WEB_PORT = 7479;
+
+/**
+ * The SPA the API serves, built once before it boots. Solid's dev build, not the Vite dev server:
+ * the dev server compiled every module on request on the same cores as the browsers, and under load
+ * it left the app on "Loading..." with the session already written, about one load in 25 (#49).
+ * The bundled dev build never did, and it keeps every diagnostic the crawl watches for. Only the
+ * bundle shard builds for production (e2e/lib/shards.ts).
+ */
+const SPA_BUILD =
+  spaFor(process.env["E2E_SHARD"]) === "production"
+    ? "bun run build:web"
+    : "NODE_ENV=development bun run --cwd apps/web build --mode development";
 export const ADMIN_PASSWORD = "admin-password-1234";
 
 /**
@@ -57,7 +68,7 @@ export default defineConfig({
   globalSetup: "./e2e/setup.ts",
   outputDir: join(E2E_DIR, "results"),
   fullyParallel: true,
-  // Read off the machine at start, not fixed: a laptop already running five engines, Vite and the
+  // Read off the machine at start, not fixed: a laptop already running five engines and the
   // API gets fewer tabs than an idle CI runner. `E2E_WORKERS` overrides the rule; the line printed
   // at start says what was chosen and why (e2e/lib/capacity.ts).
   workers: WORKERS,
@@ -71,7 +82,7 @@ export default defineConfig({
   use: {
     // CI uses the Chrome that GitHub runners preinstall; this skips `playwright install`.
     channel: process.env.CI === undefined ? undefined : "chrome",
-    baseURL: `http://localhost:${WEB_PORT}`,
+    baseURL: `http://localhost:${API_PORT}`,
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
     viewport: { width: 1440, height: 1000 },
@@ -84,7 +95,7 @@ export default defineConfig({
     {
       // Builds first: the API rewrites the base-path placeholder in `apps/web/dist` at boot, so a
       // build afterwards would put the placeholder back under a server that has stopped looking.
-      command: "bun run build:web && bun apps/api/src/index.ts",
+      command: `${SPA_BUILD} && bun apps/api/src/index.ts`,
       url: `http://127.0.0.1:${API_PORT}/api/v1/health/live`,
       reuseExistingServer: false,
       timeout: 60_000,
@@ -96,14 +107,6 @@ export default defineConfig({
         TESTATE_ADMIN_PASSWORD: ADMIN_PASSWORD,
         TESTATE_LOG_STDOUT: "false",
       },
-    },
-    {
-      command: "bun run dev",
-      cwd: "apps/web",
-      url: `http://localhost:${WEB_PORT}/`,
-      reuseExistingServer: false,
-      timeout: 60_000,
-      env: { WEB_PORT: String(WEB_PORT), API_PORT: String(API_PORT) },
     },
   ],
 });

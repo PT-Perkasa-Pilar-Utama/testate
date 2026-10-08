@@ -1,7 +1,10 @@
 # Browser end-to-end tests
 
-`bun run e2e` runs Playwright against a fresh API (`.e2e/data`) and the Vite dev server. Compose
-engines must be up (`docker compose -f deploy/compose.engines.yml up --wait`).
+`bun run e2e` runs Playwright against a fresh API (`.e2e/data`) serving the SPA it built at start:
+Solid's dev build, bundled once, so every reactivity diagnostic stays on. There is no Vite dev
+server in the suite: it compiled modules on request on the browsers' cores and, under load, left the
+app on "Loading..." about one load in 25 (#49). Compose engines must be up
+(`docker compose -f deploy/compose.engines.yml up --wait`).
 
 **The engines also need their schema.** A fresh stack brings up an empty `shop` on every engine,
 and the seeded demo adapters introspect zero tables from it, which fails a third of the suite with
@@ -18,7 +21,7 @@ bun run e2e:quick       # routes, flows and states only: the screens most change
 
 How many Chromium tabs run at once is read off the machine at start (`e2e/lib/capacity.ts`): on
 CI one per core, four at most; at home half the cores, one fewer when the load average says the
-engines and Vite are already busy, two at most under 12 GiB, never fewer than one. The first line
+engines and the API are already busy, two at most under 12 GiB, never fewer than one. The first line
 the run prints says what it chose and why. `E2E_WORKERS=1 bun run e2e` overrides it.
 
 Each suite drops and recreates its own schema, so repeating it is harmless. A long-lived stack
@@ -44,7 +47,7 @@ starts its ephemeral range at 49152, which is why this only ever failed in CI.
 | `crawl`     | `e2e/buttons.e2e.ts`                                             | Clicks every visible control per role; no 5xx, no console error       |
 | `screens`   | `e2e/screens.e2e.ts`                                             | README screenshots off the seeded demo; skipped unless `SHOTS=1`      |
 | `stress`    | `e2e/stress.e2e.ts`                                              | Hunts the reactive-loop warning on the grid; skipped unless `STRESS=1` |
-| `bundle`    | `e2e/bundle.e2e.ts`                                              | The built bundle, not Vite: every screen settles and none crashes      |
+| `bundle`    | `e2e/bundle.e2e.ts`                                              | The production bundle: every screen settles and none crashes           |
 | `boot`      | `e2e/boot.e2e.ts`, `engine`, `types`, `session`, `storage`       | Stories that need their own instance, engine, or clock                |
 
 Projects run in that order (`dependencies`), tests inside a project run on 3 workers.
@@ -64,20 +67,23 @@ same table screen four times.
 
 ## CI shards
 
-The project list and its order live in `e2e/lib/shards.ts`, and CI splits it into four shards, one
+The project list and its order live in `e2e/lib/shards.ts`, and CI splits it into five shards, one
 job each, every one on its own runner with its own engines and a fresh instance:
 
 | Shard     | Projects                                   |
 | --------- | ------------------------------------------ |
 | `screens` | `coverage`, `routes`, `api`, `tables`      |
 | `flows`   | `flows`                                    |
-| `states`  | `states`, `state-api`, `adapter`, `bundle`, `boot` |
+| `states`  | `states`, `state-api`, `adapter`, `boot`   |
 | `tail`    | `crawl`, `screens`, `stress`               |
+| `bundle`  | `bundle`, on the production build          |
 
 The order between projects only matters where they share an instance, so a shard keeps the order
 inside it: a dependency on a project in another shard becomes that project's nearest predecessors
-in the shard. `bundle` and `boot` sit with `states` and follow `adapter`, because neither reads what
-the crawl leaves and the crawl alone is the longest project in the suite (110 s on CI). Run one shard locally with
+in the shard. `boot` sits with `states` and follows `adapter`, because it reads nothing the crawl
+leaves and the crawl alone is the longest project in the suite (110 s on CI). `bundle` is the only
+shard that builds the SPA for production (`spaFor`); `E2E_SHARD=bundle bun run e2e` runs that walk
+locally. Run one shard locally with
 `E2E_SHARD=states bun run e2e`; unset, `bun run e2e` runs the whole chain.
 
 A flaky shard is re-run alone with "Re-run failed jobs". A shard also skips itself when it already
@@ -123,7 +129,6 @@ its screen is coverage on paper.
   drift test in `states.e2e.ts` runs an `UPDATE` on it through `runSql`, because a write Testate
   never saw is the thing that story tests. Everything else that needs DDL or a broken restore
   takes a private database (`createDatabase`).
-- The Vite proxy targets `127.0.0.1`; Node resolves `localhost` to `::1`.
 - The crawler skips `Sign out`, `Disable`, `Revoke`, `Delete`, and other destructive labels
   (`SKIP` in `e2e/lib/crawl.ts`); story tests cover those on purpose.
 - Lint applies jest rules here: no conditionals in a test, `?.` and `??` included. Put the logic in
@@ -143,8 +148,8 @@ its screen is coverage on paper.
 
 ## Debugging
 
-- Never edit `apps/web` while a browser chain runs: Vite hot-reloads into the crawl. Never
-  `pkill -f vite`, the suite's own dev server matches; kill by the PID you saved.
+- The SPA is built once when the API starts, so an edit to `apps/web` reaches the next run, not the
+  one in progress. Kill a stray suite API by the PID you saved, never by name.
 - Reproduce an API bug against an instance on the suite's data, then sign in as `admin` /
   `admin-final-password-1` (writes need the `X-Testate-Request: 1` header):
   `PORT=7380 TESTATE_ENV=development TESTATE_DATA_DIR=.e2e/data TESTATE_SECRETS_ACTIVE_KEY=$(cat .e2e/key.txt) TESTATE_ADMIN_PASSWORD=admin-password-1234 bun apps/api/src/index.ts`

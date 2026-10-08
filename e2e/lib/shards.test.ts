@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs";
 import { describe, expect, test } from "bun:test";
 
-import { PROJECTS, SHARDS, inputsOf, projectsFor, shardsOfSpec } from "./shards.ts";
+import { PROJECTS, SHARDS, inputsOf, projectsFor, shardsOfSpec, spaFor } from "./shards.ts";
 
 const sharded: string[] = Object.values(SHARDS).flat();
 
@@ -20,12 +20,11 @@ describe("splitting the suite into CI shards", () => {
 
   test("a shard keeps the chain order inside it, through projects outside it", () => {
     const states = projectsFor("states");
-    // bundle and boot wait for the crawl in the full chain; the crawl waits for adapter.
+    // boot waits for the crawl in the full chain; the crawl waits for adapter.
     expect(states.map((project) => [project.name, project.dependencies])).toEqual([
       ["states", []],
       ["state-api", ["states"]],
       ["adapter", ["state-api"]],
-      ["bundle", ["adapter"]],
       ["boot", ["adapter"]],
     ]);
   });
@@ -36,6 +35,12 @@ describe("splitting the suite into CI shards", () => {
       ["screens", []],
       ["stress", []],
     ]);
+  });
+
+  test("only the bundle walk drives the production build", () => {
+    expect(spaFor("bundle")).toBe("production");
+    expect(spaFor("tail")).toBe("development");
+    expect(spaFor(undefined)).toBe("development");
   });
 
   test("unset, the whole chain runs; an unknown shard is refused", () => {

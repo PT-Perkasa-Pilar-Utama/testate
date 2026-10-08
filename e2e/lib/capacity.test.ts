@@ -10,7 +10,7 @@ describe("how many browser tabs the suite runs at once", () => {
 
   test("a laptop takes half its cores, less when busy or short of memory, never none", () => {
     expect(workersFor({ cpus: 8, load1: 1, totalGiB: 16, ci: false })).toBe(4);
-    // The engines and Vite already running: load over 70% of the cores costs one.
+    // The engines and the API already running: load over 70% of the cores costs one.
     expect(workersFor({ cpus: 8, load1: 6, totalGiB: 16, ci: false })).toBe(3);
     // 8 GiB holds five engines and Chromium both: two tabs at most, one when busy as well.
     expect(workersFor({ cpus: 8, load1: 1, totalGiB: 8, ci: false })).toBe(2);

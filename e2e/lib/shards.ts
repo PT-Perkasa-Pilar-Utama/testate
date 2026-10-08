@@ -55,13 +55,25 @@ export const PROJECTS: ProjectSpec[] = [
 export const SHARDS = {
   screens: ["coverage", "routes", "api", "tables"],
   flows: ["flows"],
-  // bundle and boot follow adapter here rather than the crawl: neither reads what the crawl
-  // leaves, and the crawl alone is the longest project in the suite.
-  states: ["states", "state-api", "adapter", "bundle", "boot"],
+  // boot follows adapter here rather than the crawl: it reads nothing the crawl leaves, and the
+  // crawl alone is the longest project in the suite.
+  states: ["states", "state-api", "adapter", "boot"],
   tail: ["crawl", "screens", "stress"],
+  // The one shard on the production build (`spaFor`): the walk that catches a loop the dev build
+  // does not show.
+  bundle: ["bundle"],
 } as const satisfies Record<string, readonly string[]>;
 
 export type Shard = keyof typeof SHARDS;
+
+/**
+ * Which build of the SPA a shard drives. Every spec but the bundle walk runs on Solid's dev build,
+ * bundled once and served by the API, so its diagnostics stay on; the Vite dev server is gone from
+ * the suite (#40, #49). The bundle walk needs the production build, the one users get.
+ */
+export function spaFor(shard: string | undefined): "development" | "production" {
+  return shard === "bundle" ? "production" : "development";
+}
 
 export function isShard(name: string): name is Shard {
   return Object.hasOwn(SHARDS, name);
