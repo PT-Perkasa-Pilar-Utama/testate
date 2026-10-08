@@ -1,17 +1,19 @@
 import type { JSX } from "@solidjs/web";
-import { For, Show, createMemo, createSignal } from "solid-js";
+import { For, Loading, Show, createEffect, createMemo, createSignal } from "solid-js";
 import type { TableSchema } from "@testate/shared";
 
 import Button from "@/components/button.tsx";
+import Pending from "@/components/pending.tsx";
 import Select from "@/components/select.tsx";
-import { keyOf, layout, neighbours } from "./erd.layout.ts";
+import { canvasMeasure, layoutEngine } from "./erd.engine.ts";
+import { HEADER, ROW, keyOf, layout, neighbours } from "./erd.layout.ts";
 import type { Box, BoxColumn, Diagram, Edge } from "./erd.layout.ts";
 
-/** Past this many tables an automatic diagram is a hairball, so it starts at one table instead. */
-const WHOLE_SCHEMA_CAP = 40;
+/** Past this many tables a whole-schema diagram is a hairball, so it starts at one table instead. */
+const WHOLE_SCHEMA_CAP = 200;
 const PADDING = 24;
-const HEADER = 30;
-const ROW = 19;
+const MIN_ZOOM = 0.1;
+const MAX_ZOOM = 2;
 
 /** Filled for part of the primary key, hollow for a foreign key, blank otherwise. */
 function marker(column: BoxColumn): string {
@@ -19,18 +21,11 @@ function marker(column: BoxColumn): string {
   return column.ref ? "○ " : "  ";
 }
 
-function edgePath(diagram: Diagram, edge: Edge): string | null {
-  const from = diagram.boxes.find((box) => box.key === edge.from);
-  const to = diagram.boxes.find((box) => box.key === edge.to);
-  if (from === undefined || to === undefined) return null;
-  const x1 = from.x + from.width;
-  const y1 = from.y + HEADER / 2 + 8;
-  const x2 = to.x;
-  const y2 = to.y + HEADER / 2 + 8;
-  // An S through the gap: two horizontal stubs and a curve, which reads as a link without needing
-  // a routing algorithm nobody asked for.
-  const mid = (x1 + x2) / 2;
-  return `M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}`;
+/** ELK's orthogonal route as a polyline. */
+function pathOf(edge: Edge): string {
+  return edge.points
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+    .join(" ");
 }
 
 function TableBox(props: {
@@ -90,7 +85,10 @@ function TableBox(props: {
               text-anchor="end"
               class="fill-muted font-mono text-[10px]"
             >
-              {column.type}
+              <Show when={column.shownType !== column.type}>
+                <title>{column.type}</title>
+              </Show>
+              {column.shownType}
               {column.nullable ? "" : " *"}
             </text>
           </>
@@ -109,8 +107,42 @@ function TableBox(props: {
   );
 }
 
+/** The laid-out diagram. It reports each new layout so the canvas can fit it to the view. */
+function Drawing(props: {
+  diagram: Diagram;
+  focus: string | null;
+  onFocus: (key: string) => void;
+  onLaidOut: (diagram: Diagram) => void;
+}): JSX.Element {
+  // The handler is taken in the compute: a prop read inside an effect callback is the untracked
+  // read Solid 2 warns about.
+  createEffect(
+    () => ({ diagram: props.diagram, onLaidOut: props.onLaidOut }),
+    ({ diagram, onLaidOut }) => onLaidOut(diagram)
+  );
+  return (
+    <>
+      <For each={props.diagram.edges}>
+        {(edge) => (
+          <g>
+            <title>{`${edge.from} (${edge.label}) → ${edge.to}`}</title>
+            <path d={pathOf(edge)} class="fill-none stroke-line" stroke-width="1.5" />
+            {/* The dot marks the referenced end: a line alone does not say which way it points. */}
+            <Show when={edge.points.at(-1)}>
+              {(end) => <circle cx={end().x} cy={end().y} r="3" class="fill-muted" />}
+            </Show>
+          </g>
+        )}
+      </For>
+      <For each={props.diagram.boxes}>
+        {(box) => <TableBox box={box} focused={box.key === props.focus} onFocus={props.onFocus} />}
+      </For>
+    </>
+  );
+}
+
 /**
- * The schema as boxes and lines, laid out from the foreign keys every time.
+ * The schema as boxes and lines, laid out from the foreign keys every time by ELK.
  *
  * No dragging and nothing stored: a saved position goes stale the moment a column is added, and
  * the layout is cheap enough to recompute. Pan with a drag, zoom with the wheel, pick a table to
@@ -123,16 +155,33 @@ export default function Erd(props: { tables: readonly TableSchema[] }): JSX.Elem
   const [zoom, setZoom] = createSignal(1);
   const [pan, setPan] = createSignal({ x: PADDING, y: PADDING });
   const [dragging, setDragging] = createSignal<{ x: number; y: number } | null>(null);
+  // A plain variable, not a signal: the frame is measured, never tracked, and `fit` runs from an
+  // effect callback where a signal read would be the untracked read Solid warns about.
+  let frame: HTMLDivElement | undefined;
   const big = (): boolean => props.tables.length > WHOLE_SCHEMA_CAP;
   const shown = createMemo(() => {
     const at = focus();
     if (at === null) return big() ? props.tables.slice(0, 1) : props.tables;
     return neighbours(props.tables, at);
   });
-  const diagram = createMemo(() => layout(shown()));
+  const diagram = createMemo(async () => {
+    const tables = shown();
+    const engine = await layoutEngine();
+    await document.fonts.ready;
+    return layout(tables, canvasMeasure(), engine);
+  });
+  let laid: Diagram | null = null;
+  /** The whole diagram in view, never zoomed past 100% for a small one. */
   const fit = (): void => {
+    const box = frame?.getBoundingClientRect();
+    if (laid === null || box === undefined || laid.width === 0) return;
+    const scale = Math.min(
+      1,
+      (box.width - PADDING * 2) / laid.width,
+      (box.height - PADDING * 2) / laid.height
+    );
+    setZoom(Math.max(MIN_ZOOM, scale));
     setPan({ x: PADDING, y: PADDING });
-    setZoom(1);
   };
   return (
     <div class="grid gap-2">
@@ -157,7 +206,7 @@ export default function Erd(props: { tables: readonly TableSchema[] }): JSX.Elem
             size="sm"
             variant="ghost"
             aria-label="Zoom out"
-            onClick={() => setZoom(Math.max(0.3, zoom() - 0.15))}
+            onClick={() => setZoom(Math.max(MIN_ZOOM, zoom() - 0.15))}
           >
             <span aria-hidden="true">-</span>
           </Button>
@@ -168,17 +217,20 @@ export default function Erd(props: { tables: readonly TableSchema[] }): JSX.Elem
             size="sm"
             variant="ghost"
             aria-label="Zoom in"
-            onClick={() => setZoom(Math.min(2, zoom() + 0.15))}
+            onClick={() => setZoom(Math.min(MAX_ZOOM, zoom() + 0.15))}
           >
             <span aria-hidden="true">+</span>
           </Button>
           <Button size="sm" variant="secondary" onClick={() => fit()}>
-            Reset
+            Fit
           </Button>
         </div>
       </div>
       <div
-        class="relative h-[32rem] overflow-hidden rounded-lg bg-sunken ring ring-line"
+        ref={(element) => {
+          frame = element;
+        }}
+        class="relative h-[70vh] min-h-[28rem] overflow-hidden rounded-lg bg-sunken ring ring-line"
         onPointerDown={(event) => {
           // A press that lands on a table is a choice of table, not the start of a pan. Without
           // this the pointer capture below swallowed the click and nothing ever focused.
@@ -204,41 +256,45 @@ export default function Erd(props: { tables: readonly TableSchema[] }): JSX.Elem
         }}
         onWheel={(event) => {
           event.preventDefault();
-          setZoom(Math.min(2, Math.max(0.3, zoom() - event.deltaY / 500)));
+          setZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom() - event.deltaY / 500)));
         }}
       >
-        <svg class="h-full w-full" role="img" aria-label="Table relationships">
-          <g transform={`translate(${pan().x} ${pan().y}) scale(${zoom()})`}>
-            <For each={diagram().edges}>
-              {(edge) => (
-                <Show when={edgePath(diagram(), edge)}>
-                  {(path) => <path d={path()} class="fill-none stroke-line" stroke-width="1.5" />}
-                </Show>
-              )}
-            </For>
-            <For each={diagram().boxes}>
-              {(box) => (
-                <TableBox
-                  box={box}
-                  focused={box.key === focus()}
-                  onFocus={(key) => setFocus(key)}
-                />
-              )}
-            </For>
-          </g>
-        </svg>
-        <Show when={diagram().boxes.length === 0}>
-          <p class="absolute inset-0 grid place-items-center text-muted">No tables to draw yet.</p>
-        </Show>
+        <Loading
+          fallback={
+            <div class="absolute inset-0 grid place-items-center">
+              <Pending>Laying out {shown().length} tables...</Pending>
+            </div>
+          }
+        >
+          <svg class="h-full w-full" role="img" aria-label="Table relationships">
+            <g transform={`translate(${pan().x} ${pan().y}) scale(${zoom()})`}>
+              <Drawing
+                diagram={diagram()}
+                focus={focus()}
+                onFocus={(key) => setFocus(key)}
+                onLaidOut={(next) => {
+                  laid = next;
+                  fit();
+                }}
+              />
+            </g>
+          </svg>
+          <Show when={diagram().boxes.length === 0}>
+            <p class="absolute inset-0 grid place-items-center text-muted">
+              No tables to draw yet.
+            </p>
+          </Show>
+        </Loading>
       </div>
       <p class="text-sm text-muted">
         Drag to move, scroll to zoom, click a table to see it and everything one foreign key away. A
         filled dot is part of the primary key. A hollow one points at another table. A
-        <span class="font-mono"> *</span> means the column cannot be null.
+        <span class="font-mono"> *</span> means the column cannot be null. Each line runs from a
+        foreign key column to the column it references, which the dot marks.
         <Show when={big() && focus() === null}>
           {" "}
-          This schema has {props.tables.length} tables. That is too many to draw at once. Pick one
-          to start from.
+          This schema has {props.tables.length} tables, more than the {WHOLE_SCHEMA_CAP} a diagram
+          can show at once. Pick one to start from.
         </Show>
       </p>
     </div>

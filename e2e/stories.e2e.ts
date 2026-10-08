@@ -118,6 +118,27 @@ test.describe("qa stories", () => {
     expect(issues).toStrictEqual([]);
   });
 
+  test("@story-140 the diagram lays out the tables and draws each foreign key", async ({
+    page,
+  }) => {
+    const issues: Issue[] = [];
+    watch(page, issues);
+    const postgres = await demoAdapter({ engine: "postgres" });
+    await page.goto(`/projects/demo/adapters/${postgres.id}`);
+    await settle(page);
+    await page.getByRole("tab", { name: "Diagram" }).click();
+    // ELK runs in a worker loaded on demand: a wrong asset path or a CSP refusal leaves the
+    // canvas on its loading line, which this waits past.
+    await expect(page.getByRole("button", { name: "Focus contract.orders" })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByRole("button", { name: "Focus contract.customers" })).toBeVisible();
+    await expect(
+      page.locator("svg g title", { hasText: "contract.orders (customer_id)" })
+    ).toHaveCount(1);
+    expect(issues).toStrictEqual([]);
+  });
+
   test("@story-143 @story-150 inserts copies of a row and extracts its fixture", async ({
     page,
   }) => {

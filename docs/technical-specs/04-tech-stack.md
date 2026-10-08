@@ -40,6 +40,7 @@ Every choice below was confirmed in the architecture grill on 2026-08-28. Versio
 | Query console editor | CodeMirror 6 (`@codemirror/lang-sql` 6.10.0, `@codemirror/lang-json` 6.0.2, verified), behind a dynamic import | Schema-driven SQL completion and highlighting that a textarea cannot give; framework-agnostic, so Solid 2 is no obstacle; its own chunk, so the SPA's stays the size it was |
 | Components | Hand-rolled, one per file, plus data-grid, tree, code-editor, json-viewer, file-tree, command-palette | See the `design-system` skill |
 | Code editor | CodeMirror 6 (pinned at scaffold) wrapped in one component | Framework-agnostic, SQL and JSON modes, keymaps |
+| Table diagram layout | elkjs 0.12.0 (EPL-2.0 or GPL-3.0-or-later), layered algorithm with a port per column, in a web worker behind a dynamic import; drawn by our own SVG | Edges from a foreign key column to the column it references, routed around the boxes, which no layout without ports gives; framework-agnostic; the 1.6 MB worker loads only when the Diagram tab opens. The whole schema is drawn up to 200 tables (#42) |
 | Router | In-house `lib/router.ts` over the history API | The Solid 2 line of `@solidjs/router` is a prerelease; the one deliberate shortcut in the plan |
 | State | Signals and stores in presenters; module-level signals for session and navigation | No global state library |
 | Forms | Presenter-held stores validated with `@testate/shared` schemas on submit | No form library supports Solid 2 |
