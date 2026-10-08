@@ -43,22 +43,22 @@
     "check:contrast": "bun scripts/check-contrast.ts"
   },
   "devDependencies": {
-    "@oxlint/plugins": "1.80.0",
-    "@playwright/test": "1.58.2",
-    "@types/bun": "1.4.0",
-    "@types/node": "25.2.3",
-    "eslint-plugin-solid": "0.16.1",
-    "fast-check": "4.9.0",
-    "lefthook": "2.1.10",
-    "oxfmt": "0.65.0",
-    "oxlint": "1.80.0",
+    "@oxlint/plugins": "1.86.0",
+    "@playwright/test": "1.63.0",
+    "@types/bun": "1.4.2",
+    "@types/node": "26.6.4",
+    "eslint-plugin-solid": "0.18.1",
+    "fast-check": "4.10.2",
+    "lefthook": "2.1.16",
+    "oxfmt": "0.71.0",
+    "oxlint": "1.86.0",
     "typescript": "7.0.2"
   },
   "overrides": {
-    "solid-js": "2.0.0-rc.6",
-    "@solidjs/signals": "2.0.0-rc.6"
+    "solid-js": "2.0.0-rc.13",
+    "@solidjs/signals": "2.0.0-rc.13"
   },
   "patchedDependencies": {
-    "@formisch/solid@1.0.0": "patches/@formisch%2Fsolid@1.0.0.patch"
+    "@formisch/solid@1.1.0": "patches/@formisch%2Fsolid@1.1.0.patch"
   }
 }

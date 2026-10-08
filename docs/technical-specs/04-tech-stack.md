@@ -23,7 +23,7 @@ Every choice below was confirmed in the architecture grill on 2026-08-28. Versio
 | Migrations | Numbered `.sql` files, in-house runner at boot, `schema_migrations` ledger | Files resolved relative to `import.meta.dir`, connection from the environment; see 06 §6.9 |
 | Target engines | Postgres and MySQL/MariaDB through `Bun.SQL`; MongoDB through `mongodb` 7.6.0 (verified); `mysql2` 3.24.2 as the MariaDB fallback if the Sprint 0 spike fails | Native driver where Bun has one; official driver where it does not |
 | Snapshot store | `Bun.S3Client` for S3 and S3-compatible endpoints; local filesystem through `Bun.file` and `Bun.write` | Native, streaming, no SDK |
-| Files | `Bun.S3Client` (S3), `ssh2` 1.17.0 + `ssh2-sftp-client` 11.x with the Simulflow `bun patch` (SFTP), `basic-ftp` 6.2.1 (FTP) | Verified pure-JS paths under Bun; the SFTP spike has a fixed fallback |
+| Files | `Bun.S3Client` (S3), `ssh2` 1.17.0 + `ssh2-sftp-client` 12.x with the Simulflow `bun patch` (SFTP), `basic-ftp` 6.2.1 (FTP) | Verified pure-JS paths under Bun; the SFTP spike has a fixed fallback |
 | CSV and XLSX | `csv-parse` (streaming) and `exceljs` (pinned at scaffold) | Streaming CSV; maintained XLSX reader with typed cells |
 | Compression | `CompressionStream("gzip")` and `DecompressionStream` | Web standard, built into Bun, streaming |
 | Hashing | `Bun.CryptoHasher("sha256")` | Content addressing, token hashes, row hashes |
