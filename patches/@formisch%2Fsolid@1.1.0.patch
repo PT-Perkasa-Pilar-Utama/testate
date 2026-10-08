@@ -1,5 +1,11 @@
+diff --git a/node_modules/@formisch/solid/.bun-tag-37bf7e88e49d3093 b/.bun-tag-37bf7e88e49d3093
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/@formisch/solid/.bun-tag-5aebae25e66f4b89 b/.bun-tag-5aebae25e66f4b89
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/dist/dev.jsx b/dist/dev.jsx
-index 2e26f0728a5d82ec2afbae6f2fc50e4d25df4166..42af212696e5dc595c4555126665df5fb67adb5a 100644
+index 2e26f0728a5d82ec2afbae6f2fc50e4d25df4166..17058cfdb554cc6e154f84b0b066ab7bd0ce1065 100644
 --- a/dist/dev.jsx
 +++ b/dist/dev.jsx
 @@ -392,7 +392,7 @@ import {
@@ -7,7 +13,7 @@ index 2e26f0728a5d82ec2afbae6f2fc50e4d25df4166..42af212696e5dc595c4555126665df5f
    validateIfRequired as validateIfRequired2
  } from "./internals.js";
 -import { createMemo as createMemo2, onCleanup } from "solid-js";
-+import { createMemo as createMemo2, getOwner, onCleanup, runWithOwner } from "solid-js";
++import { createMemo as createMemo2, getOwner, onCleanup, runWithOwner, untrack as untrack2 } from "solid-js";
  
  // src/utils/unwrap/unwrap.ts
  function unwrap(value) {
@@ -19,7 +25,7 @@ index 2e26f0728a5d82ec2afbae6f2fc50e4d25df4166..42af212696e5dc595c4555126665df5f
    const getPath = createMemo2(() => unwrap(config).path);
    const getInternalFormStore = createMemo2(() => unwrap(form)[INTERNAL3]);
    const getInternalFieldStore = createMemo2(
-@@ -457,14 +458,19 @@ function useField(form, config) {
+@@ -457,14 +458,21 @@ function useField(form, config) {
        get name() {
          return getInternalFieldStore().name;
        },
@@ -31,7 +37,10 @@ index 2e26f0728a5d82ec2afbae6f2fc50e4d25df4166..42af212696e5dc595c4555126665df5f
 +        return !!getInternalFieldStore().errors.value;
 +      },
        ref: (element) => {
-         const internalFieldStore = getInternalFieldStore();
+-        const internalFieldStore = getInternalFieldStore();
++        // From Solid 2.0 rc.9 a ref runs as an effect callback, where a tracked read is reported as
++        // STRICT_READ_UNTRACKED. The ref runs once per element, so a one-time read is the intent.
++        const internalFieldStore = untrack2(getInternalFieldStore);
          if (!internalFieldStore.elements.includes(element)) {
            internalFieldStore.elements.push(element);
          }
@@ -42,7 +51,7 @@ index 2e26f0728a5d82ec2afbae6f2fc50e4d25df4166..42af212696e5dc595c4555126665df5f
            const elements = internalFieldStore.elements.filter(
              (el) => el !== element
            );
-@@ -474,7 +480,7 @@ function useField(form, config) {
+@@ -474,7 +482,7 @@ function useField(form, config) {
              internalFieldStore.initialElements = internalFieldStore.initialElements.filter((el) => el !== element);
            }
            internalFieldStore.elements = elements;
@@ -51,7 +60,7 @@ index 2e26f0728a5d82ec2afbae6f2fc50e4d25df4166..42af212696e5dc595c4555126665df5f
        },
        onFocus() {
          setFieldBool(getInternalFieldStore(), "isTouched", true);
-@@ -587,7 +593,19 @@ function FieldArray(props) {
+@@ -587,7 +595,19 @@ function FieldArray(props) {
  import {
    INTERNAL as INTERNAL5
  } from "./internals.js";
@@ -73,7 +82,7 @@ index 2e26f0728a5d82ec2afbae6f2fc50e4d25df4166..42af212696e5dc595c4555126665df5f
  function Form(props) {
    const [, other] = splitProps(props, ["of", "onSubmit"]);
 diff --git a/dist/index.jsx b/dist/index.jsx
-index 2e26f0728a5d82ec2afbae6f2fc50e4d25df4166..42af212696e5dc595c4555126665df5fb67adb5a 100644
+index 2e26f0728a5d82ec2afbae6f2fc50e4d25df4166..17058cfdb554cc6e154f84b0b066ab7bd0ce1065 100644
 --- a/dist/index.jsx
 +++ b/dist/index.jsx
 @@ -392,7 +392,7 @@ import {
@@ -81,7 +90,7 @@ index 2e26f0728a5d82ec2afbae6f2fc50e4d25df4166..42af212696e5dc595c4555126665df5f
    validateIfRequired as validateIfRequired2
  } from "./internals.js";
 -import { createMemo as createMemo2, onCleanup } from "solid-js";
-+import { createMemo as createMemo2, getOwner, onCleanup, runWithOwner } from "solid-js";
++import { createMemo as createMemo2, getOwner, onCleanup, runWithOwner, untrack as untrack2 } from "solid-js";
  
  // src/utils/unwrap/unwrap.ts
  function unwrap(value) {
@@ -93,7 +102,7 @@ index 2e26f0728a5d82ec2afbae6f2fc50e4d25df4166..42af212696e5dc595c4555126665df5f
    const getPath = createMemo2(() => unwrap(config).path);
    const getInternalFormStore = createMemo2(() => unwrap(form)[INTERNAL3]);
    const getInternalFieldStore = createMemo2(
-@@ -457,14 +458,19 @@ function useField(form, config) {
+@@ -457,14 +458,21 @@ function useField(form, config) {
        get name() {
          return getInternalFieldStore().name;
        },
@@ -105,7 +114,10 @@ index 2e26f0728a5d82ec2afbae6f2fc50e4d25df4166..42af212696e5dc595c4555126665df5f
 +        return !!getInternalFieldStore().errors.value;
 +      },
        ref: (element) => {
-         const internalFieldStore = getInternalFieldStore();
+-        const internalFieldStore = getInternalFieldStore();
++        // From Solid 2.0 rc.9 a ref runs as an effect callback, where a tracked read is reported as
++        // STRICT_READ_UNTRACKED. The ref runs once per element, so a one-time read is the intent.
++        const internalFieldStore = untrack2(getInternalFieldStore);
          if (!internalFieldStore.elements.includes(element)) {
            internalFieldStore.elements.push(element);
          }
@@ -116,7 +128,7 @@ index 2e26f0728a5d82ec2afbae6f2fc50e4d25df4166..42af212696e5dc595c4555126665df5f
            const elements = internalFieldStore.elements.filter(
              (el) => el !== element
            );
-@@ -474,7 +480,7 @@ function useField(form, config) {
+@@ -474,7 +482,7 @@ function useField(form, config) {
              internalFieldStore.initialElements = internalFieldStore.initialElements.filter((el) => el !== element);
            }
            internalFieldStore.elements = elements;
@@ -125,7 +137,7 @@ index 2e26f0728a5d82ec2afbae6f2fc50e4d25df4166..42af212696e5dc595c4555126665df5f
        },
        onFocus() {
          setFieldBool(getInternalFieldStore(), "isTouched", true);
-@@ -587,7 +593,19 @@ function FieldArray(props) {
+@@ -587,7 +595,19 @@ function FieldArray(props) {
  import {
    INTERNAL as INTERNAL5
  } from "./internals.js";

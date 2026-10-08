@@ -135,21 +135,21 @@ export default function UsersView(): JSX.Element {
             <Show when={presenter.table.rows().length === 0}>
               <EmptyRow>No account matches that search or filter.</EmptyRow>
             </Show>
-            <For each={presenter.table.rows()}>
+            <For each={presenter.table.rows()} keyed={(user) => user.id}>
               {(user) => (
                 <Row>
                   <Cell class="font-semibold">
-                    <Truncated>{user.username}</Truncated>
+                    <Truncated>{user().username}</Truncated>
                   </Cell>
                   <Cell>
-                    <Truncated>{user.display_name}</Truncated>
+                    <Truncated>{user().display_name}</Truncated>
                   </Cell>
                   <Cell>
-                    <Badge variant={ROLE_META[user.role].variant}>
-                      <Show when={ROLE_META[user.role].icon}>
+                    <Badge variant={ROLE_META[user().role].variant}>
+                      <Show when={ROLE_META[user().role].icon}>
                         {(icon) => <Icon name={icon()} class="h-3 w-3" />}
                       </Show>
-                      {ROLE_LABEL[user.role]}
+                      {ROLE_LABEL[user().role]}
                     </Badge>
                   </Cell>
                   <Cell>
@@ -157,23 +157,23 @@ export default function UsersView(): JSX.Element {
                         else is true of it, so that fact leads. "active" only appears when none
                         of the others do — a clean account needs one pill, not a default one. */}
                     <span class="inline-flex flex-wrap gap-1">
-                      <Show when={user.locked_until !== null}>
+                      <Show when={user().locked_until !== null}>
                         <Badge variant="error">
                           <Icon name="lock" class="h-3 w-3" />
                           locked
                         </Badge>
                       </Show>
-                      <Show when={user.disabled_at !== null}>
+                      <Show when={user().disabled_at !== null}>
                         <Badge variant="secondary">disabled</Badge>
                       </Show>
-                      <Show when={user.must_change_password}>
+                      <Show when={user().must_change_password}>
                         <Badge variant="warning">password change due</Badge>
                       </Show>
                       <Show
                         when={
-                          user.locked_until === null &&
-                          user.disabled_at === null &&
-                          !user.must_change_password
+                          user().locked_until === null &&
+                          user().disabled_at === null &&
+                          !user().must_change_password
                         }
                       >
                         <Badge variant="success">active</Badge>
@@ -181,12 +181,12 @@ export default function UsersView(): JSX.Element {
                     </span>
                   </Cell>
                   <Cell>
-                    <Show when={user.last_login_at} fallback="never">
+                    <Show when={user().last_login_at} fallback="never">
                       {(at) => <>{formatWhen(at())}</>}
                     </Show>
                   </Cell>
                   <Cell pinned>
-                    <Actions presenter={presenter} user={user} />
+                    <Actions presenter={presenter} user={user()} />
                   </Cell>
                 </Row>
               )}

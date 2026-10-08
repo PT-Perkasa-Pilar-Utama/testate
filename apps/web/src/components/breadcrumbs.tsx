@@ -19,19 +19,20 @@ export default function Breadcrumbs(props: { items: readonly Crumb[] }): JSX.Ele
   return (
     <nav aria-label="Breadcrumb">
       <ol class="flex flex-wrap items-center gap-1.5 font-mono text-xs text-muted">
-        <For each={props.items}>
+        {/* By position: a screen rebuilds its crumbs on every read, and a level is where it sits. */}
+        <For each={props.items} keyed={false}>
           {(item, index) => (
             <li class="flex min-w-0 items-center gap-1.5">
-              <Show when={index() > 0}>
+              <Show when={index > 0}>
                 <span aria-hidden="true" class="text-inactive">
                   /
                 </span>
               </Show>
               <Show
-                when={item.href}
+                when={item().href}
                 fallback={
                   <span class="truncate text-body" aria-current="page">
-                    {item.label}
+                    {item().label}
                   </span>
                 }
               >
@@ -41,11 +42,11 @@ export default function Breadcrumbs(props: { items: readonly Crumb[] }): JSX.Ele
                     href={href(to())}
                     onClick={(event) => go(event, to())}
                   >
-                    {item.label}
+                    {item().label}
                   </a>
                 )}
               </Show>
-              <Show when={item.after}>{item.after}</Show>
+              <Show when={item().after}>{item().after}</Show>
             </li>
           )}
         </For>

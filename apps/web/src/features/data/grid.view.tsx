@@ -176,20 +176,20 @@ function GridTable(props: {
       <Table>
         <thead>
           <tr>
-            <For each={props.presenter.page.value().columns}>
+            <For each={props.presenter.page.value().columns} keyed={(column) => column.name}>
               {(column) => (
-                <Head numeric={NUMERIC_TYPE.test(column.type)} identifier>
+                <Head numeric={NUMERIC_TYPE.test(column().type)} identifier>
                   <button
                     type="button"
                     class="cursor-pointer font-medium hover:underline"
-                    onClick={() => props.presenter.toggleSort(column.name)}
+                    onClick={() => props.presenter.toggleSort(column().name)}
                   >
-                    <span class="font-semibold text-heading">{column.name}</span>
-                    <Show when={props.presenter.sort() === column.name}>
+                    <span class="font-semibold text-heading">{column().name}</span>
+                    <Show when={props.presenter.sort() === column().name}>
                       {props.presenter.order() === "asc" ? " ↑" : " ↓"}
                     </Show>
                   </button>
-                  <span class="ml-1.5 text-[11px] font-normal text-inactive">{column.type}</span>
+                  <span class="ml-1.5 text-[11px] font-normal text-inactive">{column().type}</span>
                 </Head>
               )}
             </For>
@@ -207,30 +207,30 @@ function GridTable(props: {
               </EmptyRow>
             }
           >
-            <For each={props.presenter.page.value().data}>
+            <For each={props.presenter.page.value().data} keyed={false}>
               {(row) => (
                 <Row>
-                  <For each={props.presenter.page.value().columns}>
+                  <For each={props.presenter.page.value().columns} keyed={(column) => column.name}>
                     {(column) => (
-                      <Cell numeric={NUMERIC_TYPE.test(column.type)}>
+                      <Cell numeric={NUMERIC_TYPE.test(column().type)}>
                         {/* A cell holds whatever the table holds: a one-word flag or a page of
                               JSON. FkCell renders a link for a foreign key, so the truncation
                               wraps it from outside rather than editing what it returns; 18rem is
                               this table's own default width for an unbounded string. */}
                         <span
                           class="block max-w-[18rem] truncate"
-                          title={cellText(row[column.name])}
+                          title={cellText(row()[column().name])}
                         >
                           <FkCell
                             presenter={props.presenter}
-                            column={column.name}
-                            value={row[column.name]}
+                            column={column().name}
+                            value={row()[column().name]}
                           />
                         </span>
                       </Cell>
                     )}
                   </For>
-                  <RowActions presenter={props.presenter} row={row} />
+                  <RowActions presenter={props.presenter} row={row()} />
                 </Row>
               )}
             </For>
