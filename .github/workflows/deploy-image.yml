@@ -3,14 +3,15 @@ name: Deploy image
 # Manually-triggered. Reads the version from package.json and skips entirely if
 # that version is already published - bump the version to release.
 #
-# `ref` builds from a tag instead of the branch, with this workflow file: a release that is
-# missing its binaries is backfilled from its own source (`ref: v1.2.0`). The image jobs skip a
+# `tag` builds from a release tag instead of the branch, with this workflow file: a release that is
+# missing its binaries is backfilled from its own source (`tag: v1.2.0`). The image jobs skip a
 # version that is already published, so such a run only builds, boots and attaches the binaries.
+# Checkouts take `refs/tags/<tag>`, so nothing but an existing tag can be built this way.
 on:
   workflow_dispatch:
     inputs:
-      ref:
-        description: "Tag or commit to build from; empty builds the branch the run is on"
+      tag:
+        description: "Release tag to build from, e.g. v1.2.0; empty builds the branch the run is on"
         required: false
         default: ""
 
@@ -45,7 +46,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || '' }}
 
       - name: Resolve image name + version
         id: img
@@ -228,7 +229,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || '' }}
 
       - name: Resolve image name + version
         id: img
@@ -401,12 +402,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || '' }}
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           # In lockstep with ci.yml: the binaries embed this exact runtime.
           bun-version: "1.4.0"
+          # This job runs code checked out from the `tag` input. With no cache, nothing it does can
+          # land in a cache a default-branch run later restores (CodeQL cache-poisoning).
+          no-cache: true
 
       - run: bun install --frozen-lockfile
 
@@ -445,7 +449,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || '' }}
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -494,7 +498,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || '' }}
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
