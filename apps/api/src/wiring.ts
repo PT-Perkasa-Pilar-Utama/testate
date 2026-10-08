@@ -2,6 +2,8 @@
 import type { MiddlewareHandler } from "hono";
 import { join } from "node:path";
 import type { Settings } from "@testate/shared";
+import { idSchema } from "@testate/shared";
+import * as v from "valibot";
 import type { V1Deps } from "./modules/index.ts";
 import { requireProjectInScope } from "./modules/projects/projects.scope.ts";
 
@@ -82,7 +84,12 @@ export function createAdapterScope(
   const assertInProject = assertAdapterInProject(projectOf, adapters.byId);
   return async (c, next) => {
     currentActor(c);
-    assertInProject(param(c, "slug"), param(c, "id"));
+    // `/projects/:slug/adapters/:id/*` also matches `POST /projects/:slug/adapters/test`, the
+    // connection test for a draft that has no adapter yet: Hono's `/*` matches an empty rest. Only
+    // an id names an adapter to own; any other segment is a route of its own, and it 404s itself
+    // when nothing answers it.
+    const id = param(c, "id");
+    if (v.is(idSchema, id)) assertInProject(param(c, "slug"), id);
     await next();
   };
 }

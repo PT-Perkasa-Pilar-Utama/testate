@@ -110,6 +110,19 @@ describe("adapter ownership route guard", () => {
     expect(state.storage).toBe(0);
   });
 
+  it("lets the draft connection test through: `/adapters/test` names no adapter", async () => {
+    const harness = await createAdaptersHarness();
+    const state: RouteState = { data: 0, storage: 0 };
+    const app = appWith(harness, state, ACTOR);
+
+    const response = await app.request("/projects/shop/adapters/test", {
+      method: "POST",
+      headers: { "X-Testate-Request": "1" },
+    });
+
+    expect(response.status).toBe(204);
+  });
+
   it("requires authentication before checking adapter ownership", async () => {
     const harness = await createAdaptersHarness();
     const adapter = await createSettled(harness, S3);
