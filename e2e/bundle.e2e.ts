@@ -15,10 +15,11 @@ import { SCREENS, statePath } from "./lib/roles.ts";
 import { API_PORT } from "../playwright.config.ts";
 
 /**
- * The built bundle, not Vite. Every other spec drives the dev server, and the two differ: a screen
- * that read a still-pending async memo outside its `<Loading>` loaded once under Vite and spun
- * forever in the bundle, ~250 requests a second, until the tab was closed. Two screens shipped that
- * way, so this walks all of them and counts.
+ * The production bundle. Every other spec drives Solid's dev build, and the two differ: a screen
+ * that read a still-pending async memo outside its `<Loading>` loaded once under the dev build and
+ * spun forever in production, ~250 requests a second, until the tab was closed. Two screens shipped
+ * that way, so this walks all of them and counts. It runs in its own shard, the one CI builds for
+ * production (`spaFor` in e2e/lib/shards.ts).
  *
  * `SCREENS` alone is the top nav, and both incidents were on screens it lists. Everything behind
  * an id was uncovered: an adapter's own tabs, a file store's files, a diff. Those are discovered

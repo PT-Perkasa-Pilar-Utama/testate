@@ -1,7 +1,7 @@
 /** What the machine reports before the suite starts; every number is read once. */
 export type Capacity = {
   cpus: number;
-  /** One-minute load average: what is already running, engines and Vite included. */
+  /** One-minute load average: what is already running, engines and the API included. */
   load1: number;
   totalGiB: number;
   ci: boolean;
@@ -20,7 +20,7 @@ function asked(override: string | undefined): number | null {
  * How many browser tabs to run at once.
  *
  * On CI the runner has nothing else to do: one per core, four at most, since the phases above
- * `flows` are serial anyway. At home the engines, Vite, the API and the person's own work share
+ * `flows` are serial anyway. At home the engines, the API and the person's own work share
  * the cores: half of them, one fewer when the machine is already busy, and two at most when
  * memory is under 12 GiB, since five engines and Chromium tabs both live in it; never fewer than
  * one. `E2E_WORKERS` overrides all of it.

@@ -98,19 +98,16 @@ export function watch(page: Page, issues: Issue[]): void {
 }
 
 /**
- * A 5xx is the app's when it carries the API's error envelope, which every error answer does,
- * an internal one included (`errorResponse`, lib/http/errors.ts). One without it came from the
- * Vite dev proxy, which answers 502 on a socket Bun closed under it; the API serves the built
- * dashboard itself, so that path does not exist in production. It is printed, not counted.
+ * Every 5xx counts. One without the API's error envelope used to be let through as the Vite dev
+ * proxy's 502 on a socket Bun had closed; the suite drives the API directly now (#40), so no proxy
+ * sits in between and a bare 5xx is the API's own.
  */
 async function recordFailure(response: Response, page: string, issues: Issue[]): Promise<void> {
   const text = await response.text().catch(() => "");
-  const detail = `${page} ${response.status()} ${response.url()}`;
-  if (/"error"\s*:\s*\{[^}]*"code"/.test(text)) {
-    issues.push({ kind: "http5xx", detail });
-    return;
-  }
-  process.stdout.write(`dev proxy answered ${detail} with no API envelope: ${text.slice(0, 80)}\n`);
+  issues.push({
+    kind: "http5xx",
+    detail: `${page} ${response.status()} ${response.url()} ${text.slice(0, 80)}`,
+  });
 }
 
 async function logResponse(response: Response): Promise<void> {
@@ -149,7 +146,7 @@ export function over(counts: Map<string, number>, limit: number): Refetch[] {
     .sort((left, right) => right.count - left.count);
 }
 
-/** DOM-settled: the loading placeholders are gone; no `networkidle` (Vite keeps a socket open). */
+/** DOM-settled: the loading placeholders are gone; no `networkidle` (job streams keep a socket open). */
 export async function settle(page: Page): Promise<void> {
   await page.waitForLoadState("domcontentloaded").catch(() => undefined);
   await page

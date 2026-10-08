@@ -164,7 +164,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [screens, flows, states, tail]
+        shard: [screens, flows, states, tail, bundle]
     env:
       E2E_SHARD: ${{ matrix.shard }}
     steps:
