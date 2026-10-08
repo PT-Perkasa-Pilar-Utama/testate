@@ -1,25 +1,6 @@
 import type { JsonValue } from "@testate/shared";
-import * as v from "valibot";
 
-import { plain } from "../../lib/plain-value.ts";
-
-const objectOrArray = v.union([v.record(v.string(), v.unknown()), v.array(v.unknown())]);
-const text = v.string();
-
-/** JSON gets laid out over lines; anything else is the value as it reads. */
-export function pretty(raw: JsonValue): string {
-  const value = plain(raw);
-  if (value === null) return "NULL";
-  if (v.is(objectOrArray, value)) return JSON.stringify(value, null, 2);
-  if (!v.is(text, value)) return String(value);
-  // A string holding JSON is the common case: a JSONB column read back as text.
-  if (!/^\s*[[{]/.test(value)) return value;
-  try {
-    return JSON.stringify(JSON.parse(value), null, 2);
-  } catch {
-    return value;
-  }
-}
+import { pretty } from "../../lib/value-view.ts";
 
 export type Line = { text: string; side: "same" | "before" | "after" };
 
