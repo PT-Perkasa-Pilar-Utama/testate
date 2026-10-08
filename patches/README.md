@@ -68,7 +68,10 @@ whether the two shims are still needed rather than to force it through.
   "solid-js": "2.0.0-rc.6",
   "@solidjs/signals": "2.0.0-rc.6",
   "@solidjs/babel-plugin": "2.0.0-rc.3",
-  "@solidjs/compiler": "2.0.0-rc.3"
+  "@solidjs/compiler": "2.0.0-rc.3",
+  "seroval": "1.6.7",
+  "seroval-plugins": "1.6.7",
+  "source-map-js": "1.2.2"
 }
 ```
 
@@ -99,3 +102,15 @@ The vite plugin takes `@solidjs/babel-plugin` through a range, and the babel plu
 one that matches the runtime. Compiler rc.14 emits `readShallow` from `@solidjs/web`, which rc.6
 does not export, and the web build fails with 40 `MISSING_EXPORT` errors. That is why Dependabot's
 grouped bump failed. The compiler moves with the runtime: bump all four entries together.
+
+### The advisory pins
+
+`seroval`, `seroval-plugins` and `source-map-js` are pinned past three advisories (GHSA-p6vx-979v-rg4c,
+GHSA-jp82-f5mq-hwhp, GHSA-68fv-2mgg-jv7q; issue #43). Neither package reaches the image or the
+browser: Solid uses `seroval` only to hydrate server-rendered state, and `source-map-js` runs at
+build time. They are pinned so the build machines do not run the vulnerable code and Scorecard
+stays clean.
+
+// ponytail: `seroval` 1.6.7 sits outside Solid rc.6's own `~1.5.4`. The SPA never calls it, so
+nothing breaks; drop both `seroval` pins when Solid moves to rc.14 or later, whose `~1.6.7` covers
+the fix. `source-map-js` can go once `postcss` and Tailwind resolve 1.2.2 or later by themselves.
