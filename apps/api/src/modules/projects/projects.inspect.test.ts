@@ -11,6 +11,7 @@ import { createProjectsService } from "./projects.service.ts";
 
 // #56, Q2 (docs/decisions/2026-10-09-inspect-project.md): the built-in Inspect project.
 const LIST = { limit: 50, sort: "name", order: "asc" } as const;
+const SOME_PLAN = "01991f00-0000-7000-8000-000000000098";
 
 function ensure(harness: AccountsHarness): boolean {
   const users = createUsersRepository(harness.db);
@@ -107,5 +108,22 @@ describe("the built-in Inspect project", () => {
     await expect(
       projects.create(harness.admin, { name: "Defaults", slug: "defaults" }, TEST_META)
     ).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
+  it("cannot be renamed, given a quota, or deleted, by anyone (Q7)", async () => {
+    const harness = await createAccounts();
+    ensure(harness);
+    const projects = projectsOf(harness);
+    const admin = harness.admin;
+    const refused = { code: "PROJECT_READ_ONLY" };
+    await expect(
+      projects.update(admin, "inspect", { name: "Mine now" }, TEST_META)
+    ).rejects.toMatchObject(refused);
+    await expect(projects.deletionPlan("inspect")).rejects.toMatchObject(refused);
+    const request = { confirm_slug: "inspect", plan_id: SOME_PLAN, adapters: [] };
+    await expect(
+      projects.deleteProject(admin, "inspect", request, TEST_META)
+    ).rejects.toMatchObject(refused);
+    expect(harness.projectsRepo.byKind("inspect")?.name).toBe("Inspect");
   });
 });

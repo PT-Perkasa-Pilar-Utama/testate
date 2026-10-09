@@ -71,6 +71,7 @@ export type StatesDeps = {
 };
 
 import type { ArchiveDeps } from "./states.archives.ts";
+import { writableProject } from "../projects/projects.inspect.ts";
 
 export type { ImportArchiveInput } from "./states.archives.ts";
 
@@ -196,7 +197,7 @@ export function createStatesService(deps: StatesDeps): StatesService {
       );
     },
     async snapshot(actor, slug, input, meta) {
-      const project = projectOf(slug);
+      const project = writableProject(projectOf(slug));
       // A retry under the same key answers with the first job and its state; the name check below
       // would otherwise refuse the retry as a duplicate name (09 §9.3).
       const idempotency = idempotentRequest(meta, "snapshot", {
@@ -297,7 +298,7 @@ export function createStatesService(deps: StatesDeps): StatesService {
     },
     archive: (slug, idOrName) => archives.archive(projectOf(slug), idOrName),
     archiveManifest: (slug, uploadId) => archives.manifest(projectOf(slug), uploadId),
-    importArchive: (actor, slug, input, meta) =>
-      archives.importArchive(actor, projectOf(slug), input, meta),
+    importArchive: async (actor, slug, input, meta) =>
+      archives.importArchive(actor, writableProject(projectOf(slug)), input, meta),
   };
 }
