@@ -84,6 +84,7 @@ The developer pastes the fixture into a local database and reproduces the failur
 
 - Token kind `agent` is created by an admin with a name, role, project scope, and expiry (default 90 days, maximum 365, or none when the creator asks for a token that never expires).
 - The role on an agent token is `viewer` or `qa`. `admin` is refused by the contract and again by the token service, so no agent token can create a token, change a setting, or touch a user.
+- A token whose project list includes the built-in Inspect project is a `viewer`, either kind (#56). Inspect is the place to point an agent at a database it may only read: its adapters are all read-only and its write, snapshot and checkout paths answer `PROJECT_READ_ONLY`, which the write tools meet because the refusal sits in the services they call.
 - Write tools check the role themselves. `/mcp` is the one route that does not pass through `requireRole`, because that middleware refuses agent tokens by design.
 - A write from an agent goes through the same write session a person's does: sandbox adapters only, tabular tier only, and a stash before the first write. The session belongs to the token (migration 0004) and is reused across calls, so one run leaves one stash.
 - The engine runs every agent read with the read-only transaction (SQL) or read credential or filter (MongoDB).

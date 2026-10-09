@@ -5,7 +5,7 @@ Module: `projects` ([../technical-specs/05-module-definitions.md §5.4](../techn
 Project object:
 
 ```json
-{ "id": "01J...", "slug": "shop", "name": "Shop", "description": null,
+{ "id": "01J...", "slug": "shop", "kind": "standard", "name": "Shop", "description": null,
   "quota_bytes": 10737418240,
   "head": { "status": "at_state", "state_id": "01J...", "state_name": "seeded-baseline", "changed_at": "...", "dirty": false },
   "created_by": "01J...", "created_by_label": "Ada Lovelace", "created_at": "...", "updated_at": "..." }
@@ -13,13 +13,15 @@ Project object:
 
 `head.status` is `none`, `at_state`, or `unknown` ([06 §6.9](../technical-specs/06-data-model.md)). `head.dirty` is true once the live databases are known to differ from what HEAD names: a write session or an import wrote to them, or a diff of HEAD against live found rows that moved. A write from outside Testate stays invisible until such a diff runs. A checkout or a snapshot clears it. `created_by_label` is the creator's display name, so a list can say who without a second request.
 
+`kind` is `standard` for every project people make and `inspect` for the one built-in **Inspect project** (#56, `docs/decisions/2026-10-09-inspect-project.md`). Boot and reset-state create it right after the bootstrap admin, with slug `inspect`, or `inspect-2` when an install already had its own `inspect` project; `inspect` is a reserved slug from then on. It holds read-only adapters ([05](05-adapters.md)) and nothing else: taking a snapshot, importing a state archive, a diff, a checkout, an upload, an import (dry runs too) and a normalizer change answer `PROJECT_READ_ONLY` (403), over REST and MCP alike, and so do PATCH, the deletion plan and delete on the project itself, for admins too. Browsing, read-only queries, fixtures, saved queries and column policies work as on any project. Scope applies to it like any other project.
+
 ## 4.1 `GET /projects`
 
-**Purpose.** List projects in scope. **Access.** `viewer`. **Input.** Query: `cursor`, `limit` (1 to 200, default 50), `sort` (`name`, `created_at`, `updated_at`, `changed_at`), `order`, `q`, `created_from`, `created_to`. **Behavior.** A project-scoped caller (a token, or since #55 a viewer or tester) sees only their projects. `q` matches a project's `slug` or `name`. `sort: changed_at` orders by `head.changed_at`, the one field a level down from the rest. `created_from`/`created_to` bound `created_at`. **Output.** `200` list. **Traceability.** Stories 11, 12.
+**Purpose.** List projects in scope. **Access.** `viewer`. **Input.** Query: `cursor`, `limit` (1 to 200, default 50), `sort` (`name`, `created_at`, `updated_at`, `changed_at`), `order`, `q`, `created_from`, `created_to`, `kind` (`standard` or `inspect`). **Behavior.** A project-scoped caller (a token, or since #55 a viewer or tester) sees only their projects. `q` matches a project's `slug` or `name`. `sort: changed_at` orders by `head.changed_at`, the one field a level down from the rest. `created_from`/`created_to` bound `created_at`. **Output.** `200` list. **Traceability.** Stories 11, 12.
 
 ## 4.2 `POST /projects`
 
-**Purpose.** Create a project. **Access.** `qa`, a signed-in user only: a token answers `403` `user_required`, because a project names its creator and a scoped token could not reach what it made (#55, Q6). **Input.** Body: `slug` string optional, `[a-z0-9-]{2,64}`; omit it and the API derives one from `name`, adding `-2`, `-3` until it is free, or send one and get exactly that slug or a `409`. `name` string required, 1 to 120. `description` string optional, at most 2000 characters. `quota_bytes` integer optional, `>= 0`, or `null`; null or absent inherits `quota.default_bytes`, `0` means no quota at all. **Behavior.** Unique slug; audit `project.created`. A creator with a project scope (a viewer or tester with chosen projects) gets access to the new project in the same transaction. **Output.** `201` project. **Errors.** `CONFLICT` (slug taken), `VALIDATION_ERROR`. **Traceability.** Story 10.
+**Purpose.** Create a project. **Access.** `qa`, a signed-in user only: a token answers `403` `user_required`, because a project names its creator and a scoped token could not reach what it made (#55, Q6). **Input.** Body: `slug` string optional, `[a-z0-9-]{2,64}`; omit it and the API derives one from `name`, adding `-2`, `-3` until it is free, or send one and get exactly that slug or a `409`; a reserved slug (`defaults`, `inspect`) is a `409` too. `name` string required, 1 to 120. `description` string optional, at most 2000 characters. `quota_bytes` integer optional, `>= 0`, or `null`; null or absent inherits `quota.default_bytes`, `0` means no quota at all. **Behavior.** Unique slug; audit `project.created`. A creator with a project scope (a viewer or tester with chosen projects) gets access to the new project in the same transaction. **Output.** `201` project. **Errors.** `CONFLICT` (slug taken), `VALIDATION_ERROR`. **Traceability.** Story 10.
 
 ## 4.3 `GET /projects/{slug}`
 

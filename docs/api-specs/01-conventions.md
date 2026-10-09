@@ -69,7 +69,7 @@ Error:
 | `204` | Inline delete, logout, session revoke |
 | `400` | `VALIDATION_ERROR` |
 | `401` | `UNAUTHORIZED` |
-| `403` | `FORBIDDEN`, `ADAPTER_READ_ONLY` |
+| `403` | `FORBIDDEN`, `ADAPTER_READ_ONLY`, `PROJECT_READ_ONLY` |
 | `404` | `NOT_FOUND` (also out-of-scope projects) |
 | `409` | `CONFLICT`, `SCHEMA_DRIFT`, `JOB_IN_PROGRESS`, `CHECKOUT_BLOCKED`, `QUOTA_EXCEEDED` |
 | `413` | `PAYLOAD_TOO_LARGE` |
@@ -86,6 +86,7 @@ Error:
 | `UNAUTHORIZED` | 401 | Missing, expired, or revoked credential; wrong password |
 | `FORBIDDEN` | 403 | Role too low, CSRF header missing, password change required (`reason: "password_change_required"`), agent token off `/mcp`, standard token on `/mcp` |
 | `ADAPTER_READ_ONLY` | 403 | Write requested on a `read_only` adapter |
+| `PROJECT_READ_ONLY` | 403 | Requested in the built-in Inspect project, which never takes snapshots, checkouts, diffs, imports or uploads and cannot itself be changed (#56) |
 | `NOT_FOUND` | 404 | Resource absent or outside the token's scope |
 | `CONFLICT` | 409 | Uniqueness (slug, name, username), state-machine refusal, last admin, protected state, stale deletion plan, idempotency key reused with a different body, host key changed |
 | `SCHEMA_DRIFT` | 409 | Live schema differs from the state; `details` carries `tables` and `columns` |

@@ -14,8 +14,13 @@ Adapter object (secrets never included):
   "engine_version": "16.3", "dialect": "postgres",
   "capabilities": { "canTruncate": true, "canDisableTriggers": false, "canTerminateSessions": true, "supportsDeferrableConstraints": false, "transactionalRestore": true, "snapshotRead": "repeatable-read", "timeSeriesDeletes": false },
   "strategy": { "emptyMode": "truncate", "foreignKeyHandling": "dependency-order", "transactional": true, "triggerDisable": false, "locking": "table" },
-  "read_only_enforcement": "transaction", "last_probe_at": "...", "created_at": "...", "updated_at": "..." }
+  "read_only_enforcement": "transaction", "last_probe_at": "...",
+  "created_by": "01J...", "created_by_label": "Tina Putri", "created_at": "...", "updated_at": "..." }
 ```
+
+`created_by` is the user who added the adapter and `created_by_label` that user's name; both are `null` for an adapter from before #56, one a token or the seed added, or one whose creator was deleted.
+
+**In the Inspect project** (`kind: "inspect"`, [04](04-projects.md)): every adapter is `read_only` and takes no init snapshot; a create that sends `mode: "sandbox"` and any mode change answer `PROJECT_READ_ONLY`; editing, deleting, and changing column policies need the adapter's creator or an admin, anyone else gets `403 FORBIDDEN` with reason `not_adapter_owner`. Regular projects record the creator and enforce none of this (#56).
 
 `config` fields by kind: database `{ host, port, database, user, ssl, schemas? }` or `{ connection_string_set: true }`; storage s3 `{ bucket, prefix, region, endpoint?, virtual_hosted }` (`s3` is any store that speaks S3: `endpoint` empty means Amazon, filled means R2, Google Cloud Storage over its interoperability API, Backblaze B2, MinIO or anything else, and `virtual_hosted` is on only for Amazon, who stopped accepting path style for buckets made after September 2020), sftp and ftp `{ host, port, user, root_path, tls? }`.
 
@@ -71,8 +76,8 @@ Draft body (create, test, update):
 **Behavior.**
 1. Address check, probe as in 5.2; store capabilities, strategy, version, dialect, tier, `target_hash`.
 2. Seal `secrets` and `readonly_secrets` (story 34).
-3. Storage kind defaults to `read_only` unless the draft names `mode: "sandbox"`; a database defaults to `sandbox`. Either kind can be moved later, only by an admin (5.6).
-4. Database kind: enqueue job `snapshot` into the project's one protected state named `init`, creating it for the first adapter and adding an entry to it for every later one; a change of host, port, or database replaces that adapter's entry. Return-to-init resolves the adapter's entry in that state by the adapter's immutable id, so a rename changes nothing.
+3. Storage kind defaults to `read_only` unless the draft names `mode: "sandbox"`; a database defaults to `sandbox`. Either kind can be moved later, only by an admin (5.6). In Inspect the mode is always `read_only`; a draft naming `sandbox` there is refused with `PROJECT_READ_ONLY`.
+4. Database kind, outside Inspect: enqueue job `snapshot` into the project's one protected state named `init`, creating it for the first adapter and adding an entry to it for every later one; a change of host, port, or database replaces that adapter's entry. Return-to-init resolves the adapter's entry in that state by the adapter's immutable id, so a rename changes nothing.
 5. Audit `adapter.created`.
 
 **Output.** `201 { "data": { "adapter": {...}, "init_job": { job } | null } }`. **Errors.** As 5.2 plus `CONFLICT` (name; a database while HEAD is not the starting point, or the databases moved since). **Traceability.** Stories 17, 21, 23, 24, 26, 27, 34, 93, 98.
@@ -106,7 +111,7 @@ Draft body (create, test, update):
 
 **Behavior.** Loosening audits `adapter.mode_loosened`; tightening audits `adapter.mode_tightened`; tightening ends open write sessions on the adapter (none, for a file store).
 
-**Output.** `200` adapter. **Errors.** `FORBIDDEN` (non-admin), `NOT_FOUND`, `VALIDATION_ERROR`. **Traceability.** Stories 21, 22.
+**Output.** `200` adapter. **Errors.** `FORBIDDEN` (non-admin), `PROJECT_READ_ONLY` (an Inspect adapter, for admins too), `NOT_FOUND`, `VALIDATION_ERROR`. **Traceability.** Stories 21, 22.
 
 ## 5.7 `POST /projects/{slug}/adapters/{id}/retest`
 

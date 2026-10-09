@@ -37,6 +37,12 @@ the list knows what each one answers and what it costs.
    Pick **Guest** for an agent that investigates and **Tester** for one that runs the tests. A tester agent can overwrite a test database, so give it a project scope.
 2. Give the agent the endpoint and the token.
 
+### Only reading: the Inspect project
+
+Every instance has a built-in project called **Inspect** for exactly this. Add a database or a file store there and Testate keeps it read-only: no snapshots, no checkouts, no imports, and no mode switch. In the **New token** dialog, **Inspect only** fills in an agent token with the Guest role that reaches Inspect alone. A token that reaches Inspect is always a Guest.
+
+In Inspect, only the person who added a connection, or an admin, can change or remove it.
+
 ### Claude Code
 
 ```sh

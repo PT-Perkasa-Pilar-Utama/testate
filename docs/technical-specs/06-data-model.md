@@ -109,11 +109,13 @@ The projects a viewer or tester with `all_projects = 0` may see and act on (#55,
 | --- | --- | --- | --- | --- | --- |
 | id | TEXT | no | | PK | |
 | slug | TEXT | no | | UNIQUE | `[a-z0-9-]{2,64}`; example `shop` |
+| kind | TEXT | no | `standard` | partial UNIQUE where `inspect` | `standard` or `inspect`; at most one `inspect` row, the built-in Inspect project (0010, #56) |
 | name, description | TEXT | name no, description yes | | | |
 | quota_bytes | INTEGER | yes | | | NULL = setting default |
 | head_state_id | TEXT | yes | | FK states | |
 | head_status | TEXT | no | `none` | | `none`, `at_state`, `unknown` |
 | head_changed_at | TEXT | yes | | | |
+| head_dirty | INTEGER | no | 0 | | 1 once the live databases are known to differ from HEAD (0007) |
 | created_by | TEXT | no | | FK users | |
 | created_at, updated_at | TEXT | no | | | |
 
@@ -134,6 +136,7 @@ The projects a viewer or tester with `all_projects = 0` may see and act on (#55,
 | restore_mode | TEXT | no | `atomic` | | `atomic`, `fast` (MySQL and MariaDB only) |
 | lock_timeout_ms | INTEGER | no | 60000 | | |
 | target_hash | TEXT | yes | | | SHA-256 of host, port, database; change triggers a new init state |
+| created_by | TEXT | yes | | FK users, ON DELETE SET NULL | who added it (0010); in the Inspect project only this user or an admin may change it |
 | status | TEXT | no | `ok` | | `ok`, `error`, `disabled` |
 | status_message | TEXT | yes | | | last probe error or deny-list reason |
 | engine_version, dialect | TEXT | yes | | | from probe; dialect `mysql` or `mariadb` |
