@@ -3,7 +3,11 @@ import type { MetadataDb } from "../../lib/db/index.ts";
 
 import { TEST_META } from "../../../test/accounts.ts";
 import { NORMALIZER, createImportsHarness } from "../../../test/imports-harness.ts";
+import * as v from "valibot";
+
+import { PG } from "../../../test/adapters.ts";
 import { call, createHarness } from "../agent/agent.harness.ts";
+import { ensureInspectProject } from "./projects.inspect.ts";
 
 // #56, Q4 (docs/decisions/2026-10-09-inspect-project.md): what the Inspect project refuses. Each
 // spec builds an ordinary project and turns it into Inspect, which is what the kind check sees.
@@ -78,5 +82,42 @@ describe("the Inspect project refuses what writes", () => {
       foreign_key_checks: true,
     };
     await expect(h.imports.run(qa, "shop", run, TEST_META)).rejects.toMatchObject(REFUSED);
+  });
+
+  it("a viewer agent token scoped to Inspect lists, browses and queries it, and writes nothing", async () => {
+    const h = await createHarness();
+    const { harness } = h;
+    ensureInspectProject(harness.projectsRepo, () => harness.admin.id, harness.now);
+    const inspect = v.parse(v.object({ id: v.string() }), harness.projectsRepo.byKind("inspect"));
+    const { mode: _mode, ...draft } = PG;
+    await harness.adapters.create(
+      harness.qa,
+      "inspect",
+      { ...draft, name: "orders-ro" },
+      TEST_META
+    );
+    const ctx = { ...h.ctx, scope: [inspect.id] };
+    const projects = v.parse(
+      v.array(v.object({ slug: v.string() })),
+      await call(h, "list_projects", {}, ctx)
+    );
+    expect(projects.map((project) => project.slug)).toStrictEqual(["inspect"]);
+    const adapters = v.parse(
+      v.array(v.object({ name: v.string() })),
+      await call(h, "list_adapters", { project: "inspect" }, ctx)
+    );
+    expect(adapters.map((adapter) => adapter.name)).toStrictEqual(["orders-ro"]);
+    const read = {
+      project: "inspect",
+      adapter: "orders-ro",
+      sql: "SELECT * FROM public.customers",
+    };
+    await expect(call(h, "run_readonly_query", read, ctx)).resolves.toBeDefined();
+    await expect(call(h, "list_adapters", { project: "shop" }, ctx)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    await expect(
+      call(h, "take_snapshot", { project: "inspect", name: "x" }, ctx)
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });
