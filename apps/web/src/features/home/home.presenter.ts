@@ -15,7 +15,12 @@ import { since } from "./home.format.ts";
 export type Counted<T> = { rows: T[]; total: number };
 
 export type HomePresenter = {
+  /** Every project the caller sees, Inspect included: a job row names its project from these. */
   projects: Refreshable<Project[]>;
+  /** The projects people made; the card and the stat count these, not Inspect (#56, Q8). */
+  standard: () => Project[];
+  /** The built-in Inspect project, linked quietly beside the card; null when out of scope. */
+  inspectProject: () => Project | null;
   running: Refreshable<Counted<Job>>;
   failed: Refreshable<Counted<Job>>;
   /** Null for a Guest, who cannot check out, and for an Admin, whose card is Users. */
@@ -71,8 +76,11 @@ export function createHomePresenter(now: () => Date): HomePresenter {
     const tokens = await tokensModel.page(undefined, { sort: "name", order: "asc" }, "", "");
     return { users: users.length, tokens: tokens.total ?? tokens.data.length };
   };
+  const projects = createRefreshable(() => projectsModel.list());
   return {
-    projects: createRefreshable(() => projectsModel.list()),
+    projects,
+    standard: () => projects.value().filter((project) => project.kind === "standard"),
+    inspectProject: () => projects.value().find((project) => project.kind === "inspect") ?? null,
     running: createRefreshable(() => byStatus("running", NEWEST)),
     failed: createRefreshable(() => byStatus("failed", lastDay(window()))),
     checkouts: tester ? createRefreshable(() => checkoutsToday()) : null,

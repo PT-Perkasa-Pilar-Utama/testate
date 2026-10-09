@@ -12,6 +12,7 @@ import { ADAPTER_MODE_LABEL, ADAPTER_STATUS_LABEL, ENGINE_LABEL } from "@/lib/la
 import { href } from "@/lib/router.ts";
 import Button from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
+import InspectBadge from "@/components/inspect-badge.tsx";
 import { hasRole } from "@/lib/session.ts";
 import { CreateDialog } from "../adapters/adapters.create.view.tsx";
 import { createAdaptersPresenter } from "../adapters/adapters.presenter.ts";
@@ -27,7 +28,7 @@ import { humanMessage } from "@/lib/api-error.ts";
  */
 /** Built once the projects are known, so the presenter's own list never reads a pending value. */
 function StoreCreator(props: {
-  projects: { value: string; label: string }[];
+  projects: { value: string; label: string; inspect: boolean }[];
   onCreated: () => void;
 }): JSX.Element {
   const [picked, setPicked] = createSignal("");
@@ -47,6 +48,7 @@ function StoreCreator(props: {
       <CreateDialog
         presenter={presenter}
         kind="storage"
+        readOnly={props.projects.find((project) => project.value === slug())?.inspect === true}
         project={{ options: props.projects, value: slug(), onChange: setPicked }}
       />
     </>
@@ -56,7 +58,11 @@ function StoreCreator(props: {
 function NewStore(props: { onCreated: () => void }): JSX.Element {
   const projects = createRefreshable(() => projectsModel.list());
   const options = () =>
-    projects.value().map((project) => ({ value: project.slug, label: project.name }));
+    projects.value().map((project) => ({
+      value: project.slug,
+      label: project.name,
+      inspect: project.kind === "inspect",
+    }));
   return (
     <Loading fallback={<span />}>
       <StoreCreator projects={options()} onCreated={() => props.onCreated()} />
@@ -65,14 +71,15 @@ function NewStore(props: { onCreated: () => void }): JSX.Element {
 }
 
 /** Stores by project, each project once, in the order the projects list them. */
-function byProject(
-  stores: AdapterWithProject[]
-): { slug: string; name: string; stores: AdapterWithProject[] }[] {
-  const groups = new Map<string, { slug: string; name: string; stores: AdapterWithProject[] }>();
+type StoreGroup = { slug: string; name: string; inspect: boolean; stores: AdapterWithProject[] };
+
+function byProject(stores: AdapterWithProject[]): StoreGroup[] {
+  const groups = new Map<string, StoreGroup>();
   for (const store of stores) {
     const group = groups.get(store.project_slug) ?? {
       slug: store.project_slug,
       name: store.project_name,
+      inspect: store.project_kind === "inspect",
       stores: [],
     };
     group.stores.push(store);
@@ -144,6 +151,9 @@ export default function StoresView(): JSX.Element {
                   <section class="grid gap-2">
                     <h3 class="flex items-baseline gap-2 text-sm font-medium text-heading">
                       {group.name}
+                      <Show when={group.inspect}>
+                        <InspectBadge />
+                      </Show>
                       <span class="text-xs text-muted">{group.stores.length}</span>
                     </h3>
                     <Table>

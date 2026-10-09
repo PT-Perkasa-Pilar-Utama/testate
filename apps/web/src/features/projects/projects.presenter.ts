@@ -9,6 +9,7 @@ import { createTableControls } from "@/lib/table.ts";
 import type { TableControls } from "@/lib/table.ts";
 import type { Paged } from "@/lib/async.ts";
 import { projectsModel } from "./projects.model.ts";
+import type { Overview } from "./projects.model.ts";
 
 /**
  * The form holds the name and the description and validates them against `createProjectSchema`;
@@ -27,6 +28,8 @@ export type ProjectsPresenter = Paged<Project> & {
   submit: (input: CreateProjectInput) => Promise<void>;
   /** What a project inherits when it names no quota; the slider labels its first step with it. */
   defaults: Refreshable<ProjectDefaults>;
+  /** The built-in Inspect project, shown as its own card above the table (#56, Q8). */
+  inspect: Refreshable<Overview | null>;
   quotaIndex: () => number;
   setQuotaIndex: (index: number) => void;
 };
@@ -70,12 +73,14 @@ export function createProjectsPresenter(): ProjectsPresenter {
     rows: projects.value,
   };
   const defaults = createRefreshable(() => projectsModel.defaults());
+  const inspect = createRefreshable(() => projectsModel.inspectOverview());
   const [quota, setQuota] = createSignal(0);
   const [creating, setCreating] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   return {
     ...projects,
     table,
+    inspect,
     creating,
     error,
     defaults,

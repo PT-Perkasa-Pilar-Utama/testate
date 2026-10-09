@@ -1,11 +1,20 @@
 import type { JSX } from "@solidjs/web";
 import { For, Show } from "solid-js";
-import type { ScopeChoice } from "@testate/shared";
+import type { ProjectKind, ScopeChoice } from "@testate/shared";
 
 import FieldError from "./field-error.tsx";
 import FieldLabel from "./field-label.tsx";
+import InspectBadge from "./inspect-badge.tsx";
 
-export type ScopeProject = { id: string; name: string };
+export type ScopeProject = { id: string; name: string; kind?: ProjectKind };
+
+/** The built-in Inspect project first, then the rest in the order given (#56, Q8). */
+export function inspectFirst(projects: readonly ScopeProject[]): ScopeProject[] {
+  return [
+    ...projects.filter((project) => project.kind === "inspect"),
+    ...projects.filter((project) => project.kind !== "inspect"),
+  ];
+}
 
 const CHOICES: readonly { value: ScopeChoice; label: string; hint: string }[] = [
   { value: "all", label: "All projects", hint: "Every project, and every one created later." },
@@ -69,7 +78,7 @@ export default function ProjectScope(props: {
             class="grid max-h-48 gap-1 overflow-y-auto rounded-md bg-sunken p-2 ring ring-line"
             aria-label="Projects to reach"
           >
-            <For each={props.projects}>
+            <For each={inspectFirst(props.projects)}>
               {(project) => (
                 <li>
                   <label class="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1 hover:bg-hover">
@@ -81,6 +90,9 @@ export default function ProjectScope(props: {
                     <span class="truncate" title={project.name}>
                       {project.name}
                     </span>
+                    <Show when={project.kind === "inspect"}>
+                      <InspectBadge />
+                    </Show>
                   </label>
                 </li>
               )}

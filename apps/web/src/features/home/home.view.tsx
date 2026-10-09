@@ -3,6 +3,7 @@ import { Errored, For, Loading, Show } from "solid-js";
 
 import Banner from "@/components/banner.tsx";
 import EmptyState from "@/components/empty-state.tsx";
+import Icon from "@/components/icon.tsx";
 import { buttonClass } from "@/components/button.tsx";
 import { Eyebrow } from "@/components/page-header.tsx";
 import { href } from "@/lib/router.ts";
@@ -100,7 +101,7 @@ export default function HomeView(): JSX.Element {
               class="lg:col-span-2"
             >
               <Show
-                when={presenter.projects.value().length > 0}
+                when={presenter.standard().length > 0}
                 fallback={
                   <div class="my-auto py-2">
                     <EmptyState icon="folder" title="No projects yet">
@@ -124,10 +125,21 @@ export default function HomeView(): JSX.Element {
                 }
               >
                 <div class="grid">
-                  <For each={presenter.projects.value().slice(0, 8)}>
+                  <For each={presenter.standard().slice(0, 8)}>
                     {(project) => <ProjectRow project={project} />}
                   </For>
                 </div>
+              </Show>
+              <Show when={presenter.inspectProject()}>
+                {(inspect) => (
+                  <a
+                    class="mt-2 inline-flex w-fit items-center gap-1.5 text-sm text-muted hover:text-heading"
+                    href={href(`/projects/${inspect().slug}`)}
+                  >
+                    <Icon name="eye" class="h-4 w-4 text-info-fg" />
+                    {inspect().name}: read-only connections for looking and for agents
+                  </a>
+                )}
               </Show>
             </Card>
             <div class="grid gap-4">

@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import type { Adapter } from "@testate/shared";
+import type { Actor, Adapter } from "@testate/shared";
 
 import { draftFrom, toPatchBody } from "./adapter.edit.ts";
+import { mayManage } from "./adapter.access.ts";
 
 const ADAPTER: Adapter = {
   id: "a1",
@@ -72,5 +73,23 @@ describe("adapter editing", () => {
         "config"
       ]
     ).toStrictEqual({ host: "db2", port: 15432, database: "shop", user: "testate" });
+  });
+});
+
+describe("who may edit or delete an adapter (#56, Q3b)", () => {
+  const TINA: Actor = { kind: "user", id: "u-tina", label: "tina", role: "qa", agent: false };
+  const SAM: Actor = { ...TINA, id: "u-sam", label: "sam" };
+  const ADMIN: Actor = { ...TINA, id: "u-admin", label: "admin", role: "admin" };
+  const tinas = { created_by: "u-tina" };
+
+  test("in Inspect, only whoever added it, or an admin", () => {
+    expect(mayManage(tinas, true, TINA)).toBe(true);
+    expect(mayManage(tinas, true, SAM)).toBe(false);
+    expect(mayManage(tinas, true, ADMIN)).toBe(true);
+    expect(mayManage({ created_by: null }, true, TINA)).toBe(false);
+  });
+
+  test("in a regular project, any tester", () => {
+    expect(mayManage(tinas, false, SAM)).toBe(true);
   });
 });

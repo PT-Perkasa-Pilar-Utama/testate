@@ -27,6 +27,19 @@ const REPLACED = {
   RATE_LIMITED: "Too many attempts. Wait a moment and try again.",
 } as const satisfies Partial<Record<ErrorCode, string>>;
 
+/**
+ * A FORBIDDEN whose reason says more than "your role": the person has the role, and something
+ * else is in the way. Every other reason keeps the role sentence above.
+ */
+const FORBIDDEN_REASONS = {
+  not_adapter_owner: "Only whoever added this connection, or an admin, can change it.",
+} as const;
+
+const forbiddenReason = (details: JsonObject | undefined): string | null => {
+  const parsed = v.safeParse(v.object({ reason: v.picklist(["not_adapter_owner"]) }), details);
+  return parsed.success ? FORBIDDEN_REASONS[parsed.output.reason] : null;
+};
+
 /** True when the API's validation message was generated from a schema rather than written. */
 const fromSchema = (details: JsonObject | undefined): boolean =>
   v.safeParse(v.object({ issues: v.array(v.unknown()) }), details).success;
@@ -80,6 +93,7 @@ export function humanMessage(cause: unknown, fallback: string): string {
   // for whoever is driving the API. One raised by hand carries no issues and is a real sentence
   // ("an HMAC needs a secret"), so that one still passes through.
   if (cause.code === "VALIDATION_ERROR" && fromSchema(cause.details)) return asSentence(fallback);
+  if (cause.code === "FORBIDDEN") return forbiddenReason(cause.details) ?? REPLACED.FORBIDDEN;
   if (cause.code in REPLACED) {
     // SAFETY: the `in` check above proved `cause.code` names one of REPLACED's own properties.
     return REPLACED[cause.code as keyof typeof REPLACED];

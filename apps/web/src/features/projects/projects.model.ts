@@ -55,6 +55,8 @@ export type HeadBanner = v.InferOutput<typeof headBannerSchema>;
 
 const overviewSchema = v.object({
   project: projectSchema,
+  /** Only the count is read, on the Inspect card. */
+  adapters: v.array(v.object({ id: idSchema })),
   quota: quotaSchema,
   banner: headBannerSchema,
 });
@@ -70,8 +72,22 @@ export const projectsModel = {
       schema: v.array(projectSchema),
       query: { limit: 200, sort: "name", order: "asc" },
     }),
+  /** The projects table: people's projects only; Inspect is its own card above it (#56, Q8). */
   page: (cursor: string | undefined, params: TableParams<ProjectSort>): Promise<Page<Project>> =>
-    apiClient.page("/projects", projectSchema, tableQuery(params, cursor)),
+    apiClient.page("/projects", projectSchema, { ...tableQuery(params, cursor), kind: "standard" }),
+  /** The built-in Inspect project, or null when the caller's scope leaves it out. */
+  inspect: async (): Promise<Project | null> => {
+    const found = await apiClient.get("/projects", {
+      schema: v.array(projectSchema),
+      query: { kind: "inspect", limit: 1 },
+    });
+    return found[0] ?? null;
+  },
+  /** The Inspect project with its adapters, for its card; null when the scope leaves it out. */
+  inspectOverview: async (): Promise<Overview | null> => {
+    const inspect = await projectsModel.inspect();
+    return inspect === null ? null : projectsModel.overview(inspect.slug);
+  },
   /** One request for the project, its quota and the "why" behind an unknown HEAD, not three. */
   overview: (slug: string): Promise<Overview> =>
     apiClient.get(path(slug), { schema: overviewSchema }),

@@ -5,6 +5,7 @@ import {
   adapterModeSchema,
   adapterStatusSchema,
   engineSchema,
+  projectKindSchema,
   tierSchema,
 } from "../enums.ts";
 import {
@@ -124,6 +125,8 @@ export const adapterWithProjectSchema = v.object({
   ...adapterSchema.entries,
   project_slug: slugSchema,
   project_name: v.string(),
+  /** So the Storage screen can mark the stores of the Inspect project (#56). */
+  project_kind: projectKindSchema,
 });
 export type AdapterWithProject = v.InferOutput<typeof adapterWithProjectSchema>;
 

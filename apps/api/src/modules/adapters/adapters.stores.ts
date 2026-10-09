@@ -23,7 +23,12 @@ export function listByKind(
     if (scope !== null && !scope.includes(adapter.project_id)) continue;
     const project = projects.byId(adapter.project_id);
     if (project === null) continue;
-    rows.push({ ...toPublic(adapter), project_slug: project.slug, project_name: project.name });
+    rows.push({
+      ...toPublic(adapter),
+      project_slug: project.slug,
+      project_name: project.name,
+      project_kind: project.kind,
+    });
   }
   return rows.sort((a, b) => a.name.localeCompare(b.name));
 }

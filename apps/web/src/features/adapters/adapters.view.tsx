@@ -45,6 +45,8 @@ export default function AdaptersView(props: {
   /** The project's HEAD, which decides whether a database may join right now. */
   head?: ProjectHead | undefined;
   onChanged?: (() => void) | undefined;
+  /** The built-in Inspect project: read-only adapters, each one someone's own (#56). */
+  inspect?: boolean | undefined;
 }): JSX.Element {
   const presenter = createAdaptersPresenter(() => props.slug);
   const path = (id: string): string => `/projects/${props.slug}/adapters/${id}`;
@@ -139,6 +141,9 @@ export default function AdaptersView(props: {
               <SortColumn view={presenter.table} column="status">
                 Status
               </SortColumn>
+              <Show when={props.inspect}>
+                <Head>Added by</Head>
+              </Show>
             </tr>
           </thead>
           <tbody>
@@ -148,7 +153,11 @@ export default function AdaptersView(props: {
                 <EmptyRow>
                   <Show
                     when={presenter.value().length > 0}
-                    fallback="No adapters yet. Connect the databases behind the system under test to snapshot them."
+                    fallback={
+                      props.inspect === true
+                        ? "No connections yet. Add a database to look at it, or to point an agent at it."
+                        : "No adapters yet. Connect the databases behind the system under test to snapshot them."
+                    }
                   >
                     No adapter matches your search or filters.
                   </Show>
@@ -205,6 +214,9 @@ export default function AdaptersView(props: {
                         </Show>
                       </div>
                     </Cell>
+                    <Show when={props.inspect}>
+                      <Cell>{adapter.created_by_label ?? "an admin"}</Cell>
+                    </Show>
                   </Row>
                 )}
               </For>
@@ -212,7 +224,7 @@ export default function AdaptersView(props: {
           </tbody>
         </Table>
       </Loading>
-      <CreateDialog presenter={presenter} kind="database" />
+      <CreateDialog presenter={presenter} kind="database" readOnly={props.inspect === true} />
       <PreflightDialog presenter={preflight} />
     </div>
   );

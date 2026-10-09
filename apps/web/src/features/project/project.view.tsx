@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { Loading, Match, Show, Switch, createSignal } from "solid-js";
+import { Loading, Match, Show, Switch, createSignal, untrack } from "solid-js";
 
 import Badge from "@/components/badge.tsx";
 import Pending from "@/components/pending.tsx";
@@ -12,6 +12,7 @@ import Tabs from "@/components/tabs.tsx";
 import { hasRole } from "@/lib/session.ts";
 import AdaptersView from "../adapters/adapters.view.tsx";
 import ActivityView from "./activity.view.tsx";
+import InspectProject from "./inspect.view.tsx";
 import StatesView from "../states/states.view.tsx";
 import { TakeDialog } from "../states/states.dialogs.view.tsx";
 import { formatBytes } from "../states/states.format.ts";
@@ -128,8 +129,11 @@ function ProjectHeader(props: {
   );
 }
 
-export default function ProjectView(props: { slug: string }): JSX.Element {
-  const presenter = createProjectPresenter(() => props.slug);
+/** Every project people make: header, Snapshot, the three tabs and the settings dialogs. */
+function RegularProject(props: { presenter: ProjectPresenter; slug: string }): JSX.Element {
+  // The presenter is made once by the page and never replaced, so reading it here is not a loss
+  // of tracking: there is no later value to miss.
+  const presenter = untrack(() => props.presenter);
   // One states presenter for the project: the header takes a state with it, the States tab lists
   // with it, and a state taken from Activity still lands in the list when the tab is opened.
   const states = createStatesPresenter(
@@ -148,9 +152,7 @@ export default function ProjectView(props: { slug: string }): JSX.Element {
     });
   return (
     <section class="grid gap-5">
-      <Loading fallback={<Pending>Loading project...</Pending>}>
-        <ProjectHeader presenter={presenter} states={states} />
-      </Loading>
+      <ProjectHeader presenter={presenter} states={states} />
       <TakeDialog presenter={states} onShutter={shutter} />
       {/* The picture being taken: an iris closes over the page and opens again, then is gone. */}
       <Show when={iris()}>
@@ -187,5 +189,20 @@ export default function ProjectView(props: { slug: string }): JSX.Element {
       <EditDialog presenter={presenter} />
       <DeleteDialog presenter={presenter} slug={props.slug} />
     </section>
+  );
+}
+
+export default function ProjectView(props: { slug: string }): JSX.Element {
+  const presenter = createProjectPresenter(() => props.slug);
+  // The built-in Inspect project only reads, so it has no states, HEAD or settings to show (#56).
+  return (
+    <Loading fallback={<Pending>Loading project...</Pending>}>
+      <Show
+        when={presenter.overview.value().project.kind === "inspect"}
+        fallback={<RegularProject presenter={presenter} slug={props.slug} />}
+      >
+        <InspectProject presenter={presenter} slug={props.slug} />
+      </Show>
+    </Loading>
   );
 }
