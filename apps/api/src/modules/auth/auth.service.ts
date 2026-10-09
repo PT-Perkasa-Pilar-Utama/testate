@@ -1,4 +1,4 @@
-import type { Actor, LoginInput, LoginResponse, Me } from "@testate/shared";
+import type { Actor, LoginInput, LoginResponse, Me, ProjectKind } from "@testate/shared";
 import { passwordWeakness } from "@testate/shared";
 
 import type { ActorResolver, RequestMeta, Resolved } from "../../lib/http/auth.ts";
@@ -48,7 +48,7 @@ export type AuthDeps = {
   audit: AuditService;
   password: PasswordHasher;
   now: () => Date;
-  projectExists: (id: string) => boolean;
+  projectKind: (id: string) => ProjectKind | null;
   tokenBudget?: () => Promise<number>;
 };
 
@@ -93,7 +93,7 @@ export function createAuthService(deps: AuthDeps): AuthService {
     repo,
     audit,
     now: deps.now,
-    projectExists: deps.projectExists,
+    projectKind: deps.projectKind,
   };
   if (deps.tokenBudget !== undefined) tokenDeps.tokenBudget = deps.tokenBudget;
   const tokens = createTokenService(tokenDeps);
