@@ -7,8 +7,11 @@ User object:
 ```json
 { "id": "01J...", "username": "dina.qa", "display_name": "Dina Putri", "role": "qa",
   "must_change_password": false, "disabled_at": null, "locked_until": null,
-  "last_login_at": "2026-08-28T08:00:00.000Z", "created_at": "...", "updated_at": "..." }
+  "last_login_at": "2026-08-28T08:00:00.000Z", "created_at": "...", "updated_at": "...",
+  "project_ids": ["01J..."] }
 ```
+
+`project_ids` is the user's project scope (#55): the projects a viewer or a tester may see and act on, a list (possibly empty) or `null` for every project. An admin always has every project, so it is always `null` for an admin. A session carries this scope exactly as a token carries its own (09 §9.5).
 
 ## 3.1 `GET /users`
 
@@ -20,9 +23,9 @@ User object:
 
 **Access.** `admin`.
 
-**Input.** Body: `username` string required, `[a-z0-9._-]{3,64}`, unique case-insensitively; `display_name` string required; `role` required; `temporary_password` string required, 12 characters minimum.
+**Input.** Body: `username` string required, `[a-z0-9._-]{3,64}`, unique case-insensitively; `display_name` string required; `role` required; `temporary_password` string required, 12 characters minimum; `project_ids` string[] \| null, required for a viewer or a tester and ignored for an admin. Each id must exist (`NOT_FOUND` otherwise, and no account is created).
 
-**Behavior.** Hash the temporary password; set `must_change_password`; audit `user.created` (story 3). The password is never returned; the admin hands it over out of band.
+**Behavior.** Hash the temporary password; set `must_change_password`; store the scope; audit `user.created` with `projects` (`"all"` or a count) (stories 3, 154). A viewer or tester without `project_ids` is refused with `VALIDATION_ERROR` naming the field: nobody gets projects nobody chose. The password is never returned; the admin hands it over out of band.
 
 **Output.** `201` user. **Errors.** `CONFLICT` (username taken); `VALIDATION_ERROR`. **Traceability.** Story 3.
 
@@ -32,11 +35,11 @@ User object:
 
 ## 3.4 `PATCH /users/{id}`
 
-**Purpose.** Change display name or role. **Access.** `admin`. **Input.** Body: `display_name`?, `role`?.
+**Purpose.** Change display name, role, or project scope. **Access.** `admin`. **Input.** Body: `display_name`?, `role`?, `project_ids`? (string[] \| null; replaces the scope when present, left as it was when absent).
 
-**Behavior.** Refuse demoting the last enabled admin (`CONFLICT`); audit `user.updated`.
+**Behavior.** Refuse demoting the last enabled admin (`CONFLICT`). Turning an admin into a viewer or a tester must state `project_ids` (`VALIDATION_ERROR` otherwise); promotion to admin needs nothing. Audit `user.updated`.
 
-**Output.** `200` user. **Errors.** `CONFLICT`, `NOT_FOUND`, `VALIDATION_ERROR`. **Traceability.** Story 4.
+**Output.** `200` user. **Errors.** `CONFLICT`, `NOT_FOUND` (user or project id), `VALIDATION_ERROR`. **Traceability.** Stories 4, 151, 154.
 
 ## 3.5 `POST /users/{id}/disable` and `POST /users/{id}/enable`
 
