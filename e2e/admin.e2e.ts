@@ -55,6 +55,7 @@ test.describe("admin gap stories", () => {
       .getByLabel(/password/i)
       .first()
       .fill("fresh-temporary-1234");
+    await page.locator("dialog[open]").getByLabel("All projects").check();
     await page.getByRole("button", { name: "Create", exact: true }).click();
     await expect(page.locator("tr", { hasText: `fresh-${STAMP}` })).toBeVisible();
     // The admin session is dropped so the same page becomes the new user's browser.

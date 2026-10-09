@@ -1,7 +1,8 @@
-import { Field, Form, createForm, reset } from "@formisch/solid";
+import { Field, Form, createForm, getErrors, getInput, reset, setInput } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import { Show, createEffect } from "solid-js";
-import { createUserSchema, editUserFormSchema, resetPasswordSchema } from "@testate/shared";
+import { Loading, Show, createEffect } from "solid-js";
+import type { Role, ScopeChoice } from "@testate/shared";
+import { editUserFormSchema, resetPasswordSchema, userDraftSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
 import { DialogActions } from "@/components/dialog.tsx";
@@ -11,12 +12,47 @@ import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
+import Pending from "@/components/pending.tsx";
+import ProjectScope from "@/components/project-scope.tsx";
 import Select from "@/components/select.tsx";
 import { ROLE_OPTIONS } from "@/lib/labels.ts";
+import { editDraftOf } from "./users.presenter.ts";
 import type { UsersPresenter } from "./users.presenter.ts";
 
+/** Which projects a viewer or a tester reaches (#55); an admin has every project and is not asked. */
+function ScopeField(props: {
+  presenter: UsersPresenter;
+  role: Role | undefined;
+  scope: ScopeChoice | undefined;
+  picked: readonly string[];
+  onScope: (scope: ScopeChoice) => void;
+  onPicked: (picked: string[]) => void;
+  scopeError: string | undefined;
+  pickedError: string | undefined;
+}): JSX.Element {
+  return (
+    <Show when={props.role !== "admin"}>
+      <Loading fallback={<Pending>Listing projects...</Pending>}>
+        <ProjectScope
+          projects={props.presenter.projects.value()}
+          scope={props.scope}
+          picked={props.picked}
+          onScope={props.onScope}
+          onPicked={props.onPicked}
+          scopeError={props.scopeError}
+          pickedError={props.pickedError}
+        />
+      </Loading>
+    </Show>
+  );
+}
+
 export function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element {
-  const form = createForm({ schema: createUserSchema, initialInput: { role: "viewer" } });
+  // The scope starts unanswered on purpose: nobody gets projects nobody chose (#55, Q3).
+  const form = createForm({
+    schema: userDraftSchema,
+    initialInput: { role: "viewer", scope: undefined, project_ids: [] },
+  });
   // The dialog stays mounted (design system rule: no conditional rendering), so a reopen would
   // otherwise show whatever the last attempt left behind.
   createEffect(
@@ -97,6 +133,16 @@ export function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element 
             </label>
           )}
         </Field>
+        <ScopeField
+          presenter={props.presenter}
+          role={getInput(form, { path: ["role"] })}
+          scope={getInput(form, { path: ["scope"] })}
+          picked={getInput(form, { path: ["project_ids"] }) ?? []}
+          onScope={(scope) => setInput(form, { path: ["scope"], input: scope })}
+          onPicked={(picked) => setInput(form, { path: ["project_ids"], input: picked })}
+          scopeError={getErrors(form, { path: ["scope"] })?.[0]}
+          pickedError={getErrors(form, { path: ["project_ids"] })?.[0]}
+        />
         <Show when={props.presenter.error()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>
@@ -123,16 +169,12 @@ export function CreateDialog(props: { presenter: UsersPresenter }): JSX.Element 
 export function EditDialog(props: { presenter: UsersPresenter }): JSX.Element {
   const form = createForm({
     schema: editUserFormSchema,
-    initialInput: { display_name: "", role: "viewer" },
+    initialInput: { display_name: "", role: "viewer", project_ids: [] },
   });
   createEffect(
     () => props.presenter.editing(),
     (user) => {
-      if (user !== null) {
-        onceSettled(() =>
-          reset(form, { initialInput: { display_name: user.display_name, role: user.role } })
-        );
-      }
+      if (user !== null) onceSettled(() => reset(form, { initialInput: editDraftOf(user) }));
     }
   );
   return (
@@ -172,6 +214,16 @@ export function EditDialog(props: { presenter: UsersPresenter }): JSX.Element {
             </label>
           )}
         </Field>
+        <ScopeField
+          presenter={props.presenter}
+          role={getInput(form, { path: ["role"] })}
+          scope={getInput(form, { path: ["scope"] })}
+          picked={getInput(form, { path: ["project_ids"] }) ?? []}
+          onScope={(scope) => setInput(form, { path: ["scope"], input: scope })}
+          onPicked={(picked) => setInput(form, { path: ["project_ids"], input: picked })}
+          scopeError={getErrors(form, { path: ["scope"] })?.[0]}
+          pickedError={getErrors(form, { path: ["project_ids"] })?.[0]}
+        />
         <Show when={props.presenter.error()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>

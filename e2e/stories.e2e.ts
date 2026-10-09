@@ -211,6 +211,7 @@ test.describe("admin stories", () => {
       .getByLabel(/password/i)
       .first()
       .fill("tmp-temporary-1234");
+    await page.locator("dialog[open]").getByLabel("All projects").check();
     await page.getByRole("button", { name: "Create", exact: true }).click();
     const row = page.locator("tr", { hasText: `tmp-${STAMP}` });
     await expect(row).toBeVisible();
@@ -242,6 +243,7 @@ test.describe("admin stories", () => {
       .getByLabel(/password/i)
       .first()
       .fill("edit-temporary-1234");
+    await page.locator("dialog[open]").getByLabel("All projects").check();
     await page.getByRole("button", { name: "Create", exact: true }).click();
     const row = page.locator("tr", { hasText: `edit-${STAMP}` });
     await expect(row).toBeVisible();

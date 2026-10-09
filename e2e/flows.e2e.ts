@@ -225,6 +225,7 @@ test.describe("admin flows", () => {
       .getByLabel(/password/i)
       .first()
       .fill("e2e-temporary-1234");
+    await page.locator("dialog[open]").getByLabel("All projects").check();
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.locator("tr", { hasText: "e2e.user" })).toBeVisible();
     await page.goto("/tokens");

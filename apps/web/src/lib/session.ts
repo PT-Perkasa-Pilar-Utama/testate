@@ -21,6 +21,11 @@ export function hasRole(minimum: Role): boolean {
   return current !== null && RANK[current.role] >= RANK[minimum];
 }
 
+/** A viewer or a tester given chosen projects rather than every one (#55); never an admin. */
+export function isScoped(): boolean {
+  return (session()?.project_scope ?? null) !== null;
+}
+
 /** Resolves the cookie session once at boot; 401 means signed out, anything else is an error. */
 export async function loadSession(): Promise<void> {
   try {
