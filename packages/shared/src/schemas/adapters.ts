@@ -103,6 +103,12 @@ export const adapterSchema = v.object({
   strategy: v.nullable(restoreStrategySchema),
   read_only_enforcement: v.nullable(readOnlyEnforcementSchema),
   last_probe_at: v.nullable(timestampSchema),
+  /**
+   * Who added it, and that person's name. Null for adapters from before #56 and for one whose
+   * creator was deleted. In the Inspect project only the creator or an admin may change it.
+   */
+  created_by: v.nullable(idSchema),
+  created_by_label: v.nullable(v.string()),
   created_at: timestampSchema,
   updated_at: timestampSchema,
 });

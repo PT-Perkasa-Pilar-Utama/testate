@@ -69,6 +69,8 @@ export const ADAPTER_MOCK: Adapter = {
   strategy: PROBE_MOCK.strategy,
   read_only_enforcement: "transaction",
   last_probe_at: NOW,
+  created_by: null,
+  created_by_label: null,
   created_at: EARLIER,
   updated_at: NOW,
 };

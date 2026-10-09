@@ -23,6 +23,8 @@ import type { Sealed } from "../../lib/sealed/index.ts";
 
 const recordSchema = v.object({
   id: v.string(),
+  created_by: v.nullable(v.string()),
+  created_by_label: v.nullable(v.string()),
   project_id: v.string(),
   kind: adapterKindSchema,
   engine: engineSchema,
@@ -72,6 +74,8 @@ export type NewAdapter = {
   lock_timeout_ms: number;
   target_hash: string;
   has_secrets: boolean;
+  /** The user who added it; null for an adapter a token or the seed made without one. */
+  created_by: string | null;
   created_at: string;
 };
 
@@ -129,6 +133,10 @@ export type AdaptersRepository = {
   endWriteSessions(id: string, at: string): number;
 };
 
+/** The creator's name comes along, so a screen can say who added it (#56, Q3b). */
+const ROW = `SELECT adapters.*, COALESCE(u.display_name, u.username) AS created_by_label
+  FROM adapters LEFT JOIN users u ON u.id = adapters.created_by`;
+
 function sealedOf(value: string): Sealed {
   if (!isSealed(value)) throw new Error("adapter row holds a malformed sealed value");
   // SAFETY: isSealed validated the envelope on the line above.
@@ -165,6 +173,8 @@ function toRecord(row: AdapterRow): AdapterRecord {
       row.strategy === null ? null : v.parse(restoreStrategySchema, JSON.parse(row.strategy)),
     read_only_enforcement: row.read_only_enforcement,
     last_probe_at: row.last_probe_at,
+    created_by: row.created_by,
+    created_by_label: row.created_by_label,
     created_at: row.created_at,
     updated_at: row.updated_at,
     config_sealed: sealedOf(row.config_sealed),
@@ -205,7 +215,7 @@ function patchColumns(patch: AdapterConfigPatch): Column[] {
 
 export function createAdaptersRepository(db: MetadataDb): AdaptersRepository {
   const one = (where: string, ...params: string[]): AdapterRecord | null => {
-    const row = db.query(`SELECT * FROM adapters WHERE ${where}`).get(...params);
+    const row = db.query(`${ROW} WHERE ${where}`).get(...params);
     return row === null ? null : toRecord(v.parse(recordSchema, row));
   };
   const count = (sql: string, ...params: string[]): number =>
@@ -218,34 +228,33 @@ export function createAdaptersRepository(db: MetadataDb): AdaptersRepository {
   };
   return {
     list(projectId, filter) {
-      const conditions = ["project_id = ?"];
+      const conditions = ["adapters.project_id = ?"];
       const params = [projectId];
       for (const key of ["kind", "engine", "status"] as const) {
         const value = filter[key];
         if (value === undefined) continue;
-        conditions.push(`${key} = ?`);
+        conditions.push(`adapters.${key} = ?`);
         params.push(value);
       }
       const rows = db
         .query(
-          `SELECT * FROM adapters WHERE ${conditions.join(" AND ")} ORDER BY name COLLATE NOCASE ASC, id ASC`
+          `${ROW} WHERE ${conditions.join(" AND ")} ORDER BY adapters.name COLLATE NOCASE ASC, adapters.id ASC`
         )
         .all(...params);
       return v.parse(v.array(recordSchema), rows).map(toRecord);
     },
     all: () =>
-      v
-        .parse(v.array(recordSchema), db.query("SELECT * FROM adapters ORDER BY id").all())
-        .map(toRecord),
-    byId: (id) => one("id = ?", id),
-    byName: (projectId, name) => one("project_id = ? AND name = ?", projectId, name),
+      v.parse(v.array(recordSchema), db.query(`${ROW} ORDER BY adapters.id`).all()).map(toRecord),
+    byId: (id) => one("adapters.id = ?", id),
+    byName: (projectId, name) =>
+      one("adapters.project_id = ? AND adapters.name = ?", projectId, name),
     sharingTarget: (targetHash) => v.parse(v.array(targetShare), db.query(SHARING).all(targetHash)),
     insert(adapter) {
       db.query(
         `INSERT INTO adapters (id, project_id, kind, engine, name, mode, config_public, config_sealed,
            readonly_config_sealed, excluded_tables, restore_mode, lock_timeout_ms, target_hash,
-           sealed_set_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+           sealed_set_at, created_by, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(
         adapter.id,
         adapter.project_id,
@@ -261,10 +270,11 @@ export function createAdaptersRepository(db: MetadataDb): AdaptersRepository {
         adapter.lock_timeout_ms,
         adapter.target_hash,
         adapter.has_secrets ? adapter.created_at : null,
+        adapter.created_by,
         adapter.created_at,
         adapter.created_at
       );
-      const inserted = one("id = ?", adapter.id);
+      const inserted = one("adapters.id = ?", adapter.id);
       if (inserted === null) throw new Error("inserted adapter vanished");
       return inserted;
     },

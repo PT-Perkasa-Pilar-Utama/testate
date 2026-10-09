@@ -18,6 +18,7 @@ import { maskRows } from "./data.masks.ts";
 import { assertEditable, requirePolicy } from "./data.policies.ts";
 import type { PoliciesRepository } from "./data.policies.ts";
 import type { WriteSessions } from "./data.sessions.ts";
+import { assertMayManage } from "../adapters/adapters.inspect.ts";
 
 export type PolicyBody = v.InferOutput<typeof upsertColumnPolicySchema>;
 
@@ -188,6 +189,7 @@ export function createEditing(deps: EditingDeps): Editing {
     async upsertPolicy(actor, adapterId, table, column, body, meta) {
       const adapter = deps.adapterOf(adapterId);
       requireTabular(adapter);
+      assertMayManage(deps.projects.byId(adapter.project_id), adapter, actor);
       const existing = deps.policies.byColumn(adapter.id, table, column);
       assertEditable(actor, existing);
       const schema = await deps.schemaOf(adapter);
@@ -213,6 +215,7 @@ export function createEditing(deps: EditingDeps): Editing {
     async removePolicy(actor, adapterId, table, column, meta) {
       const adapter = deps.adapterOf(adapterId);
       requireTabular(adapter);
+      assertMayManage(deps.projects.byId(adapter.project_id), adapter, actor);
       const existing = requirePolicy(deps.policies.byColumn(adapter.id, table, column));
       assertEditable(actor, existing);
       deps.policies.remove(adapter.id, table, column);

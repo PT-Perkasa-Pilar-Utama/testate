@@ -25,6 +25,8 @@ const ADAPTER: Adapter = {
   strategy: null,
   read_only_enforcement: null,
   last_probe_at: null,
+  created_by: null,
+  created_by_label: null,
   created_at: "2026-08-29T00:00:00.000Z",
   updated_at: "2026-08-29T00:00:00.000Z",
 };

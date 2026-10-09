@@ -41,6 +41,12 @@ import type { FileProbeFn, ProbeFn } from "./adapters.probe.ts";
 import type { AdapterRecord, AdaptersFilter, AdaptersRepository } from "./adapters.repository.ts";
 import { CONFIG_COLUMN, READONLY_COLUMN, openSecrets, sealSecrets } from "./adapters.secrets.ts";
 import type { Secrets } from "./adapters.secrets.ts";
+import {
+  assertMayManage,
+  assertModeChangeable,
+  modeOnCreate,
+  takesInit,
+} from "./adapters.inspect.ts";
 
 export type { AdapterDeletionPlan, DeletionAction } from "./adapters.deletion.ts";
 export { PLAN_TTL_MS } from "./adapters.deletion.ts";
@@ -189,7 +195,8 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
       const project = projectOf(slug);
       if (repo.byName(project.id, draft.name) !== null)
         throw conflict("adapter name is taken", { name: draft.name });
-      if (draft.kind === "database") assertAtInit(project);
+      if (draft.kind === "database" && takesInit(project)) assertAtInit(project);
+      const mode = modeOnCreate(project, draft);
       const validated = validateConfig(draft.engine, draft.kind, draft.config, draft.secrets);
       const outcome = await probe(draft.engine, validated, draft.secrets);
       const id = Bun.randomUUIDv7();
@@ -200,10 +207,7 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
         kind: draft.kind,
         engine: draft.engine,
         name: draft.name,
-        // Storage adapters were pinned to read_only here, which is what made the file port
-        // read-only in practice. They can be a sandbox now, but only when the caller asks: the
-        // default is still the safe one, and loosening one later needs an admin.
-        mode: draft.mode ?? (draft.kind === "database" ? "sandbox" : "read_only"),
+        mode,
         config_public: validated.config,
         config_sealed: await sealSecrets(ring, id, CONFIG_COLUMN, draft.secrets),
         readonly_config_sealed:
@@ -213,6 +217,8 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
         lock_timeout_ms: draft.lock_timeout_ms ?? 60000,
         target_hash: validated.targetHash,
         has_secrets: Object.keys(draft.secrets).length > 0,
+        // A token is not a user, so a token-made adapter has no creator and is an admin's.
+        created_by: actor.kind === "user" ? actor.id : null,
         created_at: nowIso(),
       });
       repo.setProbe(id, probeColumns(outcome, nowIso()), nowIso());
@@ -221,7 +227,8 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
         engine: adapter.engine,
         kind: adapter.kind,
       });
-      return { adapter: toPublic(adapter), init_job: await initJob(adapter, actor, meta) };
+      const init = takesInit(project) ? await initJob(adapter, actor, meta) : null;
+      return { adapter: toPublic(adapter), init_job: init };
     },
     async get(slug, id) {
       return toPublic(find(projectOf(slug).id, id));
@@ -229,6 +236,7 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
     async update(actor, slug, id, patch, meta) {
       const project = projectOf(slug);
       const current = find(project.id, id);
+      assertMayManage(project, current, actor);
       if (
         patch.name !== undefined &&
         patch.name !== current.name &&
@@ -241,7 +249,8 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
         current,
         patch
       );
-      if (change.newTarget) assertAtInit(project);
+      const reinit = change.newTarget && takesInit(project);
+      if (reinit) assertAtInit(project);
       repo.updateConfig(id, change.columns, nowIso());
       if (change.outcome !== null)
         repo.setProbe(id, probeColumns(change.outcome, nowIso()), nowIso());
@@ -256,7 +265,7 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
       );
       return {
         adapter: toPublic(updated),
-        init_job: change.newTarget ? await initJob(updated, actor, meta) : null,
+        init_job: reinit ? await initJob(updated, actor, meta) : null,
       };
     },
     /**
@@ -272,7 +281,9 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
      * none, and `endWriteSessions` finds none to end.
      */
     async setMode(actor, slug, id, mode, meta) {
-      const adapter = find(projectOf(slug).id, id);
+      const project = projectOf(slug);
+      const adapter = find(project.id, id);
+      assertModeChangeable(project);
       if (actor.role !== "admin") throw forbidden("changing the mode requires admin");
       repo.setMode(id, mode, nowIso());
       const ended = mode === "read_only" ? repo.endWriteSessions(id, nowIso()) : 0;
@@ -305,11 +316,11 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
     },
     recheckDenyList: () => recheckDenyList({ repo, ring, netguard: deps.netguard, now: deps.now }),
     async remove(actor, slug, id, planId, action, meta) {
-      const projectId = projectOf(slug).id;
+      const project = projectOf(slug);
       const removal: RemoveDeps = {
         jobs: deps.jobs,
         plans,
-        adapterOf: () => find(projectId, id),
+        adapterOf: () => assertMayManage(project, find(project.id, id), actor),
         record: (adapter, details) =>
           record(actor, "adapter.deletion_requested", adapter, slug, meta, details),
       };
