@@ -9,7 +9,8 @@
  * for every `import ... with { type: "file" }` the entry reaches, so this script writes one such
  * import per file into `apps/api/src/embedded.ts` for the length of the compile and puts the
  * committed stub back afterwards; `ops.embedded.ts` does the unpacking. Defaults to the host
- * target. Output lands in `.bin-build/`, which is ignored.
+ * target. Output lands in `.bin-build/<os>_<arch>/testate`, which is ignored;
+ * `scripts/binary/package.sh` turns that into the release archives and `checksums.txt`.
  */
 import { readdirSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -22,14 +23,19 @@ const OUT = join(ROOT, ".bin-build");
 
 type Target = { key: string; bun: string; suffix: string };
 
+// The key is the archive's name: Docker's architecture words (docs/decisions/2026-10-10-native-
+// binaries.md, Q1). Linux x64 is Bun's baseline build, which runs on CPUs without AVX2 (Q2).
 const TARGETS: readonly Target[] = [
-  { key: "darwin-arm64", bun: "bun-darwin-arm64", suffix: "" },
-  { key: "linux-x64", bun: "bun-linux-x64", suffix: "" },
-  { key: "windows-x64", bun: "bun-windows-x64", suffix: ".exe" },
+  { key: "linux_amd64", bun: "bun-linux-x64-baseline", suffix: "" },
+  { key: "linux_arm64", bun: "bun-linux-arm64", suffix: "" },
+  { key: "darwin_arm64", bun: "bun-darwin-arm64", suffix: "" },
+  { key: "darwin_amd64", bun: "bun-darwin-x64", suffix: "" },
+  { key: "windows_amd64", bun: "bun-windows-x64", suffix: ".exe" },
 ];
 
 function hostTarget(): Target {
-  const key = `${process.platform === "win32" ? "windows" : process.platform}-${process.arch === "x64" ? "x64" : process.arch}`;
+  const os = process.platform === "win32" ? "windows" : process.platform;
+  const key = `${os}_${process.arch === "x64" ? "amd64" : process.arch}`;
   const found = TARGETS.find((target) => target.key === key);
   if (found === undefined) throw new Error(`no binary target for this host: ${key}`);
   return found;
@@ -87,8 +93,8 @@ async function run(command: string[], cwd = ROOT): Promise<void> {
   if (code !== 0) throw new Error(`${command.join(" ")} exited ${code}`);
 }
 
-async function compile(target: Target, version: string): Promise<string> {
-  const outfile = join(OUT, `testate-${version}-${target.key}${target.suffix}`);
+async function compile(target: Target): Promise<string> {
+  const outfile = join(OUT, target.key, `testate${target.suffix}`);
   await run([
     "bun",
     "build",
@@ -107,15 +113,12 @@ async function compile(target: Target, version: string): Promise<string> {
 
 const args = process.argv.slice(2);
 const targets = chosen(args);
-const manifest = await Bun.file(join(ROOT, "package.json")).text();
-const version = /"version": "([^"]+)"/.exec(manifest)?.[1] ?? "";
-if (version === "") throw new Error("package.json carries no version");
 if (!args.includes("--skip-web")) await run(["bun", "run", "build:web"]);
 const stub = await Bun.file(STUB).text();
 try {
   await Bun.write(STUB, embeddedSource());
   for (const target of targets) {
-    const outfile = await compile(target, version);
+    const outfile = await compile(target);
     const size = Bun.file(outfile).size;
     console.log(`${relative(ROOT, outfile)}  ${(size / 1024 / 1024).toFixed(1)} MB`);
   }
