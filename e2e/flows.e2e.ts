@@ -210,7 +210,7 @@ test.describe("admin data flows", () => {
 test.describe("admin flows", () => {
   test.use({ storageState: statePath("admin") });
 
-  test("@story-3 @story-111 creates a user and a token from the admin screens", async ({
+  test("@story-3 @story-111 @story-154 creates a user and a token from the admin screens", async ({
     page,
   }) => {
     const issues: Issue[] = [];

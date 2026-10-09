@@ -35,4 +35,4 @@ Stated from the code, not asked:
 ## Docs changed
 
 - docs/GLOSSARY.md: added **Project scope**.
-- To change during the build: `09-authentication.md` §9.4 ("A user is never scoped") and §9.5 (`actor.projectIds`, G6), `06-data-model.md` (users, user_projects), `api-specs/02-authentication.md` and the tokens and users sections, `api-specs/04-projects.md:87` (Q5), `api-specs/15-audit-logs.md` (G5), `PRD.md` (a user-scope story; the token-deletion wording).
+- Changed during the build: `09-authentication.md` §9.3 to §9.5, `06-data-model.md` (users, user_projects), `api-specs/02-authentication.md` §2.7, `03-users.md`, `04-projects.md` §4.1, §4.2, §4.7, §4.8, `14-jobs.md`, `15-audit-logs.md`, `19-system.md`, `PRD.md` (story 154; the token wording on project deletion).
