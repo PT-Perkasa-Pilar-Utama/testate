@@ -18,10 +18,9 @@ import {
   preMigrationCopy,
   ensureDirs,
   migrateOrRefuse,
-  refuse,
   resetAdminPassword,
-  serve,
   sweepSealed,
+  run,
 } from "./boot.ts";
 import { createEngineWiring, createStateServices, scopeDeps, settingsDeps } from "./wiring.ts";
 import { bootStore, lazyJobs, opsDeps, resetHandler, storageDeps } from "./wiring.store.ts";
@@ -316,12 +315,4 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   };
 }
 
-async function bootOrRefuse(): Promise<App> {
-  try {
-    return await boot(Bun.env);
-  } catch (cause: unknown) {
-    return refuse(cause);
-  }
-}
-
-if (import.meta.main) serve(await bootOrRefuse());
+if (import.meta.main) await run(Bun.argv.slice(1), VERSION, () => boot(Bun.env));
