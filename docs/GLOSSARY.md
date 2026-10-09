@@ -5,6 +5,7 @@ Terms as the code, the API, and the UI use them. One meaning each. Specs cite th
 | Term | Meaning | Not |
 | --- | --- | --- |
 | **Project** | The unit of ownership: a slug, a set of adapters, a set of states, one HEAD, one quota | A Testate deployment |
+| **Inspect project** | The one built-in project, slug `inspect`, for reading databases and files, including by agents. It holds adapters only, every one read-only: no states, no checkouts, no imports. It cannot be renamed or deleted | A debug sandbox; a project someone made read-only |
 | **Adapter** | A connection Testate owns to one target: a database or a file store | The engine driver code |
 | **Adapter mode** | `sandbox` allows checkout, import, and writes; `read_only` refuses every write | A role |
 | **Engine** | The target technology behind an adapter: `postgres`, `mysql`, `mariadb`, `mongodb`, `s3`, `sftp`, `ftp`. `s3` is a protocol rather than a vendor: the endpoint decides whether it reaches Amazon, R2, Google Cloud Storage, B2 or a MinIO on the next rack | A version |
