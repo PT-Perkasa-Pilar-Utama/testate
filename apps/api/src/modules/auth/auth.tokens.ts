@@ -1,4 +1,4 @@
-import type { Actor, ApiToken, Role } from "@testate/shared";
+import type { Actor, ApiToken, ProjectKind, Role } from "@testate/shared";
 
 import type { RequestMeta, Resolved } from "../../lib/http/auth.ts";
 import { AppError, forbidden, notFound, rateLimited } from "../../lib/http/index.ts";
@@ -28,12 +28,30 @@ export type TokenService = {
   revokeToken(actor: Actor, id: string, meta: RequestMeta): Promise<void>;
 };
 
+export const INSPECT_VIEWER_ONLY = "A token that reaches Inspect is a viewer.";
+
+/**
+ * Every project in the scope exists, and a token that reaches Inspect is a viewer: Inspect refuses
+ * every write, so a write role there could never be used and would only mislead whoever reads the
+ * token list (#56, Q6). "Every project" (`null`) is not restricted.
+ */
+function assertScope(
+  projectIds: string[] | null,
+  role: Role,
+  projectKind: (id: string) => ProjectKind | null
+): void {
+  const kinds = (projectIds ?? []).map(projectKind);
+  if (kinds.includes(null)) throw notFound("project");
+  if (kinds.includes("inspect") && role !== "viewer")
+    throw new AppError("VALIDATION_ERROR", INSPECT_VIEWER_ONLY, { field: "role" });
+}
+
 export type TokenDeps = {
   repo: AuthRepository;
   audit: AuditService;
   now: () => Date;
-  /** Project existence check for `project_ids` (02 §2.7). */
-  projectExists: (id: string) => boolean;
+  /** The kind of each project in `project_ids`, null when it does not exist (02 §2.7, #56). */
+  projectKind: (id: string) => ProjectKind | null;
   /** `limits.token_requests_per_minute` from settings (16 §16.1); absent means no budget. */
   tokenBudget?: () => Promise<number>;
 };
@@ -115,8 +133,7 @@ export function createTokenService(deps: TokenDeps): TokenService {
       // The contract says the same, and says it first; this is the service refusing to be the one
       // place an admin agent token could come from.
       if (agent && role === "admin") throw forbidden("role");
-      const unknown = (input.project_ids ?? []).find((id) => !deps.projectExists(id));
-      if (unknown !== undefined) throw notFound("project");
+      assertScope(input.project_ids, role, deps.projectKind);
       const secret = `tst_${randomSecret()}`;
       const record = repo.insertToken({
         id: Bun.randomUUIDv7(),

@@ -57,7 +57,7 @@ export async function createAccounts(
     audit,
     password: TEST_HASHER,
     now: clock.now,
-    projectExists: (id) => projectsRepo.exists(id),
+    projectKind: (id) => projectsRepo.byId(id)?.kind ?? null,
   };
   if (options.tokenBudget !== undefined) authDeps.tokenBudget = options.tokenBudget;
   const auth = createAuthService(authDeps);

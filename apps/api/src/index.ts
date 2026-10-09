@@ -127,7 +127,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     audit,
     password,
     now,
-    projectExists: (id) => projectsRepo.exists(id),
+    projectKind: (id) => projectsRepo.byId(id)?.kind ?? null,
     tokenBudget: async () => (await settings.get()).limits.token_requests_per_minute,
   });
   const users = createUsersService({
