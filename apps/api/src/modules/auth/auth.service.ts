@@ -226,7 +226,9 @@ export function createAuthService(deps: AuthDeps): AuthService {
       return {
         actor: userActor(user),
         mustChangePassword: user.must_change_password,
-        projectScope: null,
+        // A viewer or a tester sees the projects they were given; every check that reads
+        // `projectScope` (09 §9.5) then applies to them as it does to a scoped token (#55).
+        projectScope: user.project_ids,
       };
     },
     me(resolved, env) {

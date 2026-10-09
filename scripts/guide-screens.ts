@@ -55,7 +55,13 @@ async function temporaryTester(): Promise<{ user: string; password: string }> {
   const user = `dina.${Date.now().toString(36)}`;
   const password = "Temporary-pass-2026";
   const made = await api.post("/api/v1/users", {
-    data: { username: user, display_name: "Dina Putri", role: "qa", temporary_password: password },
+    data: {
+      username: user,
+      display_name: "Dina Putri",
+      role: "qa",
+      temporary_password: password,
+      project_ids: null,
+    },
   });
   if (!made.ok()) throw new Error(`creating ${user} answered ${made.status()}`);
   await api.dispose();

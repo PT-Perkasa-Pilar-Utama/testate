@@ -46,6 +46,7 @@ async function setup(): Promise<Harness> {
       display_name: "Dina",
       role: "qa",
       temporary_password: "temporary-password-1",
+      project_ids: null,
     },
     TEST_META
   );

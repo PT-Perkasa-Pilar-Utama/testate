@@ -12,6 +12,7 @@ const QA = {
   display_name: "Dina Putri",
   role: "qa",
   temporary_password: "temporary-password-1",
+  project_ids: null,
 } as const;
 const BASE = { limit: 10, sort: "username", order: "asc" } as const;
 
@@ -31,6 +32,7 @@ describe("users", () => {
         display_name: "Zed",
         role: "viewer",
         temporary_password: "zed-temporary-1234",
+        project_ids: null,
       },
       TEST_META
     );
@@ -51,6 +53,7 @@ describe("users", () => {
           display_name: username.toUpperCase(),
           role: "viewer",
           temporary_password: "temporary-password-1",
+          project_ids: null,
         },
         TEST_META
       );
@@ -79,6 +82,7 @@ describe("users", () => {
           display_name: person.username,
           role: person.role,
           temporary_password: "temporary-password-1",
+          project_ids: null,
         },
         TEST_META
       );
@@ -99,6 +103,7 @@ describe("users", () => {
         display_name: "100% coverage",
         role: "viewer",
         temporary_password: "temporary-password-1",
+        project_ids: null,
       },
       TEST_META
     );
@@ -165,7 +170,7 @@ describe("users", () => {
     const updated = await users.update(
       admin,
       admin.id,
-      { role: "qa", display_name: "Ada" },
+      { role: "qa", display_name: "Ada", project_ids: null },
       TEST_META
     );
     expect(updated.role).toBe("qa");

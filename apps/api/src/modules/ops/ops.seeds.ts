@@ -164,7 +164,8 @@ async function devSeed(deps: SeedDeps, admin: Actor): Promise<SeedCounts> {
   ] as const) {
     await deps.users.create(
       admin,
-      { username, display_name: username, role, temporary_password: password },
+      // Every project: the seeded accounts are the ones the e2e suite signs in as on the demo.
+      { username, display_name: username, role, temporary_password: password, project_ids: null },
       META
     );
     counts.users += 1;

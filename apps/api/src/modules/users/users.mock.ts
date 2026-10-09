@@ -1,6 +1,6 @@
 import type { User } from "@testate/shared";
 
-import { EARLIER, NOW, USER_ID } from "../../lib/mock/fixtures.ts";
+import { EARLIER, NOW, PROJECT_ID, USER_ID } from "../../lib/mock/fixtures.ts";
 
 export const USER_MOCK: User = {
   id: USER_ID,
@@ -13,4 +13,5 @@ export const USER_MOCK: User = {
   last_login_at: NOW,
   created_at: EARLIER,
   updated_at: NOW,
+  project_ids: [PROJECT_ID],
 };

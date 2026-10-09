@@ -138,6 +138,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     audit,
     password,
     now,
+    projectExists: (id) => projectsRepo.exists(id),
   });
   const { bootstrapped, bootstrap } = await bootstrapAdmin(usersRepo.count(), users, config);
   const adminReset = await resetAdminPassword(users, config);

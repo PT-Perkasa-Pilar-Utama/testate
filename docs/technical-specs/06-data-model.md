@@ -21,6 +21,8 @@ The metadata store is one SQLite database, `${TESTATE_DATA_DIR}/metadata.db`, in
 erDiagram
   users ||--o{ sessions : has
   users ||--o{ api_tokens : created
+  users ||--o{ user_projects : sees
+  projects ||--o{ user_projects : seen_by
   projects ||--o{ adapters : owns
   projects ||--o{ states : owns
   projects ||--o{ checkouts : owns
@@ -61,6 +63,16 @@ erDiagram
 | disabled_at | TEXT | yes | | | disabled users cannot log in |
 | last_login_at | TEXT | yes | | | |
 | created_at, updated_at | TEXT | no | | | |
+| all_projects | INTEGER | no | 1 | | `1` every project, `0` the projects in `user_projects` (possibly none); ignored for an admin, who has every project. The default of 1 kept every user's access when migration 0009 added it (#55) |
+
+### USER_PROJECTS
+
+The projects a viewer or tester with `all_projects = 0` may see and act on (#55, `docs/decisions/2026-10-09-project-scope.md`).
+
+| column | type | nullable | default | key | notes |
+| --- | --- | --- | --- | --- | --- |
+| user_id | TEXT | no | | PK, FK users ON DELETE CASCADE | |
+| project_id | TEXT | no | | PK, FK projects ON DELETE CASCADE | indexed; deleting a project removes it from every user's scope |
 
 ### SESSIONS
 

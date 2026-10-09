@@ -49,6 +49,7 @@ export async function createAccounts(
     audit,
     password: TEST_HASHER,
     now: clock.now,
+    projectExists: (id) => projectsRepo.exists(id),
   });
   const authDeps: AuthDeps = {
     users: usersRepo,
