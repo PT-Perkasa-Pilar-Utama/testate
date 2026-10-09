@@ -11,6 +11,8 @@ import type { ResetDeps, ResetDispatcher } from "./modules/ops/ops.reset.ts";
 import { createSeeds, devSampleWriter } from "./modules/ops/ops.seeds.ts";
 import type { SeedDeps } from "./modules/ops/ops.seeds.ts";
 import type { AdaptersRepository } from "./modules/adapters/adapters.repository.ts";
+import { ensureInspectProject } from "./modules/projects/projects.inspect.ts";
+import { createProjectsRepository } from "./modules/projects/projects.repository.ts";
 import type { ProjectsRepository } from "./modules/projects/projects.repository.ts";
 import type { UsersRepository } from "./modules/users/users.repository.ts";
 import { createBackupRunner } from "./modules/settings/settings.backup.ts";
@@ -86,7 +88,7 @@ export function storageDeps(
 }
 
 export type SeedServices = Pick<SeedDeps, "users" | "projects" | "adapters" | "states" | "jobs"> & {
-  usersRepo: Pick<UsersRepository, "byUsername">;
+  usersRepo: Pick<UsersRepository, "byUsername" | "firstAdminId">;
 };
 
 /** The reset endpoint outside production (19 §19.3): wipe, migrate, bootstrap, seed. */
@@ -106,9 +108,27 @@ export function resetHandler(
   audit: Pick<AuditService, "record">
 ): ReturnType<typeof createResetHandler> | null {
   if (config.TESTATE_ENV === "production") return null;
+  const withInspect = bootstrapWithInspect(bootstrap, db, () => services.usersRepo.firstAdminId());
   return createResetHandler(
-    resetDeps(config, db, migrationsDir, bootstrap, jobs, services, resync, dispatcher, audit)
+    resetDeps(config, db, migrationsDir, withInspect, jobs, services, resync, dispatcher, audit)
   );
+}
+
+/**
+ * The reset's bootstrap, followed by the built-in Inspect project: the wipe drops it with every
+ * other row, and it can only come back once the admin it names exists (#56, Q2).
+ */
+export function bootstrapWithInspect(
+  bootstrap: (() => Promise<boolean>) | null,
+  db: MetadataDb,
+  firstAdminId: () => string | null
+): (() => Promise<boolean>) | null {
+  if (bootstrap === null) return null;
+  return async () => {
+    const made = await bootstrap();
+    ensureInspectProject(createProjectsRepository(db), firstAdminId, () => new Date());
+    return made;
+  };
 }
 
 /** "It refuses while jobs run" (05 §5.15): queued jobs are about to run, not merely on file. */

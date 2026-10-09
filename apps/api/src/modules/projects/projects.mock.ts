@@ -16,6 +16,7 @@ import {
 export const PROJECT_MOCK: Project = {
   id: PROJECT_ID,
   slug: PROJECT_SLUG,
+  kind: "standard",
   name: "Shop",
   description: "Web shop under test in SIT",
   quota_bytes: 10737418240,

@@ -19,8 +19,14 @@ export const SLUG_FALLBACK = "project";
 const BASE_MAX = 40;
 const MIN = 2;
 
-/** Words a project may not take, because a route already answers to them. */
-export const RESERVED_SLUGS: readonly string[] = ["defaults"];
+/** The slug the built-in Inspect project takes when it is free (#56). */
+export const INSPECT_SLUG = "inspect";
+
+/**
+ * Words a project may not take: `defaults` because a route answers to it, `inspect` because the
+ * built-in Inspect project does.
+ */
+export const RESERVED_SLUGS: readonly string[] = ["defaults", INSPECT_SLUG];
 
 export function projectSlug(name: string): string {
   const slug = slugify(name, { maxLength: BASE_MAX });

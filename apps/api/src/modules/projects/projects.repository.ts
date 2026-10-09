@@ -1,5 +1,5 @@
-import type { Project } from "@testate/shared";
-import { headStatusSchema } from "@testate/shared";
+import type { Project, ProjectKind } from "@testate/shared";
+import { headStatusSchema, projectKindSchema } from "@testate/shared";
 import type { HeadStatus } from "@testate/shared";
 import * as v from "valibot";
 import { createdRangeConditions } from "../../lib/db/date-range.ts";
@@ -11,6 +11,7 @@ import type { MetadataDb } from "../../lib/db/index.ts";
 const projectRecordSchema = v.object({
   id: v.string(),
   slug: v.string(),
+  kind: projectKindSchema,
   name: v.string(),
   description: v.nullable(v.string()),
   quota_bytes: v.nullable(v.number()),
@@ -33,6 +34,8 @@ export type ProjectsListQuery = {
   q?: string;
   created_from?: string;
   created_to?: string;
+  /** Only projects of this kind; absent means both (#56). */
+  kind?: ProjectKind;
   /** Continues after a `next_cursor` from the page before. */
   cursor?: string;
   /** Null means every project; a list restricts to a token's scope (09 §9.5). */
@@ -42,6 +45,8 @@ export type ProjectsListQuery = {
 export type NewProject = {
   id: string;
   slug: string;
+  /** Absent means `standard`; only the boot step makes an `inspect` one. */
+  kind?: ProjectKind;
   name: string;
   description: string | null;
   quota_bytes: number | null;
@@ -61,6 +66,8 @@ export type ProjectsRepository = {
   total(query: ProjectsListQuery): number;
   bySlug(slug: string): Project | null;
   byId(id: string): Project | null;
+  /** The one project of this kind, if there is one; meant for `inspect`. */
+  byKind(kind: ProjectKind): Project | null;
   exists(id: string): boolean;
   /** `grantCreator` gives a scoped creator access in the same transaction (#55, Q6). */
   insert(project: NewProject, grantCreator?: boolean): Project;
@@ -110,6 +117,7 @@ function toProject(row: ProjectRecord): Project {
   return {
     id: row.id,
     slug: row.slug,
+    kind: row.kind,
     name: row.name,
     description: row.description,
     quota_bytes: row.quota_bytes,
@@ -138,6 +146,7 @@ function conditions(query: ProjectsListQuery): Condition[] {
       params: [like, like],
     });
   }
+  if (query.kind !== undefined) found.push({ sql: "p.kind = ?", params: [query.kind] });
   if (query.ids !== null) {
     const marks = query.ids.map(() => "?").join(",");
     found.push({ sql: `p.id IN (${marks === "" ? "NULL" : marks})`, params: query.ids });
@@ -189,16 +198,18 @@ export function createProjectsRepository(db: MetadataDb): ProjectsRepository {
     },
     bySlug: (slug) => one("p.slug = ?", slug),
     byId: (id) => one("p.id = ?", id),
+    byKind: (kind) => one("p.kind = ?", kind),
     exists: (id) => db.query("SELECT 1 FROM projects WHERE id = ?").get(id) !== null,
     insert(project, grantCreator = false) {
       db.transaction(() => {
         db.query(
-          `INSERT INTO projects (id, slug, name, description, quota_bytes, head_state_id,
+          `INSERT INTO projects (id, slug, kind, name, description, quota_bytes, head_state_id,
              head_status, head_changed_at, created_by, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, NULL, 'none', NULL, ?, ?, ?)`
+           VALUES (?, ?, ?, ?, ?, ?, NULL, 'none', NULL, ?, ?, ?)`
         ).run(
           project.id,
           project.slug,
+          project.kind ?? "standard",
           project.name,
           project.description,
           project.quota_bytes,

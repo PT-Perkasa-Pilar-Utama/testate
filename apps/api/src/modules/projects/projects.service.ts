@@ -1,6 +1,6 @@
 import type * as v from "valibot";
 import type { Actor, Head, Job, Project, ProjectDefaults, Quota, Settings } from "@testate/shared";
-import { freeSlug, projectSlug } from "@testate/shared";
+import { RESERVED_SLUGS, freeSlug, projectSlug } from "@testate/shared";
 import type { createProjectSchema } from "@testate/shared";
 
 import type { RequestMeta } from "../../lib/http/auth.ts";
@@ -118,7 +118,7 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
       const slug =
         input.slug ?? freeSlug(projectSlug(input.name), (free) => repo.bySlug(free) !== null);
       // A caller that names its own slug gets that slug or a refusal, never a numbered neighbour.
-      if (input.slug !== undefined && repo.bySlug(slug) !== null)
+      if (input.slug !== undefined && (RESERVED_SLUGS.includes(slug) || repo.bySlug(slug) !== null))
         throw conflict("slug is taken", { slug });
       const project = repo.insert(
         {
