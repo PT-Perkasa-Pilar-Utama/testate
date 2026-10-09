@@ -10,6 +10,7 @@ import type { AuditService } from "../audit/audit.service.ts";
 import { idempotentRequest } from "../jobs/jobs.idempotency.ts";
 import type { EnqueueInput, JobsService } from "../jobs/jobs.service.ts";
 import { assertActionsAllowed, planFor } from "./projects.deletion.ts";
+import { writableProject } from "./projects.inspect.ts";
 import type { DeletionInput, DeletionPlan } from "./projects.deletion.ts";
 import type { ProjectPatch, ProjectsListQuery, ProjectsRepository } from "./projects.repository.ts";
 
@@ -172,7 +173,7 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
       };
     },
     async update(actor, slug, patch, meta) {
-      const project = find(slug);
+      const project = writableProject(find(slug));
       if (patch.quota_bytes !== undefined && actor.role !== "admin") throw forbidden("role");
       repo.update(project.id, patch, nowIso());
       audit.record({
@@ -197,7 +198,7 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
       return quotaOf(project, settings, repo.usedBytes(project.id), repo.instanceUsedBytes());
     },
     async deletionPlan(slug) {
-      const project = find(slug);
+      const project = writableProject(find(slug));
       const adapters = (await summaries(slug)).map(planFor);
       const affected = repo.deletionCounts(project.id);
       const plan: StoredPlan = {
@@ -233,7 +234,7 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
         const replayed = await deps.jobs.replay(idempotency, actor);
         if (replayed !== null) return replayed;
       }
-      const project = find(slug);
+      const project = writableProject(find(slug));
       if (input.confirm_slug !== slug)
         throw conflict("the slug you typed does not match this project");
       const plan = plans.get(input.plan_id);

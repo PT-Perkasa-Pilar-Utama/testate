@@ -27,6 +27,7 @@ import type {
 import type { RestoreDeps } from "./checkouts.restore.ts";
 import { statusOf } from "./checkouts.job.ts";
 import { repairCounters } from "./checkouts.counters.ts";
+import { writableProject } from "../projects/projects.inspect.ts";
 
 export type CheckoutWithJob = { checkout: Checkout; job: Job };
 
@@ -173,7 +174,7 @@ export function createCheckoutsService(deps: CheckoutsDeps): CheckoutsService {
       return preflight(deps, state, manifests, outside, input.adapter_ids, input.force);
     },
     async create(actor, slug, input, meta) {
-      const project = projectOf(slug);
+      const project = writableProject(projectOf(slug));
       // A retry under the same key answers with the first job and checkout; without this it would
       // insert a second checkout row and then find the key already spent (09 §9.3).
       const idempotency = idempotentRequest(meta, "checkout", {
@@ -234,7 +235,7 @@ export function createCheckoutsService(deps: CheckoutsDeps): CheckoutsService {
       return find(projectOf(slug), id);
     },
     async retry(actor, slug, id, meta) {
-      const project = projectOf(slug);
+      const project = writableProject(projectOf(slug));
       const checkout = find(project, id);
       if (checkout.status === "running") throw conflict("checkout is still running");
       const failed = checkout.adapters.filter((adapter) => RETRIABLE.has(adapter.result));

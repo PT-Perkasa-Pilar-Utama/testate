@@ -26,6 +26,7 @@ import { createFileOps } from "./imports.files.ts";
 import { validateNormalizer } from "./imports.validate.ts";
 import { assertAdapterInProject } from "../adapters/adapters.scope.ts";
 import type { ImportRunRequest, ImportsService } from "./imports.contract.ts";
+import { writableProject } from "../projects/projects.inspect.ts";
 export type {
   ImportRunRequest,
   ImportsService,
@@ -37,7 +38,7 @@ export type ImportsDeps = {
   repo: ImportsRepository;
   adapters: Pick<AdaptersRepository, "byId">;
   policies: Pick<PoliciesRepository, "list">;
-  projects: Pick<ProjectsRepository, "bySlug">;
+  projects: Pick<ProjectsRepository, "bySlug" | "byId">;
   engines: EngineRegistry;
   ring: KeyRing;
   files: FilesResolver;
@@ -71,6 +72,13 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
       throw new AppError("ENGINE_UNSUPPORTED", "imports need a Tabular adapter", {
         reason: "tier",
       });
+    return adapter;
+  };
+  /** A normalizer only feeds an import, so Inspect refuses them too (#56, Q4). */
+  const editable = (adapterId: string): AdapterRecord => {
+    const adapter = tabular(adapterId);
+    const project = deps.projects.byId(adapter.project_id);
+    if (project !== null) writableProject(project);
     return adapter;
   };
   const normalizerOf = (adapter: AdapterRecord, id: string): Normalizer => {
@@ -123,13 +131,14 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
   const files = createFileOps({ ...deps, sourcePath, tableOf });
   return {
     assertAdapter: assertAdapterInProject(projectOf, deps.adapters.byId),
-    upload: (slug, file, purpose) => files.upload(projectOf(slug), file, purpose),
+    upload: async (slug, file, purpose) =>
+      files.upload(writableProject(projectOf(slug)), file, purpose),
     preview: (slug, request) => files.preview(projectOf(slug), request),
     async listNormalizers(adapterId) {
       return repo.normalizers(tabular(adapterId).id);
     },
     async createNormalizer(actor, adapterId, body) {
-      const adapter = tabular(adapterId);
+      const adapter = editable(adapterId);
       if (repo.normalizerByName(adapter.id, body.target, body.name) !== null)
         throw conflict("a normalizer for that table already has that name", {
           name: body.name,
@@ -152,7 +161,7 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
       return normalizerOf(tabular(adapterId), id);
     },
     async updateNormalizer(adapterId, id, patch) {
-      const adapter = tabular(adapterId);
+      const adapter = editable(adapterId);
       const current = normalizerOf(adapter, id);
       const next = { ...current, ...patch };
       if (
@@ -178,10 +187,10 @@ export function createImportsService(deps: ImportsDeps): ImportsService {
       return normalizerOf(adapter, id);
     },
     async removeNormalizer(adapterId, id) {
-      repo.removeNormalizer(normalizerOf(tabular(adapterId), id).id);
+      repo.removeNormalizer(normalizerOf(editable(adapterId), id).id);
     },
     async run(actor, slug, request, meta) {
-      const project = projectOf(slug);
+      const project = writableProject(projectOf(slug));
       const adapter = tabular(request.adapter_id);
       if (adapter.project_id !== project.id) throw notFound("adapter");
       const normalizer = normalizerOf(adapter, request.normalizer_id);

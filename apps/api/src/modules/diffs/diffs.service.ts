@@ -15,6 +15,7 @@ import type { DiffAdapterSummary, DiffsRepository } from "./diffs.repository.ts"
 import { createRowsCache } from "../../lib/cache/rows-cache.ts";
 import { collectPage, maskDiffRows, tableKeyOf } from "./diffs.rows.ts";
 import type { MaskedDiffRows } from "./diffs.rows.ts";
+import { writableProject } from "../projects/projects.inspect.ts";
 
 export type DiffTarget = { state_id: string } | "live";
 
@@ -162,7 +163,7 @@ export function createDiffsService(deps: DiffsDeps): DiffsService {
 
   return {
     async create(actor, slug, baseStateId, target, adapterIds, meta) {
-      const project = projectOf(slug);
+      const project = writableProject(projectOf(slug));
       const base = readyState(project, baseStateId);
       const targetState = target === "live" ? null : readyState(project, target.state_id);
       const summaries = adaptersOf(base, targetState, adapterIds);

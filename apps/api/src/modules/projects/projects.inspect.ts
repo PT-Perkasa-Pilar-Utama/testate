@@ -1,4 +1,7 @@
+import type { Project } from "@testate/shared";
 import { INSPECT_SLUG, freeSlug } from "@testate/shared";
+
+import { AppError } from "../../lib/http/index.ts";
 
 import type { ProjectsRepository } from "./projects.repository.ts";
 
@@ -33,4 +36,18 @@ export function ensureInspectProject(
     created_at: now().toISOString(),
   });
   return true;
+}
+
+/**
+ * Refuses what the Inspect project never does (#56, Q4): snapshots, state archives, diffs,
+ * checkouts, imports and uploads, and any change to Inspect itself. Called inside the services, so
+ * the REST routes and the MCP write tools meet the same refusal. Writes to a target are already
+ * refused by the adapter's own `read_only` mode; this covers what writes Testate's own records.
+ */
+export function writableProject<T extends Pick<Project, "kind" | "name">>(project: T): T {
+  if (project.kind !== "inspect") return project;
+  throw new AppError(
+    "PROJECT_READ_ONLY",
+    `${project.name} is read-only: it holds connections to look at, so snapshots, checkouts, diffs and imports are not available there.`
+  );
 }
