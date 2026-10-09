@@ -231,6 +231,7 @@ test.describe("admin flows", () => {
     await settle(page);
     await page.getByRole("button", { name: "New token" }).click();
     await page.locator("dialog[open]").getByLabel("Name").fill("e2e token");
+    await page.locator("dialog[open]").getByLabel("All projects").check();
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.getByText(/tst_/)).toBeVisible();
     await page.getByRole("button", { name: "Done" }).click();

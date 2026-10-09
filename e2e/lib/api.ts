@@ -143,7 +143,7 @@ export type TokenDraft = {
   name: string;
   kind?: "standard" | "agent";
   role?: Role;
-  project_ids?: string[] | null;
+  project_ids: string[] | null;
   expires_at?: string;
 };
 

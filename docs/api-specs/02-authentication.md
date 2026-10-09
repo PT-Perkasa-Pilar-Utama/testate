@@ -87,7 +87,7 @@ them are a way out of the scope (09 §9.4).
 | `name` | string | yes | 1 to 80 characters |
 | `kind` | `standard` \| `agent` | no | default `standard` |
 | `role` | `admin` \| `qa` \| `viewer` | yes for standard | default `viewer` for an agent token; `qa` is allowed, `admin` on an agent token is a validation error |
-| `project_ids` | string[] \| null | no | null = all projects; each id must exist |
+| `project_ids` | string[] \| null | yes | `null` = all projects, a list = those projects (possibly empty); each id must exist. Leaving it out is a `VALIDATION_ERROR` that names the field: an unscoped token is a choice, never a default (#55) |
 | `expires_at` | timestamp \| `null` | no | absent takes a default: standard tokens never expire, agent tokens expire 90 days out. Explicit `null` on either kind means never-expires. A given value is capped at 365 days ahead for agent tokens only |
 
 **Behavior.** Generate 32 random bytes; store SHA-256 and the 8-character prefix; audit `token.created` (stories 111, 134).
@@ -98,7 +98,7 @@ them are a way out of the scope (09 §9.4).
 { "data": { "token": "tst_5Gk...", "record": { "id": "01J...", "name": "ci-shop", "kind": "standard", "role": "qa", "project_ids": ["01J..."], "prefix": "5Gk8x2Qp", "expires_at": null } } }
 ```
 
-**Errors.** `VALIDATION_ERROR`; `NOT_FOUND` (project id). **Traceability.** Stories 111, 134.
+**Errors.** `VALIDATION_ERROR` (including a body without `project_ids`); `NOT_FOUND` (project id). **Traceability.** Stories 111, 134.
 
 ## 2.8 `DELETE /tokens/{id}`
 

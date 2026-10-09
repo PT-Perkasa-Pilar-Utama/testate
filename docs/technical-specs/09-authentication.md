@@ -31,7 +31,7 @@ POST /api/v1/auth/password { current, next }
 
 ```text
 POST /api/v1/tokens { name, role, project_ids | null, expires_at? }   (admin)
-  -> role <= creator role; project_ids validated
+  -> role <= creator role; project_ids required (null is stated, never assumed) and validated
   -> plaintext returned once; prefix and hash stored
 Authorization: Bearer tst_...
   -> hash lookup; revoked_at or expires_at in the past -> 401

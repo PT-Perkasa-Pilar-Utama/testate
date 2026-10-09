@@ -4,7 +4,7 @@ import Pending from "@/components/pending.tsx";
 import { For, Loading, Show, createSignal } from "solid-js";
 import type { ApiToken } from "@testate/shared";
 
-import { formatWhen } from "@/lib/format.ts";
+import { formatScope, formatWhen } from "@/lib/format.ts";
 import { activeFilterCount } from "@/lib/table.ts";
 import Badge from "@/components/badge.tsx";
 import Button from "@/components/button.tsx";
@@ -116,6 +116,7 @@ export default function TokensView(): JSX.Element {
               <SortColumn view={presenter.table} column="role">
                 Role
               </SortColumn>
+              <Head>Projects</Head>
               <Head>Prefix</Head>
               <SortColumn view={presenter.table} column="last_used_at">
                 Last used
@@ -155,6 +156,11 @@ export default function TokensView(): JSX.Element {
                         </Badge>
                       </Cell>
                       <Cell>{ROLE_LABEL[token.role]}</Cell>
+                      <Cell>
+                        <Truncated>
+                          {formatScope(token.project_ids, presenter.projects.value())}
+                        </Truncated>
+                      </Cell>
                       <Cell>
                         <code>{token.prefix}</code>
                       </Cell>

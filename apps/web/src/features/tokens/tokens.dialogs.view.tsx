@@ -1,6 +1,6 @@
-import { Field, Form, createForm, getInput, reset, setInput } from "@formisch/solid";
+import { Field, Form, createForm, getErrors, getInput, reset, setInput } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import { Show, createEffect } from "solid-js";
+import { Loading, Show, createEffect } from "solid-js";
 import type { TokenKind } from "@testate/shared";
 import { tokenDraftSchema } from "@testate/shared";
 
@@ -11,6 +11,8 @@ import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Input from "@/components/input.tsx";
+import Pending from "@/components/pending.tsx";
+import ProjectScope from "@/components/project-scope.tsx";
 import Select from "@/components/select.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import {
@@ -132,6 +134,17 @@ export function CreateDialog(props: { presenter: TokensPresenter }): JSX.Element
             </Field>
           </Show>
         </div>
+        <Loading fallback={<Pending>Listing projects...</Pending>}>
+          <ProjectScope
+            projects={props.presenter.projects.value()}
+            scope={getInput(form, { path: ["scope"] })}
+            picked={getInput(form, { path: ["project_ids"] }) ?? []}
+            onScope={(scope) => setInput(form, { path: ["scope"], input: scope })}
+            onPicked={(picked) => setInput(form, { path: ["project_ids"], input: picked })}
+            scopeError={getErrors(form, { path: ["scope"] })?.[0]}
+            pickedError={getErrors(form, { path: ["project_ids"] })?.[0]}
+          />
+        </Loading>
         <Show when={props.presenter.error()}>
           {(message) => <Banner variant="error">{message()}</Banner>}
         </Show>

@@ -1,22 +1,32 @@
 import { createSignal } from "solid-js";
-import type { ApiToken, JsonObject, TokenDraft, TokenKind } from "@testate/shared";
+import type { ApiToken, JsonObject, Project, TokenDraft, TokenKind } from "@testate/shared";
+import { projectIdsOf } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
 import { attempt, showToast } from "@/lib/toast.ts";
-import { createPaged } from "@/lib/async.ts";
+import { createPaged, createRefreshable } from "@/lib/async.ts";
 import { createTableControls } from "@/lib/table.ts";
 import type { TableView } from "@/lib/table.ts";
-import type { Paged } from "@/lib/async.ts";
+import type { Paged, Refreshable } from "@/lib/async.ts";
+import { projectsModel } from "../projects/projects.model.ts";
 import type { CreatedToken } from "./tokens.model.ts";
 import { tokensModel } from "./tokens.model.ts";
 
-/** The dialog's own starting point; also what it resets to on close (`tokenDraftSchema`). */
-export const EMPTY_DRAFT: TokenDraft = {
+/**
+ * The dialog's own starting point; also what it resets to on close (`tokenDraftSchema`).
+ *
+ * No scope: which projects a token reaches is a choice someone makes (#55), so the form refuses
+ * until it is made. The key is present and undefined on purpose; an absent key gets valibot's
+ * "Invalid key" message instead of the one the schema writes.
+ */
+export const EMPTY_DRAFT: Omit<TokenDraft, "scope"> & { scope: undefined } = {
   name: "",
   kind: "standard",
   role: "qa",
   expiry: "default",
   expires_on: "",
+  scope: undefined,
+  project_ids: [],
 };
 
 export type TokenSort = "name" | "kind" | "role" | "last_used_at" | "expires_at";
@@ -26,6 +36,8 @@ export type RevokedFilter = "" | "true" | "false";
 
 export type TokensPresenter = Paged<ApiToken> & {
   table: TableView<ApiToken, TokenSort>;
+  /** Every project, for the dialog's picker and the list's scope column. */
+  projects: Refreshable<Project[]>;
   kind: () => TokenKind | "";
   setKind: (kind: TokenKind | "") => void;
   revoked: () => RevokedFilter;
@@ -55,7 +67,12 @@ export type TokensPresenter = Paged<ApiToken> & {
  * default, and a standard one never expires anyway. "default" is the field left out.
  */
 export function toCreateBody(draft: TokenDraft): JsonObject {
-  const body: JsonObject = { name: draft.name.trim(), kind: draft.kind, role: draft.role };
+  const body: JsonObject = {
+    name: draft.name.trim(),
+    kind: draft.kind,
+    role: draft.role,
+    project_ids: projectIdsOf(draft.scope, draft.project_ids),
+  };
   if (draft.expiry === "none") body["expires_at"] = null;
   if (draft.expiry === "date" && draft.expires_on !== "")
     body["expires_at"] = new Date(`${draft.expires_on}T23:59:59Z`).toISOString();
@@ -80,6 +97,7 @@ export function createTokensPresenter(): TokensPresenter {
   return {
     ...tokens,
     table,
+    projects: createRefreshable(() => projectsModel.choices()),
     kind,
     setKind,
     revoked,
