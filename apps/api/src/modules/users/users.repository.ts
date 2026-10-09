@@ -67,6 +67,8 @@ export type UsersRepository = {
   /** How many rows the filter matches, ignoring the page. */
   total(query: UsersListQuery): number;
   countEnabledAdmins(): number;
+  /** The longest-standing admin, enabled or not; null before the bootstrap admin exists. */
+  firstAdminId(): string | null;
   list(query: UsersListQuery): UserRecord[];
   byId(id: string): UserRecord | null;
   byUsername(username: string): UserRecord | null;
@@ -160,6 +162,12 @@ export function createUsersRepository(db: MetadataDb): UsersRepository {
     },
     countEnabledAdmins: () =>
       count("SELECT COUNT(*) AS n FROM users WHERE role = 'admin' AND disabled_at IS NULL"),
+    firstAdminId() {
+      const row = db
+        .query("SELECT id FROM users WHERE role = 'admin' ORDER BY created_at, id LIMIT 1")
+        .get();
+      return row === null ? null : v.parse(v.object({ id: v.string() }), row).id;
+    },
     list(query) {
       const found = conditions(query);
       const after = keysetCondition(

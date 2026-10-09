@@ -49,10 +49,11 @@ import { createDiffsHandlers } from "./modules/diffs/diffs.handler.ts";
 import { createImportsHandlers } from "./modules/imports/imports.handler.ts";
 import { createV1 } from "./modules/index.ts";
 import { createJobsHandlers } from "./modules/jobs/jobs.handler.ts";
-import { mountSpa, resolveWebSource, rewriteWebAssets } from "./modules/ops/ops.basepath.ts";
+import { mountSpa, prepareWeb } from "./modules/ops/ops.basepath.ts";
 import { unpackEmbedded } from "./modules/ops/ops.embedded.ts";
 import { createOpsHandlers } from "./modules/ops/ops.handler.ts";
 import { createProjectsHandlers } from "./modules/projects/projects.handler.ts";
+import { ensureInspectProject } from "./modules/projects/projects.inspect.ts";
 import { createProjectsRepository } from "./modules/projects/projects.repository.ts";
 import { createProjectsService } from "./modules/projects/projects.service.ts";
 import { createSettingsHandlers } from "./modules/settings/settings.handler.ts";
@@ -107,15 +108,12 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   const migration = migrateOrRefuse(db, migrationsDir, config.TESTATE_DATA_DIR);
   const sealed = await sweepSealed(ring, db, config);
   const prefix = apiPrefix(config);
-  const webSource = unpacked.web ?? resolveWebSource(import.meta.dir);
-  const web =
-    webSource === null
-      ? null
-      : rewriteWebAssets(
-          webSource,
-          join(config.TESTATE_DATA_DIR, "run", "web"),
-          config.TESTATE_BASE_PATH
-        );
+  const web = prepareWeb(
+    unpacked.web,
+    import.meta.dir,
+    config.TESTATE_DATA_DIR,
+    config.TESTATE_BASE_PATH
+  );
 
   const now = (): Date => new Date();
   const password = createPasswordHasher();
@@ -142,6 +140,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   });
   const { bootstrapped, bootstrap } = await bootstrapAdmin(usersRepo.count(), users, config);
   const adminReset = await resetAdminPassword(users, config);
+  const inspectCreated = ensureInspectProject(projectsRepo, () => usersRepo.firstAdminId(), now);
   const netguard = createNetguard(config);
   const wiring = createEngineWiring(config, ring, db, netguard, projectsRepo);
   const settings = createSettingsService(
@@ -280,6 +279,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     reset_state_mounted: config.TESTATE_ENV !== "production",
     bootstrap_admin_created: bootstrapped,
     admin_password_reset: adminReset,
+    inspect_project_created: inspectCreated,
     jobs_interrupted: recovery.interrupted,
     jobs_head_unknown: recovery.head_unknown,
     sealed_re_sealed: sealed.reSealed,

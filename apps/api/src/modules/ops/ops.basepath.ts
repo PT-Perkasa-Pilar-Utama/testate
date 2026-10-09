@@ -53,6 +53,20 @@ export function rewriteWebAssets(source: string, target: string, basePath: strin
   return { dir: target, files, rewritten };
 }
 
+/**
+ * The SPA this boot serves: the embedded copy, else the image's or the checkout's build, copied
+ * into `run/web` with the base filled in. Null when there is no build at all.
+ */
+export function prepareWeb(
+  embedded: string | null,
+  apiDir: string,
+  dataDir: string,
+  basePath: string
+): WebAssets | null {
+  const source = embedded ?? resolveWebSource(apiDir);
+  return source === null ? null : rewriteWebAssets(source, join(dataDir, "run", "web"), basePath);
+}
+
 /** Every built file under the base, and index.html for every other non-API path (history routing). */
 export function mountSpa(app: Hono, basePath: string, apiPrefix: string, webDir: string): void {
   const root = basePath === "/" ? "" : basePath;

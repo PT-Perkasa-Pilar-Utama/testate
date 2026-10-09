@@ -20,6 +20,11 @@ export const TIERS = ["files", "document", "tabular"] as const;
 export const tierSchema = v.picklist(TIERS);
 export type Tier = v.InferOutput<typeof tierSchema>;
 
+/** `inspect` is the one built-in, read-only project (#56); every project people make is `standard`. */
+export const PROJECT_KINDS = ["standard", "inspect"] as const;
+export const projectKindSchema = v.picklist(PROJECT_KINDS);
+export type ProjectKind = v.InferOutput<typeof projectKindSchema>;
+
 export const ADAPTER_MODES = ["sandbox", "read_only"] as const;
 export const adapterModeSchema = v.picklist(ADAPTER_MODES);
 export type AdapterMode = v.InferOutput<typeof adapterModeSchema>;

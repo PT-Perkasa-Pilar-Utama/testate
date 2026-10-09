@@ -1,4 +1,9 @@
-import { createProjectSchema, idSchema, updateProjectSchema } from "@testate/shared";
+import {
+  createProjectSchema,
+  idSchema,
+  projectKindSchema,
+  updateProjectSchema,
+} from "@testate/shared";
 import * as v from "valibot";
 import { nextCursor } from "../../lib/db/keyset.ts";
 
@@ -34,6 +39,7 @@ const listQuery = v.object({
   cursor: v.optional(v.array(v.string())),
   created_from: v.optional(v.array(v.string())),
   created_to: v.optional(v.array(v.string())),
+  kind: v.optional(v.array(projectKindSchema)),
 });
 
 const deletionSchema = v.object({
@@ -60,6 +66,8 @@ export function toListQuery(
   if (createdFrom !== undefined) query.created_from = createdFrom;
   const createdTo = firstQuery(parsed.created_to);
   if (createdTo !== undefined) query.created_to = createdTo;
+  const kind = firstQuery(parsed.kind);
+  if (kind !== undefined) query.kind = kind;
   return query;
 }
 

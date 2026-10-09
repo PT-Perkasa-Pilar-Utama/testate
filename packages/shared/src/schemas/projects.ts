@@ -1,6 +1,6 @@
 import * as v from "valibot";
 
-import { headStatusSchema } from "../enums.ts";
+import { headStatusSchema, projectKindSchema } from "../enums.ts";
 import { idSchema, slugSchema, timestampSchema } from "./common.ts";
 
 export const headSchema = v.object({
@@ -20,6 +20,8 @@ export type Head = v.InferOutput<typeof headSchema>;
 export const projectSchema = v.object({
   id: idSchema,
   slug: slugSchema,
+  /** `inspect` for the built-in read-only project (#56), which holds adapters and nothing else. */
+  kind: projectKindSchema,
   name: v.pipe(v.string(), v.minLength(1), v.maxLength(120)),
   description: v.nullable(v.string()),
   quota_bytes: v.nullable(v.number()),
