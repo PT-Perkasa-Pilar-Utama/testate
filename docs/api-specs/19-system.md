@@ -6,7 +6,7 @@ Module: `ops` ([../technical-specs/05-module-definitions.md §5.17](../technical
 
 **Purpose.** Liveness for everyone; the dependency breakdown for admins (story 129).
 
-**Access.** Public; details with an `admin` session or token.
+**Access.** Public; details with an unscoped `admin` session or token. A project-scoped admin token gets the status alone, because the details name every adapter on the instance (#55).
 
 **Output.** `200` public: `{ "data": { "status": "ok" } }`. Admin:
 
@@ -31,7 +31,7 @@ Module: `ops` ([../technical-specs/05-module-definitions.md §5.17](../technical
 
 **Purpose.** Reset Testate's own metadata and local store to a seed, for dev and QA of Testate itself.
 
-**Access.** `admin`. **Mounted only when `TESTATE_ENV` is not `production`**: the router registration is conditional, so in production the path does not exist and answers `404 NOT_FOUND` like any unknown route ([07 §7.8](../technical-specs/07-security.md), [11 §11.5](../technical-specs/11-environment-configuration.md)).
+**Access.** `admin`, unscoped: a project-scoped token answers `403` `token_is_project_scoped` (#55). **Mounted only when `TESTATE_ENV` is not `production`**: the router registration is conditional, so in production the path does not exist and answers `404 NOT_FOUND` like any unknown route ([07 §7.8](../technical-specs/07-security.md), [11 §11.5](../technical-specs/11-environment-configuration.md)).
 
 **Input.** Body: `seed` `dev` | `qa` optional (default `TESTATE_RESET_SEED`); `confirm` string required, must equal `"reset"`.
 

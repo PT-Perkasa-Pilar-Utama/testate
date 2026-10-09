@@ -181,7 +181,7 @@ export function writeTools(deps: AgentToolDeps): WriteTools {
     },
     get_job: async (args, ctx) => {
       requireTester(ctx);
-      const job = await deps.jobs.get(ctx.scope, text(args, "job"));
+      const job = await deps.jobs.get(ctx.scope, text(args, "job"), ctx.actor);
       return json({
         id: job.id,
         kind: job.kind,

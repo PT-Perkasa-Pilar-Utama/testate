@@ -16,7 +16,7 @@ Audit row:
 
 ## 15.1 `GET /audit-logs`
 
-**Access.** `viewer` (scope-filtered by the token's project scope; every unscoped actor, whatever its role, also sees instance-level rows — there is no role check). **Input.** Query: `cursor`, `limit` (default 50, max 200), `project_id`, `q` (substring match over the actor label, the action, and the target's label or id), `actor` (substring match against the actor label only, not user or token ids), `action` (substring match), `from`, `to` (timestamps), `outcome`. **Output.** `200` list, newest first. **Traceability.** Stories 108, 110.
+**Access.** `viewer`. Rows are filtered by the caller's project scope, a token's or (since #55) a viewer's or tester's. Instance-level rows (no project: users, tokens, settings, backups) are shown only to an unscoped admin; a scoped caller of any role sees only rows of its projects. **Input.** Query: `cursor`, `limit` (default 50, max 200), `project_id`, `q` (substring match over the actor label, the action, and the target's label or id), `actor` (substring match against the actor label only, not user or token ids), `action` (substring match), `from`, `to` (timestamps), `outcome`. **Output.** `200` list, newest first. **Traceability.** Stories 108, 110.
 
 ## 15.2 `GET /audit-logs/export`
 

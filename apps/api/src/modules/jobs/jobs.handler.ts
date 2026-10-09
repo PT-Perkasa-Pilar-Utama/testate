@@ -75,7 +75,9 @@ export async function respondWithJob(
 ): Promise<Response> {
   const seconds = firstQuery(parseQuery(c, waitQuery).wait);
   const settled =
-    seconds === undefined ? job : await jobs.wait(c.get("projectScope"), job.id, seconds);
+    seconds === undefined
+      ? job
+      : await jobs.wait(c.get("projectScope"), job.id, seconds, currentActor(c));
   if (TERMINAL_JOB_STATUSES.includes(settled.status)) return ok(c, settled, 200);
   return accepted(c, settled, apiPrefix);
 }
@@ -92,10 +94,11 @@ export function createJobsHandlers(service: JobsService): JobsHandlers {
       const scope = c.get("projectScope");
       const seconds = firstQuery(parseQuery(c, waitQuery).wait);
       const id = param(c, "id");
+      const asker = currentActor(c);
       const job =
         seconds === undefined
-          ? await service.get(scope, id)
-          : await service.wait(scope, id, seconds);
+          ? await service.get(scope, id, asker)
+          : await service.wait(scope, id, seconds, asker);
       return ok(c, job, TERMINAL_JOB_STATUSES.includes(job.status) ? 200 : 202);
     },
     cancel: async (c) =>
@@ -103,7 +106,7 @@ export function createJobsHandlers(service: JobsService): JobsHandlers {
     events: async (c) => {
       const scope = c.get("projectScope");
       const id = param(c, "id");
-      await service.get(scope, id);
+      await service.get(scope, id, currentActor(c));
       const lastId = c.req.header("last-event-id");
       const afterSeq = lastId === undefined ? null : Number(lastId);
       return streamSSE(c, async (stream) => {

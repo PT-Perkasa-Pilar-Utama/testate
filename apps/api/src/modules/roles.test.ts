@@ -239,7 +239,8 @@ function scopedApp(kind: ScopedKind): Hono {
   // empty object it wraps.
   const deps = new Proxy({} as Parameters<typeof createV1>[0], {
     get: (_target, key) => {
-      if (key === "resetState") return null;
+      // Mounted, so its own guard is what refuses (the development route, G1 in #55).
+      if (key === "resetState") return stubs();
       if (key === "projectScope") return requireProjectInScope(ONE_PROJECT);
       if (key === "adapterScope") return stubs(true);
       if (key === "data") return stubs<Parameters<typeof createDataRouter>[0]>(true);
@@ -271,6 +272,7 @@ async function scopedReachedAdmin(kind: ScopedKind): Promise<string[]> {
     ["DELETE", "/tokens/t1"],
     ["GET", "/settings"],
     ["PATCH", "/settings"],
+    ["POST", "/admin/reset-state"],
   ];
   for (const [method, path] of paths) {
     const code = await scopedStatus(kind, method, path);

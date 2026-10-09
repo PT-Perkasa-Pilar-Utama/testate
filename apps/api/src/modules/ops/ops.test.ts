@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { Hono } from "hono";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,6 +8,7 @@ import { healthAdminSchema } from "@testate/shared";
 
 import { createMemoryBlobStore } from "../../lib/blobstore/index.ts";
 import { migrate, openMetadataDb } from "../../lib/db/index.ts";
+import { createOpsHandlers } from "./ops.handler.ts";
 import { health } from "./ops.service.ts";
 import type { HealthDeps } from "./ops.service.ts";
 
@@ -68,6 +70,30 @@ describe("health", () => {
 
     expect(report.status).toBe("down");
     expect(report.checks.data_dir.status).toBe("down");
+  });
+});
+
+describe("who reads the full health report", () => {
+  // #55 (G4): the report names every adapter on the instance, which a scoped admin token must not
+  // see; it gets the status alone, like a guest.
+  async function keysFor(scope: string[] | null): Promise<string[]> {
+    const app = new Hono();
+    app.use("*", async (c, next) => {
+      c.set("actor", { kind: "token", id: "t1", label: "token:ci", role: "admin", agent: false });
+      c.set("projectScope", scope);
+      await next();
+    });
+    app.get("/health", createOpsHandlers(deps(), () => true).health);
+    const body = v.parse(
+      v.object({ data: v.looseObject({ status: v.string() }) }),
+      await (await app.request("/health")).json()
+    );
+    return Object.keys(body.data);
+  }
+
+  it("an unscoped admin gets the breakdown; a scoped one gets the status only", async () => {
+    expect((await keysFor(null)).length).toBeGreaterThan(1);
+    expect(await keysFor(["p1"])).toStrictEqual(["status"]);
   });
 });
 
