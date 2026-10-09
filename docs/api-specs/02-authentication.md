@@ -86,7 +86,7 @@ them are a way out of the scope (09 §9.4).
 | --- | --- | --- | --- |
 | `name` | string | yes | 1 to 80 characters |
 | `kind` | `standard` \| `agent` | no | default `standard` |
-| `role` | `admin` \| `qa` \| `viewer` | yes for standard | default `viewer` for an agent token; `qa` is allowed, `admin` on an agent token is a validation error |
+| `role` | `admin` \| `qa` \| `viewer` | yes for standard | default `viewer` for an agent token; `qa` is allowed, `admin` on an agent token is a validation error. A token whose `project_ids` lists the Inspect project must be `viewer` (either kind): otherwise `VALIDATION_ERROR` on `role`, "A token that reaches Inspect is a viewer." (#56) |
 | `project_ids` | string[] \| null | yes | `null` = all projects, a list = those projects (possibly empty); each id must exist. Leaving it out is a `VALIDATION_ERROR` that names the field: an unscoped token is a choice, never a default (#55) |
 | `expires_at` | timestamp \| `null` | no | absent takes a default: standard tokens never expire, agent tokens expire 90 days out. Explicit `null` on either kind means never-expires. A given value is capped at 365 days ahead for agent tokens only |
 

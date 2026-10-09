@@ -227,6 +227,7 @@ apart on what a checkout does.
 ### Agent access
 
 134. As an admin, I want to create an agent-kind token with project scope and an expiry, so that an AI agent gets least-privilege read access.
+155. As a developer, I want a built-in Inspect project where I add a database read-only and make an agent token for it in one click, with no snapshots, checkouts or imports possible there, so that I can point an agent at a database knowing nothing will be written.
 135. As a developer, I want to connect an AI agent to Testate over MCP with that token and list tables, describe a table, page rows, and run read-only queries, so that the agent inspects SIT or UAT data without a database credential.
 136. As a developer, I want the agent to extract a fixture (a row plus its related rows) as SQL or JSON, so that I can reproduce a bug on a local database.
 137. As an admin, I want every agent tool call audited with the tool name and target, so that agent access is reviewable.

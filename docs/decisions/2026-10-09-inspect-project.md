@@ -32,4 +32,4 @@ Stated from the code, not asked:
 ## Docs changed
 
 - docs/GLOSSARY.md: added **Inspect project**.
-- To change during the build: `05-module-definitions.md` (projects, adapters, agent), `06-data-model.md` (projects.kind, adapters.created_by), `23-agent-access.md`, `api-specs/01-conventions.md` (PROJECT_READ_ONLY), `04-projects.md`, `05-adapters.md`, `02-authentication.md` §2.7, `PRD.md` (a story).
+- Changed during the build: `05-module-definitions.md` (projects, adapters), `06-data-model.md` (projects.kind and head_dirty, adapters.created_by), `23-agent-access.md` §23.6, `api-specs/01-conventions.md` (PROJECT_READ_ONLY), `02-authentication.md` §2.7, `04-projects.md`, `05-adapters.md`, `PRD.md` (story 155).
