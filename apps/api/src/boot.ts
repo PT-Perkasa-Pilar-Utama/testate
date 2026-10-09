@@ -282,6 +282,34 @@ export function refuse(cause: unknown): never {
   process.exit(78);
 }
 
+/** `testate --version` (or `-v`) is the one argument the binary takes today (#53). */
+export function versionLine(args: readonly string[], version: string): string | null {
+  return args.includes("--version") || args.includes("-v") ? `testate ${version}\n` : null;
+}
+
+/**
+ * The entry point. The version answers before any configuration is read, so the install script
+ * can check a fresh binary with nothing set; anything else boots, or refuses with the reason.
+ */
+export async function run(
+  args: readonly string[],
+  version: string,
+  start: () => Promise<App>
+): Promise<void> {
+  const line = versionLine(args, version);
+  if (line !== null) {
+    process.stdout.write(line);
+    return;
+  }
+  let app: App;
+  try {
+    app = await start();
+  } catch (cause: unknown) {
+    refuse(cause);
+  }
+  serve(app);
+}
+
 /** Listens, starts the timers, and drains on SIGTERM/SIGINT (22 §22.2 step 10). */
 export function serve(app: App): void {
   const server = Bun.serve({ port: app.port, fetch: app.fetch });
