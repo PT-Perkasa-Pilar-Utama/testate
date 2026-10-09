@@ -31,6 +31,7 @@ Terms as the code, the API, and the UI use them. One meaning each. Specs cite th
 | **Sweep** | The boot pass that re-seals every stored value under the active key | A migration |
 | **Job** | Long work with a status, progress, cancel, and an SSE stream: snapshot, checkout, diff, import, deletion, backup, migration | A request |
 | **Token** | A bearer credential for the REST API with a role, an optional project scope, and an optional expiry | A session |
+| **Project scope** | The projects a token or a viewer or tester may see and act on. Every project, or a chosen list, possibly empty. An admin always has every project | A role |
 | **Actor** | Who did something: a user, a token, or the system; carried on every audit row and wide event | A role |
 | **Role** | `viewer` < `qa` < `admin`, cumulative | A permission list |
 | **Agent token** | An API token of kind `agent`: reaches `POST /mcp` only, masks always on. It carries a role like any other token, and the role decides which tools answer | A user |
