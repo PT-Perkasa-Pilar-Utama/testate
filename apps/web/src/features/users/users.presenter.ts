@@ -81,7 +81,11 @@ export function createUsersPresenter(): UsersPresenter {
     create: async (input) => {
       setError(null);
       try {
-        await usersModel.create(input);
+        // `project_ids` left out stays out of the body: JSON has no `undefined`.
+        const { project_ids: projectIds, ...rest } = input;
+        await usersModel.create(
+          projectIds === undefined ? rest : { ...rest, project_ids: projectIds }
+        );
         showToast("User created.", "success");
         setCreating(false);
         users.refresh();

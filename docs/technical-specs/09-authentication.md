@@ -10,7 +10,7 @@
 | Bootstrap | `TESTATE_ADMIN_USER` and `TESTATE_ADMIN_PASSWORD` create the first admin when `users` is empty | First login forces a change | The environment values are ignored once a user exists |
 | Forgotten password | An admin resets any account to a temporary password; the last admin, which nobody can reset, recovers through `TESTATE_ADMIN_PASSWORD_RESET` at boot (22 §22.2) | Both force a change on the next login | Both end every session that account had |
 
-An `Actor` is `{ kind: "user" | "token"; id; role; projectIds: string[] | null; label }`. Middleware resolves it once per request and stores it on the Hono context; services receive it as an argument.
+An `Actor` is `{ kind: "user" | "token"; id; role; label; agent }`. Middleware resolves it once per request and stores it on the Hono context; services receive it as an argument. Beside it the context carries `projectScope: string[] | null`: the projects the caller may see and act on, `null` for every project. A token takes it from its `project_ids`. A session takes it from the user: an admin always `null`, a viewer or tester every project or the projects listed in `user_projects` (#55, `docs/decisions/2026-10-09-project-scope.md`).
 
 ## 9.2 Login flow
 
@@ -74,14 +74,15 @@ A `viewer` token or user never triggers a job. A token scoped to one project can
 another project, and it administers nothing: `/users`, `/tokens` and `/settings` answer `403
 { "reason": "token_is_project_scoped" }` whatever role it carries. Without that last rule the scope
 is decorative, because an admin token scoped to one project could mint an unscoped one, or create a
-user and sign in as them. A user is never scoped, so this only ever refuses a token.
+user and sign in as them. An admin user is never scoped, so this only ever refuses a token; a scoped
+viewer or tester never reaches those routes, which are admin only.
 
 ## 9.5 Scope enforcement
 
 | Route pattern | Check |
 | --- | --- |
-| `/projects` list | filter to `actor.projectIds` when not null |
-| `/projects/:slug/**` | `slug` resolves to an id in `actor.projectIds`, else `404 NOT_FOUND` (existence is not revealed) |
+| `/projects` list | filter to `projectScope` when not null |
+| `/projects/:slug/**` | `slug` resolves to an id in `projectScope`, else `404 NOT_FOUND` (existence is not revealed) |
 | `/jobs`, `/audit-logs` | rows filtered to scoped projects; instance-level rows (backup, storage migration) visible to admin only |
 | `/users`, `/tokens`, `/settings` | admin only, tokens included |
 

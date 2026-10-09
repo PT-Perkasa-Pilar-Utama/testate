@@ -1,5 +1,5 @@
 import type { Role, User } from "@testate/shared";
-import { roleSchema } from "@testate/shared";
+import { idSchema, roleSchema } from "@testate/shared";
 import * as v from "valibot";
 import { keysetCondition } from "../../lib/db/keyset.ts";
 import { likeTerm } from "../../lib/db/like.ts";
@@ -19,6 +19,9 @@ const userRecordSchema = v.object({
   last_login_at: v.nullable(v.string()),
   created_at: v.string(),
   updated_at: v.string(),
+  all_projects: v.number(),
+  /** `json_group_array` of the user's `user_projects` rows; `[]` when there are none. */
+  project_ids_json: v.string(),
 });
 type UserRecordRow = v.InferOutput<typeof userRecordSchema>;
 
@@ -45,6 +48,20 @@ export type NewUser = {
   created_at: string;
 };
 
+/** Every column of a user, plus the user's project list, so one read answers the scope too. */
+const ROW = `SELECT users.*,
+  (SELECT json_group_array(project_id) FROM user_projects WHERE user_projects.user_id = users.id)
+    AS project_ids_json
+  FROM users`;
+
+const projectIdsSchema = v.array(idSchema);
+
+/** An admin has every project whatever the rows say; anyone else has the flag or the list. */
+function scopeOf(row: UserRecordRow): string[] | null {
+  if (row.role === "admin" || row.all_projects === 1) return null;
+  return v.parse(projectIdsSchema, JSON.parse(row.project_ids_json));
+}
+
 export type UsersRepository = {
   count(): number;
   /** How many rows the filter matches, ignoring the page. */
@@ -60,6 +77,8 @@ export type UsersRepository = {
   recordFailure(id: string, count: number, lockedUntil: string | null, at: string): void;
   recordLogin(id: string, at: string): void;
   remove(id: string): void;
+  /** Replaces the user's scope: `null` for every project, or exactly the projects listed. */
+  setScope(id: string, projectIds: string[] | null): void;
 };
 
 function toRecord(row: UserRecordRow): UserRecord {
@@ -76,6 +95,7 @@ function toRecord(row: UserRecordRow): UserRecord {
     updated_at: row.updated_at,
     password_hash: row.password_hash,
     failed_login_count: row.failed_login_count,
+    project_ids: scopeOf(row),
   };
 }
 
@@ -91,6 +111,7 @@ export function toUser(record: UserRecord): User {
     last_login_at: record.last_login_at,
     created_at: record.created_at,
     updated_at: record.updated_at,
+    project_ids: record.project_ids,
   };
 }
 
@@ -156,12 +177,12 @@ export function createUsersRepository(db: MetadataDb): UsersRepository {
         found.length === 0 ? "" : ` WHERE ${found.map((item) => item.sql).join(" AND ")}`;
       const order = `${SORT_COLUMNS[query.sort]} ${query.order === "desc" ? "DESC" : "ASC"}, id ASC`;
       const rows = db
-        .query(`SELECT * FROM users${where} ORDER BY ${order} LIMIT ?`)
+        .query(`${ROW}${where} ORDER BY ${order} LIMIT ?`)
         .all(...found.flatMap((item) => item.params), query.limit);
       return v.parse(v.array(userRecordSchema), rows).map(toRecord);
     },
-    byId: (id) => one("SELECT * FROM users WHERE id = ?", id),
-    byUsername: (username) => one("SELECT * FROM users WHERE username = ?", username),
+    byId: (id) => one(`${ROW} WHERE id = ?`, id),
+    byUsername: (username) => one(`${ROW} WHERE username = ?`, username),
     insert(user) {
       db.query(
         `INSERT INTO users (id, username, display_name, role, password_hash, must_change_password,
@@ -177,7 +198,7 @@ export function createUsersRepository(db: MetadataDb): UsersRepository {
         user.created_at,
         user.created_at
       );
-      const inserted = one("SELECT * FROM users WHERE id = ?", user.id);
+      const inserted = one(`${ROW} WHERE id = ?`, user.id);
       if (inserted === null) throw new Error("inserted user vanished");
       return inserted;
     },
@@ -212,6 +233,18 @@ export function createUsersRepository(db: MetadataDb): UsersRepository {
     },
     remove(id) {
       db.query("DELETE FROM users WHERE id = ?").run(id);
+    },
+    setScope(id, projectIds) {
+      // One transaction: a reader never sees the flag changed and the list not yet written.
+      db.transaction(() => {
+        db.query("UPDATE users SET all_projects = ? WHERE id = ?").run(
+          projectIds === null ? 1 : 0,
+          id
+        );
+        db.query("DELETE FROM user_projects WHERE user_id = ?").run(id);
+        const add = db.query("INSERT INTO user_projects (user_id, project_id) VALUES (?, ?)");
+        for (const projectId of projectIds ?? []) add.run(id, projectId);
+      })();
     },
   };
 }

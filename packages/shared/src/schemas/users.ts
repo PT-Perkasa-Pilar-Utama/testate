@@ -25,35 +25,54 @@ export const userSchema = v.object({
   last_login_at: v.nullable(timestampSchema),
   created_at: timestampSchema,
   updated_at: timestampSchema,
+  /**
+   * The projects this user may see and act on: a list, possibly empty, or `null` for every project.
+   * Always `null` for an admin, who has every project (#55, docs/decisions/2026-10-09-project-scope.md).
+   */
+  project_ids: v.nullable(v.array(idSchema)),
 });
 export type User = v.InferOutput<typeof userSchema>;
 
-export const createUserSchema = v.object({
-  username: usernameSchema,
-  display_name: v.pipe(
-    v.string(),
-    v.minLength(1, "Enter a display name."),
-    v.maxLength(120, "A display name is at most 120 characters.")
-  ),
-  role: roleSchema,
-  temporary_password: v.pipe(
-    v.string(),
-    v.minLength(
-      PASSWORD_MIN_LENGTH,
-      `A temporary password needs at least ${PASSWORD_MIN_LENGTH} characters.`
+const projectIdsSchema = v.nullable(v.array(idSchema));
+
+// A viewer or a tester states which projects they get: every project (`null`) or a list. Nothing
+// picks for them, so a new account never reaches a project nobody chose (Q3). An admin always has
+// every project, so for an admin the field is not needed and is ignored.
+export const createUserSchema = v.pipe(
+  v.object({
+    username: usernameSchema,
+    display_name: v.pipe(
+      v.string(),
+      v.minLength(1, "Enter a display name."),
+      v.maxLength(120, "A display name is at most 120 characters.")
     ),
-    v.maxLength(1024, "A password has at most 1024 characters."),
-    v.check(
-      (next) => !COMMON_PASSWORDS.has(next.toLowerCase()),
-      "That password is on every guess list. Choose another."
-    )
-  ),
-});
+    role: roleSchema,
+    temporary_password: v.pipe(
+      v.string(),
+      v.minLength(
+        PASSWORD_MIN_LENGTH,
+        `A temporary password needs at least ${PASSWORD_MIN_LENGTH} characters.`
+      ),
+      v.maxLength(1024, "A password has at most 1024 characters."),
+      v.check(
+        (next) => !COMMON_PASSWORDS.has(next.toLowerCase()),
+        "That password is on every guess list. Choose another."
+      )
+    ),
+    project_ids: v.optional(projectIdsSchema),
+  }),
+  v.check(
+    (input) => input.role === "admin" || input.project_ids !== undefined,
+    "Choose the projects this user can see, or every project."
+  )
+);
 export type CreateUserInput = v.InferOutput<typeof createUserSchema>;
 
 export const updateUserSchema = v.object({
   display_name: v.optional(v.pipe(v.string(), v.minLength(1), v.maxLength(120))),
   role: v.optional(roleSchema),
+  /** Replaces the scope when present. Required when an admin becomes a viewer or a tester (Q9). */
+  project_ids: v.optional(projectIdsSchema),
 });
 
 /**

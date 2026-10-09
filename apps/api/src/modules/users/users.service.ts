@@ -1,7 +1,7 @@
 import type { Actor, User } from "@testate/shared";
 
 import type { RequestMeta } from "../../lib/http/auth.ts";
-import { conflict, notFound } from "../../lib/http/index.ts";
+import { AppError, conflict, notFound } from "../../lib/http/index.ts";
 import type { PasswordHasher } from "../../lib/password/index.ts";
 import type { AuditService } from "../audit/audit.service.ts";
 import { toUser } from "./users.repository.ts";
@@ -12,9 +12,15 @@ export type CreateUserInput = {
   display_name: string;
   role: User["role"];
   temporary_password: string;
+  /** Every project (`null`) or a list. Required for a viewer or a tester; ignored for an admin. */
+  project_ids?: string[] | null | undefined;
 };
 
-export type UpdateUserInput = { display_name?: string; role?: User["role"] };
+export type UpdateUserInput = {
+  display_name?: string;
+  role?: User["role"];
+  project_ids?: string[] | null | undefined;
+};
 
 export type UsersService = {
   list(query: UsersListQuery): Promise<User[]>;
@@ -51,7 +57,29 @@ export type UsersDeps = {
   audit: AuditService;
   password: PasswordHasher;
   now: () => Date;
+  /** Project existence check for `project_ids`, the same one token creation uses. */
+  projectExists: (id: string) => boolean;
 };
+
+const SCOPE_REQUIRED = "Choose the projects this user can see, or every project.";
+
+/**
+ * The scope a user ends up with after a create or an edit, or `undefined` to leave it alone.
+ * A viewer or a tester never gets one by default: a new account, and an admin who is demoted, has
+ * to be given one (Q3, Q9 in docs/decisions/2026-10-09-project-scope.md). An admin has every
+ * project, so a scope sent for one is not stored.
+ */
+function scopeToWrite(
+  before: User["role"] | null,
+  after: User["role"],
+  sent: string[] | null | undefined
+): string[] | null | undefined {
+  if (after === "admin") return undefined;
+  const mustSay = before === null || before === "admin";
+  if (sent === undefined && mustSay)
+    throw new AppError("VALIDATION_ERROR", SCOPE_REQUIRED, { field: "project_ids" });
+  return sent;
+}
 
 export function createUsersService(deps: UsersDeps): UsersService {
   const { repo, audit } = deps;
@@ -96,6 +124,17 @@ export function createUsersService(deps: UsersDeps): UsersService {
     );
   };
 
+  /** Refuses an unknown project before anything is written, so a refusal leaves no half-made user. */
+  const checkProjects = (scope: string[] | null | undefined): void => {
+    if ((scope ?? []).some((projectId) => !deps.projectExists(projectId)))
+      throw notFound("project");
+  };
+  const writeScope = (id: string, scope: string[] | null | undefined): void => {
+    if (scope !== undefined) repo.setScope(id, scope);
+  };
+  const scopeDetail = (scope: string[] | null | undefined): Record<string, string | number> =>
+    scope === undefined ? {} : { projects: scope === null ? "all" : scope.length };
+
   return {
     async total(query) {
       return repo.total(query);
@@ -107,6 +146,8 @@ export function createUsersService(deps: UsersDeps): UsersService {
       if (repo.byUsername(input.username) !== null) {
         throw conflict("username is taken", { username: input.username });
       }
+      const scope = scopeToWrite(null, input.role, input.project_ids);
+      checkProjects(scope);
       const user = repo.insert({
         id: Bun.randomUUIDv7(),
         username: input.username,
@@ -116,8 +157,13 @@ export function createUsersService(deps: UsersDeps): UsersService {
         must_change_password: true,
         created_at: nowIso(),
       });
-      record(actor, "user.created", user, meta, { username: user.username, role: user.role });
-      return toUser(user);
+      writeScope(user.id, scope);
+      record(actor, "user.created", user, meta, {
+        username: user.username,
+        role: user.role,
+        ...scopeDetail(scope),
+      });
+      return refreshed(user.id);
     },
     async get(id) {
       return refreshed(id);
@@ -127,8 +173,14 @@ export function createUsersService(deps: UsersDeps): UsersService {
       const demotes = patch.role !== undefined && patch.role !== "admin";
       if (demotes && isLastEnabledAdmin(user))
         throw conflict("cannot demote the last enabled admin");
+      const scope = scopeToWrite(user.role, patch.role ?? user.role, patch.project_ids);
+      checkProjects(scope);
       repo.setProfile(id, patch.display_name, patch.role, nowIso());
-      record(actor, "user.updated", user, meta, { role: patch.role ?? user.role });
+      writeScope(id, scope);
+      record(actor, "user.updated", user, meta, {
+        role: patch.role ?? user.role,
+        ...scopeDetail(scope),
+      });
       return refreshed(id);
     },
     async setDisabled(actor, id, disabled, meta) {

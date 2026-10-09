@@ -103,7 +103,13 @@ test.describe("API contract", () => {
     const first = "temp-password-1234";
     const next = "second-password-1234";
     const created = await admin.post("users", {
-      data: { username, display_name: username, role: "viewer", temporary_password: first },
+      data: {
+        username,
+        display_name: username,
+        role: "viewer",
+        temporary_password: first,
+        project_ids: null,
+      },
     });
     expect(created.status()).toBe(201);
 
