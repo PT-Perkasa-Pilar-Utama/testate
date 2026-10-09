@@ -15,11 +15,11 @@ Project object:
 
 ## 4.1 `GET /projects`
 
-**Purpose.** List projects in scope. **Access.** `viewer`. **Input.** Query: `cursor`, `limit` (1 to 200, default 50), `sort` (`name`, `created_at`, `updated_at`, `changed_at`), `order`, `q`, `created_from`, `created_to`. **Behavior.** Project-scoped tokens see only their projects. `q` matches a project's `slug` or `name`. `sort: changed_at` orders by `head.changed_at`, the one field a level down from the rest. `created_from`/`created_to` bound `created_at`. **Output.** `200` list. **Traceability.** Stories 11, 12.
+**Purpose.** List projects in scope. **Access.** `viewer`. **Input.** Query: `cursor`, `limit` (1 to 200, default 50), `sort` (`name`, `created_at`, `updated_at`, `changed_at`), `order`, `q`, `created_from`, `created_to`. **Behavior.** A project-scoped caller (a token, or since #55 a viewer or tester) sees only their projects. `q` matches a project's `slug` or `name`. `sort: changed_at` orders by `head.changed_at`, the one field a level down from the rest. `created_from`/`created_to` bound `created_at`. **Output.** `200` list. **Traceability.** Stories 11, 12.
 
 ## 4.2 `POST /projects`
 
-**Purpose.** Create a project. **Access.** `qa`. **Input.** Body: `slug` string optional, `[a-z0-9-]{2,64}`; omit it and the API derives one from `name`, adding `-2`, `-3` until it is free, or send one and get exactly that slug or a `409`. `name` string required, 1 to 120. `description` string optional, at most 2000 characters. `quota_bytes` integer optional, `>= 0`, or `null`; null or absent inherits `quota.default_bytes`, `0` means no quota at all. **Behavior.** Unique slug; audit `project.created`. **Output.** `201` project. **Errors.** `CONFLICT` (slug taken), `VALIDATION_ERROR`. **Traceability.** Story 10.
+**Purpose.** Create a project. **Access.** `qa`, a signed-in user only: a token answers `403` `user_required`, because a project names its creator and a scoped token could not reach what it made (#55, Q6). **Input.** Body: `slug` string optional, `[a-z0-9-]{2,64}`; omit it and the API derives one from `name`, adding `-2`, `-3` until it is free, or send one and get exactly that slug or a `409`. `name` string required, 1 to 120. `description` string optional, at most 2000 characters. `quota_bytes` integer optional, `>= 0`, or `null`; null or absent inherits `quota.default_bytes`, `0` means no quota at all. **Behavior.** Unique slug; audit `project.created`. A creator with a project scope (a viewer or tester with chosen projects) gets access to the new project in the same transaction. **Output.** `201` project. **Errors.** `CONFLICT` (slug taken), `VALIDATION_ERROR`. **Traceability.** Story 10.
 
 ## 4.3 `GET /projects/{slug}`
 
@@ -57,7 +57,7 @@ Project object:
 
 **Access.** `admin`.
 
-**Behavior.** For each adapter: a database adapter not in `read_only` mode gets action `restore`; a `read_only` database adapter gets `skip` with `reason: "read_only"`; a storage adapter gets `none` (story 14). There is no reachability probe and no fingerprint comparison today: `init_state_id` and `drift` are always `null`, and `force` and the other listed reasons (`unreachable`, `no_init_state`, `removed`) are never produced, though the schema still allows them. `affected` counts the rows the delete takes with the project, so the dialog can name them before it accepts the slug: the restore is not stashed, and every state goes with the project.
+**Behavior.** For each adapter: a database adapter not in `read_only` mode gets action `restore`; a `read_only` database adapter gets `skip` with `reason: "read_only"`; a storage adapter gets `none` (story 14). There is no reachability probe and no fingerprint comparison today: `init_state_id` and `drift` are always `null`, and `force` and the other listed reasons (`unreachable`, `no_init_state`, `removed`) are never produced, though the schema still allows them. `affected` counts the rows the delete takes with the project, so the dialog can name them before it accepts the slug: the restore is not stashed, and every state goes with the project. `tokens` counts only the live tokens that reach this project and no other: those the delete revokes.
 
 **Output.** `200`
 
@@ -84,7 +84,7 @@ Project object:
 **Behavior.**
 1. Validate the slug, the plan id, and that every action is allowed by the plan (`CONFLICT` otherwise): a `restore`-planned adapter accepts `restore` or `skip`; a `skip`- or `none`-planned adapter accepts only `skip`. Because the plan never reports drift today (04 §4.7), `force` is never an allowed action — sending it always answers `CONFLICT`.
 2. Enqueue job kind `project_delete` claiming every adapter (`JOB_IN_PROGRESS` if any is busy).
-3. The job runs `returnToInit` for every `restore` (and, were it ever chosen, `force`) adapter (no stash); a `skip` adapter is left as it is. It records per-adapter results, and removes tokens scoped to the project, normalizers, states, adapters, and the project only after every non-skipped adapter reports `restored`. A failure leaves everything, sets HEAD unknown, and the job fails so the plan can be retried (story 15). Audit `project.deleted` with per-adapter results (stories 13, 108, 109).
+3. The job runs `returnToInit` for every `restore` (and, were it ever chosen, `force`) adapter (no stash); a `skip` adapter is left as it is. It records per-adapter results, and takes the project out of every token's scope (revoking a live token left with no project, #55 Q5), then removes normalizers, states, adapters, and the project only after every non-skipped adapter reports `restored`. A failure leaves everything, sets HEAD unknown, and the job fails so the plan can be retried (story 15). Audit `project.deleted` with per-adapter results (stories 13, 108, 109).
 
 **Output.** `202` job, `Location`. **Errors.** `CONFLICT`, `JOB_IN_PROGRESS`, `NOT_FOUND`, `VALIDATION_ERROR`. **Traceability.** Stories 13, 14, 15, 109.
 

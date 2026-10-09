@@ -8,7 +8,7 @@ import {
 } from "@testate/shared";
 import * as v from "valibot";
 
-import { requireRole } from "../../lib/http/auth.ts";
+import { requireRole, requireUser } from "../../lib/http/auth.ts";
 import { describe } from "../../lib/openapi.ts";
 import type { ProjectsHandlers } from "./projects.handler.ts";
 
@@ -23,6 +23,7 @@ export function createProjectsRouter(h: ProjectsHandlers): Hono {
   router.post(
     "/projects",
     requireRole("qa"),
+    requireUser(),
     describe("projects", "Create a project", projectSchema, 201),
     h.create
   );

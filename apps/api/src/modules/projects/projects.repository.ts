@@ -62,7 +62,8 @@ export type ProjectsRepository = {
   bySlug(slug: string): Project | null;
   byId(id: string): Project | null;
   exists(id: string): boolean;
-  insert(project: NewProject): Project;
+  /** `grantCreator` gives a scoped creator access in the same transaction (#55, Q6). */
+  insert(project: NewProject, grantCreator?: boolean): Project;
   update(id: string, patch: ProjectPatch, at: string): void;
   /** HEAD moves on snapshot and checkout; `unknown` after a failed restore (05 §5.4). */
   /** Moves HEAD; the databases now equal that state, so `dirty` clears with it. */
@@ -77,7 +78,8 @@ export type ProjectsRepository = {
   deletionCounts(projectId: string): DeletionCounts;
 };
 
-/** Rows that go with the project: everything cascades from it, tokens are revoked by the job. */
+/** Rows that go with the project: everything cascades from it; the job revokes the tokens that
+ *  reach only this project and narrows the rest (#55, Q5). */
 export type DeletionCounts = {
   adapters: number;
   states: number;
@@ -188,21 +190,29 @@ export function createProjectsRepository(db: MetadataDb): ProjectsRepository {
     bySlug: (slug) => one("p.slug = ?", slug),
     byId: (id) => one("p.id = ?", id),
     exists: (id) => db.query("SELECT 1 FROM projects WHERE id = ?").get(id) !== null,
-    insert(project) {
-      db.query(
-        `INSERT INTO projects (id, slug, name, description, quota_bytes, head_state_id, head_status,
-           head_changed_at, created_by, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, NULL, 'none', NULL, ?, ?, ?)`
-      ).run(
-        project.id,
-        project.slug,
-        project.name,
-        project.description,
-        project.quota_bytes,
-        project.created_by,
-        project.created_at,
-        project.created_at
-      );
+    insert(project, grantCreator = false) {
+      db.transaction(() => {
+        db.query(
+          `INSERT INTO projects (id, slug, name, description, quota_bytes, head_state_id,
+             head_status, head_changed_at, created_by, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, NULL, 'none', NULL, ?, ?, ?)`
+        ).run(
+          project.id,
+          project.slug,
+          project.name,
+          project.description,
+          project.quota_bytes,
+          project.created_by,
+          project.created_at,
+          project.created_at
+        );
+        if (grantCreator) {
+          db.query("INSERT INTO user_projects (user_id, project_id) VALUES (?, ?)").run(
+            project.created_by,
+            project.id
+          );
+        }
+      })();
       const inserted = one("p.id = ?", project.id);
       if (inserted === null) throw new Error("inserted project vanished");
       return inserted;
@@ -259,9 +269,11 @@ export function createProjectsRepository(db: MetadataDb): ProjectsRepository {
            JOIN adapters a ON a.id = q.adapter_id WHERE a.project_id = ?`,
         projectId
       ),
+      // Only the tokens the delete revokes: one that also reaches other projects keeps working.
       tokens: sum(
-        "SELECT COUNT(*) AS n FROM api_tokens WHERE revoked_at IS NULL AND project_ids LIKE ?",
-        `%"${projectId}"%`
+        `SELECT COUNT(*) AS n FROM api_tokens WHERE revoked_at IS NULL
+           AND json_array_length(project_ids) = 1 AND json_extract(project_ids, '$[0]') = ?`,
+        projectId
       ),
     }),
   };

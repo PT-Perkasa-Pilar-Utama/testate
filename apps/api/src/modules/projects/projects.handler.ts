@@ -109,7 +109,8 @@ export function createProjectsHandlers(
     defaults: async (c) => ok(c, await service.defaults()),
     create: async (c) => {
       const input = toCreateInput(await parseBody(c, createProjectSchema));
-      return ok(c, await service.create(currentActor(c), input, meta(c)), 201);
+      const scope = c.get("projectScope");
+      return ok(c, await service.create(currentActor(c), input, meta(c), scope), 201);
     },
     get: async (c) => ok(c, await service.get(currentActor(c), param(c, "slug"))),
     update: async (c) => {

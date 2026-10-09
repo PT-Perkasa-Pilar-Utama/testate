@@ -3,6 +3,7 @@ import * as v from "valibot";
 
 import type { MetadataDb } from "../../lib/db/index.ts";
 import type { AuditService } from "../audit/audit.service.ts";
+import { createAuthRepository } from "../auth/auth.repository.ts";
 import { createCheckoutRunner } from "../checkouts/checkouts.job.ts";
 import type { CheckoutsRepository } from "../checkouts/checkouts.repository.ts";
 import { returnToInit } from "../checkouts/checkouts.return-to-init.ts";
@@ -101,9 +102,7 @@ export function registerRunners(dispatcher: Dispatcher, deps: RunnerDeps): void 
     const payload = v.parse(projectDeletePayload, job.payload);
     const restored = await restoreAll(deps, ctx, payload.actions);
     progress({ phase: "remove" });
-    const tokens = deps.db
-      .query("UPDATE api_tokens SET revoked_at = ? WHERE revoked_at IS NULL AND project_ids LIKE ?")
-      .run(nowIso(), `%"${job.project_id ?? ""}"%`).changes;
+    const tokens = createAuthRepository(deps.db).dropProject(job.project_id ?? "", nowIso());
     // The project row and the blob accounting go together, in one transaction: the states cascade
     // away with it, and until now their references stayed counted on blobs nobody could reach.
     const candidates = deps.states.removeProject(job.project_id ?? "");
@@ -120,7 +119,8 @@ export function registerRunners(dispatcher: Dispatcher, deps: RunnerDeps): void 
       target_id: job.project_id ?? "",
       project: { id: job.project_id, slug: payload.slug },
       details: {
-        tokens_revoked: tokens,
+        tokens_revoked: tokens.revoked,
+        tokens_narrowed: tokens.narrowed,
         adapters: payload.actions.length,
         restored,
         blobs_deleted: orphans.length,
@@ -130,7 +130,8 @@ export function registerRunners(dispatcher: Dispatcher, deps: RunnerDeps): void 
     return {
       status: "succeeded",
       result: {
-        tokens_revoked: tokens,
+        tokens_revoked: tokens.revoked,
+        tokens_narrowed: tokens.narrowed,
         adapters: payload.actions.length,
         restored,
         blobs_deleted: orphans.length,

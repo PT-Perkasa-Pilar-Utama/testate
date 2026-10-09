@@ -122,6 +122,16 @@ describe("projects", () => {
     expect(rows.map((row) => row.name)).toStrictEqual(["Bravo", "Charlie", "Alpha"]);
   });
 
+  it("a scoped creator can reach the project they made; an unscoped one gets no row (#55, Q6)", async () => {
+    const { projects, qa, db } = await setup();
+    const scoped = await projects.create(qa, { name: "Mine" }, TEST_META, []);
+    const unscoped = await projects.create(qa, { name: "Open" }, TEST_META, null);
+    const access = (id: string) =>
+      db.query("SELECT user_id FROM user_projects WHERE project_id = ?").all(id);
+    expect(access(scoped.id)).toStrictEqual([{ user_id: qa.id }]);
+    expect(access(unscoped.id)).toStrictEqual([]);
+  });
+
   it("creates a project with HEAD none and refuses a duplicate slug", async () => {
     const { projects, qa } = await setup();
     const project = await projects.create(qa, { slug: "shop", name: "Shop" }, TEST_META);
