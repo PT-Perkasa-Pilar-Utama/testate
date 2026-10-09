@@ -1,5 +1,12 @@
 import { createSignal } from "solid-js";
-import type { ApiToken, JsonObject, Project, TokenDraft, TokenKind } from "@testate/shared";
+import type {
+  ApiToken,
+  JsonObject,
+  Project,
+  ScopeChoice,
+  TokenDraft,
+  TokenKind,
+} from "@testate/shared";
 import { projectIdsOf } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
@@ -29,6 +36,19 @@ export const EMPTY_DRAFT: Omit<TokenDraft, "scope"> & { scope: undefined } = {
   project_ids: [],
 };
 
+/**
+ * Whether the dialog's scope reaches the built-in Inspect project, which locks the role to Guest:
+ * the API refuses any other role there (#56, Q6). "All projects" locks nothing.
+ */
+export function reachesInspect(
+  scope: ScopeChoice | undefined,
+  picked: readonly string[],
+  projects: readonly Pick<Project, "id" | "kind">[]
+): boolean {
+  if (scope !== "chosen") return false;
+  return projects.some((project) => project.kind === "inspect" && picked.includes(project.id));
+}
+
 export type TokenSort = "name" | "kind" | "role" | "last_used_at" | "expires_at";
 
 /** "" is unfiltered; otherwise the exact string the API's `revoked` query param takes. */
@@ -49,6 +69,10 @@ export type TokensPresenter = Paged<ApiToken> & {
   created: () => CreatedToken | null;
   openCreate: () => void;
   closeCreate: () => void;
+  /** True once when the page was opened as `/tokens?new=inspect`: fill the dialog for Inspect. */
+  takeInspectPreset: () => boolean;
+  /** The built-in Inspect project's id, for the dialog's "Inspect only" shortcut. */
+  inspectProjectId: () => Promise<string | null>;
   create: (input: TokenDraft) => Promise<void>;
   copyCreated: () => Promise<void>;
   dismissCreated: () => void;
@@ -90,7 +114,9 @@ export function createTokensPresenter(): TokensPresenter {
     () => `${controls.key()}|${kind()}|${revoked()}`
   );
   const table: TableView<ApiToken, TokenSort> = { ...controls, rows: tokens.value };
-  const [creating, setCreating] = createSignal(false);
+  // The Inspect page links here to make an agent token for it (#56, Q9): the dialog opens filled.
+  let inspectPreset = new URLSearchParams(window.location.search).get("new") === "inspect";
+  const [creating, setCreating] = createSignal(inspectPreset);
   const [error, setError] = createSignal<string | null>(null);
   const [created, setCreated] = createSignal<CreatedToken | null>(null);
   const [revoking, setRevoking] = createSignal<ApiToken | null>(null);
@@ -106,6 +132,12 @@ export function createTokensPresenter(): TokensPresenter {
     error,
     created,
     openCreate: () => setCreating(true),
+    inspectProjectId: async () => (await projectsModel.inspect())?.id ?? null,
+    takeInspectPreset: () => {
+      const preset = inspectPreset;
+      inspectPreset = false;
+      return preset;
+    },
     closeCreate: () => {
       setCreating(false);
       setError(null);

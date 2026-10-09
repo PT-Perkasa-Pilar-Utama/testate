@@ -4,7 +4,7 @@ import * as v from "valibot";
 import type { TokenDraft } from "@testate/shared";
 import { PICK_AT_LEAST_ONE, projectIdsOf, scopeFieldsOf, tokenDraftSchema } from "@testate/shared";
 
-import { toCreateBody } from "./tokens.presenter.ts";
+import { reachesInspect, toCreateBody } from "./tokens.presenter.ts";
 
 // #55: a form asks "every project, or these?"; the wire says `null` or a list.
 const SHOP = "01991f00-0000-7000-8000-000000000021";
@@ -75,5 +75,23 @@ describe("the dialog's draft as the create body", () => {
     expect(toCreateBody({ ...draft, scope: "chosen", project_ids: [SHOP] })).toMatchObject({
       project_ids: [SHOP],
     });
+  });
+});
+
+describe("when the role locks to Guest (#56, Q9)", () => {
+  const PROJECTS = [
+    { id: "p-inspect", kind: "inspect" },
+    { id: "p-shop", kind: "standard" },
+  ] as const;
+
+  test("a pick that includes Inspect locks it, alone or with others", () => {
+    expect(reachesInspect("chosen", ["p-inspect"], PROJECTS)).toBe(true);
+    expect(reachesInspect("chosen", ["p-shop", "p-inspect"], PROJECTS)).toBe(true);
+  });
+
+  test("a pick without Inspect, or every project, does not", () => {
+    expect(reachesInspect("chosen", ["p-shop"], PROJECTS)).toBe(false);
+    expect(reachesInspect("all", ["p-inspect"], PROJECTS)).toBe(false);
+    expect(reachesInspect(undefined, [], PROJECTS)).toBe(false);
   });
 });
