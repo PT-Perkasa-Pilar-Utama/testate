@@ -1,0 +1,37 @@
+# Testate as a systemd service. Install (README, "Run it as a service"):
+#
+#   sudo install -m 755 ~/.local/bin/testate /usr/local/bin/testate
+#   sudo install -d -m 700 /etc/testate
+#   sudo install -m 600 deploy/.env.example /etc/testate/testate.env   # then set the key
+#   sudo install -m 644 deploy/systemd/testate.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now testate
+#
+# Decisions: docs/decisions/2026-10-10-native-binaries.md (Q3, Q4).
+[Unit]
+Description=Testate, git for your test database
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# systemd reads the env file as root, before it drops to the service user, so it stays mode 600.
+EnvironmentFile=/etc/testate/testate.env
+# Settings from EnvironmentFile= override Environment=, so the data directory is set on the
+# command line: the unit owns /var/lib/testate, and ProtectSystem=strict makes every other path
+# read-only, the container example's /data included.
+ExecStart=/usr/bin/env TESTATE_DATA_DIR=/var/lib/testate /usr/local/bin/testate
+Restart=on-failure
+RestartSec=2
+# Testate drains running jobs for up to 30 s on SIGTERM.
+TimeoutStopSec=45
+
+# A throwaway user made at start; /var/lib/testate (really /var/lib/private/testate) is its own.
+DynamicUser=yes
+StateDirectory=testate
+StateDirectoryMode=0700
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
