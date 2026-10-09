@@ -3,7 +3,7 @@ import PageHeader from "@/components/page-header.tsx";
 import Pending from "@/components/pending.tsx";
 import { For, Loading, Show, createSignal } from "solid-js";
 
-import { formatWhen } from "@/lib/format.ts";
+import { formatScope, formatWhen } from "@/lib/format.ts";
 import { activeFilterCount } from "@/lib/table.ts";
 import { ROLE_LABEL, ROLE_OPTIONS } from "@/lib/labels.ts";
 import type { User } from "@testate/shared";
@@ -124,6 +124,7 @@ export default function UsersView(): JSX.Element {
               <SortColumn view={presenter.table} column="role">
                 Role
               </SortColumn>
+              <Head>Projects</Head>
               <Head>Status</Head>
               <SortColumn view={presenter.table} column="last_login_at">
                 Last login
@@ -151,6 +152,11 @@ export default function UsersView(): JSX.Element {
                       </Show>
                       {ROLE_LABEL[user().role]}
                     </Badge>
+                  </Cell>
+                  <Cell>
+                    <Truncated>
+                      {formatScope(user().project_ids, presenter.projects.value())}
+                    </Truncated>
                   </Cell>
                   <Cell>
                     {/* Worst first: a locked or disabled account can't sign in no matter what

@@ -24,7 +24,7 @@ import {
 } from "@/components/table.tsx";
 import { activeFilterCount } from "@/lib/table.ts";
 import { href, navigate } from "@/lib/router.ts";
-import { hasRole } from "@/lib/session.ts";
+import { hasRole, isScoped } from "@/lib/session.ts";
 import { headBadge } from "./projects.format.ts";
 import { CreateDialog } from "./projects.dialogs.view.tsx";
 import { createProjectsPresenter } from "./projects.presenter.ts";
@@ -106,6 +106,10 @@ export default function ProjectsView(): JSX.Element {
               A project groups the databases of one system under test, and every state anyone takes
               across them.
               <Show when={hasRole("qa")}> Create one to start taking states.</Show>
+              <Show when={isScoped()}>
+                {" "}
+                You see the projects an admin gave you access to; ask one for more.
+              </Show>
             </EmptyState>
           }
         >

@@ -6,7 +6,7 @@ import EmptyState from "@/components/empty-state.tsx";
 import { buttonClass } from "@/components/button.tsx";
 import { Eyebrow } from "@/components/page-header.tsx";
 import { href } from "@/lib/router.ts";
-import { actor, hasRole } from "@/lib/session.ts";
+import { actor, hasRole, isScoped } from "@/lib/session.ts";
 import { ActivityRow, Card, JobRow, ProjectRow, Quiet, Stats } from "./home.cards.view.tsx";
 import { attention, greeting, uptime } from "./home.format.ts";
 import { createHomePresenter } from "./home.presenter.ts";
@@ -106,7 +106,14 @@ export default function HomeView(): JSX.Element {
                     <EmptyState icon="folder" title="No projects yet">
                       <Show
                         when={hasRole("qa")}
-                        fallback={<>Someone with the Tester role creates the first one.</>}
+                        fallback={
+                          <Show
+                            when={isScoped()}
+                            fallback={<>Someone with the Tester role creates the first one.</>}
+                          >
+                            An admin has to give you access to a project.
+                          </Show>
+                        }
                       >
                         <a class={buttonClass("primary", "sm")} href={href("/projects")}>
                           Create the first one

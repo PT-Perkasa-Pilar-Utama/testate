@@ -10,10 +10,8 @@ import { idSchema } from "./common.ts";
  * starts empty and the form refuses until someone makes it.
  */
 export const SCOPE_CHOICES = ["all", "chosen"] as const;
-export const scopeChoiceSchema = v.picklist(
-  SCOPE_CHOICES,
-  "Choose every project, or pick the projects."
-);
+export const CHOOSE_SCOPE = "Choose every project, or pick the projects.";
+export const scopeChoiceSchema = v.picklist(SCOPE_CHOICES, CHOOSE_SCOPE);
 export type ScopeChoice = v.InferOutput<typeof scopeChoiceSchema>;
 
 /** The two scope fields every form that sets a scope carries, merged into its own object schema. */
