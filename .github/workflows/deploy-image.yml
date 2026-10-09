@@ -407,7 +407,7 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           # In lockstep with ci.yml: the binaries embed this exact runtime.
-          bun-version: "1.4.0"
+          bun-version: "1.4.2"
           # This job runs code checked out from the `tag` input. With no cache, nothing it does can
           # land in a cache a default-branch run later restores (CodeQL cache-poisoning).
           no-cache: true
