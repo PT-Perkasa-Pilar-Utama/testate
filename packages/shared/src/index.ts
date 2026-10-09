@@ -5,6 +5,7 @@ export * from "./schemas/json.ts";
 export * from "./schemas/health.ts";
 export * from "./schemas/jobs.ts";
 export * from "./schemas/projects.ts";
+export * from "./schemas/scope.ts";
 export * from "./schemas/auth.ts";
 export * from "./schemas/users.ts";
 export * from "./schemas/adapters.ts";

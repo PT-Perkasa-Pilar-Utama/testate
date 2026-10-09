@@ -50,3 +50,20 @@ export function counted(count: number, plural: string): string {
 export function formatAddress(ip: string): string {
   return ip.replace(/^::ffff:/i, "");
 }
+
+/**
+ * A stored project scope as a list cell reads it (#55): "All projects", "No projects", or the
+ * names. A project the list does not know (deleted, or past the picker's page) counts as a number
+ * rather than a bare id.
+ */
+export function formatScope(
+  projectIds: readonly string[] | null,
+  projects: readonly { id: string; name: string }[]
+): string {
+  if (projectIds === null) return "All projects";
+  if (projectIds.length === 0) return "No projects";
+  const names = new Map(projects.map((project) => [project.id, project.name]));
+  const known = projectIds.flatMap((id) => names.get(id) ?? []);
+  const unknown = projectIds.length - known.length;
+  return unknown === 0 ? known.join(", ") : [...known, counted(unknown, "more")].join(", ");
+}

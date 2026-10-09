@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { counted, formatAddress, formatWhen, toDateInput } from "./format.ts";
+import { counted, formatAddress, formatScope, formatWhen, toDateInput } from "./format.ts";
 
 describe("when something happened", () => {
   test("day, month, year, and the clock down to the second", () => {
@@ -40,5 +40,22 @@ describe("formatAddress", () => {
     expect(formatAddress("::ffff:127.0.0.1")).toBe("127.0.0.1");
     expect(formatAddress("::1")).toBe("::1");
     expect(formatAddress("10.0.0.7")).toBe("10.0.0.7");
+  });
+});
+
+describe("a project scope in a list", () => {
+  const projects = [
+    { id: "a", name: "Shop" },
+    { id: "b", name: "CRM" },
+  ];
+
+  test("every project, none, and a list of names are three different answers", () => {
+    expect(formatScope(null, projects)).toBe("All projects");
+    expect(formatScope([], projects)).toBe("No projects");
+    expect(formatScope(["b", "a"], projects)).toBe("CRM, Shop");
+  });
+
+  test("a project the list does not know is counted, never shown as its id", () => {
+    expect(formatScope(["a", "gone-1", "gone-2"], projects)).toBe("Shop, 2 more");
   });
 });

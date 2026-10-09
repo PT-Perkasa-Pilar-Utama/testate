@@ -171,6 +171,23 @@ async function fillRequired(dialog: Locator, seed: number): Promise<void> {
     const type = (await input.getAttribute("type")) ?? "text";
     await input.fill(SAMPLE.get(type) ?? `e2e${seed}${index}`);
   }
+  await checkRequiredRadios(dialog);
+}
+
+/**
+ * A required choice with nothing chosen (a project scope, #55) gets its first answer. The loop
+ * above skips radios: `inputValue()` is the `value` attribute, never empty.
+ */
+async function checkRequiredRadios(dialog: Locator): Promise<void> {
+  const radios = dialog.locator('input[type="radio"][required]');
+  const names = new Set(
+    await radios.evaluateAll((all) => all.flatMap((each) => each.getAttribute("name") ?? []))
+  );
+  for (const name of names) {
+    const group = dialog.locator(`input[type="radio"][required][name="${name}"]`);
+    if ((await group.and(dialog.locator(":checked")).count()) > 0) continue;
+    await group.first().check();
+  }
 }
 
 async function dialogTitle(dialog: Locator): Promise<string> {

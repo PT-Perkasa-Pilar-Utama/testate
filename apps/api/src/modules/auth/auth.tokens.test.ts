@@ -1,4 +1,6 @@
 import { describe, expect, it } from "bun:test";
+import { createTokenSchema } from "@testate/shared";
+import * as v from "valibot";
 
 const NEWEST_FIRST = { sort: "created_at", order: "desc" } as const;
 
@@ -182,5 +184,18 @@ describe("api tokens", () => {
       code: "RATE_LIMITED",
       retryAfterSeconds: 60,
     });
+  });
+});
+
+describe("a token's project scope must be stated (#55, Q4)", () => {
+  it("a body without project_ids is refused, and the issue names the field", () => {
+    const parsed = v.safeParse(createTokenSchema, { name: "ci", role: "qa" });
+    expect(parsed.success).toBe(false);
+    expect(parsed.issues?.[0]?.path?.[0]?.key).toBe("project_ids");
+  });
+
+  it("every project is still a choice someone can make, by sending null", () => {
+    const parsed = v.safeParse(createTokenSchema, { name: "ci", role: "qa", project_ids: null });
+    expect(parsed.success).toBe(true);
   });
 });

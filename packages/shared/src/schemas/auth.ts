@@ -2,6 +2,7 @@ import * as v from "valibot";
 
 import { roleSchema, tokenKindSchema } from "../enums.ts";
 import { actorSchema, idSchema, timestampSchema } from "./common.ts";
+import { PICK_AT_LEAST_ONE, scopeFormEntries } from "./scope.ts";
 
 export const PASSWORD_MIN_LENGTH = 12;
 
@@ -161,7 +162,9 @@ export const createTokenSchema = v.pipe(
     name: v.pipe(v.string(), v.minLength(1), v.maxLength(80)),
     kind: v.optional(tokenKindSchema, "standard"),
     role: v.optional(roleSchema),
-    project_ids: v.optional(v.nullable(v.array(idSchema)), null),
+    // Required, with no default: a token reaches every project only when someone sent `null` for
+    // it, and a list (possibly empty) otherwise (#55, Q4 in docs/decisions/2026-10-09-project-scope.md).
+    project_ids: v.nullable(v.array(idSchema)),
     expires_at: v.optional(v.nullable(timestampSchema)),
   }),
   // An agent reads and now also writes, but it never administers: no agent token can create
@@ -187,15 +190,23 @@ export type TokenExpiry = v.InferOutput<typeof tokenExpirySchema>;
 // for the one answer that needs it, a plain calendar date. `toCreateBody` in the tokens presenter
 // turns that into the `createTokenSchema` body the API expects - reusing `createTokenSchema`
 // directly here would mean binding a date input to a field that must already be an ISO timestamp.
-export const tokenDraftSchema = v.object({
-  name: v.pipe(
-    v.string(),
-    v.minLength(1, "Enter a name."),
-    v.maxLength(80, "A name is at most 80 characters.")
-  ),
-  kind: tokenKindSchema,
-  role: roleSchema,
-  expiry: tokenExpirySchema,
-  expires_on: v.string(),
-});
+export const tokenDraftSchema = v.pipe(
+  v.object({
+    name: v.pipe(
+      v.string(),
+      v.minLength(1, "Enter a name."),
+      v.maxLength(80, "A name is at most 80 characters.")
+    ),
+    kind: tokenKindSchema,
+    role: roleSchema,
+    expiry: tokenExpirySchema,
+    expires_on: v.string(),
+    ...scopeFormEntries,
+  }),
+  // A token that reaches no project is no use to anyone, so a pick of none is refused here.
+  v.forward(
+    v.check((input) => input.scope !== "chosen" || input.project_ids.length > 0, PICK_AT_LEAST_ONE),
+    ["project_ids"]
+  )
+);
 export type TokenDraft = v.InferOutput<typeof tokenDraftSchema>;

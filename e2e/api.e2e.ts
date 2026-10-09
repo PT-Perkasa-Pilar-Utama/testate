@@ -144,7 +144,11 @@ test.describe("API contract", () => {
     expect(agent.record.kind).toBe("agent");
     expect(agent.record.project_ids).toStrictEqual([demoId]);
     expect(agent.record.expires_at).not.toBeNull();
-    const standard = await createToken(admin, { name: `standard-${STAMP}`, role: "qa" });
+    const standard = await createToken(admin, {
+      name: `standard-${STAMP}`,
+      role: "qa",
+      project_ids: null,
+    });
 
     const asAgent = await bearerContext(agent.token);
     expect((await asAgent.get("projects")).status()).toBe(403);

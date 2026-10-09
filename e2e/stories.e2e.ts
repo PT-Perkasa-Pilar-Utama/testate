@@ -270,6 +270,7 @@ test.describe("admin stories", () => {
     await settle(page);
     await page.getByRole("button", { name: "New token" }).click();
     await page.locator("dialog[open]").getByLabel("Name").fill(`revoke-${STAMP}`);
+    await page.locator("dialog[open]").getByLabel("All projects").check();
     await page.getByRole("button", { name: "Create", exact: true }).click();
     await page.getByRole("button", { name: "Done" }).click();
     const row = page.locator("tr", { hasText: `revoke-${STAMP}` });

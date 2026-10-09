@@ -62,6 +62,14 @@ export type Overview = v.InferOutput<typeof overviewSchema>;
 
 export const projectsModel = {
   list: (): Promise<Project[]> => apiClient.get("/projects", { schema: v.array(projectSchema) }),
+  /** Every project a scope picker offers, by name. */
+  // ponytail: one page of 200, the API's cap. Past that the picker misses projects; page through
+  // with `apiClient.page` or add a search box.
+  choices: (): Promise<Project[]> =>
+    apiClient.get("/projects", {
+      schema: v.array(projectSchema),
+      query: { limit: 200, sort: "name", order: "asc" },
+    }),
   page: (cursor: string | undefined, params: TableParams<ProjectSort>): Promise<Page<Project>> =>
     apiClient.page("/projects", projectSchema, tableQuery(params, cursor)),
   /** One request for the project, its quota and the "why" behind an unknown HEAD, not three. */
