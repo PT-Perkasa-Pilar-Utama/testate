@@ -10,6 +10,13 @@ describe("what a person reads when a request fails", () => {
       "Your session has ended. Sign in again."
     );
     expect(humanMessage(new ApiError("FORBIDDEN", 403, "forbidden"), "x")).toContain("role");
+    // #56: in Inspect the role is not what stands in the way of changing someone's adapter.
+    expect(
+      humanMessage(
+        new ApiError("FORBIDDEN", 403, "forbidden", { reason: "not_adapter_owner" }),
+        "x"
+      )
+    ).toContain("whoever added this connection");
     expect(humanMessage(new ApiError("INTERNAL", 500, "internal error"), "x")).toContain("our end");
     expect(humanMessage(new ApiError("NOT_FOUND", 404, "adapter not found"), "x")).toContain(
       "no longer here"

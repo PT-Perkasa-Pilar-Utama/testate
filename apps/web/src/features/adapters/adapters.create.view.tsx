@@ -1,7 +1,7 @@
 import { Field, Form, createForm, getInput, reset, setInput } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import { For, Loading, Show, createEffect, createSignal, untrack } from "solid-js";
-import type { AdapterCreateFormInput, Engine } from "@testate/shared";
+import type { AdapterCreateFormInput, AdapterMode, Engine } from "@testate/shared";
 import { adapterCreateFormSchema } from "@testate/shared";
 
 import Banner from "@/components/banner.tsx";
@@ -10,6 +10,7 @@ import Button from "@/components/button.tsx";
 import FormDialog from "@/components/form-dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
+import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import {
@@ -98,6 +99,8 @@ function FieldInput(props: {
 export function CreateDialog(props: {
   presenter: AdaptersPresenter;
   kind?: "database" | "storage" | undefined;
+  /** The Inspect project: every adapter there is read-only, so the mode is not asked (#56, Q5). */
+  readOnly?: boolean | undefined;
   /** Offered when the dialog is not already inside a project: the Storage screen's case. */
   project?:
     | {
@@ -112,13 +115,17 @@ export function CreateDialog(props: {
   const blank = (): AdapterCreateFormInput => ({
     engine: firstEngine(),
     name: "",
-    mode: "sandbox",
+    mode: props.readOnly === true ? "read_only" : "sandbox",
   });
   const form = createForm({
     schema: adapterCreateFormSchema,
     initialInput: untrack(blank),
   });
   const engine = (): Engine => getInput(form, { path: ["engine"] }) ?? firstEngine();
+  // The Storage screen's project can change to Inspect while the dialog is open, with the field
+  // already hidden; the mode sent follows the project, not whatever the hidden field held.
+  const modeOf = (picked: AdapterMode): AdapterMode =>
+    props.readOnly === true ? "read_only" : picked;
   const engineForm = () => ENGINE_FORMS[engine()];
   const [url, setUrl] = createSignal("");
 
@@ -159,7 +166,7 @@ export function CreateDialog(props: {
     return {
       engine: raw.engine ?? firstEngine(),
       name: (raw.name ?? "").trim(),
-      mode: raw.mode ?? "sandbox",
+      mode: modeOf(raw.mode ?? "sandbox"),
     };
   };
 
@@ -171,7 +178,11 @@ export function CreateDialog(props: {
       description="Testate seals secrets before they reach the database. It never shows them again."
       size="lg"
     >
-      <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.create(input)}>
+      <Form
+        of={form}
+        class="grid gap-4"
+        onSubmit={(input) => props.presenter.create({ ...input, mode: modeOf(input.mode) })}
+      >
         <Show when={props.project}>
           {(project) => (
             <label class="grid content-start gap-1.5 text-base">
@@ -230,19 +241,29 @@ export function CreateDialog(props: {
         </div>
         {/* Every kind now: a file store in sandbox mode is the one an agent or a tester may put a
             file into, and a read-only one is the one they may not. */}
-        <Field of={form} path={["mode"]}>
-          {(field) => (
-            <label class="grid content-start gap-1.5 text-base">
-              <span>Mode</span>
-              <Select
-                options={ADAPTER_MODE_OPTIONS}
-                value={field.input ?? "sandbox"}
-                onChange={(value) => field.onInput(value)}
-              />
-              <FieldError message={field.errors?.[0]} />
-            </label>
-          )}
-        </Field>
+        <Show
+          when={props.readOnly !== true}
+          fallback={
+            <p class="flex items-center gap-2 text-sm text-muted">
+              <Icon name="eye" class="h-4 w-4 shrink-0 text-info-fg" />
+              Read-only. Testate never writes here.
+            </p>
+          }
+        >
+          <Field of={form} path={["mode"]}>
+            {(field) => (
+              <label class="grid content-start gap-1.5 text-base">
+                <span>Mode</span>
+                <Select
+                  options={ADAPTER_MODE_OPTIONS}
+                  value={field.input ?? "sandbox"}
+                  onChange={(value) => field.onInput(value)}
+                />
+                <FieldError message={field.errors?.[0]} />
+              </label>
+            )}
+          </Field>
+        </Show>
         <div class="grid gap-3 sm:grid-cols-2">
           <For each={engineForm().config}>
             {(field) => <FieldInput presenter={props.presenter} field={field} prefix="config" />}

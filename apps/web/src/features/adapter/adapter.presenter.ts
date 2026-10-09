@@ -7,6 +7,7 @@ import type { Refreshable } from "@/lib/async.ts";
 import { navigate } from "@/lib/router.ts";
 import { createJobFollower } from "@/lib/sse.ts";
 import { adaptersModel } from "../adapters/adapters.model.ts";
+import { projectsModel } from "../projects/projects.model.ts";
 import type { AdapterDeletionPlan } from "../adapters/adapters.model.ts";
 import { describeOutcome } from "../adapters/adapters.presenter.ts";
 import type { Values } from "../adapters/adapters.fields.ts";
@@ -25,6 +26,8 @@ export type AdapterDetail =
  */
 export type AdapterPresenter = {
   adapter: Refreshable<Adapter>;
+  /** Whether this adapter belongs to the built-in Inspect project (#56). */
+  inspect: Refreshable<boolean>;
   detail: Refreshable<AdapterDetail>;
   tables: () => Introspection | null;
   entries: () => Entry[] | null;
@@ -56,6 +59,7 @@ export function createAdapterPresenter(slug: () => string, id: () => string): Ad
   const jobs = createJobFollower();
   const adapter = createRefreshable(() => adaptersModel.get(slug(), id()));
   const detail = createRefreshable(() => loadDetail(slug(), adapter.value()));
+  const inspect = createRefreshable(async () => (await projectsModel.inspect())?.slug === slug());
   const [plan, setPlan] = createSignal<AdapterDeletionPlan | null>(null);
   const [editing, setEditing] = createSignal(false);
   const [values, setValues] = createSignal<Values>({});
@@ -87,6 +91,7 @@ export function createAdapterPresenter(slug: () => string, id: () => string): Ad
       });
     },
     adapter,
+    inspect,
     detail,
     tables: () => {
       const current = detail.value();

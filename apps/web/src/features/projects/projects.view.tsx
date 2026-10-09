@@ -27,6 +27,7 @@ import { href, navigate } from "@/lib/router.ts";
 import { hasRole, isScoped } from "@/lib/session.ts";
 import { headBadge } from "./projects.format.ts";
 import { CreateDialog } from "./projects.dialogs.view.tsx";
+import InspectCard from "./inspect.card.view.tsx";
 import { createProjectsPresenter } from "./projects.presenter.ts";
 import type { ProjectsPresenter } from "./projects.presenter.ts";
 
@@ -94,6 +95,9 @@ export default function ProjectsView(): JSX.Element {
           />
         </FilterField>
       </FilterPanel>
+      <Loading fallback={<span />}>
+        <InspectCard overview={presenter.inspect.value()} />
+      </Loading>
       <Loading fallback={<Pending>Loading projects...</Pending>}>
         <Show
           when={presenter.table.rows().length > 0 || isFiltered(presenter)}

@@ -111,7 +111,7 @@ export function Stats(props: { presenter: HomePresenter }): JSX.Element {
   };
   return (
     <LineGrid class={columns()}>
-      <Stat label="Projects" value={String(props.presenter.projects.value().length)} />
+      <Stat label="Projects" value={String(props.presenter.standard().length)} />
       <Stat label="Running now" value={String(props.presenter.running.value().total)} />
       <Stat label="Failed in a day" value={String(props.presenter.failed.value().total)} />
       <Show when={props.presenter.checkouts}>

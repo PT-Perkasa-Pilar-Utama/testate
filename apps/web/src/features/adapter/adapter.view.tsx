@@ -9,7 +9,7 @@ import type { Adapter, Introspection } from "@testate/shared";
 import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
 import Dialog, { DialogActions } from "@/components/dialog.tsx";
-import { hasRole } from "@/lib/session.ts";
+import { actor, hasRole } from "@/lib/session.ts";
 import { ConnectionCard, StatusLine } from "./adapter.summary.view.tsx";
 import Tabs from "@/components/tabs.tsx";
 
@@ -24,6 +24,7 @@ import DocumentBrowser from "../data/document.view.tsx";
 import { createGridPresenter, qualifiedName } from "../data/grid.presenter.ts";
 import { FilesView, JunctionToolbar, TablesView } from "./adapter.junction.view.tsx";
 import EditDialog from "./adapter.edit.view.tsx";
+import { mayManage } from "./adapter.access.ts";
 import { createAdapterPresenter } from "./adapter.presenter.ts";
 import type { AdapterPresenter } from "./adapter.presenter.ts";
 
@@ -34,12 +35,17 @@ import type { AdapterPresenter } from "./adapter.presenter.ts";
  */
 function AdminActions(props: { presenter: AdapterPresenter; adapter: Adapter }): JSX.Element {
   const a = (): Adapter => props.adapter;
+  // In Inspect the mode is fixed, and only the adapter's creator or an admin changes it (#56).
+  const inspect = (): boolean => props.presenter.inspect.value();
+  const manages = (): boolean => mayManage(a(), inspect(), actor());
   return (
     <Show when={hasRole("qa")}>
       <div class="flex flex-wrap items-center gap-2">
-        <Button size="sm" variant="secondary" onClick={() => props.presenter.openEdit()}>
-          Edit adapter
-        </Button>
+        <Show when={manages()}>
+          <Button size="sm" variant="secondary" onClick={() => props.presenter.openEdit()}>
+            Edit adapter
+          </Button>
+        </Show>
         <Button
           size="sm"
           variant="secondary"
@@ -50,7 +56,7 @@ function AdminActions(props: { presenter: AdapterPresenter; adapter: Adapter }):
         </Button>
         {/* A file store has a mode too, and until now no screen could loosen one: the seeded
             store came read-only and every write control on its files screen stayed hidden. */}
-        <Show when={hasRole("admin") && a().mode === "sandbox"}>
+        <Show when={hasRole("admin") && !inspect() && a().mode === "sandbox"}>
           <Button
             size="sm"
             variant="outline"
@@ -64,7 +70,7 @@ function AdminActions(props: { presenter: AdapterPresenter; adapter: Adapter }):
             Make read-only
           </Button>
         </Show>
-        <Show when={hasRole("admin") && a().mode === "read_only"}>
+        <Show when={hasRole("admin") && !inspect() && a().mode === "read_only"}>
           <Button
             size="sm"
             variant="outline"
@@ -78,9 +84,11 @@ function AdminActions(props: { presenter: AdapterPresenter; adapter: Adapter }):
             {a().kind === "storage" ? "Allow writes" : "Allow restores"}
           </Button>
         </Show>
-        <Button size="sm" variant="danger" onClick={() => void props.presenter.openDelete()}>
-          Delete
-        </Button>
+        <Show when={manages()}>
+          <Button size="sm" variant="danger" onClick={() => void props.presenter.openDelete()}>
+            Delete
+          </Button>
+        </Show>
       </div>
     </Show>
   );
@@ -194,6 +202,9 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
           actions={<AdminActions presenter={presenter} adapter={presenter.adapter.value()} />}
         />
         <StatusLine adapter={presenter.adapter.value()} />
+        <Show when={presenter.inspect.value() ? presenter.adapter.value().created_by_label : null}>
+          {(name) => <p class="text-sm text-muted">Added by {name()}</p>}
+        </Show>
         <div class="grid gap-3">
           <JunctionToolbar adapter={presenter.adapter.value()} base={base()} />
           <Switch>
