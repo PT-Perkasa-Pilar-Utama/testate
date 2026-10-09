@@ -59,6 +59,7 @@ function toUpdateInput(parsed: v.InferOutput<typeof updateUserSchema>): UpdateUs
   const patch: UpdateUserInput = {};
   if (parsed.display_name !== undefined) patch.display_name = parsed.display_name;
   if (parsed.role !== undefined) patch.role = parsed.role;
+  if (parsed.project_ids !== undefined) patch.project_ids = parsed.project_ids;
   return patch;
 }
 
