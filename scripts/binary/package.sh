@@ -18,8 +18,8 @@ for dir in "$in"/*_*/; do
   cp "$root/LICENSE" "$dir/LICENSE"
   case "$key" in
     windows_*) (cd "$dir" && zip -q "$out/testate_$key.zip" testate.exe LICENSE) ;;
-    # COPYFILE_DISABLE keeps macOS tar from adding ._ metadata files.
-    *) COPYFILE_DISABLE=1 tar -czf "$out/testate_$key.tar.gz" -C "$dir" testate LICENSE ;;
+    # Neither ._ files nor extended attributes: macOS tar adds both, and GNU tar warns on them.
+    *) COPYFILE_DISABLE=1 tar --no-xattrs -czf "$out/testate_$key.tar.gz" -C "$dir" testate LICENSE ;;
   esac
 done
 

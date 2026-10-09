@@ -37,6 +37,10 @@ jobs:
           restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
       - run: bun run complete-check
+      # The install script runs under dash and busybox, so POSIX sh is the dialect checked.
+      # ShellCheck ships on the Ubuntu runner image.
+      - name: shellcheck the install and packaging scripts
+        run: shellcheck -s sh docs/install.sh scripts/binary/package.sh
 
   smoke:
     name: boot and smoke
