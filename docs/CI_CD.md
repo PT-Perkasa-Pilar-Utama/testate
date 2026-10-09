@@ -15,7 +15,7 @@ Both ask who is reading. Any signed-in role may read them, because knowing the A
 
 Health is not behind this: `/api/v1/health/live` and `/api/v1/health/ready` answer with no credential, because a liveness probe has none to give.
 
-**Authentication.** Create a token under **Tokens** (or `POST /api/v1/tokens`, admin only) with kind `standard` and a role. `qa` can run checkouts, imports, and snapshots; `viewer` can only read. Send it as `Authorization: Bearer tst_<token>`. There is no cookie and no CSRF header to add; those apply to the dashboard's own session only.
+**Authentication.** Create a token under **Tokens** (or `POST /api/v1/tokens`, admin only) with kind `standard`, a role, and its projects: `project_ids` lists them, or `null` gives every project, and the field is required. `qa` can run checkouts, imports, and snapshots; `viewer` can only read. A CI token is best scoped to the one project its pipeline tests. Send it as `Authorization: Bearer tst_<token>`. There is no cookie and no CSRF header to add; those apply to the dashboard's own session only.
 
 **Example: reset the database before a test run.** `POST /projects/{slug}/checkouts` restores a named state. Story 113 in the product's own backlog calls this out as the CI entry point. `wait` blocks the request until the job finishes or the given number of seconds pass (1 to 300), but a `202` (still running) is still a successful HTTP call, and a finished job can still have `status: "failed"`. Gate the pipeline step on the job's `status`, not on the HTTP code:
 
