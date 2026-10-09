@@ -1,8 +1,13 @@
 import { describe, expect, it } from "bun:test";
+import { Hono } from "hono";
+import type { JsonObject } from "@testate/shared";
 
 import { TEST_META, createAccounts } from "../../../test/accounts.ts";
 import type { AccountsHarness } from "../../../test/accounts.ts";
+import { errorResponse } from "../../lib/http/index.ts";
+import { createUsersHandlers } from "./users.handler.ts";
 import { createUsersRepository } from "./users.repository.ts";
+import { createUsersRouter } from "./users.router.ts";
 
 // #55, docs/decisions/2026-10-09-project-scope.md: which projects a viewer or a tester reaches.
 const SHOP = "01991f00-0000-7000-8000-000000000021";
@@ -152,5 +157,34 @@ describe("a user's project scope", () => {
     );
     expect(resolved?.projectScope).toEqual([CRM]);
     expect((await auth.fromSession(adminSession.sessionToken))?.projectScope).toBeNull();
+  });
+
+  it("a scope sent over HTTP reaches the account, on create and on edit", async () => {
+    const { users, admin } = await withProjects();
+    const app = new Hono();
+    app.use("*", async (c, next) => {
+      c.set("actor", { kind: "token", id: "t1", label: "token:ci", role: "admin", agent: false });
+      c.set("authKind", "bearer");
+      c.set("projectScope", null);
+      await next();
+    });
+    app.route("/", createUsersRouter(createUsersHandlers(users, false)));
+    app.onError((cause, c) => errorResponse(c, cause, undefined, false));
+    const send = async (method: string, path: string, body: JsonObject) =>
+      app.request(path, {
+        method,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    const created = await send("POST", "/users", viewer([SHOP]));
+    expect(created.status).toBe(201);
+    const second = await users.create(
+      admin,
+      { ...viewer(null), username: "sam.admin", role: "admin" },
+      TEST_META
+    );
+    const demoted = await send("PATCH", `/users/${second.id}`, { role: "qa", project_ids: [CRM] });
+    expect(demoted.status).toBe(200);
+    expect((await users.get(second.id)).project_ids).toEqual([CRM]);
   });
 });
