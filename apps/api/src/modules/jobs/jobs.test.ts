@@ -200,6 +200,23 @@ describe("jobs runtime", () => {
     expect(other.id).not.toBe(first.id);
   });
 
+  it("an instance job is seen by an unscoped admin only, by id as in the list (#55, G2)", async () => {
+    const h = await setup();
+    const backup = await h.jobs.enqueue(input({ kind: "backup", projectId: null, adapterIds: [] }));
+    await expect(h.jobs.get(null, backup.id, h.admin)).resolves.toBeDefined();
+    await expect(h.jobs.get(null, backup.id, { ...QA_ACTOR })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    await expect(h.jobs.get([PROJECT], backup.id, h.admin)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    await expect(h.jobs.wait(null, backup.id, 1, { ...QA_ACTOR })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    // A runner or a service asking for its own job names no caller.
+    await expect(h.jobs.get(null, backup.id)).resolves.toBeDefined();
+  });
+
   it("filters get and list by project scope and hides instance jobs from non-admins", async () => {
     const h = await setup();
     const shop = await h.jobs.enqueue(input({ adapterIds: ["a1"] }));
@@ -219,7 +236,7 @@ describe("jobs runtime", () => {
       (
         await h.jobs.list(h.admin, [OTHER], { limit: 10, sort: "created_at", order: "desc" })
       ).rows.map((j) => j.project_id)
-    ).toStrictEqual([null, OTHER]);
+    ).toStrictEqual([OTHER]);
     expect(
       (
         await h.jobs.list(qa, null, {

@@ -16,7 +16,9 @@ export function createOpsHandlers(deps: HealthDeps, ready: () => boolean): OpsHa
       const report = await health(deps);
       const actor = c.get("actor");
       const status = report.status === "down" ? 503 : 200;
-      if (actor?.role === "admin") return c.json({ data: report }, { status });
+      // The full report names every adapter on the instance, so a scoped caller gets the status.
+      const unscoped = c.get("projectScope") === null;
+      if (actor?.role === "admin" && unscoped) return c.json({ data: report }, { status });
       return c.json({ data: { status: report.status } }, { status });
     },
     live: (c) => c.body(null, 204),

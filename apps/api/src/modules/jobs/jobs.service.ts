@@ -37,14 +37,18 @@ export type JobsService = {
    * The same key under a different request conflicts, exactly as it does in `enqueue`.
    */
   replay(request: IdempotentRequest, actor: Actor): Promise<Job | null>;
-  get(scope: string[] | null, id: string): Promise<Job>;
+  /**
+   * `asker` is the caller on the HTTP and MCP surfaces: an instance job (backup, store migration)
+   * is theirs to see only as an unscoped admin (#55, G2). Internal callers omit it and see every job.
+   */
+  get(scope: string[] | null, id: string, asker?: Actor): Promise<Job>;
   list(
     actor: Actor,
     scope: string[] | null,
     filter: JobsFilter
   ): Promise<{ rows: Job[]; nextCursor: string | null }>;
   total(actor: Actor, scope: string[] | null, filter: JobsFilter): Promise<number>;
-  wait(scope: string[] | null, id: string, seconds: number): Promise<Job>;
+  wait(scope: string[] | null, id: string, seconds: number, asker?: Actor): Promise<Job>;
   cancel(actor: Actor, scope: string[] | null, id: string): Promise<Job>;
   /** SSE frames until a terminal status or the signal fires; `afterSeq` replays the last status. */
   events(
@@ -84,6 +88,11 @@ function replay(last: JobEvent | null, afterSeq: number | null, job: Job): JobEv
   return last;
 }
 
+/** Instance jobs belong to no project, so only someone who reaches every project sees them. */
+function seesInstance(actor: Actor, scope: string[] | null): boolean {
+  return actor.role === "admin" && scope === null;
+}
+
 function isTerminal(job: Job): boolean {
   return TERMINAL_JOB_STATUSES.includes(job.status);
 }
@@ -92,11 +101,12 @@ export function createJobsService(deps: JobsDeps): JobsService {
   const { repo, hub, dispatcher } = deps;
   const nowIso = (): string => deps.now().toISOString();
 
-  const visible = (scope: string[] | null, id: string): Job => {
+  const visible = (scope: string[] | null, id: string, asker?: Actor): Job => {
     const job = repo.byId(id);
     if (job === null) throw notFound("job");
-    if (scope !== null && (job.project_id === null || !scope.includes(job.project_id)))
-      throw notFound("job");
+    if (job.project_id === null) {
+      if (asker !== undefined && !seesInstance(asker, scope)) throw notFound("job");
+    } else if (scope !== null && !scope.includes(job.project_id)) throw notFound("job");
     return toJob(job);
   };
 
@@ -175,17 +185,17 @@ export function createJobsService(deps: JobsDeps): JobsService {
     async replay(request, actor) {
       return recorded(request, actor).existing;
     },
-    async get(scope, id) {
-      return visible(scope, id);
+    async get(scope, id, asker) {
+      return visible(scope, id, asker);
     },
     async list(actor, scope, filter) {
-      return repo.list({ ...filter, scope, includeInstance: actor.role === "admin" });
+      return repo.list({ ...filter, scope, includeInstance: seesInstance(actor, scope) });
     },
     async total(actor, scope, filter) {
-      return repo.total({ ...filter, scope, includeInstance: actor.role === "admin" });
+      return repo.total({ ...filter, scope, includeInstance: seesInstance(actor, scope) });
     },
-    async wait(scope, id, seconds) {
-      visible(scope, id);
+    async wait(scope, id, seconds, asker) {
+      visible(scope, id, asker);
       return waitFor(id, seconds);
     },
     async cancel(actor, scope, id) {

@@ -17,11 +17,11 @@ Kinds and statuses: [06 §6.6](../technical-specs/06-data-model.md). `result` an
 
 ## 14.2 `GET /jobs`
 
-**Access.** `viewer` (scope-filtered; instance-level jobs for `admin`). **Input.** Query: `cursor`, `limit`, `project_id`, `adapter_id`, `kind`, `status`, `q` (substring match against kind, status, or actor label), `created_from`, `created_to`, `sort` (`created_at`, `kind`, or `status`), `order`. **Output.** `200` list. **Traceability.** Story 106.
+**Access.** `viewer` (scope-filtered; instance-level jobs, which belong to no project, for an unscoped `admin` only, #55). **Input.** Query: `cursor`, `limit`, `project_id`, `adapter_id`, `kind`, `status`, `q` (substring match against kind, status, or actor label), `created_from`, `created_to`, `sort` (`created_at`, `kind`, or `status`), `order`. **Output.** `200` list. **Traceability.** Story 106.
 
 ## 14.3 `GET /jobs/{id}`
 
-**Access.** `viewer`. **Input.** Query: `wait` 1 to 300 seconds optional. **Behavior.** With `wait`, block until terminal or timeout. **Output.** `200` when terminal (or without `wait`), `202` when still running after `wait`. **Errors.** `NOT_FOUND`. **Traceability.** Stories 104, 113.
+**Access.** `viewer`. **Input.** Query: `wait` 1 to 300 seconds optional. **Behavior.** With `wait`, block until terminal or timeout. The same visibility as the list: a job outside the caller's scope, or an instance-level job for anyone but an unscoped admin, answers `NOT_FOUND`. `GET /jobs/{id}/events` follows the same rule. **Output.** `200` when terminal (or without `wait`), `202` when still running after `wait`. **Errors.** `NOT_FOUND`. **Traceability.** Stories 104, 113.
 
 ## 14.4 `POST /jobs/{id}/cancel`
 

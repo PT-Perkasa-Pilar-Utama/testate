@@ -168,6 +168,18 @@ describe("adapters", () => {
     await expect(adapters.list("nope", {})).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
+  it("the instance-wide file store list keeps to the caller's projects (#55)", async () => {
+    const { adapters, qa } = await createAdaptersHarness();
+    const { adapter } = await adapters.create(qa, "shop", S3, TEST_META);
+    await adapters.create(qa, "shop", PG, TEST_META);
+    const names = async (scope: string[] | null) =>
+      (await adapters.listByKind(scope, "storage")).map((a) => a.name);
+    expect(await names(null)).toStrictEqual(["exports"]);
+    expect(await names([adapter.project_id])).toStrictEqual(["exports"]);
+    expect(await names(["01991f00-0000-7000-8000-0000000000ff"])).toStrictEqual([]);
+    expect(await names([])).toStrictEqual([]);
+  });
+
   it("lets only an admin change the mode, on a file store as much as on a database", async () => {
     const { adapters, qa, admin } = await createAdaptersHarness();
     const { adapter } = await adapters.create(qa, "shop", PG, TEST_META);

@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { healthPublicSchema } from "@testate/shared";
 import * as v from "valibot";
 
-import { requireRole } from "../../lib/http/auth.ts";
+import { requireRole, requireUnscoped } from "../../lib/http/auth.ts";
 import type { Handler } from "../../lib/http/index.ts";
 import { describe } from "../../lib/openapi.ts";
 import type { OpsHandlers } from "./ops.handler.ts";
@@ -17,6 +17,7 @@ export function createOpsRouter(handlers: OpsHandlers, resetState: Handler | nul
     router.post(
       "/admin/reset-state",
       requireRole("admin"),
+      requireUnscoped(),
       describe("system", "Reset metadata (non-production)", v.unknown()),
       resetState
     );
