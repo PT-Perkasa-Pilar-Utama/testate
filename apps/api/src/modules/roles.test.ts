@@ -214,18 +214,23 @@ const ONE_PROJECT: SlugLookup = {
   bySlug: (slug) => (slug === "mine" ? { id: "p-mine" } : null),
 };
 
-/** The whole v1 surface for a token scoped to one project, with the real scope middleware. */
-function scopedApp(): Hono {
+type ScopedKind = "token" | "user";
+
+/**
+ * The whole v1 surface for a caller scoped to one project, with the real scope middleware. A
+ * session is scoped the same way a token is since #55, so every check runs as both.
+ */
+function scopedApp(kind: ScopedKind): Hono {
   const app = new Hono();
   app.use("*", async (c, next) => {
     c.set("actor", {
-      kind: "token",
+      kind,
       id: "01a05e00-0000-7000-8000-000000000002",
-      label: "token:ci",
+      label: kind === "token" ? "token:ci" : "vera",
       role: "admin",
       agent: false,
     });
-    c.set("authKind", "bearer");
+    c.set("authKind", kind === "token" ? "bearer" : "session");
     c.set("projectScope", ["p-mine"]);
     await next();
   });
@@ -247,9 +252,14 @@ function scopedApp(): Hono {
   return app;
 }
 
-/** Every instance-administration route a project-scoped token still reached. */
-async function scopedReachedAdmin(): Promise<string[]> {
-  const app = scopedApp();
+/** A request carrying the CSRF header, so a session's refusal is the scope's and not CSRF's. */
+async function scopedStatus(kind: ScopedKind, method: string, path: string): Promise<number> {
+  const headers = { "X-Testate-Request": "1" };
+  return (await scopedApp(kind).request(path, { method, headers })).status;
+}
+
+/** Every instance-administration route a project-scoped caller still reached. */
+async function scopedReachedAdmin(kind: ScopedKind): Promise<string[]> {
   const reached: string[] = [];
   const paths: [string, string][] = [
     ["GET", "/users"],
@@ -263,15 +273,15 @@ async function scopedReachedAdmin(): Promise<string[]> {
     ["PATCH", "/settings"],
   ];
   for (const [method, path] of paths) {
-    const code = (await app.request(path, { method })).status;
+    const code = await scopedStatus(kind, method, path);
     reached.push(...(code === 403 ? [] : [`${method} ${path} -> ${code}`]));
   }
   return reached;
 }
 
-/** Where a scoped token saw a project it may not, or was refused the one it may. */
-async function scopeOffenders(): Promise<string[]> {
-  const app = scopedApp();
+/** Where a scoped caller saw a project it may not, or was refused the one it may. */
+async function scopeOffenders(kind: ScopedKind): Promise<string[]> {
+  const app = scopedApp(kind);
   const paths = [
     "",
     "/adapters",
@@ -313,14 +323,26 @@ describe("who may reach what", () => {
     expect(code).toBe(403);
   });
 
-  it("a scoped token reaches its own project and 404s on every other, at every depth", async () => {
-    expect(await scopeOffenders()).toEqual([]);
-  });
+  it.each(["token", "user"] as const)(
+    "a scoped %s reaches its own project and 404s on every other, at every depth",
+    async (kind) => {
+      expect(await scopeOffenders(kind)).toEqual([]);
+    }
+  );
 
-  it("a scoped token administers nothing, so it cannot mint its own way out of the fence", async () => {
-    // It carries the admin role here on purpose: without this the token could create an unscoped
-    // token, or a user with a password it chose, and the scope would be decorative.
-    expect(await scopedReachedAdmin()).toEqual([]);
+  it.each(["token", "user"] as const)(
+    "a scoped %s administers nothing, so it cannot mint its own way out of the fence",
+    async (kind) => {
+      // The admin role here is on purpose: without this the caller could create an unscoped
+      // token, or a user with a password it chose, and the scope would be decorative.
+      expect(await scopedReachedAdmin(kind)).toEqual([]);
+    }
+  );
+
+  it("a person creates projects, scoped or not; a token never does (#55, Q6)", async () => {
+    expect(await scopedStatus("token", "POST", "/projects")).toBe(403);
+    expect(await scopedStatus("user", "POST", "/projects")).toBe(204);
+    expect(await status("tester", "POST", "/projects")).toBe(204);
   });
 });
 

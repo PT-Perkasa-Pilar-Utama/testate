@@ -173,6 +173,17 @@ export function requireHuman(): MiddlewareHandler {
   };
 }
 
+/**
+ * Only a person creates a project (#55, Q6). A project row names its creator in `created_by`, a
+ * reference to a user, and a scoped token that made one could not reach it anyway.
+ */
+export function requireUser(): MiddlewareHandler {
+  return async (c, next) => {
+    if (currentActor(c).kind !== "user") throw forbidden("user_required");
+    await next();
+  };
+}
+
 /** The MCP endpoint accepts agent tokens only. */
 export function requireAgentToken(): MiddlewareHandler {
   return async (c, next) => {

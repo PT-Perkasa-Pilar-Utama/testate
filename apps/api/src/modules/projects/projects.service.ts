@@ -9,12 +9,9 @@ import type { AdaptersService } from "../adapters/adapters.service.ts";
 import type { AuditService } from "../audit/audit.service.ts";
 import { idempotentRequest } from "../jobs/jobs.idempotency.ts";
 import type { EnqueueInput, JobsService } from "../jobs/jobs.service.ts";
-import type {
-  DeletionCounts,
-  ProjectPatch,
-  ProjectsListQuery,
-  ProjectsRepository,
-} from "./projects.repository.ts";
+import { assertActionsAllowed, planFor } from "./projects.deletion.ts";
+import type { DeletionInput, DeletionPlan } from "./projects.deletion.ts";
+import type { ProjectPatch, ProjectsListQuery, ProjectsRepository } from "./projects.repository.ts";
 
 export type AdapterSummary = {
   id: string;
@@ -39,36 +36,18 @@ export type ProjectOverview = {
  * thing, and the two drifting apart is how `quota_bytes` reached the API and stopped at this line.
  */
 export type CreateProjectInput = v.InferOutput<typeof createProjectSchema>;
-
-export type PlanAdapter = {
-  adapter_id: string;
-  name: string;
-  engine: string;
-  init_state_id: string | null;
-  action: "restore" | "force" | "skip" | "none";
-  reason?: "read_only" | "unreachable" | "no_init_state" | "removed";
-  drift: null;
-};
-
-export type DeletionPlan = {
-  plan_id: string;
-  expires_at: string;
-  protected_states: number;
-  /** Everything the deletion takes with the project; the dialog names it before the slug is typed. */
-  affected: DeletionCounts;
-  adapters: PlanAdapter[];
-};
-
-export type DeletionInput = {
-  confirm_slug: string;
-  plan_id: string;
-  adapters: { adapter_id: string; action: "restore" | "force" | "skip" }[];
-};
+export type { DeletionInput, DeletionPlan, PlanAdapter } from "./projects.deletion.ts";
 
 export type ProjectsService = {
   list(scope: string[] | null, query: Omit<ProjectsListQuery, "ids">): Promise<Project[]>;
   total(scope: string[] | null, query: Omit<ProjectsListQuery, "ids">): Promise<number>;
-  create(actor: Actor, input: CreateProjectInput, meta: RequestMeta): Promise<Project>;
+  /** A scoped creator (`scope` not null) gets access to what they made (#55, Q6). */
+  create(
+    actor: Actor,
+    input: CreateProjectInput,
+    meta: RequestMeta,
+    scope?: string[] | null
+  ): Promise<Project>;
   defaults(): Promise<ProjectDefaults>;
   get(actor: Actor, slug: string): Promise<ProjectOverview>;
   update(actor: Actor, slug: string, patch: ProjectPatch, meta: RequestMeta): Promise<Project>;
@@ -103,40 +82,6 @@ function quotaOf(project: Project, settings: Settings, used: number, instanceUse
   };
 }
 
-/** The deletion plan per adapter (05 §5.4); reachability and drift come from the adapters service. */
-function planFor(adapter: AdapterSummary): PlanAdapter {
-  const base = {
-    adapter_id: adapter.id,
-    name: adapter.name,
-    engine: adapter.engine,
-    init_state_id: null,
-    drift: null,
-  };
-  if (adapter.kind !== "database") return { ...base, action: "none" };
-  if (adapter.mode === "read_only") return { ...base, action: "skip", reason: "read_only" };
-  return { ...base, action: "restore" };
-}
-
-/** Which plan actions a request may pick per adapter (04 §4.8 step 1). */
-function allowedActions(planned: PlanAdapter): readonly string[] {
-  if (planned.action === "skip" || planned.action === "none") return ["skip"];
-  return planned.drift === null ? ["restore", "skip"] : ["restore", "force", "skip"];
-}
-
-/** Every database adapter in the plan needs an action the plan allows (04 §4.8 step 1). */
-function assertActionsAllowed(plan: DeletionPlan, chosen: Map<string, string>): void {
-  for (const planned of plan.adapters) {
-    if (planned.action === "none") continue;
-    const action = chosen.get(planned.adapter_id);
-    if (action === undefined) {
-      throw conflict("every database adapter needs an action", { adapter_id: planned.adapter_id });
-    }
-    if (!allowedActions(planned).includes(action)) {
-      throw conflict("action not allowed by the plan", { adapter_id: planned.adapter_id, action });
-    }
-  }
-}
-
 export function createProjectsService(deps: ProjectsDeps): ProjectsService {
   const { repo, audit } = deps;
   const plans = new Map<string, StoredPlan>();
@@ -167,7 +112,7 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
     async defaults() {
       return { quota_bytes: (await deps.settings.get()).quota.default_bytes };
     },
-    async create(actor, input, meta) {
+    async create(actor, input, meta, scope = null) {
       // No await between reading what is taken and writing the row: SQLite is synchronous, so the
       // slug this finds is still free when the insert lands. An await here would open the race.
       const slug =
@@ -175,15 +120,18 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
       // A caller that names its own slug gets that slug or a refusal, never a numbered neighbour.
       if (input.slug !== undefined && repo.bySlug(slug) !== null)
         throw conflict("slug is taken", { slug });
-      const project = repo.insert({
-        id: Bun.randomUUIDv7(),
-        slug,
-        name: input.name,
-        description: input.description ?? null,
-        quota_bytes: input.quota_bytes ?? null,
-        created_by: actor.id,
-        created_at: nowIso(),
-      });
+      const project = repo.insert(
+        {
+          id: Bun.randomUUIDv7(),
+          slug,
+          name: input.name,
+          description: input.description ?? null,
+          quota_bytes: input.quota_bytes ?? null,
+          created_by: actor.id,
+          created_at: nowIso(),
+        },
+        scope !== null
+      );
       audit.record({
         actor,
         action: "project.created",

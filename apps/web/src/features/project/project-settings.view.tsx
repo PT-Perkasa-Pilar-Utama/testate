@@ -33,7 +33,7 @@ const AFFECTED_LABELS: [keyof DeletionAffected, string][] = [
   ["diffs", "diff"],
   ["import_runs", "import run"],
   ["saved_queries", "saved query"],
-  ["tokens", "token scoped to this project"],
+  ["tokens", "single-project token"],
 ];
 
 function plural(count: number, label: string): string {

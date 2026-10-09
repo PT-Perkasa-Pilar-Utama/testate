@@ -112,6 +112,8 @@ export type AuthRepository = {
   totalTokens(query: TokensListQuery): number;
   touchToken(id: string, at: string): void;
   revokeToken(id: string, at: string): void;
+  /** Takes a deleted project out of every token's scope (#55, Q5); counts the live tokens. */
+  dropProject(projectId: string, at: string): { revoked: number; narrowed: number };
 };
 
 const projectIdsSchema = v.array(idSchema);
@@ -242,5 +244,25 @@ export function createAuthRepository(db: MetadataDb): AuthRepository {
         id
       );
     },
+    dropProject: db.transaction((projectId: string, at: string) => {
+      // A token that reached only this project now reaches nothing, and an empty scope on a
+      // token is useless, so it is revoked. One that reached others keeps working for them.
+      const revoked = db
+        .query(
+          `UPDATE api_tokens SET revoked_at = ?, project_ids = '[]'
+             WHERE revoked_at IS NULL AND json_array_length(project_ids) = 1
+               AND json_extract(project_ids, '$[0]') = ?`
+        )
+        .run(at, projectId).changes;
+      const strip = `UPDATE api_tokens SET project_ids =
+          (SELECT json_group_array(value) FROM json_each(api_tokens.project_ids) WHERE value <> ?)
+        WHERE EXISTS (SELECT 1 FROM json_each(api_tokens.project_ids) WHERE value = ?)`;
+      const narrowed = db
+        .query(`${strip} AND revoked_at IS NULL`)
+        .run(projectId, projectId).changes;
+      // Revoked tokens too, so no list ever names a project that is gone.
+      db.query(`${strip} AND revoked_at IS NOT NULL`).run(projectId, projectId);
+      return { revoked, narrowed };
+    }),
   };
 }
