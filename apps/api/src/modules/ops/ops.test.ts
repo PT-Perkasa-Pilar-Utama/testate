@@ -117,9 +117,10 @@ describe("migrate", () => {
       "0009_user_project_scope.sql",
       "0010_inspect_project.sql",
       "0011_logs_tier.sql",
+      "0012_ingest_tokens.sql",
     ]);
     expect(second.applied).toStrictEqual([]);
-    expect(second.skipped).toBe(11);
+    expect(second.skipped).toBe(12);
     const tables = db
       .query<{ name: string }, []>(
         "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"
@@ -128,5 +129,6 @@ describe("migrate", () => {
       .map((row) => row.name);
     expect(tables).toContain("states");
     expect(tables).toContain("audit_logs");
+    expect(tables).toContain("ingest_tokens");
   });
 });

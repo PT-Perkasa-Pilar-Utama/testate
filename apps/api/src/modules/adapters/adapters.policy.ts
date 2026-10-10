@@ -18,6 +18,8 @@ export async function recheckDenyList(deps: PolicyDeps): Promise<string[]> {
   for (const adapter of deps.repo.all()) {
     const secrets = await openSecrets(deps.ring, adapter.id, CONFIG_COLUMN, adapter.config_sealed);
     const validated = validateConfig(adapter.engine, adapter.kind, adapter.config, secrets);
+    // Nothing to block: an `ingest` adapter dials nowhere.
+    if (validated.target === null) continue;
     const verdict = await deps.netguard.check({
       ...validated.target,
       purpose: purposeOf(validated.kind),

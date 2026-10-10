@@ -102,16 +102,16 @@ export async function probeTarget(
   validated: ValidatedConfig,
   secrets: Secrets
 ): Promise<ProbeOutcome> {
-  const verdict = await deps.netguard.check({
-    ...validated.target,
-    purpose: purposeOf(validated.kind),
-  });
-  if (!verdict.allowed) throw refusal(verdict, validated.target);
+  const remote = validated.target;
+  // `ingest` is pushed to, not dialled: there is nothing to reach or to check.
+  if (remote === null) return { engine, tier: validated.tier, reachable: true, warnings: [] };
+  const verdict = await deps.netguard.check({ ...remote, purpose: purposeOf(validated.kind) });
+  if (!verdict.allowed) throw refusal(verdict, remote);
   const address = verdict.addresses[0];
   if (address === undefined) throw new AppError("CONFLICT", "no address was resolved");
   if (validated.kind !== "database") {
     return deps.fileProbe(engine, validated.config, secrets, {
-      ...validated.target,
+      ...remote,
       purpose: purposeOf(validated.kind),
       address,
     });

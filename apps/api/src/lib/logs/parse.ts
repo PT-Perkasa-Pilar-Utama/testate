@@ -82,6 +82,8 @@ export function jsonLines(line: string): ParsedLine {
 
 const wide = v.object({
   kind: v.optional(v.string()),
+  /** An app's own sentence (#75): what an integrator pushing this shape writes first. */
+  message: v.optional(v.string()),
   request: v.optional(
     v.object({
       method: v.optional(v.string()),
@@ -98,6 +100,7 @@ function summary(event: v.InferOutput<typeof wide>): string {
   const { request, job } = event;
   const words = (parts: (string | number | undefined)[]): string =>
     parts.filter((part) => part !== undefined).join(" ");
+  if (event.message !== undefined) return event.message;
   if (request !== undefined) return words([request.method, request.path, request.status]);
   if (job !== undefined) return words(["job", job.kind, job.status]);
   return event.kind ?? "event";
@@ -114,7 +117,7 @@ export function testate(line: string): ParsedLine {
     time: timeOf(object["ts"]),
     level: levelOf(object["level"]),
     message: error?.message === undefined ? what : `${what}: ${error.message}`,
-    fields: rest(object, ["ts", "level"]),
+    fields: rest(object, ["ts", "level", "message"]),
   };
 }
 

@@ -233,4 +233,6 @@ export const adapterDeletionSchema = v.object({
 export const createAdapterResponseSchema = v.object({
   adapter: adapterSchema,
   init_job: v.nullable(jobSchema),
+  /** An `ingest` adapter's token, in this answer only (I8). */
+  ingest_token: v.optional(v.nullable(v.string())),
 });
