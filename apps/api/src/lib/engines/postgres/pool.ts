@@ -5,6 +5,9 @@ import { sha256 } from "../../password/index.ts";
 import { EngineError } from "../types.ts";
 import type { ConnectionRef, PostgresConfig } from "../types.ts";
 
+/** `application_name` on every connection Testate opens (#84). */
+export const TESTATE_APPLICATION = "testate";
+
 export type Netguard = { check(input: Check): Promise<Verdict> };
 
 export type Pool = { sql: SQL; key: string };
@@ -55,6 +58,8 @@ export async function connect(
     idleTimeout: IDLE_SECONDS,
     connectionTimeout: 10,
     bigint: true,
+    // Names Testate's sessions, so a DBA can tell them apart and "Statements" can leave them out.
+    connection: { application_name: TESTATE_APPLICATION },
   });
 }
 

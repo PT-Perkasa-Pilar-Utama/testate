@@ -17,6 +17,7 @@ import { formatWhen, fromLocalInput, toLocalInput } from "@/lib/format.ts";
 import { LOG_LEVEL_OPTIONS } from "@/lib/labels.ts";
 import { createLogViewer, endNote } from "./logs.viewer.ts";
 import type { LogFilters, LogViewer } from "./logs.viewer.ts";
+import { labelOf } from "./logs.database.ts";
 
 const LEVEL_TONE = {
   fatal: "error",
@@ -65,7 +66,7 @@ function Toolbar(props: { viewer: LogViewer; sources: string[] }): JSX.Element {
         <label class="grid gap-1.5 text-base">
           <span>Source</span>
           <Select
-            options={props.sources.map((name) => ({ value: name, label: name }))}
+            options={props.sources.map((name) => ({ value: name, label: labelOf(name) }))}
             value={props.viewer.filters().source}
             onChange={(source) => set({ source })}
           />

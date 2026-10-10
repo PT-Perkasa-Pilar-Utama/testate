@@ -53,6 +53,20 @@ export const logsModel = {
     apiClient.get("/log-adapters", { schema: v.array(adapterWithProjectSchema) }),
   read: (slug: string, id: string, request: LogsRequest): Promise<LogsPage> =>
     apiClient.get(logsPath(slug, id), { schema: logsPageSchema, query: queryOf(request) }),
+  /**
+   * The adapters a run's Logs menu offers (Q8): every log adapter, and every database adapter
+   * whose credential can read a server log (#84, D5).
+   */
+  runAdapters: async (): Promise<AdapterWithProject[]> => {
+    const [logs, databases] = await Promise.all([
+      apiClient.get("/log-adapters", { schema: v.array(adapterWithProjectSchema) }),
+      apiClient.get("/database-adapters", { schema: v.array(adapterWithProjectSchema) }),
+    ]);
+    return [
+      ...logs,
+      ...databases.filter((adapter) => (adapter.capabilities?.serverLogs ?? []).length > 0),
+    ];
+  },
   /** A logfile's configured names, or the sources an ingest adapter holds (#75, I2). */
   sources: (slug: string, id: string): Promise<string[]> =>
     apiClient.get(`${logsPath(slug, id)}/sources`, { schema: logSourcesSchema }),

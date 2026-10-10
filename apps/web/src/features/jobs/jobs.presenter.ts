@@ -152,7 +152,7 @@ export function createJobsPresenter(): JobsPresenter {
     () => `${controls.key()}|${filters().kind}|${filters().status}`
   );
   const table: TableControls<JobSort> & { rows: () => Job[] } = { ...controls, rows: jobs.value };
-  const logAdapters = createRefreshable(() => logsModel.adapters());
+  const logAdapters = createRefreshable(() => logsModel.runAdapters());
   return {
     ...jobs,
     runLogs: (job) =>
