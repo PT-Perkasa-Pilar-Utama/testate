@@ -7,7 +7,7 @@ The fourth tier (#37). A Logs adapter reads logs and never writes them: there is
 | Concern | Decision |
 | --- | --- |
 | Shape | Adapters of kind `logs`, tier `logs`, in the `adapters` table (rebuilt by migration 0011 to admit them). Always `read_only`; `sandbox` is refused at create and any mode change after, admins included |
-| Engines | `logfile` (#69), `ingest` (#75, §25.7), `journald` (#86, §25.9), `docker` (#88, §25.10), `loki` (#90, §25.11). `elasticsearch` follows as the last step of #37; the CHECK already admits all six |
+| Engines | `logfile` (#69), `ingest` (#75, §25.7), `journald` (#86, §25.9), `docker` (#88, §25.10), `loki` (#90, §25.11), `elasticsearch` (#92, §25.12): every engine the CHECK admits |
 | `logfile` | One connection, SFTP or S3, holding named sources `{ name, glob, format, patterns }`. Its files open through the storage resolver as the transport it names, so netguard and host-key trust are shared (05 §5.11) |
 | Formats | `pm2`, `json-lines`, `testate` (the wide-event shape of 21), `syslog` (RFC 5424 and 3164), `plain`, `regex` (named groups `time`, `level`, `message`; the rest become fields) |
 | Limits | 200 lines by default, 5 000 at most; at most 10 MB read per request; a `from`–`to` window of at most 7 days (older entries are paged with the cursor); an answer cut short names its limit and carries a cursor |
@@ -48,6 +48,7 @@ Each file gives up a run from its end and never a line from its middle, so the n
 - A `journald` adapter runs one command, `journalctl`, and nothing else. Testate builds every argument from an allow-list and single-quotes each one. Nothing a person types reaches the shell: a unit name is checked at save and again when the command is built, and a cursor is checked by its characters (§25.9).
 - A `docker` adapter makes five `GET` calls and nothing else, logs always with `follow=0`. Testate builds each path from a request; a container name is checked against its pattern and URL-encoded (§25.10).
 - A `loki` adapter makes two `GET` calls and follows no redirect, which could reach an address netguard never checked. The LogQL query is the user's, never rewritten, and only a log query reads (§25.11).
+- An `elasticsearch` adapter makes `GET /` and `POST /{index}/_search` with a body Testate builds. Each index pattern is checked against its pattern and URL-encoded; no exclusion, no `_all` (§25.12).
 
 ## 25.5 Component and contract
 
@@ -63,6 +64,7 @@ Each file gives up a run from its end and never a line from its middle, so the n
 | `journald`: contract, command, parser, page, SSH shell | `schemas/logs.journald.ts`, `lib/logs/journald/`, `modules/adapters/adapters.shell.ts`, `modules/logs/logs.journal.ts` |
 | `docker`: contract, calls, frames, pager, transports | `schemas/logs.docker.ts`, `lib/logs/docker/`, `lib/logs/ssh.ts`, `modules/adapters/adapters.docker*.ts`, `modules/logs/logs.docker.ts` |
 | `loki`: contract, client, parser, pager | `schemas/logs.loki.ts`, `lib/logs/loki/`, `modules/adapters/adapters.loki*.ts`, `modules/logs/logs.loki.ts` |
+| `elasticsearch`: contract, client, parser, pager | `schemas/logs.elasticsearch.ts`, `lib/logs/elasticsearch/`, `lib/logs/http.ts` (shared with Loki), `modules/adapters/adapters.elasticsearch*.ts`, `modules/logs/logs.elasticsearch.ts` |
 | Menu, dialog, viewer, run links | `apps/web/src/features/logs/` |
 
 One wide event per read carries `logs_source`, `logs_files`, `logs_bytes`, `logs_entries` and `logs_cut_by`. It never carries a line of the log.
@@ -160,3 +162,20 @@ Decisions L1–L8 of `docs/decisions/2026-10-10-loki.md` (#90). A `loki` adapter
 | Refusals | A 401 names the login, or the tenant when Loki says `no org id`. A lower `max_entries_limit_per_query` is named from Loki's 400. A body past 10 MB answers `ADAPTER_UNREACHABLE` asking for fewer lines |
 | Probe | `labels` over the last day, then each source's query with `limit=1`. Warnings: `plaintext` for http; `no_lines` for a source that matched nothing in 24 hours, which is also what a wrong tenant looks like |
 | Not here | Metric queries, `/tail` streaming, a custom CA, the text filter pushed into LogQL (deferred to the user) |
+
+## 25.12 `elasticsearch`: `_search` on an index pattern
+
+Decisions E1–E8 of `docs/decisions/2026-10-10-elasticsearch.md` (#92). An `elasticsearch` adapter reads an Elasticsearch or OpenSearch cluster with `_search`.
+
+| Concern | Decision |
+| --- | --- |
+| Config | `{ url, auth (none, basic, api_key, bearer), user?, tls_ca?, sources }`. Secrets per `auth`: `password`, `api_key` (sent as `ApiKey <key>`, the encoded key Kibana shows) or `bearer_token`. `tls_ca` is the PEM CA of a cluster that signs its own certificate; the dialog takes it in a text box |
+| Connection | Loki's door (`lib/logs/http.ts`): netguard, the pin for `http` with `Host` kept, no redirect, a body streamed up to 10 MB, the CA when set. A refused certificate says to set the CA |
+| Calls | `GET /` (the probe) and `POST /{index}/_search` |
+| Source | `{ name, index, query, time_field (@timestamp), message_field (message), patterns }`, 1–32 per adapter. `index` is 1–8 comma-separated patterns of `[a-z0-9*._+-]`, not starting with `-` or `_`. `query` is a Lucene `query_string`, empty for every document. A Kibana data view is an index pattern here |
+| Documents | The hit's sort value on `time_field`, in the nanosecond format, is the time (`date` and `date_nanos` alike). The message is `message_field`, the level `log.level`, `level` or `severity`, each read dotted or nested; the rest of `_source` is the fields; `file` is the index |
+| Paging | Sort on `time_field` descending, `exists` on it, no lower bound unless `from`. A page asks `range lte` the mark with `size` = N + the documents shown at the mark, and drops those by a 12-character hash of `_index` and `_id`. The cursor carries at most 200 such hashes (about 4 KB of URL); past that, or with no progress, the page answers `cut_by: "lines"` with no cursor. A short page is the end. Follow asks `range gte` the newest mark ascending, a page at a time; a document indexed late with an earlier stamp is missed until a reload. `track_total_hits` is off |
+| Filters | Text and level filter the page in Testate; the query is never rewritten |
+| Refusals | A query Elasticsearch cannot run names its reason; a missing time field names the field; a result window its maximum; 401 the login; 403 the `read` privilege; 404 the index; 429 a tripped circuit breaker; a body past 10 MB asks for fewer lines |
+| Probe | `GET /`: Elasticsearch 7.10 or OpenSearch 1.0 or later. Then each source with `size: 1` over the last 24 hours. Warnings: `plaintext`; `no_lines`, which also says the pattern may match no index |
+| Not here | ES\|QL, EQL, KQL, data views as objects, PIT and scroll, aggregations, an Elastic Cloud ID. OpenSearch is untested |

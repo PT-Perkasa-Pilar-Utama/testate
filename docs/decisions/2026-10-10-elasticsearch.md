@@ -17,6 +17,11 @@ Measured first on Elasticsearch 8.15.3: `search_after` on a time sort is strict,
 | E7 | What does the probe check? | `GET /`: Elasticsearch 7.10 or later, or OpenSearch 1.0 or later (`version.distribution`). Then each source with `size: 1` over the last 24 hours, which is where a wrong time field surfaces as the 400. Warnings: `plaintext` for http; `no_lines` for a source that matched nothing, which also says the index pattern may match nothing. | The two silent failures are a typo in a pattern and a quiet index. |
 | E8 | What is not here? | ES\|QL, EQL, KQL (Kibana's own), data views as objects, PIT and scroll, aggregations, an Elastic Cloud ID (use the deployment's Elasticsearch URL). OpenSearch speaks the same `_search` and is untested. | One step, one engine. |
 
+## What building it changed
+
+- E1: the dialog takes the CA in a text box, not through the API only: a self-hosted Elasticsearch 8 is HTTPS with its own CA by default, so most setups need it. A refused certificate now says to set the CA.
+- Checked by hand on Elasticsearch 8.15.3: four documents in one millisecond split across a page boundary, each shown once; follow with a late document at the newest millisecond; a query that cannot run, a missing time field and a missing index each named; with security on, no CA named, the CA with a basic login and with an API key read, and a user without `read` named; 320 documents in one millisecond paged through the real router in pages of 100, the cursor at most about 4 KB of URL, stopping at 300 with `cut_by: "lines"`. The dialog drove the address typo, the missing CA, the pasted CA, Create, the viewer and Edit. Not checked: OpenSearch, Elastic Cloud.
+
 ## Deferred
 
 | Branch | Reason | Who decides |
