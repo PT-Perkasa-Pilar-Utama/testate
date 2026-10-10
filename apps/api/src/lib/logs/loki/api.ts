@@ -1,10 +1,9 @@
 /**
  * The only calls Testate makes to Loki (#90; L1, L2 of docs/decisions/2026-10-10-loki.md): two
- * `GET` paths, built here from a request. A redirect is refused: it would reach an address netguard
- * never checked. An `http` URL is pinned to the approved address, `https` keeps its host for TLS.
+ * `GET` paths, built here from a request, sent through the shared pinned door (`../http.ts`).
  */
-import { AppError } from "../../http/index.ts";
-import { pinHttpEndpoint } from "../../netguard/index.ts";
+import { createPinnedHttp } from "../http.ts";
+import type { HttpAnswer, HttpLogin } from "../http.ts";
 
 export type LokiRequest =
   | { kind: "labels"; start: bigint; end: bigint }
@@ -17,14 +16,11 @@ export type LokiRequest =
       end?: bigint | undefined;
     };
 
-export type LokiAnswer = { status: number; body: Buffer; capped: boolean };
+export type LokiAnswer = HttpAnswer;
 
 export type LokiApi = { get(request: LokiRequest, capBytes: number): Promise<LokiAnswer> };
 
-export type LokiLogin =
-  | { auth: "none" }
-  | { auth: "basic"; user: string; password: string }
-  | { auth: "bearer"; token: string };
+export type LokiLogin = Exclude<HttpLogin, { auth: "api_key" }>;
 
 export type LokiConnection = {
   url: string;
@@ -34,8 +30,6 @@ export type LokiConnection = {
   login: LokiLogin;
   tenant?: string | undefined;
 };
-
-const REQUEST_TIMEOUT_MS = 30_000;
 
 type PathAndQuery = { path: string; query: URLSearchParams };
 
@@ -58,62 +52,14 @@ export function urlOf(base: string, request: LokiRequest): string {
   return `${base.replace(/\/+$/, "")}${path}?${query.toString()}`;
 }
 
-function headersOf(connection: LokiConnection): Headers {
-  const headers = new Headers({ Accept: "application/json" });
-  const { login } = connection;
-  if (login.auth === "basic")
-    headers.set(
-      "Authorization",
-      `Basic ${Buffer.from(`${login.user}:${login.password}`).toString("base64")}`
-    );
-  if (login.auth === "bearer") headers.set("Authorization", `Bearer ${login.token}`);
-  if (connection.tenant !== undefined) headers.set("X-Scope-OrgID", connection.tenant);
-  return headers;
-}
-
-/** The body up to `capBytes`, read as a stream so an over-large answer is never held whole. */
-type Body = { body: Buffer; capped: boolean };
-
-async function bodyOf(response: Response, capBytes: number): Promise<Body> {
-  const parts: Buffer[] = [];
-  let size = 0;
-  const reader = response.body?.getReader();
-  for (
-    let chunk = await reader?.read();
-    chunk !== undefined && !chunk.done;
-    chunk = await reader?.read()
-  ) {
-    parts.push(Buffer.from(chunk.value));
-    size += chunk.value.length;
-    if (size >= capBytes) {
-      await reader?.cancel();
-      return { body: Buffer.concat(parts).subarray(0, capBytes), capped: true };
-    }
-  }
-  return { body: Buffer.concat(parts), capped: false };
-}
-
 export function createLokiApi(connection: LokiConnection): LokiApi {
-  const base = pinHttpEndpoint(connection.url, connection.address, connection.port);
-  const host = new URL(connection.url).host;
+  const headers: [string, string][] =
+    connection.tenant === undefined ? [] : [["X-Scope-OrgID", connection.tenant]];
+  const http = createPinnedHttp({ ...connection, headers }, "Loki");
   return {
-    async get(request, capBytes) {
-      const headers = headersOf(connection);
-      // A pinned http URL names the address; the virtual host still wants its name.
-      if (base !== connection.url) headers.set("Host", host);
-      let response: Response;
-      try {
-        response = await fetch(urlOf(base, request), {
-          headers,
-          redirect: "error",
-          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-        });
-      } catch (cause: unknown) {
-        throw new AppError("ADAPTER_UNREACHABLE", `Loki did not answer: ${String(cause)}`, {
-          where: host,
-        });
-      }
-      return { status: response.status, ...(await bodyOf(response, capBytes)) };
+    get(request, capBytes) {
+      const { path, query } = pathAndQuery(request);
+      return http.send({ method: "GET", path: `${path}?${query.toString()}` }, capBytes);
     },
   };
 }
