@@ -4,6 +4,7 @@ import * as v from "valibot";
 
 import { AppError } from "../../lib/http/index.ts";
 import { sha256 } from "../../lib/password/index.ts";
+import { validateLogfile } from "./adapters.logfile.ts";
 import type { Secrets } from "./adapters.secrets.ts";
 
 /** Which kind each engine belongs to; the draft's `kind` must agree (05 draft body). */
@@ -101,8 +102,11 @@ const SECRET_RULES = {
     alternatives: [["password", "private_key"]],
   },
   ftp: { allowed: ["password"], alternatives: [["password"]] },
-  // Nothing yet: validateConfig refuses logfile until its engine lands (#69).
-  logfile: { allowed: [], alternatives: [] },
+  // Checked per transport by validateLogfile, as sftp's or s3's rule (adapters.logfile.ts).
+  logfile: {
+    allowed: ["password", "private_key", "passphrase", "access_key_id", "secret_access_key"],
+    alternatives: [],
+  },
 } as const satisfies Record<Engine, SecretRule>;
 
 export type Target = { host: string; port: number };
@@ -115,11 +119,11 @@ export type ValidatedConfig = {
   targetHash: string;
 };
 
-function invalid(message: string, details: JsonObject = {}): AppError {
+export function invalid(message: string, details: JsonObject = {}): AppError {
   return new AppError("VALIDATION_ERROR", message, details);
 }
 
-function parseWith<TSchema extends v.GenericSchema>(
+export function parseWith<TSchema extends v.GenericSchema>(
   schema: TSchema,
   config: JsonObject
 ): v.InferOutput<TSchema> {
@@ -171,7 +175,7 @@ function databaseTarget(
   }
 }
 
-function s3Target(config: v.InferOutput<typeof s3ConfigSchema>): Target {
+export function s3Target(config: v.InferOutput<typeof s3ConfigSchema>): Target {
   if (config.endpoint === undefined)
     return { host: `s3.${config.region}.amazonaws.com`, port: 443 };
   const url = new URL(config.endpoint);
@@ -190,12 +194,7 @@ export function validateConfig(
 ): ValidatedConfig {
   if (KIND_OF_ENGINE[engine] !== kind)
     throw invalid(`engine ${engine} is not a ${kind} adapter`, { engine, kind });
-  // ponytail: the Logs tier's schema is in place, its first engine is not. Remove with #69's
-  // engine PR, which adds the logfile config and its secrets.
-  if (engine === "logfile")
-    throw new AppError("ENGINE_UNSUPPORTED", "The logfile engine is not available yet.", {
-      reason: "not_yet",
-    });
+  if (engine === "logfile") return validateLogfile(config, secrets);
   validateSecrets(engine, secrets);
   const tier = TIER_OF_ENGINE[engine];
   if (kind === "database") {

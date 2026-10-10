@@ -1,4 +1,4 @@
-import type { Actor, AdapterDraft, AdapterMode, Project } from "@testate/shared";
+import type { Actor, AdapterDraft, AdapterKind, AdapterMode, Project } from "@testate/shared";
 
 import { AppError, forbidden } from "../../lib/http/index.ts";
 
@@ -13,6 +13,7 @@ export function modeOnCreate(
   project: Kind,
   draft: Pick<AdapterDraft, "kind" | "mode">
 ): AdapterMode {
+  if (draft.kind === "logs") return logsMode(draft.mode);
   if (project.kind === "inspect") {
     if (draft.mode === "sandbox") {
       throw new AppError("PROJECT_READ_ONLY", "Every adapter in Inspect is read-only.", {
@@ -24,8 +25,24 @@ export function modeOnCreate(
   return draft.mode ?? (draft.kind === "database" ? "sandbox" : "read_only");
 }
 
-/** The read-only mode is what Inspect guarantees, so nobody switches it, admins included. */
-export function assertModeChangeable(project: Kind): void {
+/** A Logs adapter only reads: its port has no write half, so `sandbox` would promise nothing (Q3). */
+function logsMode(asked: AdapterMode | undefined): AdapterMode {
+  if (asked === "sandbox") throw logsOnlyRead();
+  return "read_only";
+}
+
+function logsOnlyRead(): AppError {
+  return new AppError("ENGINE_UNSUPPORTED", "A Logs adapter only reads; it has no write mode.", {
+    reason: "tier",
+  });
+}
+
+/**
+ * The read-only mode is what Inspect guarantees, so nobody switches it, admins included; and a
+ * Logs adapter has no other mode to switch to.
+ */
+export function assertModeChangeable(project: Kind, adapterKind: AdapterKind): void {
+  if (adapterKind === "logs") throw logsOnlyRead();
   if (project.kind === "inspect") {
     throw new AppError("PROJECT_READ_ONLY", "Every adapter in Inspect stays read-only.");
   }

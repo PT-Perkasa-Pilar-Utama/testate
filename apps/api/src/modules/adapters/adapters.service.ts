@@ -283,7 +283,7 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
     async setMode(actor, slug, id, mode, meta) {
       const project = projectOf(slug);
       const adapter = find(project.id, id);
-      assertModeChangeable(project);
+      assertModeChangeable(project, adapter.kind);
       if (actor.role !== "admin") throw forbidden("changing the mode requires admin");
       repo.setMode(id, mode, nowIso());
       const ended = mode === "read_only" ? repo.endWriteSessions(id, nowIso()) : 0;
