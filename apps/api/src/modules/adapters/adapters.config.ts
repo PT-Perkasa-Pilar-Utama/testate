@@ -5,6 +5,7 @@ import * as v from "valibot";
 import { AppError } from "../../lib/http/index.ts";
 import { sha256 } from "../../lib/password/index.ts";
 import { validateIngest } from "./adapters.ingest.ts";
+import { validateDocker } from "./adapters.docker.ts";
 import { validateJournald } from "./adapters.journald.ts";
 import { validateLogfile } from "./adapters.logfile.ts";
 import type { Secrets } from "./adapters.secrets.ts";
@@ -21,6 +22,7 @@ export const KIND_OF_ENGINE = {
   logfile: "logs",
   ingest: "logs",
   journald: "logs",
+  docker: "logs",
 } as const satisfies Record<Engine, AdapterKind>;
 
 export const TIER_OF_ENGINE = {
@@ -34,6 +36,7 @@ export const TIER_OF_ENGINE = {
   logfile: "logs",
   ingest: "logs",
   journald: "logs",
+  docker: "logs",
 } as const satisfies Record<Engine, Tier>;
 
 const DEFAULT_PORT = {
@@ -49,6 +52,8 @@ const DEFAULT_PORT = {
   // Nothing is dialled: apps push to Testate (I1).
   ingest: 0,
   journald: 22,
+  // Over SSH; over TCP validateDocker uses 2376, the Engine API's TLS port (K1).
+  docker: 22,
 } as const satisfies Record<Engine, number>;
 
 const port = v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(65535));
@@ -122,6 +127,11 @@ const SECRET_RULES = {
   journald: {
     allowed: ["password", "private_key", "passphrase"],
     alternatives: [["password", "private_key"]],
+  },
+  // Checked per transport by validateDocker: the SSH login's, or a client key over TCP (K1).
+  docker: {
+    allowed: ["password", "private_key", "passphrase", "tls_key"],
+    alternatives: [],
   },
 } as const satisfies Record<Engine, SecretRule>;
 
@@ -199,6 +209,17 @@ export function s3Target(config: v.InferOutput<typeof s3ConfigSchema>): Target {
   return hostOfUrl(config.endpoint, url.protocol === "http:" ? 80 : 443);
 }
 
+/** Each Logs engine has its own shape and secrets, so it checks its own config (#37). */
+const LOG_ENGINE_CHECKS = new Map<
+  Engine,
+  (config: JsonObject, secrets: Secrets) => ValidatedConfig
+>([
+  ["logfile", validateLogfile],
+  ["ingest", validateIngest],
+  ["journald", validateJournald],
+  ["docker", validateDocker],
+]);
+
 /**
  * Validates the public config for the engine, checks the secret keys, and derives the network target
  * plus the target hash that decides whether a change needs a new init state (05 §5.5).
@@ -211,9 +232,8 @@ export function validateConfig(
 ): ValidatedConfig {
   if (KIND_OF_ENGINE[engine] !== kind)
     throw invalid(`engine ${engine} is not a ${kind} adapter`, { engine, kind });
-  if (engine === "logfile") return validateLogfile(config, secrets);
-  if (engine === "ingest") return validateIngest(config, secrets);
-  if (engine === "journald") return validateJournald(config, secrets);
+  const ownCheck = LOG_ENGINE_CHECKS.get(engine);
+  if (ownCheck !== undefined) return ownCheck(config, secrets);
   validateSecrets(engine, secrets);
   const tier = TIER_OF_ENGINE[engine];
   if (kind === "database") {

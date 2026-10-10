@@ -11,7 +11,7 @@ import { AppError } from "../../lib/http/index.ts";
 import { journalCommand } from "../../lib/logs/journald/command.ts";
 import type { Shell, ShellResult } from "../../lib/logs/journald/read.ts";
 import type { CheckedTarget } from "../../lib/netguard/index.ts";
-import type { SshShellConfig } from "../../lib/logs/journald/shell.ts";
+import type { SshLogin } from "../../lib/logs/ssh.ts";
 import { validateConfig } from "./adapters.config.ts";
 import { hostKeyTrust, requireStorage } from "./adapters.files.ts";
 import type { FilesResolverDeps } from "./adapters.files.ts";
@@ -20,7 +20,7 @@ import type { AdapterRecord } from "./adapters.repository.ts";
 import { CONFIG_COLUMN, openSecrets } from "./adapters.secrets.ts";
 import type { Secrets } from "./adapters.secrets.ts";
 
-export type OpenShell = (config: SshShellConfig) => Shell;
+export type OpenShell = (config: SshLogin) => Shell;
 
 export type ShellResolverDeps = Pick<
   FilesResolverDeps,
@@ -40,9 +40,9 @@ export type ShellResolver = {
 export function sshConfigOf(
   config: JournaldConfig,
   secrets: Secrets,
-  verifyHostKey: SshShellConfig["verifyHostKey"]
-): SshShellConfig {
-  const ssh: SshShellConfig = {
+  verifyHostKey: SshLogin["verifyHostKey"]
+): SshLogin {
+  const ssh: SshLogin = {
     host: config.host,
     port: config.port ?? 22,
     user: config.user,

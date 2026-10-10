@@ -113,6 +113,8 @@ export const ENGINE_FORMS = {
     config: [...HOST_PORT(22), { key: "user", label: "User", type: "text", required: true }],
     secrets: [{ key: "password", label: "Password", type: "password", required: true }],
   },
+  // Its connection is DOCKER_FORMS.ssh or .tcp by transport; its dialog is in features/logs (#88).
+  docker: { kind: "logs", label: "Docker containers", config: [], secrets: [] },
 } as const satisfies Record<Engine, EngineForm>;
 
 // Neither type is exported from the shared package (labels.ts derives AdapterStatus the same way);
