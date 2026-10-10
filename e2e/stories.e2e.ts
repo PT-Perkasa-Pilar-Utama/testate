@@ -32,7 +32,8 @@ test.describe("qa stories", () => {
     // A project opens on States now, so its empty case needs no tab switch; every other tab's is
     // every table's empty case: it used to be a header row over blank space, and the demo project
     // the rest of the suite runs against is never empty enough to show it.
-    await expect(page.getByText("No databases yet.")).toBeVisible();
+    // The project's first step sits above its tabs: connect a database (#63, Q1).
+    await expect(page.getByText("No databases yet", { exact: true })).toBeVisible();
     // Activity shows one list at a time, so each chip shows its own empty case.
     await openTab(page, "Activity");
     for (const [chip, message] of [
@@ -43,8 +44,10 @@ test.describe("qa stories", () => {
       await page.getByRole("tab", { name: chip }).click();
       await expect(page.getByText(message)).toBeVisible();
     }
-    await openTab(page, "Databases");
-    await expect(page.getByText("No adapters yet.")).toBeVisible();
+    // Filtered to this project, the Databases menu shows its group with no row yet.
+    await page.goto(`/databases?project=e2e-${STAMP}`);
+    await settle(page);
+    await expect(page.getByText(`No databases in E2E ${STAMP} match.`)).toBeVisible();
     expect(issues).toStrictEqual([]);
   });
 
@@ -57,9 +60,9 @@ test.describe("qa stories", () => {
     const qa = await apiContext("qa");
     await checkoutInit(qa);
     await qa.dispose();
-    await page.goto("/projects/demo?tab=adapters");
+    await page.goto("/databases?project=demo");
     await settle(page);
-    await page.getByRole("button", { name: "New adapter" }).click();
+    await page.getByRole("button", { name: "New database" }).click();
     const dialog = page.locator("dialog[open]");
     await dialog.getByLabel("Name").fill(`pg-${STAMP}`);
     await dialog.getByLabel("Host").fill("127.0.0.1");

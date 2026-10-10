@@ -90,7 +90,7 @@ test.describe("README screens", () => {
     ).toBeVisible({ timeout: 90_000 });
 
     await shoot("/projects", "projects");
-    await shoot("/projects/demo", "adapters", "Databases");
+    await shoot("/databases?project=demo", "adapters");
     // The README leads with this one: many states, HEAD marked, the two this spec named at the
     // top. The tree is the more git-shaped picture but it orders by lineage, so the states other
     // specs leave behind (api-dedupe-b-mtjeb32u and friends) sit above anything readable.
