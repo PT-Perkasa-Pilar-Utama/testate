@@ -53,7 +53,10 @@ test.describe("adapter settings stories", () => {
     await create.getByLabel("Password").fill("testate");
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.locator("dialog[open]")).toHaveCount(0);
-    // One starting point per project: the new database joins it rather than adding a row.
+    // One starting point per project: the new database joins it rather than adding a row. The
+    // dialog lives on the Databases menu now, so the states are a page away.
+    await page.goto("/projects/demo");
+    await settle(page);
     await openStatesList(page);
     await expect(stateRow(page, "init")).toHaveCount(1);
     await initHolds(page, `cfg-${STAMP}`);
@@ -102,6 +105,8 @@ test.describe("adapter settings stories", () => {
     await expect(page.getByRole("link", { name: `cfg-${STAMP}-2` })).toHaveCount(0, {
       timeout: 60_000,
     });
+    await page.goto("/projects/demo");
+    await settle(page);
     await openStatesList(page);
     // The starting point outlives the adapter (story 31): still one row, still holding its entry.
     await expect(stateRow(page, "init")).toHaveCount(1);
