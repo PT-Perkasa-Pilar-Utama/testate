@@ -28,7 +28,7 @@ export function LogsPanel(props: {
       <Show when={hasRole("qa") && props.manages}>
         <div>
           <Button size="sm" variant="secondary" onClick={() => edit.openEdit(props.adapter)}>
-            Edit log source
+            Edit log adapter
           </Button>
         </div>
       </Show>

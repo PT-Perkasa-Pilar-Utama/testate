@@ -73,7 +73,7 @@ export function LogfileDialog(props: {
     <FormDialog
       open={props.presenter.open()}
       onClose={props.presenter.close}
-      title={editing() ? "Edit log source" : "New log source"}
+      title={editing() ? "Edit log adapter" : "New log adapter"}
       description="Read-only. Testate seals secrets before they reach the database and never shows them again."
       size="lg"
     >

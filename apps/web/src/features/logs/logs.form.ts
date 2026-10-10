@@ -152,7 +152,7 @@ export function createLogfileFormPresenter(
     try {
       await task();
     } catch (cause: unknown) {
-      setError(humanMessage(cause, "The log source could not be saved"));
+      setError(humanMessage(cause, "The log adapter could not be saved"));
     } finally {
       setBusy(false);
     }
@@ -187,7 +187,7 @@ export function createLogfileFormPresenter(
       await adaptersModel.update(staticSlug, adapter.id, body);
       setOpen(false);
       onSaved();
-      showToast("Log source saved", "success");
+      showToast("Log adapter saved", "success");
     });
   };
   return {
