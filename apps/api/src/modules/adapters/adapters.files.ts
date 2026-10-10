@@ -17,6 +17,8 @@ import { probeJournald } from "./adapters.shell.ts";
 import type { OpenShell } from "./adapters.shell.ts";
 import { probeDocker } from "./adapters.docker.api.ts";
 import type { OpenDocker } from "./adapters.docker.api.ts";
+import { probeLoki } from "./adapters.loki.api.ts";
+import type { OpenLoki } from "./adapters.loki.api.ts";
 import type { AdapterRecord, AdaptersRepository } from "./adapters.repository.ts";
 import { CONFIG_COLUMN, openSecrets } from "./adapters.secrets.ts";
 import type { Secrets } from "./adapters.secrets.ts";
@@ -236,7 +238,8 @@ export function createFileProbe(
   open: OpenFileSource,
   fallback: FileProbeFn,
   openShell: OpenShell,
-  openDocker: OpenDocker
+  openDocker: OpenDocker,
+  openLoki: OpenLoki
 ): FileProbeFn {
   return async (
     engine: Engine,
@@ -247,6 +250,7 @@ export function createFileProbe(
     if (engine === "logfile") return probeLogfile(open, config, secrets, target);
     if (engine === "journald") return probeJournald(openShell, config, secrets, target);
     if (engine === "docker") return probeDocker(openDocker, config, secrets, target);
+    if (engine === "loki") return probeLoki(openLoki, config, secrets, target);
     if (TIER_OF_ENGINE[engine] !== "files") return fallback(engine, config, secrets, target);
     const source = open(engine, config, secrets, () => true, target);
     try {

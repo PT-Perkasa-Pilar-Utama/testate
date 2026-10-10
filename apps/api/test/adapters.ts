@@ -5,6 +5,8 @@ import * as v from "valibot";
 import { createMemoryBlobStore, createSwitchableBlobStore } from "../src/lib/blobstore/index.ts";
 import type { MemoryTree } from "../src/lib/files/index.ts";
 import { memoryOpen } from "./files.ts";
+import { remoteHosts, remoteOpeners, remoteResolvers } from "./adapters.remote.ts";
+import type { RemoteHosts, RemoteResolvers } from "./adapters.remote.ts";
 import { createFileProbe, createFilesResolver } from "../src/modules/adapters/adapters.files.ts";
 import type { FilesResolver } from "../src/modules/adapters/adapters.files.ts";
 import { createHostKeysRepository } from "../src/modules/adapters/adapters.hostkeys.ts";
@@ -49,14 +51,6 @@ import { createIngestStore } from "../src/lib/logs/ingest/store.ts";
 import type { IngestStore } from "../src/lib/logs/ingest/store.ts";
 import { createIngestTokensRepository } from "../src/modules/ingest/ingest.repository.ts";
 import { createMoveRepository } from "../src/modules/adapters/adapters.move.repository.ts";
-import { memoryOpenDocker } from "./docker.ts";
-import type { FakeContainer } from "./docker.ts";
-import { memoryOpenShell } from "./journald.ts";
-import { createShellResolver } from "../src/modules/adapters/adapters.shell.ts";
-import { createDockerResolver } from "../src/modules/adapters/adapters.docker.api.ts";
-import type { DockerResolver } from "../src/modules/adapters/adapters.docker.api.ts";
-import type { ShellResolver } from "../src/modules/adapters/adapters.shell.ts";
-import type { JournalRow } from "./journald.ts";
 import { createIngestService } from "../src/modules/ingest/ingest.service.ts";
 import type { IngestService } from "../src/modules/ingest/ingest.service.ts";
 import { fakeRegistry, shopDatabase } from "./adapters.fixtures.ts";
@@ -102,22 +96,23 @@ export type AdaptersHarness = {
   db: AccountsHarness["db"];
   now: () => Date;
   hostKeys: HostKeysRepository;
-  journals: Map<string, JournalRow[]>;
-  shells: ShellResolver;
-  /** Docker hosts' containers, by host name (#88). */
-  dockerHosts: Map<string, FakeContainer[]>;
-  dockers: DockerResolver;
   files: FilesResolver;
   /** In-memory file trees by S3 bucket or SFTP/FTP host; storage adapters in tests browse these. */
   trees: Map<string, MemoryTree>;
   /** The host key the fake SFTP server presents; change it to simulate a rotated key. */
   sftpKey: { current: string };
-};
+} & RemoteHosts &
+  RemoteResolvers;
 
 /** A registry with one fake postgres engine; other engines are absent, as in the real build. */
 type Netguard = { check(input: Check): Promise<Verdict> };
 
 /** Verdicts by host name: `blocked` hosts hit the policy, `.invalid` hosts never resolve, the rest pass. */
+/** The openers in createFileProbe's order. */
+function openersOf(open: ReturnType<typeof remoteOpeners>) {
+  return [open.openShell, open.openDocker, open.openLoki] as const;
+}
+
 function stubNetguard(blocked: Set<string>): Netguard {
   return {
     async check(input) {
@@ -218,9 +213,7 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
   });
   runtime.dispatcher.start();
   const trees = new Map<string, MemoryTree>();
-  /** SSH hosts' journals, by host name, behind the same host key as the SFTP hosts (#86). */
-  const journals = new Map<string, JournalRow[]>();
-  const dockerHosts = new Map<string, FakeContainer[]>();
+  const hosts = remoteHosts();
   const sftpKey = { current: "SHA256:fake-host-key-1" };
   const hostKeys = createHostKeysRepository(accounts.db);
   const files = createFilesResolver({
@@ -259,8 +252,7 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     fileProbe: createFileProbe(
       memoryOpen(trees, sftpKey),
       createScaffoldFileProbe(),
-      memoryOpenShell(journals, sftpKey),
-      memoryOpenDocker(dockerHosts, sftpKey)
+      ...openersOf(remoteOpeners(hosts, sftpKey))
     ),
     jobs: runtime.jobs,
     states,
@@ -299,23 +291,11 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     files,
     trees,
     sftpKey,
-    journals,
-    shells: createShellResolver({
-      repo,
-      hostKeys,
-      ring,
-      netguard: stubNetguard(blocked),
-      openShell: memoryOpenShell(journals, sftpKey),
-      now: accounts.now,
-    }),
-    dockerHosts,
-    dockers: createDockerResolver({
-      repo,
-      hostKeys,
-      ring,
-      netguard: stubNetguard(blocked),
-      openDocker: memoryOpenDocker(dockerHosts, sftpKey),
-      now: accounts.now,
-    }),
+    ...hosts,
+    ...remoteResolvers(
+      { repo, hostKeys, ring, netguard: stubNetguard(blocked), now: accounts.now },
+      hosts,
+      sftpKey
+    ),
   };
 }

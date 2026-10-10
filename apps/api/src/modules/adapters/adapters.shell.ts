@@ -96,7 +96,7 @@ export async function checkedLogin(
   deps: Omit<ShellResolverDeps, "openShell">,
   projectId: string,
   adapterId: string,
-  engine: "journald" | "docker",
+  engine: "journald" | "docker" | "loki",
   trustAs: string | null
 ): Promise<CheckedLogin> {
   const adapter = requireStorage(deps.repo.byId(adapterId), projectId, "logs");
