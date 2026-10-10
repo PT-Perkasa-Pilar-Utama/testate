@@ -187,4 +187,4 @@ The user needs the `systemd-journal` group to read every unit; without it, journ
 sudo usermod -aG systemd-journal deploy
 ```
 
-The host key is trusted the first time a person reads, as for SFTP. A changed key stops every read until someone accepts the new one. A host with no journal yet, or a container without journald, gets a `no_journal` warning.
+The host key is trusted the first time a person reads, as for SFTP. A changed key stops every read until someone accepts the new one. A host with no journal yet gets a `no_journal` warning; a host without systemd, and so without journalctl, gets `no_journalctl`.
