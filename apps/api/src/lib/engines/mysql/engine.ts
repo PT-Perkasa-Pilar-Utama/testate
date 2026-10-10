@@ -21,6 +21,7 @@ import { cancelQuery, listRunningQueries, runQuery, terminateSessions } from "./
 import { snapshot, swallow } from "./reader.ts";
 import { checkout, resetCounters } from "./restore.ts";
 import { pageRows } from "./rows.ts";
+import { readServerLog } from "./serverlog.ts";
 import { importRows, writeRows } from "./write.ts";
 
 export function decodeRow(row: RowText): DisplayRow {
@@ -141,6 +142,10 @@ export function createMysqlEngine(netguard: Netguard): DbEngine {
     async listRunningQueries(conn) {
       const sql = await pools.acquire(conn);
       return guarded("list queries", () => listRunningQueries(sql));
+    },
+    async readServerLog(conn, source, page) {
+      const sql = await pools.acquire(conn);
+      return guarded("server log", () => readServerLog(sql, source, page));
     },
     async cancelQuery(conn, queryId) {
       const sql = await pools.acquire(conn);

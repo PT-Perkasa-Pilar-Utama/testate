@@ -3,6 +3,7 @@ import * as v from "valibot";
 
 import type { MongoHandle } from "./client.ts";
 import { introspect } from "./introspect.ts";
+import { serverLogSources } from "./serverlog.ts";
 
 export const MONGODB_FLOOR = "6.0";
 const TIME_SERIES_FLOOR = 7;
@@ -69,6 +70,7 @@ export async function probe(handle: MongoHandle): Promise<ProbeResult> {
     transactionalRestore: false,
     snapshotRead: topology.replicaSet ? "snapshot-read-concern" : "best-effort",
     timeSeriesDeletes: topology.timeSeriesDeletes,
+    serverLogs: await serverLogSources(handle),
   };
   const warnings: ProbeResult["warnings"] = [];
   if (!topology.replicaSet)

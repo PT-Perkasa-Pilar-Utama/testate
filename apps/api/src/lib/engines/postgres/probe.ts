@@ -7,6 +7,7 @@ import { EngineError } from "../types.ts";
 import { introspect } from "./introspect.ts";
 import { swallow } from "./reader.ts";
 import { pgArray, quoteTable } from "./pool.ts";
+import { serverLogSources } from "./serverlog.ts";
 
 export const POSTGRES_FLOOR = "13";
 const FLOOR_NUM = 130000;
@@ -75,6 +76,7 @@ export async function probe(sql: SQL): Promise<ProbeResult> {
     transactionalRestore: true,
     snapshotRead: "repeatable-read",
     timeSeriesDeletes: false,
+    serverLogs: await serverLogSources(sql),
   };
   const strategy = selectRestoreStrategy(capabilities, hasDeferrable);
   if (isRefusal(strategy)) throw new EngineError("privilege_missing", strategy.reason);

@@ -5,6 +5,7 @@ import * as v from "valibot";
 import { isRefusal, selectRestoreStrategy } from "../pure/strategy.ts";
 import { EngineError } from "../types.ts";
 import { introspect } from "./introspect.ts";
+import { serverLogSources } from "./serverlog.ts";
 
 export const MYSQL_FLOOR = "8.0";
 export const MARIADB_FLOOR = "10.6";
@@ -60,6 +61,7 @@ export async function probe(sql: SQL): Promise<ProbeResult> {
     transactionalRestore: true,
     snapshotRead: "consistent-snapshot",
     timeSeriesDeletes: false,
+    serverLogs: await serverLogSources(sql),
   };
   const strategy = selectRestoreStrategy(capabilities, false);
   if (isRefusal(strategy)) throw new EngineError("privilege_missing", strategy.reason);

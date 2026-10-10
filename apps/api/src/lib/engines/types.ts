@@ -4,12 +4,16 @@ import type {
   Introspection,
   JsonObject,
   JsonValue,
+  LogLevel,
   ManifestTable,
   ProbeResult,
   RestoreStrategy,
   SchemaDrift,
+  ServerLogSource,
   TableRef,
 } from "@testate/shared";
+
+import type { ServerKey } from "../logs/server.ts";
 
 export type { Capabilities, Introspection, ProbeResult, RestoreStrategy, SchemaDrift, TableRef };
 
@@ -232,6 +236,20 @@ export class EngineError extends Error {
 }
 
 /** The engine port (ADR 0001). Each engine folder implements it; the registry hands one out per engine. */
+/** One server-log entry, newest first (#84, D4). `digest` is what a masked reader sees (D7). */
+export type ServerLogEntry = {
+  key: ServerKey;
+  level: LogLevel;
+  message: string;
+  /** The engine's own normalised text, or a literal-free rendering; null to mask at read time. */
+  digest: string | null;
+  fields: JsonObject | null;
+};
+/** Entries before `before`, or after `after` (follow); at most `limit`, newest first. */
+export type ServerLogPage = { limit: number; before: ServerKey | null; after: ServerKey | null };
+/** `end`: nothing older is left in the source (a ring buffer's oldest entry, or its start). */
+export type ServerLogRead = { entries: ServerLogEntry[]; end: boolean };
+
 export type DbEngine = {
   probe(config: ConnectionConfig): Promise<ProbeResult>;
   introspect(conn: ConnectionRef, excluded: TableRef[]): Promise<Introspection>;
@@ -257,6 +275,12 @@ export type DbEngine = {
   runQuery(conn: ConnectionRef, query: EngineQuery, opts: QueryOptions): Promise<QueryResult>;
   listRunningQueries(conn: ConnectionRef): Promise<RunningQuery[]>;
   cancelQuery(conn: ConnectionRef, queryId: string): Promise<void>;
+  /** One page of a server-log source the probe found readable (#84; `capabilities.serverLogs`). */
+  readServerLog(
+    conn: ConnectionRef,
+    source: ServerLogSource,
+    page: ServerLogPage
+  ): Promise<ServerLogRead>;
   /** Ends the sessions that blocked a checkout (09 §9.5); needs `canTerminateSessions` from the probe. */
   terminateSessions(conn: ConnectionRef, sessionIds: string[]): Promise<TerminateResult>;
   decodeRow(row: RowText): DisplayRow;

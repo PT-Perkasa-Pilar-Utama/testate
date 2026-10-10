@@ -16,6 +16,7 @@ import {
   timestampSchema,
 } from "./common.ts";
 import { jobSchema } from "./jobs.ts";
+import { serverLogSourceSchema } from "./logs.server.ts";
 import { jsonObjectSchema } from "./json.ts";
 
 export const capabilitiesSchema = v.object({
@@ -31,6 +32,8 @@ export const capabilitiesSchema = v.object({
     "best-effort",
   ]),
   timeSeriesDeletes: v.boolean(),
+  /** The server-log sources this credential can read (#84, D2). Older rows have none stored. */
+  serverLogs: v.optional(v.array(serverLogSourceSchema), []),
 });
 export type Capabilities = v.InferOutput<typeof capabilitiesSchema>;
 
