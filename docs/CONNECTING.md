@@ -204,3 +204,17 @@ Testate only reads. It calls five read-only paths of the Engine API and never op
 The socket proxy is the safer choice. Docker access over SSH lets that user do anything on the host.
 
 **Test connection** names what will not read: a container that does not exist (with the ones that do), a container whose log driver ships its logs elsewhere (Docker reads back only `json-file`, `local` and `journald`), a TTY container (its stdout and stderr are one stream), plain http, and an SSH user who may not open the socket.
+
+## K. Read Grafana Loki
+
+Open **Logs**, click **New log adapter**, and pick "Grafana Loki". Give Loki's address and one source per LogQL log query, such as `{service="api"}` or `{namespace="shop"} |= "error"`. A metric query such as `rate(...)` is refused: a source reads lines.
+
+| Loki | Address | Login |
+| --- | --- | --- |
+| Your own, with no auth | `http://loki.internal:3100` | None |
+| Behind a proxy | the proxy's address, path prefix included | User and password, or a bearer token, as the proxy wants |
+| Grafana Cloud | the Loki URL on the stack's page, such as `https://logs-prod-012.grafana.net` | User and password: the user is the instance ID, the password an access-policy token with `logs:read` |
+
+A Loki that runs with tenants needs the tenant, sent as `X-Scope-OrgID`. Without one, Test connection says so. A wrong tenant answers with nothing, so Test connection warns of a source that matched nothing in the last day.
+
+Testate makes two read-only calls and follows no redirect. The level and text filters work on the page Testate read, so a filtered page can be short; the cursor still pages back.
