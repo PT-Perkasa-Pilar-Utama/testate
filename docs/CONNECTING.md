@@ -161,3 +161,16 @@ curl -X POST https://testate.example.internal/api/v1/ingest/<adapter-id> \
 | anything else | Kept as the entry's fields, searchable from the viewer |
 
 The answer is `202 { "data": { "accepted": 3, "malformed": 0 } }`. `malformed` counts lines that were not JSON: they are kept as text, so a logging bug shows up there rather than as missing lines. Past 600 requests a minute you get `429` with `Retry-After`; batch lines instead. Once today's lines fill the adapter's size cap, pushes answer `507` until the next day, a clear, or a larger cap. Pushed logs are not in a backup: `testate whereis ingest` prints the folder to copy.
+
+## H. Let Testate read a database's server logs
+
+A database adapter's **Server logs** tab reads through the adapter's own connection, so it shows what the adapter's user may see. Each source it cannot read is listed under the viewer with what opens it. Run the grant, then **Retest connection**.
+
+| Engine | To read its statements | To read more |
+| --- | --- | --- |
+| PostgreSQL | Nothing; `GRANT pg_read_all_stats TO <user>;` shows other users' statements too | `logging_collector = on` and `GRANT pg_read_server_files TO <user>;` for the server log |
+| MySQL | `GRANT SELECT ON performance_schema.* TO <user>;` | `SET GLOBAL slow_query_log = ON, log_output = 'TABLE'; GRANT SELECT ON mysql.slow_log TO <user>;` |
+| MariaDB | `performance_schema = ON`, `performance_schema_consumer_events_statements_current = ON` and `performance_schema_consumer_events_statements_history = ON` in the server config, then the MySQL grant | the slow log, as MySQL |
+| MongoDB | Nothing for this user's own operations; `roles: ["clusterMonitor"]` for everyone's | the same role reads the server log |
+
+On RDS, Supabase, Neon or Cloud SQL the server log file is out of reach; statements still work. To read log files on the database host itself, add a `logfile` log adapter over SFTP.

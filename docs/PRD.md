@@ -188,6 +188,7 @@ apart on what a checkout does.
 154. As a viewer, I want each checkout and job to link to the logs written during it, so that I go from a failed run to its logs in one click.
 155. As a viewer, I want secrets in log lines masked by built-in patterns and the source's own, and to download what I see as JSON lines, while testers see raw lines, so that a log never leaks a token.
 156. As an agent, I want to read a log source over MCP, always masked, so that I can explain a failure from the logs without a person copying them.
+159. As a QA engineer, I want to read a database's recent statements and server log on its adapter page, with the grant shown for what I cannot read yet, so that I see what the database did during a test without a shell on its host.
 157. As an integrator, I want my app to push its own logs to a Testate log adapter with a token that can do nothing else, so that logs from a system Testate cannot reach still sit beside its data.
 
 ### Jobs
