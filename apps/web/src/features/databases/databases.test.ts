@@ -99,10 +99,11 @@ describe("the Databases screen", () => {
       ["billing", false, "BILLING"],
       ["shop", true, "SHOP (not at its starting point)"],
     ]);
-    expect([firstPickable(options, "shop"), firstPickable(options, "billing")]).toEqual([
-      "inspect",
-      "billing",
-    ]);
+    expect([
+      firstPickable(options, "shop"),
+      firstPickable(options, "inspect"),
+      firstPickable(options.slice(0, 1), ""),
+    ]).toEqual(["billing", "inspect", "inspect"]);
   });
 
   test("reads the project filter and the create preset from the address", () => {

@@ -119,7 +119,7 @@ export default function StatesView(props: {
   };
   const emptyText = (): string =>
     presenter.databases.value().length === 0
-      ? "No databases yet. Connect one on the Databases tab; its first snapshot is the init state."
+      ? "No states yet. A database's first snapshot, taken when it joins, is the init state."
       : "No states yet. Take one to keep what the databases hold right now.";
   return (
     <div class="grid gap-3">
