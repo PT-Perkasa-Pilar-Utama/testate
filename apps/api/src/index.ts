@@ -20,7 +20,6 @@ import {
   migrateOrRefuse,
   resetAdminPassword,
   sweepSealed,
-  run,
 } from "./boot.ts";
 import { createEngineWiring, createStateServices, scopeDeps, settingsDeps } from "./wiring.ts";
 import { bootStore, lazyJobs, opsDeps, resetHandler, storageDeps } from "./wiring.store.ts";
@@ -67,6 +66,7 @@ import { createUsersRepository } from "./modules/users/users.repository.ts";
 import { createUsersService } from "./modules/users/users.service.ts";
 import { EMBEDDED } from "./embedded.ts";
 import { VERSION } from "./version.ts";
+import { run } from "./cli/index.ts";
 
 export type App = {
   fetch: Hono["fetch"];
@@ -315,4 +315,4 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   };
 }
 
-if (import.meta.main) await run(Bun.argv.slice(1), VERSION, () => boot(Bun.env));
+if (import.meta.main) await run(Bun.argv.slice(2), { env: Bun.env, version: VERSION, boot });
