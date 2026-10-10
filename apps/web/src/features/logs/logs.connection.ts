@@ -6,7 +6,7 @@ import { createRefreshable } from "@/lib/async.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { showToast } from "@/lib/toast.ts";
 import { missingRequiredFields } from "../adapters/adapters.fields.ts";
-import type { Connection, Values } from "../adapters/adapters.fields.ts";
+import type { Connection, EngineForm, Values } from "../adapters/adapters.fields.ts";
 import { adaptersModel } from "../adapters/adapters.model.ts";
 import type { ProbeOutcome } from "../adapters/adapters.model.ts";
 
@@ -15,14 +15,14 @@ export type ConnectionDraft<TInput> = { input: TInput; values: Values };
 
 /**
  * What tells one connection dialog from another (#69 logfile, #86 journald): its blank draft, an
- * edited adapter's draft, its create and edit bodies, and the engine whose fields a create needs.
+ * edited adapter's draft, its create and edit bodies, and the fields a create needs.
  */
 export type ConnectionKind<TInput, TForm> = {
   blank: TInput;
   draftFrom: (adapter: Adapter) => ConnectionDraft<TInput>;
   toBody: (input: TForm, values: Values) => JsonObject;
   toPatch: (input: TForm, values: Values) => JsonObject;
-  engineOf: (input: TForm) => Engine;
+  formOf: (input: TForm) => Engine | EngineForm;
 };
 
 /** A log adapter's create body: always read-only (Q3 of docs/decisions/2026-10-10-logs-tier.md). */
@@ -91,7 +91,7 @@ export function createConnectionFormPresenter<TInput, TForm>(
     setOpen(true);
   };
   const create = (input: TForm): Promise<void> => {
-    const missing = missingRequiredFields(kind.engineOf(input), values());
+    const missing = missingRequiredFields(kind.formOf(input), values());
     if (missing.length > 0) {
       setError(`Fill in: ${missing.join(", ")}.`);
       return Promise.resolve();

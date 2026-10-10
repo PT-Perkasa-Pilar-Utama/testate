@@ -65,7 +65,7 @@ const JOURNALD_KIND: ConnectionKind<JournaldFormInput, JournaldForm> = {
   draftFrom: journaldDraftFrom,
   toBody: toJournaldBody,
   toPatch: toJournaldPatch,
-  engineOf: () => "journald",
+  formOf: () => "journald",
 };
 
 export function createJournaldFormPresenter(

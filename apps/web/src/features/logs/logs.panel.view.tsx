@@ -9,6 +9,8 @@ import { createRefreshable } from "@/lib/async.ts";
 import { hasRole } from "@/lib/session.ts";
 import { createLogfileFormPresenter } from "./logs.form.ts";
 import { LogfileDialog } from "./logs.form.view.tsx";
+import { createDockerFormPresenter } from "./logs.docker.ts";
+import { DockerDialog } from "./logs.docker.view.tsx";
 import { createIngestPresenter } from "./logs.ingest.ts";
 import { createJournaldFormPresenter } from "./logs.journald.ts";
 import { JournaldDialog } from "./logs.journald.view.tsx";
@@ -64,6 +66,26 @@ function JournaldControls(props: PanelProps): JSX.Element {
   );
 }
 
+/** A docker adapter's: edit its connection and its containers (#88). */
+function DockerControls(props: PanelProps): JSX.Element {
+  const edit = createDockerFormPresenter(
+    () => props.slug,
+    () => props.onSaved()
+  );
+  return (
+    <>
+      <Show when={hasRole("qa") && props.manages}>
+        <div>
+          <Button size="sm" variant="secondary" onClick={() => edit.openEdit(props.adapter)}>
+            Edit log adapter
+          </Button>
+        </div>
+      </Show>
+      <DockerDialog presenter={edit} />
+    </>
+  );
+}
+
 /** An ingest adapter's own controls (I3a, I8): edit, a new token, and clearing for an admin. */
 function IngestControls(props: PanelProps): JSX.Element {
   const ingest = createIngestPresenter(
@@ -112,6 +134,9 @@ export function LogsPanel(props: PanelProps): JSX.Element {
         </Match>
         <Match when={props.adapter.engine === "journald"}>
           <JournaldControls {...props} onSaved={saved} />
+        </Match>
+        <Match when={props.adapter.engine === "docker"}>
+          <DockerControls {...props} onSaved={saved} />
         </Match>
       </Switch>
       <Loading fallback={<Pending>Listing sources...</Pending>}>

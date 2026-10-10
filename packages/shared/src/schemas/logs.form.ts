@@ -2,6 +2,7 @@ import * as v from "valibot";
 
 import { adapterDraftSchema } from "./adapters.ts";
 import { CAP_RULE, RETENTION_RULE } from "./logs.ingest.ts";
+import { DOCKER_CONTAINER } from "./logs.docker.ts";
 import { journalUnitSchema } from "./logs.journald.ts";
 import { logFormatSchema, logGlobSchema, logSourceNameSchema, safePatternSchema } from "./logs.ts";
 
@@ -139,3 +140,46 @@ export const journaldFormSchema = v.object({
 });
 export type JournaldFormInput = v.InferInput<typeof journaldFormSchema>;
 export type JournaldForm = v.InferOutput<typeof journaldFormSchema>;
+
+/** The "Docker containers" dialog's transports (#88, K1). */
+export const DOCKER_TRANSPORTS = ["ssh", "tcp"] as const;
+
+/** One container source as the dialog shows it: a format, and masking patterns one per line. */
+export const dockerSourceFormSchema = v.pipe(
+  v.object({
+    name: logSourceNameSchema,
+    container: v.pipe(
+      v.string(),
+      v.minLength(1, "Enter the container's name."),
+      v.regex(DOCKER_CONTAINER, "A container name holds letters, digits and _ . - only.")
+    ),
+    format: logFormatSchema,
+    regex: regexText,
+    patterns: patternsText,
+  }),
+  v.forward(
+    v.partialCheck(
+      [["format"], ["regex"]],
+      (source) => source.format !== "regex" || source.regex !== "",
+      "The regex format needs a pattern."
+    ),
+    ["regex"]
+  )
+);
+
+/** The dialog's static fields; the connection's are `DOCKER_FORMS[transport]` in the SPA. */
+export const dockerFormSchema = v.object({
+  name: adapterDraftSchema.entries.name,
+  transport: v.picklist(DOCKER_TRANSPORTS),
+  sources: v.pipe(
+    v.array(dockerSourceFormSchema),
+    v.minLength(1, "Add at least one source."),
+    v.maxLength(32, "A log adapter holds at most 32 sources."),
+    v.check(
+      (sources) => new Set(sources.map((source) => source.name)).size === sources.length,
+      "Each source needs its own name."
+    )
+  ),
+});
+export type DockerFormInput = v.InferInput<typeof dockerFormSchema>;
+export type DockerForm = v.InferOutput<typeof dockerFormSchema>;

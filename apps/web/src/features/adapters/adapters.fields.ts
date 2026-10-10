@@ -1,5 +1,6 @@
 import type { Adapter, AdapterKind, AdapterMode, Engine, JsonObject, Tier } from "@testate/shared";
-import { ADAPTER_MODES, ADAPTER_STATUSES } from "@testate/shared";
+import { ADAPTER_MODES, ADAPTER_STATUSES, engineSchema } from "@testate/shared";
+import * as v from "valibot";
 
 import { ADAPTER_MODE_LABEL, ADAPTER_STATUS_LABEL } from "@/lib/labels.ts";
 
@@ -22,7 +23,7 @@ export type EngineForm = { kind: AdapterKind; label: string; config: Field[]; se
  * the warning tone instead. */
 export const STATUS_VARIANT = { ok: "success", error: "error", disabled: "warning" } as const;
 
-const HOST_PORT = (port: number): Field[] => [
+export const HOST_PORT = (port: number): Field[] => [
   { key: "host", label: "Host", type: "text", required: true, placeholder: "db.sit.internal" },
   { key: "port", label: "Port", type: "number", placeholder: String(port) },
 ];
@@ -156,9 +157,14 @@ export type Values = Record<string, string>;
 /** An engine's connection as a draft body holds it. */
 export type Connection = { config: JsonObject; secrets: JsonObject };
 
+/** An engine's own fields, or a set a dialog brings itself (docker's by transport, #88). */
+export function engineForm(of: Engine | EngineForm): EngineForm {
+  return v.is(engineSchema, of) ? ENGINE_FORMS[of] : of;
+}
+
 /** One engine's config and secrets from the form strings: numbers parsed, blanks dropped. */
-export function connectionOf(engine: Engine, values: Values): Connection {
-  const form: EngineForm = ENGINE_FORMS[engine];
+export function connectionOf(engine: Engine | EngineForm, values: Values): Connection {
+  const form = engineForm(engine);
   const config: JsonObject = {};
   for (const field of form.config) {
     const raw = values[`config.${field.key}`] ?? "";
@@ -194,8 +200,8 @@ export function toDraftBody(
  * decided at runtime, so Formisch's schema cannot cover them (`createForm` throws on a `record`
  * schema); the create dialog checks them by hand in their place, the way the old form guard did.
  */
-export function missingRequiredFields(engine: Engine, values: Values): string[] {
-  const form: EngineForm = ENGINE_FORMS[engine];
+export function missingRequiredFields(engine: Engine | EngineForm, values: Values): string[] {
+  const form = engineForm(engine);
   const sections: [string, Field[]][] = [
     ["config", form.config],
     ["secret", form.secrets],
