@@ -42,17 +42,25 @@ export const safePatternSchema = v.pipe(
  * One named source on a `logfile` adapter (S1): a file-name pattern in one directory under the
  * connection's root, read in one format.
  */
+export const logSourceNameSchema = v.pipe(
+  v.string(),
+  v.minLength(1, "Name the source."),
+  v.maxLength(64, "Keep the name to 64 characters.")
+);
+
+/** `logs/api-*.log`: a directory, then a pattern on the file name. No `**`, no `~`. */
+export const logGlobSchema = v.pipe(
+  v.string(),
+  v.minLength(1, "Enter a file pattern, like logs/api-*.log."),
+  v.maxLength(512, "Keep the pattern to 512 characters."),
+  v.check((glob) => !glob.includes("**") && !glob.startsWith("~"), "No ** and no ~ in a glob."),
+  v.check((glob) => !glob.split("/").includes(".."), "A glob stays under the root.")
+);
+
 export const logSourceSchema = v.pipe(
   v.object({
-    name: v.pipe(v.string(), v.minLength(1), v.maxLength(64)),
-    /** `logs/api-*.log`: a directory, then a pattern on the file name. No `**`, no `~`. */
-    glob: v.pipe(
-      v.string(),
-      v.minLength(1),
-      v.maxLength(512),
-      v.check((glob) => !glob.includes("**") && !glob.startsWith("~"), "No ** and no ~ in a glob."),
-      v.check((glob) => !glob.split("/").includes(".."), "A glob stays under the root.")
-    ),
+    name: logSourceNameSchema,
+    glob: logGlobSchema,
     format: logFormatSchema,
     /** The `regex` format's pattern: named groups `time`, `level` and `message`, the rest fields. */
     regex: v.optional(safePatternSchema),

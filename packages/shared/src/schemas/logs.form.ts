@@ -1,0 +1,79 @@
+import * as v from "valibot";
+
+import { adapterDraftSchema } from "./adapters.ts";
+import { logFormatSchema, logGlobSchema, logSourceNameSchema, safePatternSchema } from "./logs.ts";
+
+/**
+ * The logfile dialog's static fields (#69, S1). The connection's own fields are keyed by transport
+ * at runtime (`ENGINE_FORMS.sftp` or `.s3`), so they stay outside this schema as the create dialog's
+ * do. Text boxes hold "" for "none", and the masking patterns are one per line.
+ */
+export const LOG_TRANSPORTS = ["sftp", "s3"] as const;
+export type LogTransport = (typeof LOG_TRANSPORTS)[number];
+
+/** The non-blank lines of a text box, trimmed. */
+export function patternLines(text: string): string[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+}
+
+/** The first reason `pattern` is refused, or null when it is a safe pattern. */
+function refusal(pattern: string): string | null {
+  const parsed = v.safeParse(safePatternSchema, pattern);
+  return parsed.success ? null : parsed.issues[0].message;
+}
+
+const regexText = v.pipe(
+  v.string(),
+  v.rawCheck(({ dataset, addIssue }) => {
+    const reason = dataset.typed && dataset.value !== "" ? refusal(dataset.value) : null;
+    if (reason !== null) addIssue({ message: reason });
+  })
+);
+
+const patternsText = v.pipe(
+  v.string(),
+  v.rawCheck(({ dataset, addIssue }) => {
+    if (!dataset.typed) return;
+    const reasons = patternLines(dataset.value).map(refusal);
+    const line = reasons.findIndex((reason) => reason !== null);
+    if (line !== -1) addIssue({ message: `Line ${line + 1}: ${reasons[line]}` });
+  })
+);
+
+export const logSourceFormSchema = v.pipe(
+  v.object({
+    name: logSourceNameSchema,
+    glob: logGlobSchema,
+    format: logFormatSchema,
+    regex: regexText,
+    patterns: patternsText,
+  }),
+  v.forward(
+    v.partialCheck(
+      [["format"], ["regex"]],
+      (source) => source.format !== "regex" || source.regex !== "",
+      "The regex format needs a pattern."
+    ),
+    ["regex"]
+  )
+);
+export type LogSourceFormInput = v.InferInput<typeof logSourceFormSchema>;
+
+export const logfileFormSchema = v.object({
+  name: adapterDraftSchema.entries.name,
+  transport: v.picklist(LOG_TRANSPORTS),
+  sources: v.pipe(
+    v.array(logSourceFormSchema),
+    v.minLength(1, "Add at least one source."),
+    v.maxLength(32, "A log adapter holds at most 32 sources."),
+    v.check(
+      (sources) => new Set(sources.map((source) => source.name)).size === sources.length,
+      "Each source needs its own name."
+    )
+  ),
+});
+export type LogfileFormInput = v.InferInput<typeof logfileFormSchema>;
+export type LogfileForm = v.InferOutput<typeof logfileFormSchema>;

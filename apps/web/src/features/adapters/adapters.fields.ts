@@ -101,8 +101,8 @@ export const ENGINE_FORMS = {
     ],
     secrets: [{ key: "password", label: "Password", type: "password", required: true }],
   },
-  // ponytail: the form arrives with the Logs viewer (#69, the web PR); the API refuses logfile
-  // until its engine lands, so this entry is never offered.
+  // Its connection is ENGINE_FORMS.sftp or .s3 by transport, and its sources have their own
+  // dialog (features/logs); no engine picker offers it.
   logfile: { kind: "logs", label: "Log files", config: [], secrets: [] },
 } as const satisfies Record<Engine, EngineForm>;
 
@@ -142,13 +142,11 @@ export function matchesAdapterFilters(
 
 export type Values = Record<string, string>;
 
-/** Turns form strings into the draft body: numbers parsed, blanks dropped, kind derived from the engine. */
-export function toDraftBody(
-  engine: Engine,
-  name: string,
-  mode: "sandbox" | "read_only",
-  values: Values
-): JsonObject {
+/** An engine's connection as a draft body holds it. */
+export type Connection = { config: JsonObject; secrets: JsonObject };
+
+/** One engine's config and secrets from the form strings: numbers parsed, blanks dropped. */
+export function connectionOf(engine: Engine, values: Values): Connection {
   const form: EngineForm = ENGINE_FORMS[engine];
   const config: JsonObject = {};
   for (const field of form.config) {
@@ -166,7 +164,18 @@ export function toDraftBody(
     const raw = values[`secret.${field.key}`] ?? "";
     if (raw !== "") secrets[field.key] = raw;
   }
-  return { kind: form.kind, engine, name: name.trim(), mode, config, secrets };
+  return { config, secrets };
+}
+
+/** Turns form strings into the draft body, kind derived from the engine. */
+export function toDraftBody(
+  engine: Engine,
+  name: string,
+  mode: "sandbox" | "read_only",
+  values: Values
+): JsonObject {
+  const { config, secrets } = connectionOf(engine, values);
+  return { kind: ENGINE_FORMS[engine].kind, engine, name: name.trim(), mode, config, secrets };
 }
 
 /**

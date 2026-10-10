@@ -5,10 +5,20 @@
 
 import type * as v from "valibot";
 
-import { ENGINES, ROLES, TOKEN_KINDS, fieldModeSchema, importModeSchema } from "@testate/shared";
+import {
+  ENGINES,
+  LOG_FORMATS,
+  LOG_LEVELS,
+  ROLES,
+  TOKEN_KINDS,
+  fieldModeSchema,
+  importModeSchema,
+} from "@testate/shared";
 import type { functionNameSchema, maskSchema, restoreModeSchema } from "@testate/shared";
 import type {
   AdapterMode,
+  LogFormat,
+  LogTransport,
   AuditRow,
   Checkout,
   Diff,
@@ -117,6 +127,29 @@ export const STORAGE_ENGINE_OPTIONS = [
   { value: "sftp", label: "SFTP" },
   { value: "ftp", label: "FTP" },
 ] as const;
+/** Where a logfile adapter's files are: the two storage transports it can read through (S1). */
+export const LOG_TRANSPORT_OPTIONS = [
+  { value: "sftp", label: "SFTP" },
+  { value: "s3", label: "Object storage (S3-compatible)" },
+] as const satisfies { value: LogTransport; label: string }[];
+
+export const LOG_FORMAT_LABEL = {
+  pm2: "pm2",
+  "json-lines": "JSON lines",
+  testate: "Testate wide events",
+  syslog: "syslog",
+  plain: "Plain text",
+  regex: "Regular expression",
+} as const satisfies Record<LogFormat, string>;
+export const LOG_FORMAT_OPTIONS = LOG_FORMATS.map((value) => ({
+  value,
+  label: LOG_FORMAT_LABEL[value],
+}));
+
+export const LOG_LEVEL_OPTIONS = [
+  { value: "", label: "Every level" },
+  ...LOG_LEVELS.map((value) => ({ value, label: value })),
+];
 
 export const TIER_LABEL = {
   files: "Files",
