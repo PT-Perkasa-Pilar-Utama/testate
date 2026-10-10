@@ -1,0 +1,8 @@
+{
+  "name": "testate-pm2-smoke",
+  "private": true,
+  "description": "pm2 for scripts/binary/smoke-service.sh, installed with npm ci so every package is pinned by its lockfile hash.",
+  "dependencies": {
+    "pm2": "7.0.4"
+  }
+}

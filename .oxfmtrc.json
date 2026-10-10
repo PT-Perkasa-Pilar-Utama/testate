@@ -18,6 +18,7 @@
     "/data",
     "docs",
     "deploy/nginx.conf",
-    ".smoke"
+    ".smoke",
+    "scripts/binary/pm2/package-lock.json"
   ]
 }
