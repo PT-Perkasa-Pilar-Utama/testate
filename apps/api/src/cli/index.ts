@@ -8,6 +8,7 @@ import { parseArgs } from "node:util";
 import type { App } from "../index.ts";
 import { CliError, say, usage } from "./io.ts";
 import type { CliContext } from "./io.ts";
+import { service } from "./service.ts";
 import { setup } from "./setup.ts";
 import { whereis } from "./whereis.ts";
 import { refuse, serve } from "../boot.ts";
@@ -55,6 +56,14 @@ const COMMANDS = new Map<string, Command>([
       usage: "setup [--yes] [--env-file <path>] [--data-dir <dir>] [--port <n>]",
       summary: "Write testate.env: data directory, port, sealing key, first admin",
       run: setup,
+    },
+  ],
+  [
+    "service",
+    {
+      usage: "service install|start|stop|status|logs [-f]|uninstall",
+      summary: "Keep it running as a per-user service (Linux, macOS)",
+      run: service,
     },
   ],
   [
