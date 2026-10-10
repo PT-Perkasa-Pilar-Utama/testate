@@ -7,7 +7,7 @@ The fourth tier (#37). A Logs adapter reads logs and never writes them: there is
 | Concern | Decision |
 | --- | --- |
 | Shape | Adapters of kind `logs`, tier `logs`, in the `adapters` table (rebuilt by migration 0011 to admit them). Always `read_only`; `sandbox` is refused at create and any mode change after, admins included |
-| Engines | `logfile` (#69), `ingest` (#75, §25.7), `journald` (#86, §25.9), `docker` (#88, §25.10). `loki` and `elasticsearch` follow one step each of #37; the CHECK already admits all six |
+| Engines | `logfile` (#69), `ingest` (#75, §25.7), `journald` (#86, §25.9), `docker` (#88, §25.10), `loki` (#90, §25.11). `elasticsearch` follows as the last step of #37; the CHECK already admits all six |
 | `logfile` | One connection, SFTP or S3, holding named sources `{ name, glob, format, patterns }`. Its files open through the storage resolver as the transport it names, so netguard and host-key trust are shared (05 §5.11) |
 | Formats | `pm2`, `json-lines`, `testate` (the wide-event shape of 21), `syslog` (RFC 5424 and 3164), `plain`, `regex` (named groups `time`, `level`, `message`; the rest become fields) |
 | Limits | 200 lines by default, 5 000 at most; at most 10 MB read per request; a `from`–`to` window of at most 7 days (older entries are paged with the cursor); an answer cut short names its limit and carries a cursor |
@@ -47,6 +47,7 @@ Each file gives up a run from its end and never a line from its middle, so the n
 - An agent token cannot trust a first-seen SFTP host key: a person reads the source once first. The same holds for a `journald` adapter's SSH key.
 - A `journald` adapter runs one command, `journalctl`, and nothing else. Testate builds every argument from an allow-list and single-quotes each one. Nothing a person types reaches the shell: a unit name is checked at save and again when the command is built, and a cursor is checked by its characters (§25.9).
 - A `docker` adapter makes five `GET` calls and nothing else, logs always with `follow=0`. Testate builds each path from a request; a container name is checked against its pattern and URL-encoded (§25.10).
+- A `loki` adapter makes two `GET` calls and follows no redirect, which could reach an address netguard never checked. The LogQL query is the user's, never rewritten, and only a log query reads (§25.11).
 
 ## 25.5 Component and contract
 
@@ -61,6 +62,7 @@ Each file gives up a run from its end and never a line from its middle, so the n
 | `ingest`: contract, store, push, token | `schemas/logs.ingest.ts`, `lib/logs/ingest/`, `modules/ingest/`, migration 0012 |
 | `journald`: contract, command, parser, page, SSH shell | `schemas/logs.journald.ts`, `lib/logs/journald/`, `modules/adapters/adapters.shell.ts`, `modules/logs/logs.journal.ts` |
 | `docker`: contract, calls, frames, pager, transports | `schemas/logs.docker.ts`, `lib/logs/docker/`, `lib/logs/ssh.ts`, `modules/adapters/adapters.docker*.ts`, `modules/logs/logs.docker.ts` |
+| `loki`: contract, client, parser, pager | `schemas/logs.loki.ts`, `lib/logs/loki/`, `modules/adapters/adapters.loki*.ts`, `modules/logs/logs.loki.ts` |
 | Menu, dialog, viewer, run links | `apps/web/src/features/logs/` |
 
 One wide event per read carries `logs_source`, `logs_files`, `logs_bytes`, `logs_entries` and `logs_cut_by`. It never carries a line of the log.
@@ -141,3 +143,20 @@ Decisions K1–K7 of `docs/decisions/2026-10-10-docker.md` (#88). A `docker` ada
 | Limits | §25.1's. Docker streams oldest first, so a read cut at 10 MB loses its newest lines: `tail` is the bound, a grown tail is sized from the read's line length, and older pages with no `to` reach back about 10 MB from a log's end; a window's own size bounds a windowed read. Past either the page says `cut_by: "bytes"` and has no older cursor |
 | Probe | `/_ping`, then API 1.41 (Engine 20.10) or later, else `ENGINE_UNSUPPORTED version`. Warnings: `container_missing` (with up to eight names the host has), `log_driver` (only `json-file`, `local` and `journald` read back), `tty`, `plaintext` for http, `docker_access` when the SSH user may not open the socket |
 | Not here | Swarm service logs, Kubernetes, a streaming follow. Podman speaks the same API and may work; untested |
+
+## 25.11 `loki`: LogQL through `query_range`
+
+Decisions L1–L8 of `docs/decisions/2026-10-10-loki.md` (#90). A `loki` adapter reads a Loki or Grafana Cloud instance with LogQL log queries.
+
+| Concern | Decision |
+| --- | --- |
+| Config | `{ url, auth (none, basic, bearer), user?, tenant?, sources }`. `url` is `http(s)`, with a path prefix allowed and no login, query or fragment in it. Secrets per `auth`: `password` (basic; an API token on Grafana Cloud) or `bearer_token`. `tenant` is sent as `X-Scope-OrgID` |
+| Connection | Netguard checks the URL's host and port. An `http` URL is pinned to the approved address with its `Host` kept; `https` keeps its host name for TLS. No redirect is followed. A body is read as a stream and stopped at 10 MB |
+| Calls | `GET /loki/api/v1/labels` (the probe) and `/loki/api/v1/query_range` |
+| Source | `{ name, query, format, regex?, patterns }`, 1–32 per adapter. `query` starts with `{` and has at most 2 000 characters; an answer that is not `streams` (a metric query) is refused at the probe and at every read |
+| Lines | Loki's nanosecond stamp is the time; the format gives the level, message and fields, else the label `level`, `detected_level` or `severity`, else `info`. Stream labels are fields, `__error__` included. `file` is `service_name`, else `job` |
+| Paging | `direction=backward`; `start` is the window's start, else `end` minus 7 days; Testate's inclusive `to` goes as `end = to + 1 ms`. An older page asks `end` = the oldest stamp + 1 ns and drops the lines already shown at that stamp, found by labels and text. A short page with no `from` searches the 7 days before it; an empty 7-day range ends the paging (`cut_by: "window"`). Follow reads forward from the newest stamp, a page at a time, dropping what was shown there. Requests stay within 5 000 lines, Loki's default limit |
+| Filters | Text and level filter the page in Testate; the query is never rewritten |
+| Refusals | A 401 names the login, or the tenant when Loki says `no org id`. A lower `max_entries_limit_per_query` is named from Loki's 400. A body past 10 MB answers `ADAPTER_UNREACHABLE` asking for fewer lines |
+| Probe | `labels` over the last day, then each source's query with `limit=1`. Warnings: `plaintext` for http; `no_lines` for a source that matched nothing in 24 hours, which is also what a wrong tenant looks like |
+| Not here | Metric queries, `/tail` streaming, a custom CA, the text filter pushed into LogQL (deferred to the user) |

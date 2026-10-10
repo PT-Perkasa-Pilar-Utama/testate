@@ -192,6 +192,7 @@ apart on what a checkout does.
 157. As an integrator, I want my app to push its own logs to a Testate log adapter with a token that can do nothing else, so that logs from a system Testate cannot reach still sit beside its data.
 160. As a QA engineer, I want to read a Linux host's systemd journal over SSH, grouped into named sources by unit, so that services that log to journald, not to files, sit beside their data too.
 161. As a QA engineer, I want to read a Docker host's container logs, one source per container, over SSH or through a read-only socket proxy, so that services in containers sit beside their data too.
+162. As a QA engineer, I want to read our Loki or Grafana Cloud logs with the LogQL queries I already use, so that logs we already ship to Loki sit beside their data without a second copy.
 
 ### Jobs
 
@@ -446,7 +447,7 @@ Every mutable entity carries an id, created and updated timestamps. Every sealed
 | Files | S3-compatible, SFTP, FTP | list, preview | yes | | | | |
 | Document | MongoDB | find, aggregate | | yes | document by id | | |
 | Tabular | Postgres, MySQL, MariaDB | grid, SQL | | yes | FK walk | forms, grid, write session | yes |
-| Logs | Log files over SFTP or S3 (`logfile`), pushed logs (`ingest`), systemd journals over SSH (`journald`), Docker containers (`docker`) | read, filter, follow | JSON lines, masked | | | | |
+| Logs | Log files over SFTP or S3 (`logfile`), pushed logs (`ingest`), systemd journals over SSH (`journald`), Docker containers (`docker`), Grafana Loki (`loki`) | read, filter, follow | JSON lines, masked | | | | |
 
 The probe reports the tier; every module refuses an operation outside the tier with `ENGINE_UNSUPPORTED`.
 
