@@ -116,6 +116,8 @@ export const ENGINE_FORMS = {
   },
   // Its connection is DOCKER_FORMS.ssh or .tcp by transport; its dialog is in features/logs (#88).
   docker: { kind: "logs", label: "Docker containers", config: [], secrets: [] },
+  // Its login is LOKI_FORMS[auth]; its dialog is in features/logs (#90).
+  loki: { kind: "logs", label: "Grafana Loki", config: [], secrets: [] },
 } as const satisfies Record<Engine, EngineForm>;
 
 // Neither type is exported from the shared package (labels.ts derives AdapterStatus the same way);
