@@ -3,7 +3,13 @@ import { copyFileSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { DEFAULT_MIGRATIONS_DIR, FOREIGN_KEYS_OFF, migrate, openMetadataDb } from "./index.ts";
+import {
+  DEFAULT_MIGRATIONS_DIR,
+  FOREIGN_KEYS_OFF,
+  migrate,
+  openMetadataDb,
+  wantsForeignKeysOff,
+} from "./index.ts";
 import type { MetadataDb } from "./index.ts";
 
 // 0011 rebuilds `adapters`, which five tables reference (docs/decisions/2026-10-10-logs-tier.md).
@@ -117,5 +123,22 @@ describe("a migration that runs with foreign keys off", () => {
     expect(count(db, "saved_queries")).toBe(1);
     expect(db.query("SELECT 1 FROM schema_migrations WHERE version = 99").get()).toBeNull();
     expect(db.query("PRAGMA foreign_keys").get()).toEqual({ foreign_keys: 1 });
+  });
+});
+
+describe("the foreign-keys-off marker", () => {
+  it("counts anywhere in the leading comments, and nowhere else", () => {
+    expect([
+      wantsForeignKeysOff("a.sql", `${FOREIGN_KEYS_OFF}\nDROP TABLE x;`),
+      wantsForeignKeysOff("b.sql", `-- why this rebuilds\n\n  ${FOREIGN_KEYS_OFF}\nDROP TABLE x;`),
+      wantsForeignKeysOff("c.sql", "-- an ordinary migration\nCREATE TABLE x (id TEXT);"),
+    ]).toEqual([true, true, false]);
+  });
+
+  it("refuses a marker placed after the first statement, rather than run it disarmed", () => {
+    const misplaced = `-- rebuild\nCREATE TABLE x (id TEXT);\n${FOREIGN_KEYS_OFF}\nDROP TABLE y;`;
+    expect(() => wantsForeignKeysOff("d.sql", misplaced)).toThrow(
+      "d.sql: the foreign-keys-off marker must be in the leading comments"
+    );
   });
 });

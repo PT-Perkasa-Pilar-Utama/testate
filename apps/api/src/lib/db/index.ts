@@ -21,15 +21,30 @@ type LedgerRow = { version: number };
 export const DEFAULT_MIGRATIONS_DIR = join(import.meta.dir, "..", "..", "db", "migrations");
 
 /**
- * A migration that rebuilds a table other tables point at starts with this line. SQLite applies
+ * A migration that rebuilds a table other tables point at carries this line in its leading comments. SQLite applies
  * foreign keys per statement, so dropping the old table would delete every row that references
  * it; this runs the migration with them off, as SQLite's own rebuild procedure does, and refuses
  * the migration if any reference is broken at the end.
  */
 export const FOREIGN_KEYS_OFF = "-- testate:foreign-keys-off";
 
+/**
+ * Whether a migration asks for foreign keys off: the marker counts anywhere in the comment block
+ * the file opens with. Found anywhere else it is refused, because a disarmed rebuild would run
+ * with keys on, cascade its DROP TABLE through every child row, and still succeed.
+ */
+export function wantsForeignKeysOff(file: string, text: string): boolean {
+  const lines = text.split("\n").map((line) => line.trim());
+  const end = lines.findIndex((line) => line !== "" && !line.startsWith("--"));
+  const leading = end === -1 ? lines : lines.slice(0, end);
+  if (leading.includes(FOREIGN_KEYS_OFF)) return true;
+  if (text.includes(FOREIGN_KEYS_OFF))
+    throw new Error(`${file}: the foreign-keys-off marker must be in the leading comments`);
+  return false;
+}
+
 function applyOne(db: MetadataDb, version: number, file: string, text: string): void {
-  const keysOff = text.startsWith(FOREIGN_KEYS_OFF);
+  const keysOff = wantsForeignKeysOff(file, text);
   // The pragma is a no-op inside a transaction, so it is set before the transaction opens.
   if (keysOff) db.exec("PRAGMA foreign_keys = OFF");
   try {
