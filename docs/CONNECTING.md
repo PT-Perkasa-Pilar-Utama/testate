@@ -174,3 +174,17 @@ A database adapter's **Server logs** tab reads through the adapter's own connect
 | MongoDB | Nothing for this user's own operations; `roles: ["clusterMonitor"]` for everyone's | the same role reads the server log |
 
 On RDS, Supabase, Neon or Cloud SQL the server log file is out of reach; statements still work. To read log files on the database host itself, add a `logfile` log adapter over SFTP.
+
+## I. Read a host's systemd journal
+
+For services that log to journald rather than to files. Open **Logs**, click **New log adapter**, and pick "systemd journal over SSH". Give the host, the SSH user and its password, then one source per group of units: `api.service worker.service`, or nothing for the whole journal.
+
+Testate runs one command on the host, `journalctl`, with arguments it builds itself. It never runs anything a person types.
+
+The user needs the `systemd-journal` group to read every unit; without it, journalctl shows only that user's own lines. **Test connection** says so, with the command to run:
+
+```sh
+sudo usermod -aG systemd-journal deploy
+```
+
+The host key is trusted the first time a person reads, as for SFTP. A changed key stops every read until someone accepts the new one. A host with no journal yet, or a container without journald, gets a `no_journal` warning.
