@@ -218,3 +218,18 @@ Open **Logs**, click **New log adapter**, and pick "Grafana Loki". Give Loki's a
 A Loki that runs with tenants needs the tenant, sent as `X-Scope-OrgID`. Without one, Test connection says so. A wrong tenant answers with nothing, so Test connection warns of a source that matched nothing in the last day.
 
 Testate makes two read-only calls and follows no redirect. The level and text filters work on the page Testate read, so a filtered page can be short; the cursor still pages back.
+
+## L. Read Elasticsearch or OpenSearch
+
+Open **Logs**, click **New log adapter**, and pick "Elasticsearch or OpenSearch". Give the cluster's address and one source per index pattern, such as `logs-shop-*` or `filebeat-*`. A Kibana data view is an index pattern here. Add a Lucene query to narrow it, such as `service.name:api AND log.level:error`, or leave it empty.
+
+| Cluster | Address | Login |
+| --- | --- | --- |
+| Self-hosted Elasticsearch 8 | `https://es.internal:9200` | User and password, or an API key, plus the CA certificate: Elasticsearch 8 signs its own, in `config/certs/http_ca.crt` |
+| Elastic Cloud | the deployment's Elasticsearch endpoint | An API key: in Kibana, **Stack Management > API keys**, then paste the encoded key |
+| OpenSearch | `https://opensearch.internal:9200` | User and password; untested |
+| A cluster with security off | `http://es.internal:9200` | None; Test connection warns of plain http |
+
+The login needs the `read` privilege on the indices. Without it, a read says so.
+
+Each source's time field defaults to `@timestamp` and its message field to `message`; change them to match your mapping. A wrong time field is named when you test the connection.
