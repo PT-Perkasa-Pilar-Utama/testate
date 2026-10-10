@@ -9,6 +9,7 @@ import type { App } from "../index.ts";
 import { CliError, say, usage } from "./io.ts";
 import type { CliContext } from "./io.ts";
 import { setup } from "./setup.ts";
+import { whereis } from "./whereis.ts";
 import { refuse, serve } from "../boot.ts";
 import { readEnvFile, withEnvFile } from "./envfile.ts";
 import type { EnvValues } from "./envfile.ts";
@@ -54,6 +55,14 @@ const COMMANDS = new Map<string, Command>([
       usage: "setup [--yes] [--env-file <path>] [--data-dir <dir>] [--port <n>]",
       summary: "Write testate.env: data directory, port, sealing key, first admin",
       run: setup,
+    },
+  ],
+  [
+    "whereis",
+    {
+      usage: "whereis [env|data|bin|service|log]",
+      summary: "Show where this install keeps things",
+      run: whereis,
     },
   ],
   ["version", { usage: "version", summary: "Print the version", run: version }],
