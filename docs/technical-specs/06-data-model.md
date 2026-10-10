@@ -125,8 +125,8 @@ The projects a viewer or tester with `all_projects = 0` may see and act on (#55,
 | --- | --- | --- | --- | --- | --- |
 | id | TEXT | no | | PK | immutable; states, normalizers, and queries key on it |
 | project_id | TEXT | no | | FK projects | |
-| kind | TEXT | no | | | `database`, `storage` |
-| engine | TEXT | no | | | `postgres`, `mysql`, `mariadb`, `mongodb`, `s3`, `sftp`, `ftp` |
+| kind | TEXT | no | | | `database`, `storage`, `logs` (the Logs tier, 0011, #37) |
+| engine | TEXT | no | | | `postgres`, `mysql`, `mariadb`, `mongodb`, `s3`, `sftp`, `ftp`, and the Logs engines `logfile`, `ingest`, `journald`, `docker`, `loki`, `elasticsearch` (the CHECK admits all six since 0011; the shared enum adds each as its step of #37 ships) |
 | name | TEXT | no | | UNIQUE (project_id, name) NOCASE | example `orders-db` |
 | mode | TEXT | no | `sandbox` | | `sandbox`, `read_only`; storage is always `read_only` |
 | config_public | TEXT | no | | | JSON of non-secret fields: host, port, database, user, schemas, bucket, prefix |
@@ -425,7 +425,7 @@ Terminal: `succeeded`, `partial`, `failed`, `cancelled`, `interrupted`.
 
 ## 6.10 Migrations and seeding
 
-Migrations are numbered SQL files under `apps/api/src/db/migrations/`, applied at boot by `lib/db/migrate.ts` inside one transaction per file, recorded in `schema_migrations`. The runner resolves the folder relative to its own module and takes the database path from the environment. There is no Drizzle and no ORM; the ledger is the truth.
+Migrations are numbered SQL files under `apps/api/src/db/migrations/`, applied at boot by `lib/db/migrate.ts` inside one transaction per file, recorded in `schema_migrations`. A migration that rebuilds a table other tables reference starts with `-- testate:foreign-keys-off`: the runner switches foreign keys off around it, as SQLite's rebuild procedure requires, and rolls it back if `PRAGMA foreign_key_check` then finds a broken reference (0011 rebuilds `adapters` this way). The runner resolves the folder relative to its own module and takes the database path from the environment. There is no Drizzle and no ORM; the ledger is the truth.
 
 ```ts
 // apps/api/src/lib/db/migrate.ts
