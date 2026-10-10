@@ -4,6 +4,7 @@ import { adapterDraftSchema } from "./adapters.ts";
 import { CAP_RULE, RETENTION_RULE } from "./logs.ingest.ts";
 import { DOCKER_CONTAINER } from "./logs.docker.ts";
 import { journalUnitSchema } from "./logs.journald.ts";
+import { LOKI_AUTHS, lokiQuerySchema } from "./logs.loki.ts";
 import { logFormatSchema, logGlobSchema, logSourceNameSchema, safePatternSchema } from "./logs.ts";
 
 /**
@@ -183,3 +184,39 @@ export const dockerFormSchema = v.object({
 });
 export type DockerFormInput = v.InferInput<typeof dockerFormSchema>;
 export type DockerForm = v.InferOutput<typeof dockerFormSchema>;
+
+/** One LogQL source as the "Grafana Loki" dialog shows it (#90, L3). */
+export const lokiSourceFormSchema = v.pipe(
+  v.object({
+    name: logSourceNameSchema,
+    query: lokiQuerySchema,
+    format: logFormatSchema,
+    regex: regexText,
+    patterns: patternsText,
+  }),
+  v.forward(
+    v.partialCheck(
+      [["format"], ["regex"]],
+      (source) => source.format !== "regex" || source.regex !== "",
+      "The regex format needs a pattern."
+    ),
+    ["regex"]
+  )
+);
+
+/** The dialog's static fields; the login's are `LOKI_FORMS[auth]` in the SPA. */
+export const lokiFormSchema = v.object({
+  name: adapterDraftSchema.entries.name,
+  auth: v.picklist(LOKI_AUTHS),
+  sources: v.pipe(
+    v.array(lokiSourceFormSchema),
+    v.minLength(1, "Add at least one source."),
+    v.maxLength(32, "A log adapter holds at most 32 sources."),
+    v.check(
+      (sources) => new Set(sources.map((source) => source.name)).size === sources.length,
+      "Each source needs its own name."
+    )
+  ),
+});
+export type LokiFormInput = v.InferInput<typeof lokiFormSchema>;
+export type LokiForm = v.InferOutput<typeof lokiFormSchema>;

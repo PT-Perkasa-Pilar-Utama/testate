@@ -136,6 +136,12 @@ export const LOG_TRANSPORT_OPTIONS = [
   { value: "sftp", label: "SFTP" },
   { value: "s3", label: "Object storage (S3-compatible)" },
 ] as const satisfies { value: LogTransport; label: string }[];
+/** How a loki adapter logs in (#90, L1). */
+export const LOKI_AUTH_OPTIONS = [
+  { value: "none", label: "None" },
+  { value: "basic", label: "User and password (Grafana Cloud)" },
+  { value: "bearer", label: "Bearer token" },
+] as const satisfies { value: "none" | "basic" | "bearer"; label: string }[];
 /** How a docker adapter reaches the daemon (#88, K1). */
 export const DOCKER_TRANSPORT_OPTIONS = [
   { value: "ssh", label: "SSH, to the host's socket" },
