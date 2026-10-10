@@ -158,3 +158,13 @@ Draft body (create, test, update):
 **Behavior.** Adapters of `kind: "storage"` across the projects in the caller's scope (a project-scoped token sees only its own), sorted by name.
 
 **Output.** `200` array of adapter objects, each with `project_slug` and `project_name` added. **Traceability.** Story 12.
+
+## 5.11a `GET /database-adapters`
+
+**Purpose.** Every database this caller may see, across every project: the Databases screen. A tier is a menu (`docs/decisions/2026-10-10-databases-menu.md`), so databases have one list of their own, as file stores do.
+
+**Access.** `viewer`.
+
+**Behavior.** Adapters of `kind: "database"` across the projects in the caller's scope (a project-scoped token sees only its own), sorted by name. The same shape and scope as `GET /storage-adapters`.
+
+**Output.** `200` array of adapter objects, each with `project_slug`, `project_name` and `project_kind` added. **Traceability.** Story 12.
