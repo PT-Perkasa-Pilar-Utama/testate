@@ -180,21 +180,6 @@ describe("adapters", () => {
     expect(await names([])).toStrictEqual([]);
   });
 
-  it("refuses a logfile adapter until its engine lands (#69)", async () => {
-    const { adapters, qa } = await createAdaptersHarness();
-    const draft = {
-      kind: "logs",
-      engine: "logfile",
-      name: "pm2",
-      config: {},
-      secrets: {},
-    } as const;
-    await expect(adapters.create(qa, "shop", draft, TEST_META)).rejects.toMatchObject({
-      code: "ENGINE_UNSUPPORTED",
-      details: { reason: "not_yet" },
-    });
-  });
-
   it("the instance-wide database list holds databases only, within the caller's projects (#63)", async () => {
     const { adapters, qa } = await createAdaptersHarness();
     const { adapter } = await adapters.create(qa, "shop", PG, TEST_META);

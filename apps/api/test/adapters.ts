@@ -4,7 +4,7 @@ import * as v from "valibot";
 import { createMemoryBlobStore, createSwitchableBlobStore } from "../src/lib/blobstore/index.ts";
 import type { MemoryTree } from "../src/lib/files/index.ts";
 import { memoryOpen } from "./files.ts";
-import { createFilesResolver } from "../src/modules/adapters/adapters.files.ts";
+import { createFileProbe, createFilesResolver } from "../src/modules/adapters/adapters.files.ts";
 import type { FilesResolver } from "../src/modules/adapters/adapters.files.ts";
 import { createHostKeysRepository } from "../src/modules/adapters/adapters.hostkeys.ts";
 import type { HostKeysRepository } from "../src/modules/adapters/adapters.hostkeys.ts";
@@ -257,7 +257,8 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
         ? { ...result, version: "9.6", meets_floor: false }
         : result;
     },
-    fileProbe: createScaffoldFileProbe(),
+    // The real file probe, over the same memory trees the resolver opens (logfile globs, #69).
+    fileProbe: createFileProbe(memoryOpen(trees, sftpKey), createScaffoldFileProbe()),
     jobs: runtime.jobs,
     states,
     now: accounts.now,

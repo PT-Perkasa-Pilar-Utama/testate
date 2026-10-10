@@ -1,4 +1,6 @@
+import { logfileConfigSchema } from "@testate/shared";
 import type { Engine, FileProbeResult, JsonObject } from "@testate/shared";
+import * as v from "valibot";
 
 import type { FileSource, HostKey } from "../../lib/files/index.ts";
 import type { OpenFileSource } from "../../lib/files/open.ts";
@@ -7,6 +9,8 @@ import type { CheckedTarget, Check, Verdict } from "../../lib/netguard/index.ts"
 import type { KeyRing } from "../../lib/sealed/index.ts";
 import { TIER_OF_ENGINE, validateConfig } from "./adapters.config.ts";
 import { refusal } from "./adapters.helpers.ts";
+import { splitGlob } from "../../lib/logs/read.ts";
+import { fileTargetOf } from "./adapters.logfile.ts";
 import type { HostKeysRepository } from "./adapters.hostkeys.ts";
 import type { FileProbeFn } from "./adapters.probe.ts";
 import type { AdapterRecord, AdaptersRepository } from "./adapters.repository.ts";
@@ -31,16 +35,40 @@ export type ResolvedFiles = {
 };
 
 export type FilesResolver = {
-  /** `trustAs` is the user who may trust a first-seen host key; tokens pass null. */
-  resolve(projectId: string, adapterId: string, trustAs: string | null): Promise<ResolvedFiles>;
+  /**
+   * `trustAs` is the user who may trust a first-seen host key; tokens pass null. `kind` is the
+   * adapter kind the caller reads: storage screens a Files adapter, the Logs tier a `logfile` one.
+   */
+  resolve(
+    projectId: string,
+    adapterId: string,
+    trustAs: string | null,
+    kind?: "storage" | "logs"
+  ): Promise<ResolvedFiles>;
 };
 
-export function requireStorage(adapter: AdapterRecord | null, projectId: string): AdapterRecord {
+const KIND_REFUSAL = {
+  storage: "browsing needs a Files adapter",
+  logs: "reading logs needs a Logs adapter",
+} as const;
+
+export function requireStorage(
+  adapter: AdapterRecord | null,
+  projectId: string,
+  kind: "storage" | "logs" = "storage"
+): AdapterRecord {
   if (adapter === null || adapter.project_id !== projectId) throw notFound("adapter");
-  if (adapter.kind !== "storage") {
-    throw new AppError("ENGINE_UNSUPPORTED", "browsing needs a Files adapter", { reason: "tier" });
-  }
+  if (adapter.kind !== kind)
+    throw new AppError("ENGINE_UNSUPPORTED", KIND_REFUSAL[kind], { reason: "tier" });
   return adapter;
+}
+
+type OpenTarget = { engine: Engine; config: JsonObject };
+
+/** The storage engine and config to open: a `logfile` adapter opens as its transport. */
+function openAs(engine: Engine, config: JsonObject): OpenTarget {
+  if (engine !== "logfile") return { engine, config };
+  return fileTargetOf(v.parse(logfileConfigSchema, config));
 }
 
 /**
@@ -50,8 +78,8 @@ export function requireStorage(adapter: AdapterRecord | null, projectId: string)
  */
 export function createFilesResolver(deps: FilesResolverDeps): FilesResolver {
   return {
-    async resolve(projectId, adapterId, trustAs) {
-      const adapter = requireStorage(deps.repo.byId(adapterId), projectId);
+    async resolve(projectId, adapterId, trustAs, kind = "storage") {
+      const adapter = requireStorage(deps.repo.byId(adapterId), projectId, kind);
       const secrets: Secrets = await openSecrets(
         deps.ring,
         adapter.id,
@@ -70,9 +98,10 @@ export function createFilesResolver(deps: FilesResolverDeps): FilesResolver {
       };
       let presented: HostKey | null = null;
       let untrusted = false;
+      const opened = openAs(adapter.engine, validated.config);
       const source = deps.open(
-        adapter.engine,
-        validated.config,
+        opened.engine,
+        opened.config,
         secrets,
         (key) => {
           presented = key;
@@ -135,6 +164,46 @@ function untrustedAware(source: FileSource, untrusted: () => boolean): FileSourc
 }
 
 /** Probes a storage target by listing its root (10 §10.3); any host key passes because no row exists yet. */
+/** The file names in a directory; one that does not exist yet holds none. */
+async function namesIn(source: FileSource, dir: string): Promise<string[]> {
+  try {
+    const page = await source.list(dir, { limit: 1000 });
+    return page.data.filter((entry) => entry.kind === "file").map((entry) => entry.name);
+  } catch (cause: unknown) {
+    if (cause instanceof AppError && cause.code === "NOT_FOUND") return [];
+    throw cause;
+  }
+}
+
+/**
+ * A `logfile` adapter answers when its transport does; a source whose glob matches no file yet is
+ * a warning, not a refusal, since a log often appears only once the app first writes it.
+ */
+async function probeLogfile(
+  open: OpenFileSource,
+  config: JsonObject,
+  secrets: Secrets,
+  target?: CheckedTarget
+): Promise<FileProbeResult> {
+  const parsed = v.parse(logfileConfigSchema, config);
+  const opened = fileTargetOf(parsed);
+  const source = open(opened.engine, opened.config, secrets, () => true, target);
+  const warnings: FileProbeResult["warnings"] = [];
+  try {
+    for (const logSource of parsed.sources) {
+      const { dir, matches } = splitGlob(logSource.glob);
+      if (!(await namesIn(source, dir)).some(matches))
+        warnings.push({
+          code: "no_files",
+          message: `${logSource.name}: no file matches ${logSource.glob} yet`,
+        });
+    }
+  } finally {
+    await source.close();
+  }
+  return { engine: "logfile", tier: "logs", reachable: true, warnings };
+}
+
 export function createFileProbe(open: OpenFileSource, fallback: FileProbeFn): FileProbeFn {
   return async (
     engine: Engine,
@@ -142,6 +211,7 @@ export function createFileProbe(open: OpenFileSource, fallback: FileProbeFn): Fi
     secrets: Secrets,
     target?: CheckedTarget
   ): Promise<FileProbeResult> => {
+    if (engine === "logfile") return probeLogfile(open, config, secrets, target);
     if (TIER_OF_ENGINE[engine] !== "files") return fallback(engine, config, secrets, target);
     const source = open(engine, config, secrets, () => true, target);
     try {
