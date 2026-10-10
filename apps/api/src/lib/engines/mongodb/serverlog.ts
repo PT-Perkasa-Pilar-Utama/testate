@@ -46,7 +46,12 @@ async function currentOps(handle: MongoHandle): Promise<v.InferOutput<typeof opS
 async function statements(handle: MongoHandle): Promise<ServerLogEntry[]> {
   const ops = await currentOps(handle);
   return ops.inprog
-    .filter((op) => op.command !== undefined && op.command["currentOp"] === undefined)
+    .filter(
+      (op) =>
+        op.command !== undefined &&
+        Object.keys(op.command).length > 0 &&
+        op.command["currentOp"] === undefined
+    )
     .map((op) => {
       const command = plainJson(op.command ?? {});
       const running = Number(op.microsecs_running ?? 0) / 1000;

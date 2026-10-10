@@ -1,7 +1,6 @@
 /**
  * MySQL and MariaDB server logs (#84; D1 of docs/decisions/2026-10-10-db-server-logs.md, with
- * its build notes). "Statements" is `performance_schema.events_statements_history_long`, a ring
- * buffer; "Error log" is MySQL's `performance_schema.error_log` (8.0.22+); "Slow log" is
+ * its build notes). "Statements" is `performance_schema`'s statement history, a ring buffer; "Error log" is MySQL's `performance_schema.error_log` (8.0.22+); "Slow log" is
  * `mysql.slow_log` when `log_output` includes TABLE. Each is found by trying it.
  */
 import type { SQL } from "bun";
@@ -26,17 +25,20 @@ async function serverStartMs(sql: SQL): Promise<number> {
   return Date.now() - Number(v.parse(uptimeRow, rows[0]).Value) * 1000;
 }
 
+/** Counters come back as numbers, strings or BigInts depending on their size and the driver. */
+const counter = v.union([v.number(), v.string(), v.bigint()]);
+
 const statementRow = v.object({
-  thread: v.union([v.number(), v.string()]),
-  event: v.union([v.number(), v.string()]),
-  timer: v.union([v.number(), v.string()]),
+  thread: counter,
+  event: counter,
+  timer: counter,
   text: v.nullable(v.string()),
   digest: v.nullable(v.string()),
-  errno: v.nullable(v.union([v.number(), v.string()])),
-  warnings: v.nullable(v.union([v.number(), v.string()])),
+  errno: v.nullable(counter),
+  warnings: v.nullable(counter),
   message: v.nullable(v.string()),
   db: v.nullable(v.string()),
-  examined: v.nullable(v.union([v.number(), v.string()])),
+  examined: v.nullable(counter),
 });
 
 function statementLevel(errno: number, warnings: number): LogLevel {
@@ -50,14 +52,19 @@ const idOf = (...parts: string[]): string =>
 
 async function statements(sql: SQL): Promise<ServerLogEntry[]> {
   const start = await serverStartMs(sql);
-  const rows = await sql.unsafe(
-    `SELECT THREAD_ID AS thread, EVENT_ID AS event, TIMER_START AS timer, SQL_TEXT AS text,
+  // The per-thread history is on by default and keeps each open connection's last statements;
+  // the long history keeps the server's recent ones once its consumer is enabled. Both, once each.
+  const columns = `THREAD_ID AS thread, EVENT_ID AS event, TIMER_START AS timer, SQL_TEXT AS text,
             DIGEST_TEXT AS digest, MYSQL_ERRNO AS errno, WARNINGS AS warnings,
-            MESSAGE_TEXT AS message, CURRENT_SCHEMA AS db, ROWS_EXAMINED AS examined
-     FROM performance_schema.events_statements_history_long
-     WHERE SQL_TEXT IS NOT NULL AND SQL_TEXT NOT LIKE '%events_statements_history_long%'
-     ORDER BY TIMER_START DESC LIMIT ${WINDOW}`
+            MESSAGE_TEXT AS message, CURRENT_SCHEMA AS db, ROWS_EXAMINED AS examined`;
+  const where = "SQL_TEXT IS NOT NULL AND SQL_TEXT NOT LIKE '%events_statements_history%'";
+  const rows = await sql.unsafe(
+    `SELECT ${columns} FROM performance_schema.events_statements_history WHERE ${where}
+     UNION
+     SELECT ${columns} FROM performance_schema.events_statements_history_long WHERE ${where}
+     ORDER BY timer DESC LIMIT ${WINDOW}`
   );
+
   return v.parse(v.array(statementRow), [...rows]).map((row) => {
     const errno = Number(row.errno ?? 0);
     const level = statementLevel(errno, Number(row.warnings ?? 0));
@@ -151,7 +158,7 @@ export async function readServerLog(
 
 /** One cheap read per candidate; whatever answers is a source (D2). */
 const PROBES: [ServerLogSource, string][] = [
-  ["statements", "SELECT 1 FROM performance_schema.events_statements_history_long LIMIT 1"],
+  ["statements", "SELECT 1 FROM performance_schema.events_statements_history LIMIT 1"],
   ["error-log", "SELECT 1 FROM performance_schema.error_log LIMIT 1"],
   ["slow-log", "SELECT 1 FROM mysql.slow_log LIMIT 1"],
 ];
@@ -161,12 +168,32 @@ export async function serverLogSources(sql: SQL): Promise<ServerLogSource[]> {
   for (const [source, statement] of PROBES) {
     try {
       await sql.unsafe(statement);
-      if (source !== "slow-log" || (await slowLogOn(sql))) found.push(source);
+      if (await turnedOn(sql, source)) found.push(source);
     } catch {
       // Missing table, no grant, or performance_schema off: the screen shows the grant (D3).
     }
   }
   return found;
+}
+
+/**
+ * A readable table can still stay empty: the slow log needs TABLE output, and statement history
+ * needs a consumer, which MariaDB keeps off even with performance_schema on.
+ */
+async function turnedOn(sql: SQL, source: ServerLogSource): Promise<boolean> {
+  if (source === "slow-log") return slowLogOn(sql);
+  if (source !== "statements") return true;
+  // History records only what the "current" consumer passes on, so both must be on.
+  const rows = await sql.unsafe(
+    `SELECT SUM(NAME = 'events_statements_current') AS current,
+            SUM(NAME IN ('events_statements_history', 'events_statements_history_long')) AS history
+     FROM performance_schema.setup_consumers WHERE ENABLED = 'YES'`
+  );
+  const on = v.parse(
+    v.object({ current: v.nullable(counter), history: v.nullable(counter) }),
+    rows[0]
+  );
+  return Number(on.current ?? 0) > 0 && Number(on.history ?? 0) > 0;
 }
 
 async function slowLogOn(sql: SQL): Promise<boolean> {

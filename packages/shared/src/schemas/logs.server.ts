@@ -35,7 +35,7 @@ export const SERVER_LOG_GRANTS = {
   },
   mariadb: {
     statements:
-      "performance_schema = ON in the server config, and GRANT SELECT ON performance_schema.* TO <user>;",
+      "performance_schema = ON, performance_schema_consumer_events_statements_current = ON and performance_schema_consumer_events_statements_history = ON in the server config, and GRANT SELECT ON performance_schema.* TO <user>;",
     "slow-log":
       "SET GLOBAL slow_query_log = ON, log_output = 'TABLE'; GRANT SELECT ON mysql.slow_log TO <user>;",
   },
