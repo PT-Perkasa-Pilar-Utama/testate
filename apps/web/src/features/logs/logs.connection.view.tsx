@@ -8,7 +8,8 @@ import { DialogActions } from "@/components/dialog.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import Select from "@/components/select.tsx";
 import { FieldInput } from "../adapters/adapters.field-input.view.tsx";
-import { ENGINE_FORMS } from "../adapters/adapters.fields.ts";
+import { engineForm } from "../adapters/adapters.fields.ts";
+import type { EngineForm } from "../adapters/adapters.fields.ts";
 import { describeOutcome, outcomeWarnings } from "../adapters/adapters.presenter.ts";
 import type { ConnectionFormPresenter } from "./logs.connection.ts";
 
@@ -45,15 +46,15 @@ export function ProjectField(props: { project: ProjectPick | undefined }): JSX.E
 /** The engine's own login fields; an edit leaves a blank secret as the stored one. */
 export function ConnectionFields(props: {
   presenter: DialogState;
-  engine: Engine;
+  form: Engine | EngineForm;
   editing: boolean;
 }): JSX.Element {
   return (
     <div class="grid gap-3 sm:grid-cols-2">
-      <For each={ENGINE_FORMS[props.engine].config}>
+      <For each={engineForm(props.form).config}>
         {(field) => <FieldInput presenter={props.presenter} field={field} prefix="config" />}
       </For>
-      <For each={ENGINE_FORMS[props.engine].secrets}>
+      <For each={engineForm(props.form).secrets}>
         {(field) => (
           <FieldInput
             presenter={props.presenter}

@@ -111,7 +111,7 @@ export const LOGFILE_KIND: ConnectionKind<LogfileFormInput, LogfileForm> = {
   draftFrom: logfileDraftFrom,
   toBody: toLogfileBody,
   toPatch: toLogfilePatch,
-  engineOf: (input) => input.transport,
+  formOf: (input) => input.transport,
 };
 
 export function createLogfileFormPresenter(

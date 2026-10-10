@@ -135,6 +135,11 @@ export const LOG_TRANSPORT_OPTIONS = [
   { value: "sftp", label: "SFTP" },
   { value: "s3", label: "Object storage (S3-compatible)" },
 ] as const satisfies { value: LogTransport; label: string }[];
+/** How a docker adapter reaches the daemon (#88, K1). */
+export const DOCKER_TRANSPORT_OPTIONS = [
+  { value: "ssh", label: "SSH, to the host's socket" },
+  { value: "tcp", label: "TCP, the Engine API or a socket proxy" },
+] as const satisfies { value: "ssh" | "tcp"; label: string }[];
 
 export const LOG_FORMAT_LABEL = {
   pm2: "pm2",

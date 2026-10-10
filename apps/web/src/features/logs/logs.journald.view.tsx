@@ -165,7 +165,7 @@ export function JournaldDialog(props: {
             </label>
           )}
         </Field>
-        <ConnectionFields presenter={props.presenter} engine="journald" editing={editing()} />
+        <ConnectionFields presenter={props.presenter} form="journald" editing={editing()} />
         <FieldArray of={form} path={["sources"]}>
           {(sources) => (
             <div class="grid gap-3">

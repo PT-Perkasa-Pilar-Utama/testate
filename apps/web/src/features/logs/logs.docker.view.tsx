@@ -10,8 +10,7 @@ import {
 } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
 import { For, createEffect, untrack } from "solid-js";
-import type { LogTransport } from "@testate/shared";
-import { logfileFormSchema } from "@testate/shared";
+import { dockerFormSchema } from "@testate/shared";
 
 import Button from "@/components/button.tsx";
 import FieldError from "@/components/field-error.tsx";
@@ -21,8 +20,7 @@ import Icon from "@/components/icon.tsx";
 import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import { onceSettled } from "@/lib/form.ts";
-import { LOG_TRANSPORT_OPTIONS } from "@/lib/labels.ts";
-import { BLANK_SOURCE } from "./logs.form.ts";
+import { DOCKER_TRANSPORT_OPTIONS } from "@/lib/labels.ts";
 import {
   ConnectionActions,
   ConnectionFields,
@@ -30,23 +28,23 @@ import {
   ProjectField,
 } from "./logs.connection.view.tsx";
 import type { ProjectPick } from "./logs.connection.view.tsx";
-import { SourceFields } from "./logs.source.view.tsx";
-import type { LogfileFormPresenter } from "./logs.form.ts";
+import { BLANK_DOCKER_SOURCE, DOCKER_FORMS } from "./logs.docker.ts";
+import type { DockerFormPresenter } from "./logs.docker.ts";
+import { DockerSourceFields } from "./logs.docker.source.view.tsx";
 
 /**
- * Add or edit a logfile adapter (S1): one SFTP or S3 connection, holding named sources. The
- * connection's fields are the storage engine's own, so a host or a bucket reads the same here.
+ * Add or edit a docker adapter (#88): one way to the daemon, SSH to its socket or TCP, holding one
+ * source per container. Testate makes five read-only calls there and nothing else (K2).
  */
-export function LogfileDialog(props: {
-  presenter: LogfileFormPresenter;
-  /** Offered when the dialog is not already inside a project: the Logs screen's case. */
+export function DockerDialog(props: {
+  presenter: DockerFormPresenter;
   project?: ProjectPick | undefined;
 }): JSX.Element {
   const form = createForm({
-    schema: logfileFormSchema,
+    schema: dockerFormSchema,
     initialInput: untrack(() => props.presenter.seed()),
   });
-  const transport = (): LogTransport => getInput(form, { path: ["transport"] }) ?? "sftp";
+  const transport = (): "ssh" | "tcp" => getInput(form, { path: ["transport"] }) ?? "ssh";
   const editing = (): boolean => props.presenter.editing() !== null;
   // The dialog stays mounted (design-system rule): every open starts from its own seed.
   createEffect(
@@ -69,8 +67,8 @@ export function LogfileDialog(props: {
     <FormDialog
       open={props.presenter.open()}
       onClose={props.presenter.close}
-      title={editing() ? "Edit log adapter" : "New log adapter"}
-      description="Read-only. Testate seals secrets before they reach the database and never shows them again."
+      title={editing() ? "Edit log adapter" : "New log adapter: Docker containers"}
+      description="Read-only. Testate only reads container logs. Over SSH the user needs the docker group, which is root on that host; a read-only socket proxy over TCP is safer."
       size="lg"
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.save(input)}>
@@ -96,10 +94,10 @@ export function LogfileDialog(props: {
           <Field of={form} path={["transport"]}>
             {(field) => (
               <label class="grid content-start gap-1.5 text-base">
-                <span>Files over</span>
+                <span>Reach Docker over</span>
                 <Select
-                  options={LOG_TRANSPORT_OPTIONS}
-                  value={field.input ?? "sftp"}
+                  options={DOCKER_TRANSPORT_OPTIONS}
+                  value={field.input ?? "ssh"}
                   disabled={editing()}
                   onChange={(value) => field.onInput(value)}
                 />
@@ -107,13 +105,21 @@ export function LogfileDialog(props: {
             )}
           </Field>
         </div>
-        <ConnectionFields presenter={props.presenter} form={transport()} editing={editing()} />
+        <ConnectionFields
+          presenter={props.presenter}
+          form={DOCKER_FORMS[transport()]}
+          editing={editing()}
+        />
         <FieldArray of={form} path={["sources"]}>
           {(sources) => (
             <div class="grid gap-3">
               <For each={sources.items}>
                 {(_item, index) => (
-                  <SourceFields form={form} index={index()} removable={sources.items.length > 1} />
+                  <DockerSourceFields
+                    form={form}
+                    index={index()}
+                    removable={sources.items.length > 1}
+                  />
                 )}
               </For>
               <FieldError message={sources.errors?.[0]} />
@@ -123,7 +129,7 @@ export function LogfileDialog(props: {
                   size="sm"
                   variant="outline"
                   onClick={() =>
-                    insert(form, { path: ["sources"], initialInput: { ...BLANK_SOURCE } })
+                    insert(form, { path: ["sources"], initialInput: { ...BLANK_DOCKER_SOURCE } })
                   }
                 >
                   <Icon name="plus" class="h-4 w-4" />
