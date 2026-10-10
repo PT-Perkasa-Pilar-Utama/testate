@@ -25,6 +25,7 @@ export const PROBE_MOCK: ProbeResult = {
     transactionalRestore: true,
     snapshotRead: "repeatable-read",
     timeSeriesDeletes: false,
+    serverLogs: ["statements"],
   },
   strategy: {
     emptyMode: "truncate",

@@ -11,6 +11,7 @@ import type { Topology } from "./probe.ts";
 import { cancelQuery, listRunningQueries, pageRows, runQuery, terminateSessions } from "./query.ts";
 import { readCollection, snapshot } from "./reader.ts";
 import { checkout } from "./restore.ts";
+import { readServerLog } from "./serverlog.ts";
 
 export { decodeRow } from "./codec.ts";
 
@@ -149,6 +150,11 @@ export function createMongodbEngine(netguard: Netguard): DbEngine {
     },
     async listRunningQueries(conn) {
       return use(conn, ({ handle }) => guarded("list queries", () => listRunningQueries(handle)));
+    },
+    async readServerLog(conn, source, page) {
+      return use(conn, ({ handle }) =>
+        guarded("server log", () => readServerLog(handle, source, page))
+      );
     },
     async cancelQuery(conn, queryId) {
       await use(conn, ({ handle }) => guarded("cancel", () => cancelQuery(handle, queryId)));

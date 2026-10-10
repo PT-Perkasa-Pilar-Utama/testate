@@ -1,5 +1,6 @@
 import type { AdapterDraft } from "@testate/shared";
 
+import { createServerLogReader } from "../src/modules/logs/logs.server.ts";
 import type { LogsDeps } from "../src/modules/logs/logs.service.ts";
 import type { AdaptersHarness } from "./adapters.ts";
 
@@ -25,5 +26,6 @@ export function logsDepsOf(harness: AdaptersHarness): LogsDeps {
     files: harness.files,
     adapters: harness.repo,
     ingest: harness.ingest,
+    serverLogs: createServerLogReader({ engines: harness.engines, ring: harness.ring }),
   };
 }

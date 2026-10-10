@@ -1,5 +1,5 @@
 import { inferForeignKeys } from "./relations.ts";
-import type { Introspection, JsonObject, ProbeResult, TableSchema } from "@testate/shared";
+import type { Introspection, JsonObject, TableSchema } from "@testate/shared";
 import { jsonObjectSchema } from "@testate/shared";
 import * as v from "valibot";
 
@@ -9,6 +9,8 @@ import { computeFingerprint } from "../pure/fingerprint.ts";
 import { decodeOffsetCursor } from "../pure/page.ts";
 import { fakeImportRows, fakeWriteRows } from "./write.ts";
 import { EngineError, rowText, sameTable, tableKey } from "../types.ts";
+import { fakeServerLog } from "./serverlog.ts";
+import { PROBE } from "./probe.ts";
 import type {
   CheckoutProgress,
   CheckoutResult,
@@ -32,35 +34,6 @@ export type FakeEngineOptions = {
   failCounters?: { current: boolean };
   /** Tables keyed by row hash rather than primary key, the way a table without a key is read. */
   rowHashTables?: Set<string>;
-};
-
-const PROBE: Omit<ProbeResult, "version"> = {
-  engine: "postgres",
-  dialect: "postgres",
-  meets_floor: true,
-  floor: "13",
-  tier: "tabular",
-  capabilities: {
-    canTruncate: true,
-    canDisableTriggers: false,
-    canTerminateSessions: true,
-    supportsDeferrableConstraints: false,
-    transactionalRestore: true,
-    snapshotRead: "repeatable-read",
-    timeSeriesDeletes: false,
-  },
-  strategy: {
-    emptyMode: "truncate",
-    foreignKeyHandling: "dependency-order",
-    transactional: true,
-    triggerDisable: false,
-    locking: "table",
-  },
-  read_only_enforcement: "transaction",
-  table_count: 0,
-  size_estimate_bytes: 0,
-  atomicity_notice: "fake",
-  warnings: [],
 };
 
 /** Column names survive an emptied table, so a restore test does not read as schema drift. */
@@ -308,6 +281,7 @@ export function createFakeEngine(opts: FakeEngineOptions): DbEngine {
       };
     },
     listRunningQueries: async () => [],
+    readServerLog: (_conn, source, page) => fakeServerLog(source, page),
     cancelQuery: async () => undefined,
     terminateSessions: async (_conn, ids) => ({
       terminated: ids.filter((id) => !id.startsWith("dead-")),
