@@ -21,6 +21,7 @@ Testate ships one prebuilt image that must serve under any sub-path, survive upg
 ## 22.2 Boot sequence
 
 ```text
+    --version or -v: print `testate <version>`, exit 0   nothing below runs; no env is read (#53)
  0. read env through lib/config                          refuse on any invalid value (11 §11.4)
  1. loadKeyRing                                          refuse per 17 §17.5
  2. ensure ${DATA_DIR}/{blobs,logs,uploads,imports,run}  refuse when not writable

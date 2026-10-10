@@ -152,17 +152,67 @@ Testate is honest about what it is. Read these before you install it.
 
 ## One binary, no Docker
 
-Every release carries a standalone executable for macOS on Apple silicon, Linux on x86-64 and Windows on x86-64, with the dashboard and the migrations inside it. Download from the [releases page](https://github.com/PT-Perkasa-Pilar-Utama/testate/releases), then:
+Every release has a binary for Linux (x86-64 and ARM64), macOS (Apple silicon and Intel) and Windows (x86-64). The dashboard and the migrations are inside it.
 
 ```sh
-chmod +x testate-*-darwin-arm64          # macOS and Linux only
-TESTATE_DATA_DIR=./testate-data \
-TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
-TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
-./testate-*-darwin-arm64
+curl -fsSL https://pt-perkasa-pilar-utama.github.io/testate/install.sh | sh
+# or
+wget -qO- https://pt-perkasa-pilar-utama.github.io/testate/install.sh | sh
 ```
 
-It listens on 7378 and keeps everything under `TESTATE_DATA_DIR`, which has to be set. Every other variable in `deploy/.env.example` applies the same way.
+The script puts `testate` in `~/.local/bin` and checks the archive against the release's `checksums.txt`. `TESTATE_VERSION=2.0.0` installs one release, and `TESTATE_INSTALL_DIR` picks another directory. On Windows, download `testate_windows_amd64.zip` from the [releases page](https://github.com/PT-Perkasa-Pilar-Utama/testate/releases). On Alpine (musl), run the image.
+
+Make one `testate.env`. Every way of running it below reads this file:
+
+```sh
+umask 077
+cat > testate.env <<EOF
+TESTATE_DATA_DIR=$HOME/testate-data
+TESTATE_SECRETS_ACTIVE_KEY=$(openssl rand -base64 32)
+TESTATE_ADMIN_PASSWORD=change-me-now-1234
+EOF
+```
+
+Back up `testate.env`: without the key, the stored credentials cannot be read. The admin password is used on the first start only. Every other variable in [`deploy/.env.example`](deploy/.env.example) works the same way. Testate listens on 7378.
+
+**In the foreground:**
+
+```sh
+set -a; . ./testate.env; set +a
+testate
+```
+
+**In the background:**
+
+```sh
+set -a; . ./testate.env; set +a
+nohup testate > testate.log 2>&1 &
+echo $! > testate.pid
+kill "$(cat testate.pid)"      # to stop it; running jobs get 30 s to finish
+```
+
+**As a systemd service** (Linux). The unit runs `/usr/local/bin/testate` as its own user and keeps the data in `/var/lib/testate`, whatever `TESTATE_DATA_DIR` says:
+
+```sh
+sudo install -m 755 ~/.local/bin/testate /usr/local/bin/testate
+sudo install -d -m 700 /etc/testate
+sudo install -m 600 testate.env /etc/testate/testate.env
+curl -fsSL https://raw.githubusercontent.com/PT-Perkasa-Pilar-Utama/testate/main/deploy/systemd/testate.service \
+  | sudo tee /etc/systemd/system/testate.service > /dev/null
+sudo systemctl daemon-reload
+sudo systemctl enable --now testate
+journalctl -u testate -f       # its log
+```
+
+**Under pm2.** The ecosystem file reads `./testate.env`:
+
+```sh
+curl -fsSLO https://raw.githubusercontent.com/PT-Perkasa-Pilar-Utama/testate/main/deploy/pm2/ecosystem.config.cjs
+pm2 start ecosystem.config.cjs
+pm2 save                       # and `pm2 startup` once, to start it at boot
+```
+
+`testate --version` prints the installed version. To upgrade, run the install script again and restart the service.
 
 ## Verify a download
 
@@ -178,7 +228,7 @@ cosign verify ghcr.io/pt-perkasa-pilar-utama/testate:1.2.0 \
 
 Both commands hold for `docker.io/snowfluke/testate:1.2.0` too: it is the same manifest, copied by digest and signed again where it lives.
 
-For a binary, run the same two commands on the archive, with `--bundle <archive>.sigstore.json` for cosign; the release also carries `testate-<version>.intoto.jsonl`, the provenance statement for every archive, for a check without network access (`gh attestation verify <archive> --bundle <that file>`). A download that fails either check is not ours; [SECURITY.md](SECURITY.md) says how to report it.
+For a binary, run the same two commands on the archive, with `--bundle <archive>.sigstore.json` for cosign; the release also carries `testate.intoto.jsonl`, the provenance statement for every archive, for a check without network access (`gh attestation verify <archive> --bundle <that file>`). A download that fails either check is not ours; [SECURITY.md](SECURITY.md) says how to report it.
 
 ## Operate it
 
