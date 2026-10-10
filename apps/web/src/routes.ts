@@ -4,6 +4,7 @@ export const ROUTE_NAMES = [
   "home",
   "databases",
   "storage",
+  "logs",
   "login",
   "projects",
   "project",
@@ -51,6 +52,7 @@ export const ROUTES: readonly RouteDef<RouteName>[] = [
   // A tier is a menu (#63): every database, every file store, each on its own screen.
   { name: "databases", pattern: "/databases", role: "viewer" },
   { name: "storage", pattern: "/storage", role: "viewer" },
+  { name: "logs", pattern: "/logs", role: "viewer" },
   { name: "jobs", pattern: "/jobs", role: "viewer" },
   { name: "account", pattern: "/account", role: "viewer" },
   { name: "audit", pattern: "/audit", role: "admin" },
