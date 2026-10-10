@@ -39,8 +39,8 @@ jobs:
       - run: bun run complete-check
       # The install script runs under dash and busybox, so POSIX sh is the dialect checked.
       # ShellCheck ships on the Ubuntu runner image.
-      - name: shellcheck the install and packaging scripts
-        run: shellcheck -s sh docs/install.sh scripts/binary/package.sh
+      - name: shellcheck the install, packaging and smoke scripts
+        run: shellcheck -s sh docs/install.sh scripts/binary/*.sh
 
   smoke:
     name: boot and smoke

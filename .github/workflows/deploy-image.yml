@@ -516,6 +516,61 @@ jobs:
           curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:7378/fonts/mona-sans.woff2 | grep -q 200
           echo "${{ matrix.target }} booted, served the SPA and its fonts"
           kill $pid
+          wait $pid || true
+
+      # install.sh against these archives, served locally: dash is Ubuntu's sh, busybox's ash is
+      # the smallest shell it promises to run under, and macOS has its own /bin/sh.
+      - name: Install with install.sh under dash and busybox
+        if: matrix.target == 'linux_amd64'
+        run: |
+          sudo apt-get install -y -qq busybox > /dev/null
+          mkdir -p shells && ln -s "$(command -v busybox)" shells/ash
+          sh scripts/binary/smoke-install.sh binaries dash "$PWD/shells/ash"
+
+      - name: Install with install.sh under /bin/sh
+        if: matrix.target == 'darwin_arm64'
+        run: sh scripts/binary/smoke-install.sh binaries /bin/sh
+
+      # Start, restart and kill -9 under systemd, then start and restart under pm2, all from one
+      # testate.env made from deploy/.env.example.
+      - name: Run it under systemd and pm2
+        if: matrix.target == 'linux_amd64'
+        run: sh scripts/binary/smoke-service.sh binaries/testate
+
+  # The one-liner a reader copies from the README, against the release just published. The Pages
+  # site serves install.sh from main; "latest" can lag a published release by a few seconds.
+  install-from-release:
+    name: Install the release (${{ matrix.os }})
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || '' }}
+
+      - name: curl the install script into sh
+        run: |
+          version=$(jq -r .version package.json)
+          for attempt in 1 2 3 4 5; do
+            if curl -fsSL https://pt-perkasa-pilar-utama.github.io/testate/install.sh \
+              | TESTATE_VERSION="$version" sh; then
+              break
+            fi
+            [ "$attempt" = 5 ] && exit 1
+            sleep 15
+          done
+          answer=$("$HOME/.local/bin/testate" --version)
+          if [ "$answer" != "testate ${version}" ]; then
+            echo "::error::the installed binary answered '${answer}', expected 'testate ${version}'"
+            exit 1
+          fi
 
   # The release for this version, with GitHub's own generated notes and the binaries attached.
   # Idempotent like the image: an existing release for the version is left alone.
