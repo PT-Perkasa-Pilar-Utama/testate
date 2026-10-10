@@ -7,13 +7,13 @@ import Icon from "@/components/icon.tsx";
 import InspectBadge from "@/components/inspect-badge.tsx";
 import { href } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
-import AdaptersView from "../adapters/adapters.view.tsx";
+import ConnectionCounts from "./project.counts.view.tsx";
 import type { ProjectPresenter } from "./project.presenter.ts";
 
 /**
- * The built-in Inspect project (#56, Q7): its adapters and nothing else. No HEAD, no Snapshot, no
- * settings and no tabs, because states, checkouts and imports never happen here, and a control that
- * would only be refused is not shown.
+ * The built-in Inspect project (#56, Q7): what it is for, and the way to its connections in each
+ * menu (#63, Q3). No HEAD, no Snapshot, no settings and no tabs, because states, checkouts and
+ * imports never happen here, and a control that would only be refused is not shown.
  */
 export default function InspectProject(props: {
   presenter: ProjectPresenter;
@@ -34,6 +34,10 @@ export default function InspectProject(props: {
               <InspectBadge />
             </div>
             <p class="max-w-prose text-muted">{project().description}</p>
+            <ConnectionCounts
+              slug={project().slug}
+              adapters={props.presenter.overview.value().adapters}
+            />
           </div>
           {/* Tokens are an admin's screen, so only an admin is offered the way there. */}
           <Show when={hasRole("admin")}>
@@ -44,11 +48,6 @@ export default function InspectProject(props: {
           </Show>
         </div>
       </div>
-      <AdaptersView
-        slug={props.slug}
-        inspect
-        onChanged={() => props.presenter.overview.refresh()}
-      />
     </section>
   );
 }

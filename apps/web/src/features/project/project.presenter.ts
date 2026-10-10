@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createSignal, untrack } from "solid-js";
 import type { JsonObject, Project, ProjectDefaults, ProjectDraft } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
@@ -9,20 +9,17 @@ import type { Refreshable } from "@/lib/async.ts";
 import { navigate, search } from "@/lib/router.ts";
 import { hasRole } from "@/lib/session.ts";
 import { QUOTA_STEPS, quotaIndex } from "../projects/projects.presenter.ts";
+import { databasesRedirect } from "../databases/databases.presenter.ts";
 import { projectsModel } from "../projects/projects.model.ts";
 import type { DeletionPlan, Overview } from "../projects/projects.model.ts";
 
 /**
- * The work first, the plumbing last. This used to open on Adapters, which is the one tab a tester
- * never needs: an admin connects the database once and nobody touches it again.
- *
- * Three, not five. States is the front door; Activity holds the events that reference a state,
- * which is what checkouts, diffs and import runs all are; Databases holds the connections.
- * File stores are not here at all: they have their own menu.
+ * The work, not the plumbing. States is the front door; Activity holds the events that reference
+ * a state, which is what checkouts, diffs and import runs all are. Connections are not here: a
+ * tier is a menu, so databases and file stores each have their own screen (#63).
  */
 export const PROJECT_TABS = [
   { id: "states", label: "States" },
-  { id: "adapters", label: "Databases" },
   { id: "activity", label: "Activity" },
 ] as const;
 export type ProjectTab = (typeof PROJECT_TABS)[number]["id"];
@@ -103,6 +100,9 @@ export function toUpdateBody(
 }
 
 export function createProjectPresenter(slug: () => string): ProjectPresenter {
+  // The Databases tab moved to its own menu; a link to it lands there, not on States.
+  const moved = databasesRedirect(window.location.search, untrack(slug));
+  if (moved !== null) navigate(moved, true);
   const overview = createRefreshable(() => projectsModel.overview(slug()));
   /**
    * The tab lives in the URL, not in a signal. A signal meant a reload always landed on the first

@@ -88,6 +88,12 @@ export function firstPickable(options: readonly ProjectOption[], wanted: string)
   return usable.find((option) => option.value === wanted)?.value ?? usable[0]?.value ?? "";
 }
 
+/** `?tab=adapters` moved to the Databases menu (Q1): where an old project link should land now. */
+export function databasesRedirect(search: string, slug: string): string | null {
+  if (new URLSearchParams(search).get("tab") !== "adapters") return null;
+  return `/databases?project=${encodeURIComponent(slug)}`;
+}
+
 export type DatabasesQuery = { project: string; create: boolean };
 
 /** `?project=<slug>` filters the screen; `?new=1` opens the dialog, from a project's empty state. */

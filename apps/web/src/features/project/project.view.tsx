@@ -10,8 +10,10 @@ import { Menu, MenuItem } from "@/components/menu.tsx";
 import Meter from "@/components/meter.tsx";
 import Tabs from "@/components/tabs.tsx";
 import { hasRole } from "@/lib/session.ts";
-import AdaptersView from "../adapters/adapters.view.tsx";
+import EmptyState from "@/components/empty-state.tsx";
+import { navigate } from "@/lib/router.ts";
 import ActivityView from "./activity.view.tsx";
+import ConnectionCounts from "./project.counts.view.tsx";
 import InspectProject from "./inspect.view.tsx";
 import StatesView from "../states/states.view.tsx";
 import { TakeDialog } from "../states/states.dialogs.view.tsx";
@@ -79,6 +81,10 @@ function ProjectHeader(props: {
           <Show when={project().description}>
             <p class="text-muted">{project().description}</p>
           </Show>
+          <ConnectionCounts
+            slug={project().slug}
+            adapters={props.presenter.overview.value().adapters}
+          />
         </div>
         <div class="flex shrink-0 items-center gap-2">
           {/* The product's own verb, on every tab: a state is of the project, not of a tab. It
@@ -158,6 +164,32 @@ function RegularProject(props: { presenter: ProjectPresenter; slug: string }): J
       <Show when={iris()}>
         <div class="iris" aria-hidden="true" />
       </Show>
+      {/* The first step for a new project, kept where a new user starts (#63, Q1). */}
+      <Show
+        when={
+          presenter.overview.value().adapters.filter((adapter) => adapter.kind === "database")
+            .length === 0
+        }
+      >
+        <EmptyState
+          icon="database"
+          title="No databases yet"
+          action={
+            hasRole("qa") ? (
+              <Button
+                variant="primary"
+                onClick={() =>
+                  navigate(`/databases?project=${encodeURIComponent(props.slug)}&new=1`)
+                }
+              >
+                Add a database
+              </Button>
+            ) : undefined
+          }
+        >
+          Connect the databases behind the system under test, then take a state of them.
+        </EmptyState>
+      </Show>
       <Tabs
         items={PROJECT_TABS}
         value={presenter.tab()}
@@ -165,13 +197,6 @@ function RegularProject(props: { presenter: ProjectPresenter; slug: string }): J
         label="Project sections"
       />
       <Switch>
-        <Match when={presenter.tab() === "adapters"}>
-          <AdaptersView
-            slug={props.slug}
-            head={presenter.overview.value().project.head}
-            onChanged={() => presenter.overview.refresh()}
-          />
-        </Match>
         <Match when={presenter.tab() === "states"}>
           <StatesView
             slug={props.slug}

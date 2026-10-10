@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import type { AdapterWithProject, Head, Project } from "@testate/shared";
 
-import { firstPickable, groupByProject, pickerOptions, readQuery } from "./databases.presenter.ts";
+import {
+  databasesRedirect,
+  firstPickable,
+  groupByProject,
+  pickerOptions,
+  readQuery,
+} from "./databases.presenter.ts";
 
 // docs/decisions/2026-10-10-databases-menu.md: the Databases screen groups by project, Inspect
 // first, and keeps a project off the picker's usable list while it is not at its starting point.
@@ -104,5 +110,15 @@ describe("the Databases screen", () => {
       { project: "shop", create: true },
       { project: "", create: false },
     ]);
+  });
+});
+
+describe("a link to the old Databases tab", () => {
+  test("lands on the Databases menu filtered to the project, and nothing else redirects", () => {
+    expect([
+      databasesRedirect("?tab=adapters", "shop"),
+      databasesRedirect("?tab=states", "shop"),
+      databasesRedirect("", "shop"),
+    ]).toEqual(["/databases?project=shop", null, null]);
   });
 });
