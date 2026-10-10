@@ -45,12 +45,20 @@ function target(deps: ServiceDeps): string {
   return `gui/${deps.uid}/${LAUNCHD_LABEL}`;
 }
 
+/** systemctl --user's answer when this shell has no user session to talk to. */
+const NO_SESSION = /connect to bus|XDG_RUNTIME_DIR/;
+const SESSION_HINT =
+  "This shell has no user session (ssh -T, su, or a script). Run it from a normal login, or run " +
+  "`sudo loginctl enable-linger $USER` and set XDG_RUNTIME_DIR=/run/user/$(id -u) first.";
+
 /** Runs each command in turn and stops at the first failure, naming it. */
 function steps(deps: ServiceDeps, commands: string[][]): void {
   for (const command of commands) {
     const result = deps.run(command);
-    if (result.code !== 0)
-      throw new CliError(1, `${command.join(" ")} failed: ${(result.err || result.out).trim()}`);
+    if (result.code === 0) continue;
+    const said = (result.err || result.out).trim();
+    const hint = NO_SESSION.test(said) ? `\n${SESSION_HINT}` : "";
+    throw new CliError(1, `${command.join(" ")} failed: ${said}${hint}`);
   }
 }
 
