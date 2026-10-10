@@ -1,6 +1,9 @@
 import type { JsonValue } from "@testate/shared";
 
+import { AppError } from "../src/lib/http/index.ts";
 import type { DockerAnswer, DockerApi, DockerRequest } from "../src/lib/logs/docker/api.ts";
+import { dockerAccess } from "../src/lib/logs/docker/connect.ts";
+import type { OpenDocker } from "../src/modules/adapters/adapters.docker.api.ts";
 
 /** One log line of a fake container: its stamp in nanoseconds, its stream and its text. */
 export type FakeLine = { nanos: bigint; stream: "stdout" | "stderr"; text: string };
@@ -100,4 +103,31 @@ export function fakeLines(count: number, start = FAKE_START): FakeLine[] {
     stream: "stdout" as const,
     text: `line ${n + 1}`,
   }));
+}
+
+/**
+ * The harness's Docker hosts by host name, the SSH ones behind a host key the test can change. Over
+ * SSH, a host with no entry refuses the socket, as one whose user is not in the `docker` group.
+ */
+export function memoryOpenDocker(
+  hosts: Map<string, FakeContainer[]>,
+  hostKey: { current: string }
+): OpenDocker {
+  return (connection) => {
+    if (connection.transport === "tcp") return fakeDocker(hosts.get(connection.host) ?? []);
+    const { login, socketPath } = connection;
+    const containers = hosts.get(login.host);
+    const daemon = fakeDocker(containers ?? []);
+    return {
+      async get(request, capBytes) {
+        if (!login.verifyHostKey({ type: "ssh-ed25519", fingerprint: hostKey.current }))
+          throw new AppError("CONFLICT", "the SSH host key changed", {
+            reason: "host_key_changed",
+          });
+        if (containers === undefined) throw dockerAccess(login.user, socketPath);
+        return daemon.get(request, capBytes);
+      },
+      close: () => daemon.close(),
+    };
+  };
 }

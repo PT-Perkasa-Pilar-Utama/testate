@@ -49,8 +49,12 @@ import { createIngestStore } from "../src/lib/logs/ingest/store.ts";
 import type { IngestStore } from "../src/lib/logs/ingest/store.ts";
 import { createIngestTokensRepository } from "../src/modules/ingest/ingest.repository.ts";
 import { createMoveRepository } from "../src/modules/adapters/adapters.move.repository.ts";
+import { memoryOpenDocker } from "./docker.ts";
+import type { FakeContainer } from "./docker.ts";
 import { memoryOpenShell } from "./journald.ts";
 import { createShellResolver } from "../src/modules/adapters/adapters.shell.ts";
+import { createDockerResolver } from "../src/modules/adapters/adapters.docker.api.ts";
+import type { DockerResolver } from "../src/modules/adapters/adapters.docker.api.ts";
 import type { ShellResolver } from "../src/modules/adapters/adapters.shell.ts";
 import type { JournalRow } from "./journald.ts";
 import { createIngestService } from "../src/modules/ingest/ingest.service.ts";
@@ -100,6 +104,9 @@ export type AdaptersHarness = {
   hostKeys: HostKeysRepository;
   journals: Map<string, JournalRow[]>;
   shells: ShellResolver;
+  /** Docker hosts' containers, by host name (#88). */
+  dockerHosts: Map<string, FakeContainer[]>;
+  dockers: DockerResolver;
   files: FilesResolver;
   /** In-memory file trees by S3 bucket or SFTP/FTP host; storage adapters in tests browse these. */
   trees: Map<string, MemoryTree>;
@@ -213,6 +220,7 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
   const trees = new Map<string, MemoryTree>();
   /** SSH hosts' journals, by host name, behind the same host key as the SFTP hosts (#86). */
   const journals = new Map<string, JournalRow[]>();
+  const dockerHosts = new Map<string, FakeContainer[]>();
   const sftpKey = { current: "SHA256:fake-host-key-1" };
   const hostKeys = createHostKeysRepository(accounts.db);
   const files = createFilesResolver({
@@ -251,7 +259,8 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     fileProbe: createFileProbe(
       memoryOpen(trees, sftpKey),
       createScaffoldFileProbe(),
-      memoryOpenShell(journals, sftpKey)
+      memoryOpenShell(journals, sftpKey),
+      memoryOpenDocker(dockerHosts, sftpKey)
     ),
     jobs: runtime.jobs,
     states,
@@ -297,6 +306,15 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
       ring,
       netguard: stubNetguard(blocked),
       openShell: memoryOpenShell(journals, sftpKey),
+      now: accounts.now,
+    }),
+    dockerHosts,
+    dockers: createDockerResolver({
+      repo,
+      hostKeys,
+      ring,
+      netguard: stubNetguard(blocked),
+      openDocker: memoryOpenDocker(dockerHosts, sftpKey),
       now: accounts.now,
     }),
   };

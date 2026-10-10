@@ -57,8 +57,11 @@ import { createStatesService } from "./modules/states/states.service.ts";
 import type { StatesDeps, StatesService } from "./modules/states/states.service.ts";
 import type { JobsService } from "./modules/jobs/jobs.service.ts";
 import { createIngestStore } from "./lib/logs/ingest/store.ts";
+import { openDocker } from "./lib/logs/docker/connect.ts";
 import { createSshShell } from "./lib/logs/journald/shell.ts";
 import { createShellResolver } from "./modules/adapters/adapters.shell.ts";
+import { createDockerResolver } from "./modules/adapters/adapters.docker.api.ts";
+import type { DockerResolver } from "./modules/adapters/adapters.docker.api.ts";
 import type { ShellResolver } from "./modules/adapters/adapters.shell.ts";
 import type { IngestStore } from "./lib/logs/ingest/store.ts";
 
@@ -77,6 +80,8 @@ export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now" | "blobs"> & 
   ingest: IngestStore;
   /** A journald adapter's checked SSH command channel (#86). */
   shells: ShellResolver;
+  /** A docker adapter's checked Engine API connection (#88). */
+  dockers: DockerResolver;
 };
 
 /** One authenticated, kind-agnostic adapter ownership check for all v1 adapter routes. */
@@ -130,7 +135,12 @@ export function createEngineWiring(
     engines,
     adapterLanes: config.TESTATE_JOB_CONCURRENCY,
     probe: createEngineProbe(engines, createScaffoldProbe()),
-    fileProbe: createFileProbe(openFileSource, createScaffoldFileProbe(), createSshShell),
+    fileProbe: createFileProbe(
+      openFileSource,
+      createScaffoldFileProbe(),
+      createSshShell,
+      openDocker
+    ),
     hostKeys,
     files: createFilesResolver({
       repo: adapters,
@@ -148,6 +158,7 @@ export function createEngineWiring(
       openShell: createSshShell,
       now,
     }),
+    dockers: createDockerResolver({ repo: adapters, hostKeys, ring, netguard, openDocker, now }),
     blobs: createSwitchableBlobStore(createLocalBlobStore(join(config.TESTATE_DATA_DIR, "blobs"))),
     ring,
     adapters,
