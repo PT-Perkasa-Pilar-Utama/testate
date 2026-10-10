@@ -7,6 +7,7 @@ import type { ValidatedConfig } from "./adapters.config.ts";
 import type { FileSource } from "../../lib/files/index.ts";
 import type { OpenFileSource } from "../../lib/files/open.ts";
 import { memoryOpenDocker } from "../../../test/docker.ts";
+import { memoryOpenEs } from "../../../test/elasticsearch.ts";
 import { memoryOpenLoki } from "../../../test/loki.ts";
 import { memoryOpenShell } from "../../../test/journald.ts";
 
@@ -51,7 +52,8 @@ describe("adapter network target pinning", () => {
       createScaffoldFileProbe(),
       memoryOpenShell(new Map(), { current: "k" }),
       memoryOpenDocker(new Map(), { current: "k" }),
-      memoryOpenLoki(new Map())
+      memoryOpenLoki(new Map()),
+      memoryOpenEs(new Map())
     );
 
     await probeTarget(
