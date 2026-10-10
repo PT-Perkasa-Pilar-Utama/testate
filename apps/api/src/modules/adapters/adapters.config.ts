@@ -7,6 +7,7 @@ import { sha256 } from "../../lib/password/index.ts";
 import { validateIngest } from "./adapters.ingest.ts";
 import { validateDocker } from "./adapters.docker.ts";
 import { validateJournald } from "./adapters.journald.ts";
+import { validateLoki } from "./adapters.loki.ts";
 import { validateLogfile } from "./adapters.logfile.ts";
 import type { Secrets } from "./adapters.secrets.ts";
 
@@ -23,6 +24,7 @@ export const KIND_OF_ENGINE = {
   ingest: "logs",
   journald: "logs",
   docker: "logs",
+  loki: "logs",
 } as const satisfies Record<Engine, AdapterKind>;
 
 export const TIER_OF_ENGINE = {
@@ -37,6 +39,7 @@ export const TIER_OF_ENGINE = {
   ingest: "logs",
   journald: "logs",
   docker: "logs",
+  loki: "logs",
 } as const satisfies Record<Engine, Tier>;
 
 const DEFAULT_PORT = {
@@ -54,6 +57,8 @@ const DEFAULT_PORT = {
   journald: 22,
   // Over SSH; over TCP validateDocker uses 2376, the Engine API's TLS port (K1).
   docker: 22,
+  // validateLoki takes the port from the URL.
+  loki: 3100,
 } as const satisfies Record<Engine, number>;
 
 const port = v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(65535));
@@ -133,6 +138,8 @@ const SECRET_RULES = {
     allowed: ["password", "private_key", "passphrase", "tls_key"],
     alternatives: [],
   },
+  // Checked per auth by validateLoki: a password for basic, a token for bearer (L1).
+  loki: { allowed: ["password", "bearer_token"], alternatives: [] },
 } as const satisfies Record<Engine, SecretRule>;
 
 export type Target = { host: string; port: number };
@@ -218,6 +225,7 @@ const LOG_ENGINE_CHECKS = new Map<
   ["ingest", validateIngest],
   ["journald", validateJournald],
   ["docker", validateDocker],
+  ["loki", validateLoki],
 ]);
 
 /**
