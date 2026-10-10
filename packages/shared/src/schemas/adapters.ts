@@ -213,6 +213,10 @@ export type AdapterEditFormInput = v.InferOutput<typeof adapterEditFormSchema>;
 
 export const setModeSchema = v.object({ mode: adapterModeSchema });
 
+/** Where an adapter moves (#77): the destination project's slug. */
+export const moveAdapterSchema = v.object({ project: slugSchema });
+export type MoveAdapterInput = v.InferOutput<typeof moveAdapterSchema>;
+
 export const deletionActionSchema = v.picklist(["restore", "force", "skip"]);
 
 export const adapterDeletionPlanSchema = v.object({

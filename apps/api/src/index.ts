@@ -177,7 +177,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   const logs = logsService(wiring, projectsRepo);
   const shared = { projects: projectsRepo, audit, now };
   const ingest = ingestService(db, wiring, { ...shared, settings });
-  const adapters = adaptersService(wiring, { ...shared, ring, netguard, jobs, ingest });
+  const adapters = adaptersService(db, wiring, { ...shared, ring, netguard, jobs, ingest });
   const projects = createProjectsService({
     repo: projectsRepo,
     audit,

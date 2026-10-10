@@ -89,9 +89,24 @@ function untouched(adapter: AdapterRecord): PreflightAdapter {
   };
 }
 
+/**
+ * A state's adapter as a restore may use it: still there, and still in the state's project. A
+ * database moved to another project (#77, ADR 0005) reads as removed, so no manifest of this
+ * project can reach it.
+ */
+export function liveAdapter(
+  adapters: Pick<RestoreDeps["adapters"], "byId">,
+  projectId: string,
+  adapterId: string
+): AdapterRecord | null {
+  const adapter = adapters.byId(adapterId);
+  return adapter?.project_id === projectId ? adapter : null;
+}
+
 /** Removed adapters and adapters outside the request are reported, never probed (13 §13.1). */
 export async function preflight(
   deps: RestoreDeps,
+  projectId: string,
   state: State,
   manifests: AdapterManifest[],
   outside: AdapterRecord[],
@@ -100,7 +115,7 @@ export async function preflight(
 ): Promise<Preflight> {
   const adapters: PreflightAdapter[] = outside.map(untouched);
   for (const manifest of manifests) {
-    const adapter = deps.adapters.byId(manifest.adapter_id);
+    const adapter = liveAdapter(deps.adapters, projectId, manifest.adapter_id);
     const wanted = requested === undefined || requested.includes(manifest.adapter_id);
     if (adapter === null || !wanted) {
       adapters.push({

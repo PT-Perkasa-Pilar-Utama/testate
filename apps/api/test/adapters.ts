@@ -49,6 +49,7 @@ import type { AccountsHarness } from "./accounts.ts";
 import { createIngestStore } from "../src/lib/logs/ingest/store.ts";
 import type { IngestStore } from "../src/lib/logs/ingest/store.ts";
 import { createIngestTokensRepository } from "../src/modules/ingest/ingest.repository.ts";
+import { createMoveRepository } from "../src/modules/adapters/adapters.move.repository.ts";
 import { createIngestService } from "../src/modules/ingest/ingest.service.ts";
 import type { IngestService } from "../src/modules/ingest/ingest.service.ts";
 
@@ -270,6 +271,7 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
   const adapters = createAdaptersService({
     repo,
     ingest: ingestService,
+    moves: createMoveRepository(accounts.db),
     projects: accounts.projectsRepo,
     audit: accounts.audit,
     ring,

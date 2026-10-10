@@ -6,6 +6,7 @@ import {
   adapterPatchSchema,
   adapterStatusSchema,
   engineSchema,
+  moveAdapterSchema,
   setModeSchema,
 } from "@testate/shared";
 import * as v from "valibot";
@@ -33,6 +34,7 @@ export type AdaptersHandlers = {
   retest: Handler;
   deletionPlan: Handler;
   remove: Handler;
+  move: Handler;
 };
 
 const listQuery = v.object({
@@ -97,6 +99,18 @@ export function createAdaptersHandlers(
         c,
         await service.update(currentActor(c), param(c, "slug"), param(c, "id"), patch, meta(c))
       );
+    },
+    move: async (c) => {
+      const input = await parseBody(c, moveAdapterSchema);
+      const moved = await service.move({
+        actor: currentActor(c),
+        slug: param(c, "slug"),
+        adapterId: param(c, "id"),
+        target: input.project,
+        scope: c.get("projectScope"),
+        meta: meta(c),
+      });
+      return ok(c, moved);
     },
     setMode: async (c) => {
       const input = await parseBody(c, setModeSchema);
