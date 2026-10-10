@@ -70,7 +70,7 @@ apart on what a checkout does.
 
 10. As a QA engineer, I want to create a project with a name and a slug, so that each system under test has its own space.
 11. As a QA engineer, I want to create many projects, so that I can test more than one system from one Testate.
-12. As a viewer, I want the project page to show HEAD, whether the databases have moved off it, quota usage, and tabs for adapters, states, and activity, so that I see the state of the system at a glance.
+12. As a viewer, I want the project page to show HEAD, whether the databases have moved off it, quota usage, how many databases and file stores it has (each linking to its menu), and tabs for states and activity, so that I see the state of the system at a glance. Databases, like file stores, are listed in a sidebar menu of their own, across every project I can see (a tier is a menu).
 13. As an admin, I want to delete a project by typing its slug, and have Testate return every database adapter to its init state first, so that a retired system's databases are left as Testate found them.
 14. As an admin, I want a deletion plan that shows, per adapter, whether Testate will restore, force-restore over drift, or skip (read-only, unreachable, or removed), and lets me choose per adapter, so that deletion never surprises me.
 15. As an admin, I want the project to stay in place when any planned restore fails, with HEAD unknown on the failed adapters and a retry, so that a failed cleanup is visible, not silent.
