@@ -68,7 +68,7 @@ npm install -g --silent "pm2@$PM2_VERSION"
 work=$(mktemp -d)
 sed "s|^TESTATE_DATA_DIR=.*|TESTATE_DATA_DIR=$work/data|" "$env_file" > "$work/testate.env"
 cd "$work"
-TESTATE_BIN=/usr/local/bin/testate pm2 start "$root/deploy/pm2/ecosystem.config.cjs"
+pm2 start "$root/deploy/pm2/ecosystem.config.cjs"
 if ! wait_live "pm2 start"; then
   pm2 logs testate --nostream --lines 50
   exit 1

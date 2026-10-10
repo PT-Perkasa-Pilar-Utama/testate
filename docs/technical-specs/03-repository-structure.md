@@ -69,12 +69,16 @@ testate/                                  # github.com/pt-perkasa-pilar-utama/te
 │   ├── docker-compose.yml                # testate + volume; nginx optional profile
 │   ├── nginx.conf                        # upload size, read timeout above the wait ceiling, SSE headers
 │   ├── compose.engines.yml               # CI matrix: pg 13/17, mysql 8.0/8.4, mariadb 10.6/11, mongo 6/8, minio, sftp, ftp
-│   └── .env.example
+│   ├── systemd/testate.service           # the binary as a DynamicUser service, data in /var/lib/testate
+│   ├── pm2/ecosystem.config.cjs          # the binary under pm2, reading ./testate.env
+│   └── .env.example                      # one env file for the container and the binary
+├── docs/install.sh                       # curl or wget installer, served by GitHub Pages
 ├── docs/                                 # PRD, technical-specs/, api-specs/, adr/, CODING_STANDARD, ...
 ├── scripts/
 │   ├── smoke.ts                          # Playwright smoke against bun run dev
 │   ├── generate-key.ts                   # prints a base64 32-byte key for TESTATE_SECRETS_ACTIVE_KEY
-│   └── contract.ts                       # runs the engine contract suite against compose.engines.yml
+│   ├── contract.ts                       # runs the engine contract suite against compose.engines.yml
+│   └── binary/                           # build-binaries.ts, package.sh (archives, checksums.txt), smoke-*.sh
 ├── tools/oxlint/anti-slop/               # vendored lint rules, never edited
 ├── .claude/skills/                       # solidjs-2, design-system, wide-event-logging, and the codebase-pattern skills
 ├── .github/workflows/                    # ci.yml (quality + contract matrix), deploy-image.yml (manual, version-gated, docker-slim)
@@ -97,7 +101,7 @@ testate/                                  # github.com/pt-perkasa-pilar-utama/te
 | `apps/web/src/features/<f>/` | One feature in MVP form | View is JSX only; presenter owns state; model calls the API |
 | `apps/web/src/components/` | Hand-rolled components | Never imports `features/` |
 | `packages/shared/` | The API contract as valibot schemas | Both apps derive types from it; no runtime logic beyond validation |
-| `deploy/` | Everything an operator copies | Compose, nginx, env example |
+| `deploy/` | Everything an operator copies | Compose, nginx, env example, systemd unit, pm2 file |
 | `docs/adr/` | Decisions with alternatives | One file per decision, numbered |
 | `tools/oxlint/anti-slop/` | Vendored rules | Byte-identical to upstream; update by copying |
 
