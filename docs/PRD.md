@@ -96,6 +96,7 @@ apart on what a checkout does.
 32. As an admin, I want Testate to block connections to link-local, cloud metadata, and its own addresses without an off switch, and to manage a deny list of hosts and networks that Testate checks on every connection, so that nobody points Testate at production or at the container host.
 33. As an admin, I want Testate to re-check every adapter when the deny list changes and disable the ones that match, so that a rule added today protects adapters created yesterday.
 34. As any user, I want every password, secret, or key I enter to be sealed: encrypted at rest, never displayed or returned by the API or the audit log, shown only as "set" with a date and a key fingerprint, and replaceable only, so that a credential entered once cannot be read back out of Testate.
+158. As a QA engineer, I want to move an adapter to another project, Inspect included, keeping its policies, saved queries and mappings, so that a connection added in the wrong place does not have to be deleted and added again.
 
 ### Browse and query data
 

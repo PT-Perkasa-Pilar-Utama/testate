@@ -15,6 +15,6 @@ test("every @story tag names a PRD story, and the coverage report is written", (
   mkdirSync(E2E_DIR, { recursive: true });
   writeFileSync(join(E2E_DIR, "coverage.md"), report.markdown);
   expect(report.unknownTags).toStrictEqual([]);
-  expect(report.total).toBe(156);
+  expect(report.total).toBe(157);
   expect(report.counts.covered).toBeGreaterThanOrEqual(30);
 });
