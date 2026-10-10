@@ -108,6 +108,7 @@ Testate is one container on the same server, or the same network, as the databas
 | Tabular  | PostgreSQL, MySQL, MariaDB                    | view, snapshot, checkout, diff, extract, edit, import  |
 | Document | MongoDB                                       | view, snapshot, checkout, diff, extract                |
 | Files    | Object storage (any S3-compatible), SFTP, FTP | view, preview, download, insert, rename, delete, batch |
+| Logs     | Log files over SFTP or object storage         | read, filter, follow, download, masked for viewers     |
 
 Every engine here is real, driven over its own protocol, and proven in a contract suite against a real server. S3-compatible means Amazon, Cloudflare R2, Google Cloud Storage, Backblaze B2, MinIO and anything else that speaks the protocol; the [connecting guide](docs/CONNECTING.md#d-an-object-store-that-is-not-amazons) has the endpoint for each.
 
@@ -134,7 +135,7 @@ claude mcp add --transport http testate https://testate.example.internal/api/v1/
   --header "Authorization: Bearer tst_YOUR_TOKEN"
 ```
 
-The first tool the agent sees is `help`. Reads run in a read-only transaction, results are capped, column policies mask values before the agent sees them, and every call is audited. Everything else, including what happens when a token expires: [Agent access](docs/AGENT_ACCESS.md).
+The first tool the agent sees is `help`. `read_logs` reads a log source, always masked. Reads run in a read-only transaction, results are capped, column policies mask values before the agent sees them, and every call is audited. Everything else, including what happens when a token expires: [Agent access](docs/AGENT_ACCESS.md).
 
 ## Know the limits
 

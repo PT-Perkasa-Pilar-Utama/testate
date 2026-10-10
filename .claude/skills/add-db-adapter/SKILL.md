@@ -7,6 +7,8 @@ description: Implement or extend a Testate database engine behind the DbEngine p
 
 An engine is one folder under `apps/api/src/lib/engines/<engine>/` that implements the `DbEngine` port from `docs/adr/0001-dbengine-interface.md`. Read the ADR and `docs/technical-specs/12-engine-port.md` first; `13-checkout-and-restore.md`, `14-schema-fingerprint.md`, and `24-table-editing.md` cover the callers. Nothing in this skill overrides those documents.
 
+A log engine is not a `DbEngine`. It reads and never writes. It lives in `apps/api/src/lib/logs/` and `modules/logs/` (spec 25), takes kind `logs`, and is listed on the Logs menu (`apps/web/src/features/logs/`). `logfile` reads its files through the storage resolver, so a new log engine that reads files reuses that resolver. Do not write a second one.
+
 ## The port, in order of implementation
 
 | Step | Method | Notes |
