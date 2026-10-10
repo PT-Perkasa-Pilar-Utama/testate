@@ -184,6 +184,17 @@ export function createS3Source(
         throw missing(clean);
       return file.stream();
     },
+    async readRange(path, start, end) {
+      const clean = normalizePath(path);
+      try {
+        // A sliced S3 file is a ranged GET: only these bytes cross the network.
+        return new Uint8Array(
+          await client.file(keyOf(config.prefix, clean)).slice(start, end).arrayBuffer()
+        );
+      } catch (cause: unknown) {
+        throw failure(cause, clean, where);
+      }
+    },
     async put(path, body) {
       const clean = normalizePath(path);
       // A key ending in `/` is how this store spells a directory, and there are no others to make.

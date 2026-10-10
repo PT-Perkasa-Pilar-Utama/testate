@@ -88,6 +88,11 @@ export function createMemorySource(tree: MemoryTree): FileSource {
       if (file === undefined) throw missing(clean);
       return new Blob([file.bytes]).stream();
     },
+    async readRange(path, start, end) {
+      const file = tree.get(normalizePath(path));
+      if (file === undefined) throw missing(normalizePath(path));
+      return file.bytes.slice(start, end);
+    },
     async put(path, body) {
       const clean = normalizePath(path);
       if (clean === "" || isDirectory(tree, clean)) throw notAFile(clean);

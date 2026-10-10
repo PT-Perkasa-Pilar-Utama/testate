@@ -19,6 +19,11 @@ export type FileSource = {
   list(path: string, query: ListQuery): Promise<ListPage>;
   stat(path: string): Promise<Entry>;
   read(path: string): Promise<ReadableStream<Uint8Array>>;
+  /**
+   * Bytes `start` up to `end` (exclusive) of one file, without reading the rest: how the Logs tier
+   * reads a log from its end (#69). A range past the end comes back short.
+   */
+  readRange(path: string, start: number, end: number): Promise<Uint8Array>;
   /** Writes a file, making the directories above it, overwriting whatever is there. */
   put(path: string, body: Uint8Array): Promise<void>;
   /**

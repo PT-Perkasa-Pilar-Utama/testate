@@ -26,6 +26,7 @@ function source(): FileSource {
       modified_at: null,
     }),
     read: async () => new Blob([""]).stream(),
+    readRange: async () => new Uint8Array(),
     put: async () => undefined,
     remove: async () => undefined,
     move: async () => undefined,
