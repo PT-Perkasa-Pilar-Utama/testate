@@ -26,6 +26,7 @@ import { createServerLogReader } from "./modules/logs/logs.server.ts";
 import { createDockerReader } from "./modules/logs/logs.docker.ts";
 import { createJournalReader } from "./modules/logs/logs.journal.ts";
 import { createLokiReader } from "./modules/logs/logs.loki.ts";
+import { createEsReader } from "./modules/logs/logs.elasticsearch.ts";
 import type { LogsService } from "./modules/logs/logs.service.ts";
 import { createAdaptersService } from "./modules/adapters/adapters.service.ts";
 import { createMoveRepository } from "./modules/adapters/adapters.move.repository.ts";
@@ -110,6 +111,7 @@ export function logsService(wiring: EngineWiring, projects: ProjectsRepository):
     journal: createJournalReader(wiring.shells),
     docker: createDockerReader(wiring.dockers),
     loki: createLokiReader(wiring.lokis),
+    elasticsearch: createEsReader(wiring.searches),
   });
 }
 

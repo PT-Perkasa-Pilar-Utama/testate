@@ -110,7 +110,7 @@ type Netguard = { check(input: Check): Promise<Verdict> };
 /** Verdicts by host name: `blocked` hosts hit the policy, `.invalid` hosts never resolve, the rest pass. */
 /** The openers in createFileProbe's order. */
 function openersOf(open: ReturnType<typeof remoteOpeners>) {
-  return [open.openShell, open.openDocker, open.openLoki] as const;
+  return [open.openShell, open.openDocker, open.openLoki, open.openEs] as const;
 }
 
 function stubNetguard(blocked: Set<string>): Netguard {

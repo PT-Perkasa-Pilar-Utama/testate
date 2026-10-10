@@ -58,6 +58,7 @@ import type { StatesDeps, StatesService } from "./modules/states/states.service.
 import type { JobsService } from "./modules/jobs/jobs.service.ts";
 import { createIngestStore } from "./lib/logs/ingest/store.ts";
 import { openDocker } from "./lib/logs/docker/connect.ts";
+import { createEsApi } from "./lib/logs/elasticsearch/api.ts";
 import { createLokiApi } from "./lib/logs/loki/api.ts";
 import { createSshShell } from "./lib/logs/journald/shell.ts";
 import { createShellResolver } from "./modules/adapters/adapters.shell.ts";
@@ -65,6 +66,8 @@ import { createDockerResolver } from "./modules/adapters/adapters.docker.api.ts"
 import type { DockerResolver } from "./modules/adapters/adapters.docker.api.ts";
 import { createLokiResolver } from "./modules/adapters/adapters.loki.api.ts";
 import type { LokiResolver } from "./modules/adapters/adapters.loki.api.ts";
+import { createEsResolver } from "./modules/adapters/adapters.elasticsearch.api.ts";
+import type { EsResolver } from "./modules/adapters/adapters.elasticsearch.api.ts";
 import type { ShellResolver } from "./modules/adapters/adapters.shell.ts";
 import type { IngestStore } from "./lib/logs/ingest/store.ts";
 
@@ -87,6 +90,8 @@ export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now" | "blobs"> & 
   dockers: DockerResolver;
   /** A loki adapter's checked client (#90). */
   lokis: LokiResolver;
+  /** An elasticsearch adapter's checked client (#92). */
+  searches: EsResolver;
 };
 
 /** One authenticated, kind-agnostic adapter ownership check for all v1 adapter routes. */
@@ -145,7 +150,8 @@ export function createEngineWiring(
       createScaffoldFileProbe(),
       createSshShell,
       openDocker,
-      createLokiApi
+      createLokiApi,
+      createEsApi
     ),
     hostKeys,
     files: createFilesResolver({
@@ -171,6 +177,14 @@ export function createEngineWiring(
       ring,
       netguard,
       openLoki: createLokiApi,
+      now,
+    }),
+    searches: createEsResolver({
+      repo: adapters,
+      hostKeys,
+      ring,
+      netguard,
+      openEs: createEsApi,
       now,
     }),
     blobs: createSwitchableBlobStore(createLocalBlobStore(join(config.TESTATE_DATA_DIR, "blobs"))),

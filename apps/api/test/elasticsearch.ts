@@ -4,6 +4,7 @@ import * as v from "valibot";
 
 import type { HttpAnswer } from "../src/lib/logs/http.ts";
 import type { EsApi, EsRequest } from "../src/lib/logs/elasticsearch/api.ts";
+import type { OpenEs } from "../src/modules/adapters/adapters.elasticsearch.api.ts";
 import { nanosOf } from "../src/lib/logs/time.ts";
 
 export type FakeDoc = { index: string; id: string; stamp: string; source: JsonObject };
@@ -172,4 +173,9 @@ export function fakeDocs(count: number, index = "logs-shop", start = ES_START_MS
     stamp: stampAt(start + n * 1000),
     source: { "@timestamp": stampAt(start + n * 1000), message: `line ${n + 1}` },
   }));
+}
+
+/** The harness's clusters by host name. */
+export function memoryOpenEs(hosts: Map<string, FakeDoc[]>, options: FakeEsOptions = {}): OpenEs {
+  return (connection) => fakeEs(hosts.get(new URL(connection.url).hostname) ?? [], options);
 }
