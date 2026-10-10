@@ -15,6 +15,7 @@ export const KIND_OF_ENGINE = {
   s3: "storage",
   sftp: "storage",
   ftp: "storage",
+  logfile: "logs",
 } as const satisfies Record<Engine, AdapterKind>;
 
 export const TIER_OF_ENGINE = {
@@ -25,6 +26,7 @@ export const TIER_OF_ENGINE = {
   s3: "files",
   sftp: "files",
   ftp: "files",
+  logfile: "logs",
 } as const satisfies Record<Engine, Tier>;
 
 const DEFAULT_PORT = {
@@ -35,6 +37,8 @@ const DEFAULT_PORT = {
   s3: 443,
   sftp: 22,
   ftp: 21,
+  // Over SFTP; a logfile source over S3 takes its port from the endpoint, as s3 does.
+  logfile: 22,
 } as const satisfies Record<Engine, number>;
 
 const port = v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(65535));
@@ -97,6 +101,8 @@ const SECRET_RULES = {
     alternatives: [["password", "private_key"]],
   },
   ftp: { allowed: ["password"], alternatives: [["password"]] },
+  // Nothing yet: validateConfig refuses logfile until its engine lands (#69).
+  logfile: { allowed: [], alternatives: [] },
 } as const satisfies Record<Engine, SecretRule>;
 
 export type Target = { host: string; port: number };
@@ -184,6 +190,12 @@ export function validateConfig(
 ): ValidatedConfig {
   if (KIND_OF_ENGINE[engine] !== kind)
     throw invalid(`engine ${engine} is not a ${kind} adapter`, { engine, kind });
+  // ponytail: the Logs tier's schema is in place, its first engine is not. Remove with #69's
+  // engine PR, which adds the logfile config and its secrets.
+  if (engine === "logfile")
+    throw new AppError("ENGINE_UNSUPPORTED", "The logfile engine is not available yet.", {
+      reason: "not_yet",
+    });
   validateSecrets(engine, secrets);
   const tier = TIER_OF_ENGINE[engine];
   if (kind === "database") {
