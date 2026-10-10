@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -114,7 +114,9 @@ describe("retention, clearing and reading back", () => {
     expect(await store.prune(ADAPTER, 7)).toBe(1);
     expect(await store.sources(ADAPTER)).toEqual(["api"]);
     await store.clear(ADAPTER);
-    expect(await store.sources(ADAPTER)).toEqual([]);
+    // Not an adapter id: nothing to clear, and never a path outside the root.
+    await store.clear("..");
+    expect([await store.sources(ADAPTER), existsSync(root)]).toEqual([[], true]);
   });
 
   it("reads a source back newest first through the logfile reader", async () => {

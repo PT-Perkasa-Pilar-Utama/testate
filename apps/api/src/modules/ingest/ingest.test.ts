@@ -10,6 +10,7 @@ import type { AdaptersHarness } from "../../../test/adapters.ts";
 import { logsDepsOf } from "../../../test/logs.ts";
 import { errorResponse } from "../../lib/http/index.ts";
 import { WideEvent } from "../../lib/logger/event.ts";
+import { redact } from "../audit/audit.payloads.ts";
 import { createLogsService } from "../logs/logs.service.ts";
 import { ensureInspectProject } from "../projects/projects.inspect.ts";
 import { createIngestHandlers } from "./ingest.handler.ts";
@@ -108,6 +109,35 @@ describe("pushing lines", () => {
       (await push(hono, adapter.id, "tst_an-api-token", PAID)).status,
     ];
     expect(statuses).toEqual([401, 401, 401]);
+  });
+
+  it("never reads the body of a refused push", async () => {
+    const { h, adapter } = await setup();
+    let pulled = false;
+    // No eager pull: the stream is read only when a reader asks for it.
+    const body = new ReadableStream(
+      {
+        pull(controller) {
+          pulled = true;
+          controller.enqueue(new TextEncoder().encode(PAID));
+          controller.close();
+        },
+      },
+      { highWaterMark: 0 }
+    );
+    const request = new Request(`http://testate/ingest/${adapter.id}`, {
+      method: "POST",
+      headers: { authorization: "Bearer tsi_wrong" },
+      body,
+      duplex: "half",
+    });
+    expect([(await app(h).request(request)).status, pulled]).toEqual([401, false]);
+  });
+
+  it("keeps the minted token out of what the audit log stores", async () => {
+    const { token } = await setup();
+    const stored = JSON.stringify(redact({ data: { ingest_token: token, token, prefix: "x" } }));
+    expect(stored.includes("tsi_")).toBe(false);
   });
 
   it("answers 429 past the adapter's budget, and charges refused tokens to the address", async () => {
