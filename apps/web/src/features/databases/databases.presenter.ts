@@ -82,10 +82,15 @@ export function pickerOptions(projects: readonly Project[]): ProjectOption[] {
   });
 }
 
-/** The project the dialog opens on: the one asked for when it may take a database, else the first that may. */
+/**
+ * The project the dialog opens on: the one asked for when it may take a database, else the first
+ * people's project that may. Inspect is picked only when asked for or when nothing else can take
+ * one, so a database never lands there by default.
+ */
 export function firstPickable(options: readonly ProjectOption[], wanted: string): string {
   const usable = options.filter((option) => !option.disabled);
-  return usable.find((option) => option.value === wanted)?.value ?? usable[0]?.value ?? "";
+  const asked = usable.find((option) => option.value === wanted);
+  return (asked ?? usable.find((option) => !option.inspect) ?? usable[0])?.value ?? "";
 }
 
 /** `?tab=adapters` moved to the Databases menu (Q1): where an old project link should land now. */
