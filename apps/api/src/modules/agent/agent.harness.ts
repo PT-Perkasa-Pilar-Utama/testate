@@ -14,6 +14,7 @@ import { createDataService } from "../data/data.service.ts";
 import { createDiffsService } from "../diffs/diffs.service.ts";
 import type { DiffsService } from "../diffs/diffs.service.ts";
 import { createProjectsService } from "../projects/projects.service.ts";
+import { createLogsService } from "../logs/logs.service.ts";
 import { createStatesService } from "../states/states.service.ts";
 import type { StatesService } from "../states/states.service.ts";
 import { createStorageService } from "../storage/storage.service.ts";
@@ -97,6 +98,7 @@ export async function createHarness(): Promise<Harness> {
       audit: harness.audit,
       now: harness.now,
     }),
+    logs: createLogsService({ projects: harness.projectsRepo, files: harness.files }),
     audit: harness.audit,
     checkouts,
     jobs: harness.runtime.jobs,
