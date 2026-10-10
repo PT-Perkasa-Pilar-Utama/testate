@@ -5,7 +5,7 @@
  * text, in a tail grown until that line and the page before it fit.
  */
 import { createHash } from "node:crypto";
-import { LOG_LINE_MAX } from "@testate/shared";
+import { LOG_LINE_MAX, LOG_WINDOW_MAX_MS } from "@testate/shared";
 import type { LogsQuery } from "@testate/shared";
 import * as v from "valibot";
 
@@ -67,12 +67,12 @@ const nanosOfIso = (iso: string | undefined): bigint | undefined =>
   iso === undefined ? undefined : BigInt(Date.parse(iso)) * 1_000_000n;
 
 type Got = { lines: DockerLine[]; capped: boolean; bytes: number };
-type Reader = (tail: number | "all", since?: bigint) => Promise<Got>;
+type Reader = (tail: number | "all", since?: bigint, until?: bigint) => Promise<Got>;
 
 /** Reads a container's log with `timestamps=1`; a refusal says what Docker said. */
 export function containerReader(api: DockerApi, container: string, tty: boolean): Reader {
-  return async (tail, since) => {
-    const answer = await api.get({ kind: "logs", container, tail, since }, READ_CEILING);
+  return async (tail, since, until) => {
+    const answer = await api.get({ kind: "logs", container, tail, since, until }, READ_CEILING);
     if (answer.status !== 200)
       throw new AppError("ADAPTER_UNREACHABLE", `Docker answered ${answer.status}`, {
         status: answer.status,
@@ -121,14 +121,6 @@ async function pageBefore(
     tail = next;
   }
 }
-
-/** The first line stamped after `to`, as `until` stops: the end of a page in a window. */
-const endAt =
-  (to: bigint | undefined) =>
-  (lines: DockerLine[]): number => {
-    const after = to === undefined ? -1 : lines.findIndex((line) => line.nanos > to);
-    return after === -1 ? lines.length : after;
-  };
 
 const endBefore =
   (mark: Mark) =>
@@ -182,11 +174,37 @@ function pageOf(
   };
 }
 
+/**
+ * A page in a window that ends at `to`: one read with no tail, `since` and `until` set, so the
+ * window's own lines bound it and not what came after (Q8's run windows). Docker streams oldest
+ * first, so a read cut at the ceiling lost the window's newest lines and says so.
+ */
+async function windowPage(
+  read: Reader,
+  query: LogsQuery,
+  to: bigint,
+  mark: Mark | null
+): Promise<Before & { bytes: number }> {
+  const since = nanosOfIso(query.from) ?? to - BigInt(LOG_WINDOW_MAX_MS) * 1_000_000n;
+  const got = await read("all", since, to);
+  const end = mark === null ? got.lines.length : endBefore(mark)(got.lines);
+  const start = Math.max(0, (end ?? 0) - query.limit);
+  const page = end === null ? [] : got.lines.slice(start, end);
+  const depth = start > 0 && !got.capped ? 0 : null;
+  return { page, depth, cut: got.capped, bytes: got.bytes };
+}
+
 export async function readContainer(read: Reader, query: LogsQuery): Promise<ContainerRead> {
   const since = nanosOfIso(query.from);
   if (query.after !== undefined) {
     const newer = decode(query.after).newer;
     if (newer !== null) return follow(read, newer);
+  }
+  const older = query.cursor === undefined ? undefined : decode(query.cursor).older;
+  const to = nanosOfIso(query.to);
+  if (to !== undefined) {
+    const window = await windowPage(read, query, to, older?.mark ?? null);
+    return pageOf(window, query.limit, window.bytes, null);
   }
   let bytes = 0;
   const counted: Reader = async (tail, from) => {
@@ -194,10 +212,9 @@ export async function readContainer(read: Reader, query: LogsQuery): Promise<Con
     bytes += got.bytes;
     return got;
   };
-  const older = query.cursor === undefined ? undefined : decode(query.cursor).older;
   const before =
     older === undefined
-      ? await pageBefore(counted, since, query.limit, query.limit, endAt(nanosOfIso(query.to)))
+      ? await pageBefore(counted, since, query.limit, query.limit, (lines) => lines.length)
       : await pageBefore(
           counted,
           since,
