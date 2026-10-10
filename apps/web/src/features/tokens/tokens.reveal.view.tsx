@@ -1,58 +1,27 @@
 import type { JSX } from "@solidjs/web";
 import { Show } from "solid-js";
 
-import Banner from "@/components/banner.tsx";
-import Button from "@/components/button.tsx";
-import Dialog, { DialogActions } from "@/components/dialog.tsx";
-import Icon from "@/components/icon.tsx";
+import SecretReveal from "@/components/secret-reveal.tsx";
 import type { TokensPresenter } from "./tokens.presenter.ts";
 
-/**
- * The one moment on this screen a mistake can't be undone: Testate stores only a hash of the
- * token, so this is the only time it is ever shown. A modal, not a banner in the page flow — a
- * banner sits below the fold as soon as the list scrolls and can be missed entirely.
- *
- * Never conditionally mount a `<dialog>` (it kills the open/close animation), so this stays
- * mounted and reads `created()` as null while closed, the way `ResetDialog` reads `resetting()`.
- */
+/** The one moment on this screen a mistake can't be undone: the token, shown once. */
 export default function RevealDialog(props: { presenter: TokensPresenter }): JSX.Element {
   const created = (): ReturnType<TokensPresenter["created"]> => props.presenter.created();
   return (
-    <Dialog
-      open={created() !== null}
-      onClose={props.presenter.dismissCreated}
+    <SecretReveal
+      secret={created()?.token ?? null}
       title={created() === null ? "Token created" : `${created()?.record.name} created`}
-      size="lg"
-      description="Copy it now. Testate will not show it again."
+      lost="Revoke it and create another to get a new one."
+      onCopy={() => void props.presenter.copyCreated()}
+      onClose={() => props.presenter.dismissCreated()}
     >
       <Show when={created()}>
         {(result) => (
-          <div class="grid gap-4">
-            <Banner variant="alert">
-              <Icon name="triangle-alert" class="mt-0.5 h-4 w-4 shrink-0" />
-              <span>
-                Testate stores only a hash of this token. Closing without copying it loses your only
-                look at it. Revoke it and create another to get a new one.
-              </span>
-            </Banner>
-            <output class="block rounded-md bg-hover px-3 py-2.5 font-mono text-sm break-all ring ring-line">
-              {result().token}
-            </output>
-            <p class="text-sm text-muted">
-              {result().record.kind} token · role {result().record.role}
-            </p>
-            <DialogActions>
-              <Button variant="primary" onClick={() => void props.presenter.copyCreated()}>
-                <Icon name="copy" class="h-3.5 w-3.5" />
-                Copy token
-              </Button>
-              <Button variant="ghost" onClick={() => props.presenter.dismissCreated()}>
-                Done, I've saved it
-              </Button>
-            </DialogActions>
-          </div>
+          <p class="text-sm text-muted">
+            {result().record.kind} token · role {result().record.role}
+          </p>
         )}
       </Show>
-    </Dialog>
+    </SecretReveal>
   );
 }
