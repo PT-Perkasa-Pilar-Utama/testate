@@ -179,6 +179,15 @@ apart on what a checkout does.
 96. As a viewer, I want to download a file, so that I can inspect it locally.
 97. As a QA engineer, I want SFTP to remember the host key from the first connection and refuse to connect when it changes until I accept the new key, so that a swapped host is caught, not logged.
 
+### Logs
+
+151. As a QA engineer, I want to add a log adapter from the Logs screen, one SFTP server or S3 bucket holding named sources that each have a file pattern and a format, always read-only, so that the application's logs sit beside its data.
+152. As a viewer, I want to read one source newest first, filtered by level, text, and a window of up to 7 days, with older pages on demand, so that I find the line that explains a failure.
+153. As a viewer, I want to follow a source as new lines arrive, so that I can watch a test run live.
+154. As a viewer, I want each checkout and job to link to the logs written during it, so that I go from a failed run to its logs in one click.
+155. As a viewer, I want secrets in log lines masked by built-in patterns and the source's own, and to download what I see as JSON lines, while testers see raw lines, so that a log never leaks a token.
+156. As an agent, I want to read a log source over MCP, always masked, so that I can explain a failure from the logs without a person copying them.
+
 ### Jobs
 
 104. As any user, I want every long operation to return a job with progress and a queue position that I can watch live, so that a queued checkout does not look hung.
@@ -432,6 +441,7 @@ Every mutable entity carries an id, created and updated timestamps. Every sealed
 | Files | S3-compatible, SFTP, FTP | list, preview | yes | | | | |
 | Document | MongoDB | find, aggregate | | yes | document by id | | |
 | Tabular | Postgres, MySQL, MariaDB | grid, SQL | | yes | FK walk | forms, grid, write session | yes |
+| Logs | Log files over SFTP or S3 (`logfile`) | read, filter, follow | JSON lines, masked | | | | |
 
 The probe reports the tier; every module refuses an operation outside the tier with `ENGINE_UNSUPPORTED`.
 

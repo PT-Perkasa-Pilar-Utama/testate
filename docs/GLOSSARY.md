@@ -6,10 +6,12 @@ Terms as the code, the API, and the UI use them. One meaning each. Specs cite th
 | --- | --- | --- |
 | **Project** | The unit of ownership: a slug, a set of adapters, a set of states, one HEAD, one quota | A Testate deployment |
 | **Inspect project** | The one built-in project, slug `inspect`, for reading databases and files, including by agents. It holds adapters only, every one read-only: no states, no checkouts, no imports. It cannot be renamed or deleted | A debug sandbox; a project someone made read-only |
-| **Adapter** | A connection Testate owns to one target: a database or a file store | The engine driver code |
+| **Adapter** | A connection Testate owns to one target: a database, a file store, or a log adapter | The engine driver code |
+| **Log adapter** | An adapter of kind `logs`, always read-only. A `logfile` log adapter is one SFTP or S3 connection holding named sources | A log line; a source |
+| **Source** | One named set of log files on a log adapter: a file pattern in one folder, a format, and its own masking patterns. The viewer and `read_logs` read one source at a time | A log adapter; a data source |
 | **Adapter mode** | `sandbox` allows checkout, import, and writes; `read_only` refuses every write | A role |
-| **Engine** | The target technology behind an adapter: `postgres`, `mysql`, `mariadb`, `mongodb`, `s3`, `sftp`, `ftp`. `s3` is a protocol rather than a vendor: the endpoint decides whether it reaches Amazon, R2, Google Cloud Storage, B2 or a MinIO on the next rack | A version |
-| **Tier** | What an engine supports: **Tabular** (view, state, diff, extract, edit, import), **Document** (view, state, diff, extract), **Files** (view, download). Each tier's adapters are listed in one sidebar menu, across projects: Databases (Tabular and Document) and Storage (Files) | A pricing plan |
+| **Engine** | The target technology behind an adapter: `postgres`, `mysql`, `mariadb`, `mongodb`, `s3`, `sftp`, `ftp`, `logfile`. `s3` is a protocol rather than a vendor: the endpoint decides whether it reaches Amazon, R2, Google Cloud Storage, B2 or a MinIO on the next rack | A version |
+| **Tier** | What an engine supports: **Tabular** (view, state, diff, extract, edit, import), **Document** (view, state, diff, extract), **Files** (view, download), **Logs** (read, follow, download). Each tier's adapters are listed in one sidebar menu, across projects: Databases (Tabular and Document), Storage (Files) and Logs (Logs) | A pricing plan |
 | **State** | A data-only snapshot of every database adapter in a project, taken at one moment, named, and stored as blobs | A snapshot of Testate's own metadata |
 | **Init state** | The state taken when an adapter joins a project. Protected. The target returns to it before a project or adapter deletion | A backup |
 | **Stash** | A state Testate takes on its own before a destructive operation (checkout, import, write session). Retention keeps the last N | A state a user names |
