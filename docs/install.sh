@@ -135,12 +135,8 @@ main() {
   say "Installed $installed to $dir/testate"
   path_hint "$dir"
   say ""
-  say "Next: start it with a data directory, a sealing key and a first admin password:"
-  say "  TESTATE_DATA_DIR=~/testate-data \\"
-  say "  TESTATE_SECRETS_ACTIVE_KEY=\"\$(openssl rand -base64 32)\" \\"
-  say "  TESTATE_ADMIN_PASSWORD=change-me-now-1234 \\"
-  say "  testate"
-  say "Keep the key: the data cannot be read without it. More: https://github.com/$REPO#one-binary-no-docker"
+  say "Next: make a testate.env with a data directory, a sealing key and an admin password,"
+  say "then start it: https://github.com/$REPO#one-binary-no-docker"
 }
 
 # Everything runs from here, so a download cut short runs nothing.
