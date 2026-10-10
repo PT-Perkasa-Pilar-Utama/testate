@@ -139,3 +139,25 @@ docker ps --format '{{.Names}} {{.Ports}}'      # e.g. shop-postgres 0.0.0.0:154
 ```
 
 Adapter form: Host this machine's own address, which the chip under the field offers, Port the published one, `15432` in that example, not the container's `5432`. `localhost` is refused by default: the deny list ships with `127.0.0.0/8` on it because loopback inside a container is Testate itself. On the binary that rule protects nothing, so an admin may remove it under **Settings**, and `localhost` works from then on.
+
+## G. Let your app push its logs
+
+Nothing is dialled here: your app sends its logs to Testate. Open **Logs**, click **New log adapter**, and pick "Push from your app". Testate shows the adapter's token once. Copy it then; rotate it on the adapter page if it is lost.
+
+Send `testate`-format JSON lines, one or many per request, at most 1 MB:
+
+```sh
+curl -X POST https://testate.example.internal/api/v1/ingest/<adapter-id> \
+  -H "Authorization: Bearer tsi_YOUR_TOKEN" -H "Content-Type: application/x-ndjson" \
+  --data-binary $'{"level":"error","message":"refund failed","service":{"name":"billing"},"order":42}\n'
+```
+
+| Key | Meaning |
+| --- | --- |
+| `ts` | ISO time or epoch. Leave it out and Testate stamps the time it arrived. A time ahead of Testate's clock is clamped to it |
+| `level` | `trace`, `debug`, `info`, `warn`, `error` or `fatal` |
+| `message` | The line a person reads |
+| `service.name` | The source it lands in; one viewer source per service. Without it, `default` |
+| anything else | Kept as the entry's fields, searchable from the viewer |
+
+The answer is `202 { "data": { "accepted": 3, "malformed": 0 } }`. `malformed` counts lines that were not JSON: they are kept as text, so a logging bug shows up there rather than as missing lines. Past 600 requests a minute you get `429` with `Retry-After`; batch lines instead. Once today's lines fill the adapter's size cap, pushes answer `507` until the next day, a clear, or a larger cap. Pushed logs are not in a backup: `testate whereis ingest` prints the folder to copy.

@@ -80,7 +80,7 @@ Draft body (create, test, update):
 4. Database kind, outside Inspect: enqueue job `snapshot` into the project's one protected state named `init`, creating it for the first adapter and adding an entry to it for every later one; a change of host, port, or database replaces that adapter's entry. Return-to-init resolves the adapter's entry in that state by the adapter's immutable id, so a rename changes nothing.
 5. Audit `adapter.created`.
 
-**Output.** `201 { "data": { "adapter": {...}, "init_job": { job } | null } }`. **Errors.** As 5.2 plus `CONFLICT` (name; a database while HEAD is not the starting point, or the databases moved since). **Traceability.** Stories 17, 21, 23, 24, 26, 27, 34, 93, 98.
+**Output.** `201 { "data": { "adapter": {...}, "init_job": { job } | null, "ingest_token": "tsi_..." | null } }`; `ingest_token` is set for an `ingest` adapter only, in this answer only (12.6). **Errors.** As 5.2 plus `PROJECT_READ_ONLY` (an `ingest` adapter in Inspect), `CONFLICT` (name; a database while HEAD is not the starting point, or the databases moved since). **Traceability.** Stories 17, 21, 23, 24, 26, 27, 34, 93, 98.
 
 ## 5.4 `GET /projects/{slug}/adapters/{id}`
 
