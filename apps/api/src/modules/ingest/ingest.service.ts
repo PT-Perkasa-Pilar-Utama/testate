@@ -35,7 +35,10 @@ export type IngestDeps = {
 export type IngestService = {
   /** A new token for the adapter, replacing any before it; the secret is returned once. */
   mint(adapterId: string): IngestToken;
-  push(token: string, adapterId: string, body: string): Promise<IngestAnswer>;
+  /** The adapter a token may push to, its budget charged; any refusal is `UNAUTHORIZED` or 429. */
+  authorize(token: string, adapterId: string): Promise<AdapterRecord>;
+  /** Stores an authorized push's body under the adapter's cap. */
+  write(adapter: AdapterRecord, body: string): Promise<IngestAnswer>;
   rotate(
     actor: Actor,
     slug: string,
@@ -91,7 +94,7 @@ export function createIngestService(deps: IngestDeps): IngestService {
 
   return {
     mint,
-    async push(token, adapterId, body) {
+    async authorize(token, adapterId) {
       // One answer for every refusal, so a wrong token says nothing about which adapters exist.
       const found = token.startsWith("tsi_") ? deps.tokens.byHash(sha256(token)) : null;
       const adapter = found === null ? null : deps.adapters.byId(found.adapter_id);
@@ -102,8 +105,10 @@ export function createIngestService(deps: IngestDeps): IngestService {
       const lastUsed = found.last_used_at === null ? 0 : Date.parse(found.last_used_at);
       if (deps.now().getTime() - lastUsed >= TOUCH_INTERVAL_MS)
         deps.tokens.touch(adapterId, nowIso());
-      const config = v.parse(ingestConfigSchema, adapter.config);
-      return deps.store.write(adapterId, body, config.cap_mb);
+      return adapter;
+    },
+    write(adapter, body) {
+      return deps.store.write(adapter.id, body, v.parse(ingestConfigSchema, adapter.config).cap_mb);
     },
     rotate(actor, slug, adapterId, scope, meta) {
       const adapter = ingestOf(slug, adapterId, scope);

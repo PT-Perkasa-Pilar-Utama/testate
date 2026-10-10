@@ -106,6 +106,8 @@ export function createIngestStore(root: string, now: () => Date): IngestStore {
       return old.length;
     },
     async clear(adapterId) {
+      // An id that is no adapter's has no folder: nothing to clear, and nothing to fail a job on.
+      if (!ADAPTER_ID.test(adapterId)) return;
       await rm(base(adapterId), { recursive: true, force: true });
     },
     async sources(adapterId) {

@@ -26,22 +26,22 @@ export function createIngestHandlers(
       const header = c.req.header("authorization") ?? "";
       const token = header.startsWith("Bearer ") ? header.slice(7) : "";
       const adapterId = param(c, "id");
-      try {
-        const answer = await service.push(token, adapterId, await c.req.text());
-        // What the push cost, never a line of it (21).
-        c.get("event").add("op", {
-          ingest_adapter: adapterId,
-          ingest_lines: answer.accepted,
-          ingest_malformed: answer.malformed,
-        });
-        return ok(c, answer, 202);
-      } catch (cause: unknown) {
+      // The token first: a refused push never has its body read.
+      const adapter = await service.authorize(token, adapterId).catch((cause: unknown) => {
         if (cause instanceof AppError && cause.code === "UNAUTHORIZED") {
           const wait = refused.hit(meta(c).ip ?? "unknown", REFUSED_PER_MINUTE);
           if (wait !== null) throw rateLimited(wait);
         }
         throw cause;
-      }
+      });
+      const answer = await service.write(adapter, await c.req.text());
+      // What the push cost, never a line of it (21).
+      c.get("event").add("op", {
+        ingest_adapter: adapterId,
+        ingest_lines: answer.accepted,
+        ingest_malformed: answer.malformed,
+      });
+      return ok(c, answer, 202);
     },
     rotate: async (c) =>
       ok(
