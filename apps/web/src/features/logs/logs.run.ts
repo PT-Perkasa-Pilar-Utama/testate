@@ -24,11 +24,11 @@ export function runWindow(startedAt: string, finishedAt: string | null): RunWind
 
 /** The adapter page, opened on its first source over the run's window. */
 export function runLink(
-  adapter: Pick<AdapterWithProject, "id" | "project_slug" | "config">,
+  adapter: Pick<AdapterWithProject, "id" | "project_slug" | "config" | "capabilities">,
   window: RunWindow
 ): string {
   const params = new URLSearchParams({
-    source: sourcesOf(adapter)[0]?.name ?? "",
+    source: sourcesOf(adapter)[0]?.name ?? adapter.capabilities?.serverLogs[0] ?? "",
     from: window.from,
   });
   if (window.to !== null) params.set("to", window.to);

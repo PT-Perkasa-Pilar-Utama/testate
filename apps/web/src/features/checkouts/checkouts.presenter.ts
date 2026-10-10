@@ -209,7 +209,7 @@ export function createCheckoutsPresenter(
     checkouts.refresh();
     onChanged();
   };
-  const logAdapters = createRefreshable(() => logsModel.adapters());
+  const logAdapters = createRefreshable(() => logsModel.runAdapters());
   return {
     ...checkouts,
     table,

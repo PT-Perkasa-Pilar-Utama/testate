@@ -7,11 +7,28 @@ import { runLink, runWindow } from "./logs.run.ts";
 const ADAPTER = {
   id: "a-logs",
   project_slug: "shop",
+  capabilities: null,
   config: {
     transport: "sftp",
     host: "logs.sit.internal",
     user: "deploy",
     sources: [{ name: "api", glob: "logs/api-*.log", format: "pm2" }],
+  },
+};
+
+const DATABASE = {
+  id: "a-db",
+  project_slug: "shop",
+  config: { host: "pg.sit.internal" },
+  capabilities: {
+    canTruncate: true,
+    canDisableTriggers: false,
+    canTerminateSessions: false,
+    supportsDeferrableConstraints: false,
+    transactionalRestore: true,
+    snapshotRead: "repeatable-read" as const,
+    timeSeriesDeletes: false,
+    serverLogs: ["statements" as const],
   },
 };
 
@@ -40,6 +57,12 @@ describe("a run's log window", () => {
     const link = runLink(ADAPTER, { from: "2026-10-10T07:59:00.000Z", to: null });
     expect(link).toBe(
       "/projects/shop/adapters/a-logs?source=api&from=2026-10-10T07%3A59%3A00.000Z"
+    );
+  });
+
+  test("opens a database adapter on its first readable server-log source", () => {
+    expect(runLink(DATABASE, { from: "2026-10-10T07:59:00.000Z", to: null })).toBe(
+      "/projects/shop/adapters/a-db?source=statements&from=2026-10-10T07%3A59%3A00.000Z"
     );
   });
 });

@@ -9,6 +9,7 @@ import type { LogLevel, ServerLogSource } from "@testate/shared";
 import * as v from "valibot";
 
 import { pageWindow } from "../../logs/server.ts";
+import { TESTATE_APPLICATION } from "./pool.ts";
 import type { ServerLogEntry, ServerLogPage, ServerLogRead } from "../types.ts";
 
 /**
@@ -34,7 +35,8 @@ async function statements(sql: SQL): Promise<ServerLogEntry[]> {
             state, query, usename AS user, application_name AS application,
             CASE WHEN wait_event IS NULL THEN NULL ELSE wait_event_type || ':' || wait_event END AS wait
      FROM pg_stat_activity
-     WHERE datname = current_database() AND pid <> pg_backend_pid() AND COALESCE(query, '') <> ''`
+     WHERE datname = current_database() AND pid <> pg_backend_pid() AND COALESCE(query, '') <> ''
+       AND application_name <> '${TESTATE_APPLICATION}'`
   );
   return v.parse(v.array(activityRow), [...rows]).map((row) => ({
     key: { time: row.time, id: row.id.padStart(10, "0") },

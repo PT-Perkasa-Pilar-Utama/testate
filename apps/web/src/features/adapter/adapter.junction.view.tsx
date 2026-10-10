@@ -16,7 +16,7 @@ import { formatBytes } from "../states/states.format.ts";
  * Everything else on the page (status, connection identity) is context for this decision, so it
  * sits above it and the buttons that make it stay grouped and legible.
  */
-const JUNCTION_HEADING = {
+export const JUNCTION_HEADING = {
   files: "Files",
   document: "Collections",
   tabular: "Tables",

@@ -22,7 +22,12 @@ type TableView = (typeof TABLE_VIEWS)[number]["id"];
 import Erd from "../erd/erd.view.tsx";
 import DocumentBrowser from "../data/document.view.tsx";
 import { createGridPresenter, qualifiedName } from "../data/grid.presenter.ts";
-import { FilesView, JunctionToolbar, TablesView } from "./adapter.junction.view.tsx";
+import {
+  FilesView,
+  JUNCTION_HEADING,
+  JunctionToolbar,
+  TablesView,
+} from "./adapter.junction.view.tsx";
 import EditDialog from "./adapter.edit.view.tsx";
 import { MoveControl } from "./adapter.move.view.tsx";
 import { LogsPanel } from "../logs/logs.panel.view.tsx";
@@ -30,6 +35,8 @@ import { mayManage } from "./adapter.access.ts";
 import { menuOf } from "./adapter.menu.ts";
 import { createAdapterPresenter } from "./adapter.presenter.ts";
 import type { AdapterPresenter } from "./adapter.presenter.ts";
+import { ServerLogsPanel } from "../logs/logs.database.view.tsx";
+import { sectionFrom } from "../logs/logs.database.ts";
 
 /**
  * Everything that changes the adapter rather than reads it, grouped so it reads as one decision
@@ -200,6 +207,8 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
   );
   const base = (): string => `/projects/${props.slug}/adapters/${props.id}`;
   const [tableView, setTableView] = createSignal<TableView>("list");
+  const [section, setSection] = createSignal(sectionFrom(window.location.search));
+  const database = (): boolean => presenter.adapter.value().kind === "database";
   return (
     <section class="grid gap-6">
       <Loading fallback={<Pending>Loading adapter...</Pending>}>
@@ -221,60 +230,79 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
           {(name) => <p class="text-sm text-muted">Added by {name()}</p>}
         </Show>
         <div class="grid gap-3">
-          <JunctionToolbar adapter={presenter.adapter.value()} base={base()} />
-          <Switch>
-            <Match when={presenter.tables()}>
-              {(schema) => (
-                <div class="grid gap-3">
-                  {/* The same shape States uses for List and Tree: one set of data, two ways to
+          {/* #84, D5: a database adapter's server logs sit beside its tables, not in a menu. */}
+          <Show when={database()}>
+            <Tabs
+              items={[
+                { id: "data", label: JUNCTION_HEADING[presenter.adapter.value().tier] },
+                { id: "logs", label: "Server logs" },
+              ]}
+              value={section()}
+              onChange={(next) => setSection(next)}
+              label="What to show"
+            />
+          </Show>
+          <Show when={database() && section() === "logs"}>
+            <ServerLogsPanel slug={props.slug} adapter={presenter.adapter.value()} />
+          </Show>
+          <Show when={!database() || section() === "data"}>
+            <JunctionToolbar adapter={presenter.adapter.value()} base={base()} />
+            <Switch>
+              <Match when={presenter.tables()}>
+                {(schema) => (
+                  <div class="grid gap-3">
+                    {/* The same shape States uses for List and Tree: one set of data, two ways to
                       read it. */}
-                  {/* A diagram is drawn from foreign keys, which a document store has none of. */}
-                  <Show when={presenter.adapter.value().tier === "tabular"}>
-                    <Tabs
-                      items={TABLE_VIEWS}
-                      value={tableView()}
-                      onChange={(next) => setTableView(next)}
-                      label="How to show the tables"
-                      variant="segmented"
-                    />
-                  </Show>
-                  <Show when={presenter.adapter.value().tier === "document"}>
-                    <CollectionBrowser
-                      slug={props.slug}
-                      id={props.id}
-                      presenter={presenter}
-                      schema={schema()}
-                    />
-                  </Show>
-                  <Show
-                    when={tableView() === "list" && presenter.adapter.value().tier === "tabular"}
-                  >
-                    <TablesView
-                      schema={schema()}
-                      base={base()}
-                      importable={hasRole("qa") && presenter.adapter.value().mode === "sandbox"}
-                    />
-                  </Show>
-                  <Show
-                    when={tableView() === "diagram" && presenter.adapter.value().tier === "tabular"}
-                  >
-                    <Erd tables={schema().tables} />
-                  </Show>
-                </div>
-              )}
-            </Match>
-            <Match when={presenter.entries()}>
-              {(entries) => <FilesView entries={entries()} />}
-            </Match>
-            <Match when={presenter.detail.value().view === "logs"}>
-              <LogsPanel
-                slug={props.slug}
-                adapter={presenter.adapter.value()}
-                manages={mayManage(presenter.adapter.value(), presenter.inspect.value(), actor())}
-                onSaved={() => presenter.adapter.refresh()}
-              />
-            </Match>
-          </Switch>
+                    {/* A diagram is drawn from foreign keys, which a document store has none of. */}
+                    <Show when={presenter.adapter.value().tier === "tabular"}>
+                      <Tabs
+                        items={TABLE_VIEWS}
+                        value={tableView()}
+                        onChange={(next) => setTableView(next)}
+                        label="How to show the tables"
+                        variant="segmented"
+                      />
+                    </Show>
+                    <Show when={presenter.adapter.value().tier === "document"}>
+                      <CollectionBrowser
+                        slug={props.slug}
+                        id={props.id}
+                        presenter={presenter}
+                        schema={schema()}
+                      />
+                    </Show>
+                    <Show
+                      when={tableView() === "list" && presenter.adapter.value().tier === "tabular"}
+                    >
+                      <TablesView
+                        schema={schema()}
+                        base={base()}
+                        importable={hasRole("qa") && presenter.adapter.value().mode === "sandbox"}
+                      />
+                    </Show>
+                    <Show
+                      when={
+                        tableView() === "diagram" && presenter.adapter.value().tier === "tabular"
+                      }
+                    >
+                      <Erd tables={schema().tables} />
+                    </Show>
+                  </div>
+                )}
+              </Match>
+              <Match when={presenter.entries()}>
+                {(entries) => <FilesView entries={entries()} />}
+              </Match>
+              <Match when={presenter.detail.value().view === "logs"}>
+                <LogsPanel
+                  slug={props.slug}
+                  adapter={presenter.adapter.value()}
+                  manages={mayManage(presenter.adapter.value(), presenter.inspect.value(), actor())}
+                  onSaved={() => presenter.adapter.refresh()}
+                />
+              </Match>
+            </Switch>
+          </Show>
         </div>
         <ConnectionCard adapter={presenter.adapter.value()} />
         <DeleteDialog presenter={presenter} name={presenter.adapter.value().name} />
