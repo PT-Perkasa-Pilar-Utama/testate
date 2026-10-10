@@ -103,4 +103,5 @@ export type EngineErrorKind =
 - The integration contract suite (docker compose, four engines) runs through the outer contract only; the fake never substitutes for it. Planner, fingerprint, drift, and validation get engine-free unit tests through the pure exports.
 - `editRow` needs the primary key shape, so the data module introspects once per request and caches it; three edits are three calls.
 - Adding an engine is one `ConnectionConfig` member, one adapter composed of the three inner ports, one registry entry.
+- Amended 2026-10-10 (#37 step 3, D2 of `docs/decisions/2026-10-10-db-server-logs.md`): the port gains `readServerLog`, and the probe reports `serverLogSources`, the sources the credential can read, the way it reports `canTerminateSessions`.
 - The technical specification cites this ADR for the engine port's contract and expands the per-engine strategy matrix in its ad-hoc engine-port document.
