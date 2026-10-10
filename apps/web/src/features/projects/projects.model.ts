@@ -10,7 +10,7 @@ import {
 
 import { apiClient } from "@/lib/api-client.ts";
 import type { Page } from "@/lib/async.ts";
-import { tableQuery } from "@/lib/table.ts";
+import { allPages, tableQuery } from "@/lib/table.ts";
 import type { TableParams } from "@/lib/table.ts";
 import type { ProjectSort } from "./projects.presenter.ts";
 
@@ -63,15 +63,14 @@ const overviewSchema = v.object({
 export type Overview = v.InferOutput<typeof overviewSchema>;
 
 export const projectsModel = {
-  list: (): Promise<Project[]> => apiClient.get("/projects", { schema: v.array(projectSchema) }),
-  /** Every project a scope picker offers, by name. */
-  // ponytail: one page of 200, the API's cap. Past that the picker misses projects; page through
-  // with `apiClient.page` or add a search box.
-  choices: (): Promise<Project[]> =>
-    apiClient.get("/projects", {
-      schema: v.array(projectSchema),
-      query: { limit: 200, sort: "name", order: "asc" },
-    }),
+  /**
+   * Every project this session may see, by name, every page of it: pickers, the tier menus and
+   * Home's count. One page used to stop at the API's default of 50 and drop the rest silently.
+   */
+  list: (): Promise<Project[]> =>
+    allPages((cursor) =>
+      apiClient.page("/projects", projectSchema, { limit: 200, sort: "name", order: "asc", cursor })
+    ),
   /** The projects table: people's projects only; Inspect is its own card above it (#56, Q8). */
   page: (cursor: string | undefined, params: TableParams<ProjectSort>): Promise<Page<Project>> =>
     apiClient.page("/projects", projectSchema, { ...tableQuery(params, cursor), kind: "standard" }),

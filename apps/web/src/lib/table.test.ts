@@ -1,7 +1,14 @@
 import { describe, expect, test } from "bun:test";
 
-import { activeFilterCount, compareBy, matchesQuery, nextSort, sortRows } from "./table.ts";
-import type { SortState } from "./table.ts";
+import {
+  activeFilterCount,
+  allPages,
+  compareBy,
+  matchesQuery,
+  nextSort,
+  sortRows,
+} from "./table.ts";
+import type { PageOf, SortState } from "./table.ts";
 
 type Row = { name: string; size: number | null; note: string | null };
 
@@ -81,5 +88,30 @@ describe("the badge on Filters", () => {
     // A date range is two boxes (from, to) but the caller passes one flag for the pair.
     expect(activeFilterCount(true)).toBe(1);
     expect(activeFilterCount(true, false, true)).toBe(2);
+  });
+});
+
+/** Three pages, 1-2, 3 and 4, recording every cursor asked for (`start` for the first page). */
+function threePages(asked: string[]) {
+  const pages = new Map<string, PageOf<number>>([
+    ["start", { data: [1, 2], next: "b" }],
+    ["b", { data: [3], next: "c" }],
+    ["c", { data: [4], next: null }],
+  ]);
+  return (cursor: string | undefined): Promise<PageOf<number>> => {
+    const key = cursor ?? "start";
+    asked.push(key);
+    return Promise.resolve(pages.get(key) ?? { data: [], next: null });
+  };
+}
+
+describe("allPages", () => {
+  test("follows the cursor to the last page and keeps every item in order", async () => {
+    const asked: string[] = [];
+    const items = await allPages(threePages(asked));
+    expect([items, asked]).toEqual([
+      [1, 2, 3, 4],
+      ["start", "b", "c"],
+    ]);
   });
 });
