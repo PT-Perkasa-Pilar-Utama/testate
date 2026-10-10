@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import type { JsonObject, Project, ProjectDefaults } from "@testate/shared";
 import {
+  adapterKindSchema,
   idSchema,
   jobSchema,
   projectDefaultsSchema,
@@ -56,7 +57,7 @@ export type HeadBanner = v.InferOutput<typeof headBannerSchema>;
 const overviewSchema = v.object({
   project: projectSchema,
   /** Only the count is read, on the Inspect card. */
-  adapters: v.array(v.object({ id: idSchema })),
+  adapters: v.array(v.object({ id: idSchema, kind: adapterKindSchema })),
   quota: quotaSchema,
   banner: headBannerSchema,
 });
