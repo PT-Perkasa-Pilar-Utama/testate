@@ -1,8 +1,6 @@
-import { createSignal } from "solid-js";
 import * as v from "valibot";
 import type {
   Adapter,
-  HostSuggestion,
   JsonObject,
   LogfileConfig,
   LogfileForm,
@@ -11,14 +9,18 @@ import type {
 } from "@testate/shared";
 import { logfileConfigSchema, patternLines } from "@testate/shared";
 
-import { humanMessage } from "@/lib/api-error.ts";
-import { createRefreshable } from "@/lib/async.ts";
-import type { Refreshable } from "@/lib/async.ts";
-import { showToast } from "@/lib/toast.ts";
-import { ENGINE_FORMS, connectionOf, missingRequiredFields } from "../adapters/adapters.fields.ts";
+import { ENGINE_FORMS, connectionOf } from "../adapters/adapters.fields.ts";
 import type { Connection, Values } from "../adapters/adapters.fields.ts";
-import { adaptersModel } from "../adapters/adapters.model.ts";
-import type { ProbeOutcome } from "../adapters/adapters.model.ts";
+import {
+  createConnectionFormPresenter,
+  logAdapterBody,
+  logAdapterPatch,
+} from "./logs.connection.ts";
+import type {
+  ConnectionDraft,
+  ConnectionFormPresenter,
+  ConnectionKind,
+} from "./logs.connection.ts";
 
 /** A source as the dialog first shows it: pm2's out and error files, the common case (#69). */
 export const BLANK_SOURCE = {
@@ -55,25 +57,12 @@ function configAndSecrets(input: LogfileForm, values: Values): Connection {
   };
 }
 
-/** The create body: a logs adapter is always read-only (Q3). */
 export function toLogfileBody(input: LogfileForm, values: Values): JsonObject {
-  const { config, secrets } = configAndSecrets(input, values);
-  return {
-    kind: "logs",
-    engine: "logfile",
-    name: input.name.trim(),
-    mode: "read_only",
-    config,
-    secrets,
-  };
+  return logAdapterBody("logfile", input.name, configAndSecrets(input, values));
 }
 
-/** The edit body: a blank secret keeps the stored one, so only typed secrets are sent. */
 export function toLogfilePatch(input: LogfileForm, values: Values): JsonObject {
-  const { config, secrets } = configAndSecrets(input, values);
-  const body: JsonObject = { name: input.name.trim(), config };
-  if (Object.keys(secrets).length > 0) body.secrets = secrets;
-  return body;
+  return logAdapterPatch(input.name, configAndSecrets(input, values));
 }
 
 function formSource(source: LogSource): LogfileFormInput["sources"][number] {
@@ -94,7 +83,7 @@ function asText(config: LogfileConfig, key: string): string | null {
   return parsed.success ? String(parsed.output) : null;
 }
 
-export type LogfileDraft = { input: LogfileFormInput; values: Values };
+export type LogfileDraft = ConnectionDraft<LogfileFormInput>;
 
 /** The dialog\'s seed for an adapter being edited: its fields, and its connection as values. */
 export function logfileDraftFrom(adapter: Adapter): LogfileDraft {
@@ -114,109 +103,20 @@ export function logfileDraftFrom(adapter: Adapter): LogfileDraft {
   };
 }
 
-export type LogfileFormPresenter = {
-  hosts: Refreshable<HostSuggestion[]>;
-  open: () => boolean;
-  /** The adapter being edited, or null while one is being created. */
-  editing: () => Adapter | null;
-  /** The form's seed for the open: a blank draft, or the edited adapter's. */
-  seed: () => LogfileFormInput;
-  values: () => Values;
-  setValue: (key: string, value: string) => void;
-  outcome: () => ProbeOutcome | null;
-  invalidateOutcome: () => void;
-  error: () => string | null;
-  busy: () => boolean;
-  openCreate: () => void;
-  openEdit: (adapter: Adapter) => void;
-  close: () => void;
-  test: (input: LogfileForm) => Promise<void>;
-  save: (input: LogfileForm) => Promise<void>;
+export type LogfileFormPresenter = ConnectionFormPresenter<LogfileFormInput, LogfileForm>;
+
+/** What makes the generic connection dialog a logfile one. */
+export const LOGFILE_KIND: ConnectionKind<LogfileFormInput, LogfileForm> = {
+  blank: BLANK_LOGFILE,
+  draftFrom: logfileDraftFrom,
+  toBody: toLogfileBody,
+  toPatch: toLogfilePatch,
+  engineOf: (input) => input.transport,
 };
 
 export function createLogfileFormPresenter(
   slug: () => string,
   onSaved: () => void
 ): LogfileFormPresenter {
-  const hosts = createRefreshable(() => adaptersModel.hosts());
-  const [open, setOpen] = createSignal(false);
-  const [editing, setEditing] = createSignal<Adapter | null>(null);
-  const [seed, setSeed] = createSignal<LogfileFormInput>(BLANK_LOGFILE);
-  const [values, setValues] = createSignal<Values>({});
-  const [outcome, setOutcome] = createSignal<ProbeOutcome | null>(null);
-  const [error, setError] = createSignal<string | null>(null);
-  const [busy, setBusy] = createSignal(false);
-  const run = async (task: () => Promise<void>): Promise<void> => {
-    setBusy(true);
-    setError(null);
-    try {
-      await task();
-    } catch (cause: unknown) {
-      setError(humanMessage(cause, "The log adapter could not be saved"));
-    } finally {
-      setBusy(false);
-    }
-  };
-  const start = (adapter: Adapter | null, draft: LogfileDraft): void => {
-    setEditing(adapter);
-    setSeed(draft.input);
-    setValues(draft.values);
-    setOutcome(null);
-    setError(null);
-    setOpen(true);
-  };
-  const create = (input: LogfileForm): Promise<void> => {
-    const missing = missingRequiredFields(input.transport, values());
-    if (missing.length > 0) {
-      setError(`Fill in: ${missing.join(", ")}.`);
-      return Promise.resolve();
-    }
-    const staticSlug = slug();
-    const body = toLogfileBody(input, values());
-    return run(async () => {
-      const result = await adaptersModel.create(staticSlug, body);
-      setOpen(false);
-      onSaved();
-      showToast(`${result.adapter.name} added`, "success");
-    });
-  };
-  const update = (adapter: Adapter, input: LogfileForm): Promise<void> => {
-    const staticSlug = slug();
-    const body = toLogfilePatch(input, values());
-    return run(async () => {
-      await adaptersModel.update(staticSlug, adapter.id, body);
-      setOpen(false);
-      onSaved();
-      showToast("Log adapter saved", "success");
-    });
-  };
-  return {
-    hosts,
-    open,
-    editing,
-    seed,
-    values,
-    setValue: (key, value) => {
-      setValues((current) => ({ ...current, [key]: value }));
-      setOutcome(null);
-    },
-    outcome,
-    invalidateOutcome: () => setOutcome(null),
-    error,
-    busy,
-    openCreate: () => start(null, { input: BLANK_LOGFILE, values: {} }),
-    openEdit: (adapter) => start(adapter, logfileDraftFrom(adapter)),
-    close: () => setOpen(false),
-    test: (input) => {
-      const staticSlug = slug();
-      const body = toLogfileBody(input, values());
-      return run(async () => {
-        setOutcome(await adaptersModel.test(staticSlug, body));
-      });
-    },
-    save: (input) => {
-      const adapter = editing();
-      return adapter === null ? create(input) : update(adapter, input);
-    },
-  };
+  return createConnectionFormPresenter(LOGFILE_KIND, slug, onSaved);
 }

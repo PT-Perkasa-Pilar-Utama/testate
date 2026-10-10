@@ -12,10 +12,10 @@ import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import FormDialog from "@/components/form-dialog.tsx";
 import Input from "@/components/input.tsx";
-import Select from "@/components/select.tsx";
 import SecretReveal from "@/components/secret-reveal.tsx";
 import { onceSettled } from "@/lib/form.ts";
-import type { ProjectPick } from "./logs.form.view.tsx";
+import { ProjectField } from "./logs.connection.view.tsx";
+import type { ProjectPick } from "./logs.connection.view.tsx";
 import { curlFor } from "./logs.ingest.ts";
 import type { IngestPresenter } from "./logs.ingest.ts";
 
@@ -79,18 +79,7 @@ export function IngestDialog(props: {
       size="lg"
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.save(input)}>
-        <Show when={props.project}>
-          {(project) => (
-            <label class="grid content-start gap-1.5 text-base">
-              <FieldLabel required={true}>Project</FieldLabel>
-              <Select
-                options={project().options}
-                value={project().value}
-                onChange={(slug) => project().onChange(slug)}
-              />
-            </label>
-          )}
-        </Show>
+        <ProjectField project={props.project} />
         <Field of={form} path={["name"]}>
           {(field) => (
             <label class="grid content-start gap-1.5 text-base">
