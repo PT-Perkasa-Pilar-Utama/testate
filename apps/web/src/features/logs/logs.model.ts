@@ -1,16 +1,9 @@
 import * as v from "valibot";
-import type {
-  Adapter,
-  AdapterWithProject,
-  IngestToken,
-  LogSource,
-  LogsPage,
-} from "@testate/shared";
+import type { Adapter, AdapterWithProject, IngestToken, LogsPage } from "@testate/shared";
 import {
   adapterWithProjectSchema,
   ingestTokenSchema,
   logSourcesSchema,
-  logfileConfigSchema,
   logsPageSchema,
 } from "@testate/shared";
 
@@ -41,9 +34,14 @@ function queryOf(request: LogsRequest): Query {
   return query;
 }
 
-/** A logfile adapter's sources, or none when its config is not one (a stored row from elsewhere). */
-export function sourcesOf(adapter: Pick<Adapter, "config">): LogSource[] {
-  const parsed = v.safeParse(logfileConfigSchema, adapter.config);
+/** Both engines that configure sources name them the same way (#69, #86). */
+const namedSourcesSchema = v.object({ sources: v.array(v.object({ name: v.string() })) });
+
+export type NamedSource = { name: string };
+
+/** A logfile or journald adapter's sources; none for ingest, whose sources are its services. */
+export function sourcesOf(adapter: Pick<Adapter, "config">): NamedSource[] {
+  const parsed = v.safeParse(namedSourcesSchema, adapter.config);
   return parsed.success ? parsed.output.sources : [];
 }
 

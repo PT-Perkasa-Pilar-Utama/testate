@@ -8,8 +8,10 @@ import { createRefreshable } from "@/lib/async.ts";
 import { projectsModel } from "../projects/projects.model.ts";
 import { createLogfileFormPresenter } from "./logs.form.ts";
 import { LogfileDialog } from "./logs.form.view.tsx";
-import type { ProjectPick } from "./logs.form.view.tsx";
+import type { ProjectPick } from "./logs.connection.view.tsx";
 import { createIngestPresenter } from "./logs.ingest.ts";
+import { createJournaldFormPresenter } from "./logs.journald.ts";
+import { JournaldDialog } from "./logs.journald.view.tsx";
 import { IngestDialog, IngestReveal } from "./logs.ingest.view.tsx";
 
 /** Built once the projects are known; the project is picked inside each dialog, as on Storage. */
@@ -21,12 +23,13 @@ function Creator(props: {
   const slug = (): string => picked() || (props.projects[0]?.value ?? "");
   const files = createLogfileFormPresenter(slug, () => props.onCreated());
   const ingest = createIngestPresenter(slug, () => props.onCreated());
+  const journal = createJournaldFormPresenter(slug, () => props.onCreated());
   const project = (): ProjectPick => ({
     options: props.projects,
     value: slug(),
     onChange: setPicked,
   });
-  // A type first (I8): the two kinds ask for different things, so each has its own dialog.
+  // A type first (I8): the kinds ask for different things, so each has its own dialog.
   return (
     <>
       <Show
@@ -50,10 +53,12 @@ function Creator(props: {
           panelClass="min-w-60"
         >
           <MenuItem onClick={() => files.openCreate()}>Files over SFTP or S3</MenuItem>
+          <MenuItem onClick={() => journal.openCreate()}>systemd journal over SSH</MenuItem>
           <MenuItem onClick={() => ingest.openCreate()}>Push from your app</MenuItem>
         </Menu>
       </Show>
       <LogfileDialog presenter={files} project={project()} />
+      <JournaldDialog presenter={journal} project={project()} />
       <IngestDialog presenter={ingest} project={project()} />
       <IngestReveal presenter={ingest} />
     </>

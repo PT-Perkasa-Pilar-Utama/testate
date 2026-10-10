@@ -10,7 +10,7 @@ import { logSourceNameSchema, safePatternSchema } from "./logs.ts";
 /** A systemd unit name as journalctl's `-u` takes it: no space, no shell character, no leading `-` (J2). */
 export const JOURNAL_UNIT = /^[A-Za-z0-9:_.@-]{1,255}$/;
 
-const unitSchema = v.pipe(
+export const journalUnitSchema = v.pipe(
   v.string(),
   v.regex(JOURNAL_UNIT, "A unit name holds letters, digits and : _ . @ - only."),
   v.check((unit) => !unit.startsWith("-"), "A unit name cannot start with -.")
@@ -19,7 +19,7 @@ const unitSchema = v.pipe(
 /** A named group of units; none means the whole journal (J3). */
 export const journalSourceSchema = v.object({
   name: logSourceNameSchema,
-  units: v.optional(v.pipe(v.array(unitSchema), v.maxLength(32)), []),
+  units: v.optional(v.pipe(v.array(journalUnitSchema), v.maxLength(32)), []),
   patterns: v.optional(v.array(safePatternSchema), []),
 });
 export type JournalSource = v.InferOutput<typeof journalSourceSchema>;

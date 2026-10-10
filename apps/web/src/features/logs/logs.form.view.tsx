@@ -9,13 +9,11 @@ import {
   validate,
 } from "@formisch/solid";
 import type { JSX } from "@solidjs/web";
-import { For, Show, createEffect, untrack } from "solid-js";
+import { For, createEffect, untrack } from "solid-js";
 import type { LogTransport } from "@testate/shared";
 import { logfileFormSchema } from "@testate/shared";
 
-import Banner from "@/components/banner.tsx";
 import Button from "@/components/button.tsx";
-import { DialogActions } from "@/components/dialog.tsx";
 import FieldError from "@/components/field-error.tsx";
 import FieldLabel from "@/components/field-label.tsx";
 import FormDialog from "@/components/form-dialog.tsx";
@@ -24,19 +22,16 @@ import Input from "@/components/input.tsx";
 import Select from "@/components/select.tsx";
 import { onceSettled } from "@/lib/form.ts";
 import { LOG_TRANSPORT_OPTIONS } from "@/lib/labels.ts";
-import { FieldInput } from "../adapters/adapters.field-input.view.tsx";
-import { ENGINE_FORMS } from "../adapters/adapters.fields.ts";
-import { describeOutcome, outcomeWarnings } from "../adapters/adapters.presenter.ts";
 import { BLANK_SOURCE } from "./logs.form.ts";
+import {
+  ConnectionActions,
+  ConnectionFields,
+  ProbeBanners,
+  ProjectField,
+} from "./logs.connection.view.tsx";
+import type { ProjectPick } from "./logs.connection.view.tsx";
 import { SourceFields } from "./logs.source.view.tsx";
 import type { LogfileFormPresenter } from "./logs.form.ts";
-
-/** The project picker a dialog shows when it opens outside a project: the Logs menu. */
-export type ProjectPick = {
-  options: { value: string; label: string }[];
-  value: string;
-  onChange: (slug: string) => void;
-};
 
 /**
  * Add or edit a logfile adapter (S1): one SFTP or S3 connection, holding named sources. The
@@ -79,18 +74,7 @@ export function LogfileDialog(props: {
       size="lg"
     >
       <Form of={form} class="grid gap-4" onSubmit={(input) => props.presenter.save(input)}>
-        <Show when={props.project}>
-          {(project) => (
-            <label class="grid content-start gap-1.5 text-base">
-              <FieldLabel required={true}>Project</FieldLabel>
-              <Select
-                options={project().options}
-                value={project().value}
-                onChange={(slug) => project().onChange(slug)}
-              />
-            </label>
-          )}
-        </Show>
+        <ProjectField project={props.project} />
         <div class="grid gap-3 sm:grid-cols-2">
           <Field of={form} path={["name"]}>
             {(field) => (
@@ -123,20 +107,7 @@ export function LogfileDialog(props: {
             )}
           </Field>
         </div>
-        <div class="grid gap-3 sm:grid-cols-2">
-          <For each={ENGINE_FORMS[transport()].config}>
-            {(field) => <FieldInput presenter={props.presenter} field={field} prefix="config" />}
-          </For>
-          <For each={ENGINE_FORMS[transport()].secrets}>
-            {(field) => (
-              <FieldInput
-                presenter={props.presenter}
-                field={editing() ? { ...field, required: false, placeholder: "Unchanged" } : field}
-                prefix="secret"
-              />
-            )}
-          </For>
-        </div>
+        <ConnectionFields presenter={props.presenter} engine={transport()} editing={editing()} />
         <FieldArray of={form} path={["sources"]}>
           {(sources) => (
             <div class="grid gap-3">
@@ -162,38 +133,12 @@ export function LogfileDialog(props: {
             </div>
           )}
         </FieldArray>
-        <Show when={props.presenter.outcome()}>
-          {(outcome) => (
-            <>
-              <Banner variant="default">{describeOutcome(outcome())}</Banner>
-              <For each={outcomeWarnings(outcome())}>
-                {(warning) => <Banner variant="alert">{warning}</Banner>}
-              </For>
-            </>
-          )}
-        </Show>
-        <Show when={props.presenter.error()}>
-          {(message) => <Banner variant="error">{message()}</Banner>}
-        </Show>
-        <DialogActions>
-          <Button type="button" variant="ghost" onClick={() => props.presenter.close()}>
-            Cancel
-          </Button>
-          {/* Saving an edit probes again; a test here would need the secrets the form never shows. */}
-          <Show when={!editing()}>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={props.presenter.busy()}
-              onClick={() => void test()}
-            >
-              Test connection
-            </Button>
-          </Show>
-          <Button type="submit" variant="primary" disabled={props.presenter.busy()}>
-            {editing() ? "Save" : "Create"}
-          </Button>
-        </DialogActions>
+        <ProbeBanners presenter={props.presenter} />
+        <ConnectionActions
+          presenter={props.presenter}
+          editing={editing()}
+          onTest={() => void test()}
+        />
       </Form>
     </FormDialog>
   );

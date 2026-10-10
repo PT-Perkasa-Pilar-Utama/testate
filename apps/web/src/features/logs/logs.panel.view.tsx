@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { Loading, Show } from "solid-js";
+import { Loading, Match, Show, Switch } from "solid-js";
 import type { Adapter } from "@testate/shared";
 
 import Button from "@/components/button.tsx";
@@ -10,6 +10,8 @@ import { hasRole } from "@/lib/session.ts";
 import { createLogfileFormPresenter } from "./logs.form.ts";
 import { LogfileDialog } from "./logs.form.view.tsx";
 import { createIngestPresenter } from "./logs.ingest.ts";
+import { createJournaldFormPresenter } from "./logs.journald.ts";
+import { JournaldDialog } from "./logs.journald.view.tsx";
 import { IngestConfirms, IngestDialog, IngestReveal } from "./logs.ingest.view.tsx";
 import { logsModel } from "./logs.model.ts";
 import { LogViewerPanel } from "./logs.viewer.view.tsx";
@@ -38,6 +40,26 @@ function LogfileControls(props: PanelProps): JSX.Element {
         </div>
       </Show>
       <LogfileDialog presenter={edit} />
+    </>
+  );
+}
+
+/** A journald adapter's: edit its login and its sources (#86). */
+function JournaldControls(props: PanelProps): JSX.Element {
+  const edit = createJournaldFormPresenter(
+    () => props.slug,
+    () => props.onSaved()
+  );
+  return (
+    <>
+      <Show when={hasRole("qa") && props.manages}>
+        <div>
+          <Button size="sm" variant="secondary" onClick={() => edit.openEdit(props.adapter)}>
+            Edit log adapter
+          </Button>
+        </div>
+      </Show>
+      <JournaldDialog presenter={edit} />
     </>
   );
 }
@@ -74,7 +96,7 @@ function IngestControls(props: PanelProps): JSX.Element {
 
 /**
  * A log adapter's page body: its controls and its sources, read. The source names come from the
- * API for both engines: a logfile's configured names, an ingest adapter's services (I2).
+ * API for every engine: a configured adapter's names, an ingest adapter's services (I2).
  */
 export function LogsPanel(props: PanelProps): JSX.Element {
   const sources = createRefreshable(() => logsModel.sources(props.slug, props.adapter.id));
@@ -84,12 +106,14 @@ export function LogsPanel(props: PanelProps): JSX.Element {
   };
   return (
     <div class="grid gap-4">
-      <Show
-        when={props.adapter.engine === "ingest"}
-        fallback={<LogfileControls {...props} onSaved={saved} />}
-      >
-        <IngestControls {...props} onSaved={saved} />
-      </Show>
+      <Switch fallback={<LogfileControls {...props} onSaved={saved} />}>
+        <Match when={props.adapter.engine === "ingest"}>
+          <IngestControls {...props} onSaved={saved} />
+        </Match>
+        <Match when={props.adapter.engine === "journald"}>
+          <JournaldControls {...props} onSaved={saved} />
+        </Match>
+      </Switch>
       <Loading fallback={<Pending>Listing sources...</Pending>}>
         <Show
           when={sources.value().length > 0}

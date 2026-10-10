@@ -2,6 +2,7 @@ import * as v from "valibot";
 
 import { adapterDraftSchema } from "./adapters.ts";
 import { CAP_RULE, RETENTION_RULE } from "./logs.ingest.ts";
+import { journalUnitSchema } from "./logs.journald.ts";
 import { logFormatSchema, logGlobSchema, logSourceNameSchema, safePatternSchema } from "./logs.ts";
 
 /**
@@ -98,3 +99,43 @@ export const ingestFormSchema = v.object({
 });
 export type IngestFormInput = v.InferInput<typeof ingestFormSchema>;
 export type IngestForm = v.InferOutput<typeof ingestFormSchema>;
+
+/** The units box's names: split on spaces, commas or lines (#86, J3). */
+export function unitWords(text: string): string[] {
+  return text.split(/[\s,]+/).filter((word) => word !== "");
+}
+
+const unitsText = v.pipe(
+  v.string(),
+  v.rawCheck(({ dataset, addIssue }) => {
+    if (!dataset.typed) return;
+    const words = unitWords(dataset.value);
+    const reasons = words.map((word) => v.safeParse(journalUnitSchema, word).issues?.[0].message);
+    const at = reasons.findIndex((reason) => reason !== undefined);
+    if (at !== -1) addIssue({ message: `${words[at]}: ${reasons[at]}` });
+    if (words.length > 32) addIssue({ message: "A source names at most 32 units." });
+  })
+);
+
+/** One journal source as the dialog shows it: units and masking patterns are text boxes. */
+export const journalSourceFormSchema = v.object({
+  name: logSourceNameSchema,
+  units: unitsText,
+  patterns: patternsText,
+});
+
+/** The "systemd journal over SSH" dialog (#86): the SSH login is `ENGINE_FORMS.journald`'s. */
+export const journaldFormSchema = v.object({
+  name: adapterDraftSchema.entries.name,
+  sources: v.pipe(
+    v.array(journalSourceFormSchema),
+    v.minLength(1, "Add at least one source."),
+    v.maxLength(32, "A log adapter holds at most 32 sources."),
+    v.check(
+      (sources) => new Set(sources.map((source) => source.name)).size === sources.length,
+      "Each source needs its own name."
+    )
+  ),
+});
+export type JournaldFormInput = v.InferInput<typeof journaldFormSchema>;
+export type JournaldForm = v.InferOutput<typeof journaldFormSchema>;
