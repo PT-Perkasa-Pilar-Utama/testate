@@ -86,12 +86,18 @@ async function ask(api: LokiApi, asked: Asked): Promise<Got> {
 }
 
 /** Lines after the newest shown, oldest of them first from Loki, given back newest first. */
-async function follow(api: LokiApi, source: LokiSource, mark: Mark): Promise<LokiRead> {
+async function follow(
+  api: LokiApi,
+  source: LokiSource,
+  mark: Mark,
+  pageSize: number
+): Promise<LokiRead> {
   const start = BigInt(mark.stamp);
-  // Never past Loki's default `max_entries_limit_per_query`, which is the same 5 000.
-  const limit = LOG_LINE_MAX;
+  // A page at a time, as asked: a server may allow fewer than 5 000, and the next poll goes on
+  // from the mark, so nothing is skipped.
+  const limit = Math.min(pageSize + mark.seen.length, LOG_LINE_MAX);
   const got = await ask(api, { query: source.query, direction: "forward", limit, start });
-  const page = unseen(got.lines, mark).slice(0, LOG_LINE_MAX);
+  const page = unseen(got.lines, mark).slice(0, pageSize);
   const newest = page.at(-1);
   return {
     lines: page.reverse(),
@@ -137,7 +143,7 @@ export async function readLoki(
   now: () => number
 ): Promise<LokiRead> {
   const after = query.after === undefined ? null : decode(query.after).newer;
-  if (after !== null) return follow(api, source, after);
+  if (after !== null) return follow(api, source, after, query.limit);
   const mark = query.cursor === undefined ? undefined : decode(query.cursor).older;
   const to = nanosOfIso(query.to);
   // Testate's `to` is inclusive, Loki's `end` is not.

@@ -143,3 +143,15 @@ describe("a Loki refusal", () => {
     ).rejects.toThrow("that cursor was not given out by this server");
   });
 });
+
+describe("a Loki follow", () => {
+  it("asks for a page at a time, so a server's lower line limit never refuses it", async () => {
+    const lines = fakeLokiLines(3);
+    const strict = fakeLoki([stream([["env", "sit"]], lines)], { maxLimit: 100 });
+    const first = await readLoki(strict, SIT, query(), soon);
+    lines.push(...fakeLokiLines(15, LOKI_START + 10_000_000_000n));
+    const next = await readLoki(strict, SIT, query({ after: first.after }), soon);
+    const rest = await readLoki(strict, SIT, query({ after: next.after }), soon);
+    expect([texts(next).length, texts(rest).length]).toEqual([10, 5]);
+  });
+});
