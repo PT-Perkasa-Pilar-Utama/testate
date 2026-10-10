@@ -53,6 +53,7 @@ refuse_musl() {
 
 # Where the archives live: one release, or whatever "latest" points at. TESTATE_DOWNLOAD_URL
 # replaces it, so CI can test this script against archives that are not published yet.
+# `testate update` (apps/api/src/cli/update.ts) reads the same URLs; change both together.
 base_url() {
   if [ -n "${TESTATE_DOWNLOAD_URL:-}" ]; then
     echo "$TESTATE_DOWNLOAD_URL"
