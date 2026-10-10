@@ -35,25 +35,28 @@ export type LokiSource = v.InferOutput<typeof lokiSourceSchema>;
 /** `http(s)://host[:port][/prefix]`: no login in the URL, no query, no fragment (L1). */
 const BASE_URL = /^https?:\/\/[^\s/?#@]+(\/[^\s?#@]*)?$/;
 
+/** The address rule, shared with the dialog so a typo is named before the API sees it. */
+export const lokiUrlSchema = v.pipe(
+  v.string(),
+  v.trim(),
+  v.maxLength(512),
+  v.regex(BASE_URL, "Enter Loki's address, like https://logs.example.com, with no login in it.")
+);
+
+/** Sent as `X-Scope-OrgID` to a Loki that runs with several tenants. */
+export const lokiTenantSchema = v.pipe(
+  v.string(),
+  v.regex(/^[A-Za-z0-9_.-]{1,150}$/, "A tenant holds letters, digits and _ . - only.")
+);
+
 export const LOKI_AUTHS = ["none", "basic", "bearer"] as const;
 
 export const lokiConfigSchema = v.pipe(
   v.object({
-    url: v.pipe(
-      v.string(),
-      v.trim(),
-      v.maxLength(512),
-      v.regex(BASE_URL, "Enter Loki's address, like https://logs.example.com, with no login in it.")
-    ),
+    url: lokiUrlSchema,
     auth: v.optional(v.picklist(LOKI_AUTHS), "none"),
     user: v.optional(v.pipe(v.string(), v.minLength(1), v.maxLength(256))),
-    /** Sent as `X-Scope-OrgID` to a Loki that runs with several tenants. */
-    tenant: v.optional(
-      v.pipe(
-        v.string(),
-        v.regex(/^[A-Za-z0-9_.-]{1,150}$/, "A tenant holds letters, digits and _ . - only.")
-      )
-    ),
+    tenant: v.optional(lokiTenantSchema),
     sources: v.pipe(
       v.array(lokiSourceSchema),
       v.minLength(1, "Add at least one source."),

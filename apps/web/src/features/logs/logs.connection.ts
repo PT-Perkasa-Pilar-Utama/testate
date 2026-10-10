@@ -1,4 +1,5 @@
 import { createSignal } from "solid-js";
+import * as v from "valibot";
 import type { Adapter, Engine, HostSuggestion, JsonObject } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
@@ -23,7 +24,22 @@ export type ConnectionKind<TInput, TForm> = {
   toBody: (input: TForm, values: Values) => JsonObject;
   toPatch: (input: TForm, values: Values) => JsonObject;
   formOf: (input: TForm) => Engine | EngineForm;
+  /** Login fields with a format rule, checked before a call: the API would say only "invalid". */
+  rules?: FieldRule[];
 };
+
+/** A connection value's format, by its key in `values`, with the shared schema that holds it. */
+export type FieldRule = { key: string; schema: v.GenericSchema<string> };
+
+/** The first rule a filled-in value breaks, as its own sentence; null when every one holds. */
+export function fieldRefusal(values: Values, rules: FieldRule[]): string | null {
+  for (const rule of rules) {
+    const raw = values[rule.key] ?? "";
+    const parsed = raw === "" ? null : v.safeParse(rule.schema, raw);
+    if (parsed !== null && !parsed.success) return parsed.issues[0].message;
+  }
+  return null;
+}
 
 /** A log adapter's create body: always read-only (Q3 of docs/decisions/2026-10-10-logs-tier.md). */
 export function logAdapterBody(engine: Engine, name: string, connection: Connection): JsonObject {
@@ -90,10 +106,16 @@ export function createConnectionFormPresenter<TInput, TForm>(
     setError(null);
     setOpen(true);
   };
-  const create = (input: TForm): Promise<void> => {
+  /** Says why the login cannot be used yet, or null. */
+  const refused = (input: TForm): string | null => {
     const missing = missingRequiredFields(kind.formOf(input), values());
-    if (missing.length > 0) {
-      setError(`Fill in: ${missing.join(", ")}.`);
+    if (missing.length > 0) return `Fill in: ${missing.join(", ")}.`;
+    return fieldRefusal(values(), kind.rules ?? []);
+  };
+  const create = (input: TForm): Promise<void> => {
+    const refusal = refused(input);
+    if (refusal !== null) {
+      setError(refusal);
       return Promise.resolve();
     }
     const staticSlug = slug();
@@ -133,6 +155,11 @@ export function createConnectionFormPresenter<TInput, TForm>(
     openEdit: (adapter) => start(adapter, kind.draftFrom(adapter)),
     close: () => setOpen(false),
     test: (input) => {
+      const refusal = fieldRefusal(values(), kind.rules ?? []);
+      if (refusal !== null) {
+        setError(refusal);
+        return Promise.resolve();
+      }
       const staticSlug = slug();
       const body = kind.toBody(input, values());
       return run(async () => {

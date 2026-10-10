@@ -3,7 +3,9 @@ import * as v from "valibot";
 import type { Adapter, LokiFormInput } from "@testate/shared";
 import { lokiFormSchema } from "@testate/shared";
 
+import { fieldRefusal } from "./logs.connection.ts";
 import { lokiDraftFrom, toLokiBody, toLokiPatch } from "./logs.loki.ts";
+import { lokiTenantSchema, lokiUrlSchema } from "@testate/shared";
 
 // #90 (docs/decisions/2026-10-10-loki.md): the Loki dialog sends an address, a login per auth and
 // one source per LogQL log query, always read-only; a metric query is refused under its box.
@@ -94,6 +96,28 @@ describe("the Loki form's rules", () => {
       refusals({ ...FORM, sources: [{ ...SOURCE, query: 'rate({service="api"}[1m])' }] })
     ).toEqual([
       'sources.0.query: A log query starts with a stream selector, like {service="api"}.',
+    ]);
+  });
+});
+
+describe("the Loki login's rules", () => {
+  const rules = [
+    { key: "config.url", schema: lokiUrlSchema },
+    { key: "config.tenant", schema: lokiTenantSchema },
+  ];
+
+  test("name a mistyped address or tenant before the API would say only invalid", () => {
+    expect([
+      fieldRefusal({ "config.url": "logs.example.com" }, rules),
+      fieldRefusal(
+        { "config.url": "https://logs.example.com", "config.tenant": "shop team" },
+        rules
+      ),
+      fieldRefusal({ "config.url": "https://logs.example.com", "config.tenant": "" }, rules),
+    ]).toEqual([
+      "Enter Loki's address, like https://logs.example.com, with no login in it.",
+      "A tenant holds letters, digits and _ . - only.",
+      null,
     ]);
   });
 });
