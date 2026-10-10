@@ -35,6 +35,7 @@ The full role matrix is in [09-authentication.md](09-authentication.md).
 | What is sealed | Every column in the sealed registry ([17-sealed-values.md](17-sealed-values.md) §17.4): adapter secrets, read-only credentials, S3 store keys |
 | Cipher | AES-256-GCM through WebCrypto, 96-bit random nonce per record, envelope `v1.<kid>.<nonce>.<ciphertext+tag>` base64url |
 | Keys | `TESTATE_SECRETS_ACTIVE_KEY`: one to five base64 32-byte keys, comma separated, first seals; refusal to boot when missing, malformed, duplicated, or unable to open stored values |
+| Where the key lives | `testate setup` writes it to `~/.config/testate/testate.env`, mode 600 in a mode 700 directory, outside the data directory, so a backup of the data never carries it. `setup` never replaces an existing key and never prints it |
 | Rotation | Boot sweep re-seals under the first key; banners; declared-loss flag; procedure in `../KEY_ROTATION.md` |
 | Exposure | Never returned by the API, never in audit details, never in wide events, never in archives; UI shows "set", date, key fingerprint |
 | Passwords and tokens | Hashed, not sealed; argon2id for passwords, SHA-256 for high-entropy tokens |

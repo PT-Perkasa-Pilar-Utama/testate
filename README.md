@@ -152,67 +152,56 @@ Testate is honest about what it is. Read these before you install it.
 
 ## One binary, no Docker
 
-Every release has a binary for Linux (x86-64 and ARM64), macOS (Apple silicon and Intel) and Windows (x86-64). The dashboard and the migrations are inside it.
+Every release has a binary for Linux (x86-64 and ARM64), macOS (Apple silicon and Intel) and Windows (x86-64). The dashboard and the migrations are inside it, and so is the tool that sets it up:
 
 ```sh
 curl -fsSL https://pt-perkasa-pilar-utama.github.io/testate/install.sh | sh
-# or
-wget -qO- https://pt-perkasa-pilar-utama.github.io/testate/install.sh | sh
+testate setup                  # data directory, port, sealing key, first admin
+testate service install        # keeps it running and starts it at boot (Linux, macOS)
+testate update                 # later: the next release, verified, swapped in
 ```
 
-The script puts `testate` in `~/.local/bin` and checks the archive against the release's `checksums.txt`. `TESTATE_VERSION=2.0.0` installs one release, and `TESTATE_INSTALL_DIR` picks another directory. On Windows, download `testate_windows_amd64.zip` from the [releases page](https://github.com/PT-Perkasa-Pilar-Utama/testate/releases). On Alpine (musl), run the image.
+The install script puts `testate` in `~/.local/bin` and checks the archive against the release's `checksums.txt`; `wget -qO- <same URL> | sh` works too. `TESTATE_VERSION=2.0.0` installs one release, and `TESTATE_INSTALL_DIR` picks another directory. On Windows, download `testate_windows_amd64.zip` from the [releases page](https://github.com/PT-Perkasa-Pilar-Utama/testate/releases); `testate service` is not available there yet. On Alpine (musl), run the image.
 
-Make one `testate.env`. Every way of running it below reads this file:
+`testate setup` writes `~/.config/testate/testate.env` (mode 600) with a new sealing key, and the data goes to `~/.local/share/testate`. Back up the env file: without the key, the stored credentials cannot be read. Running `setup` again keeps the key. For a script, `TESTATE_ADMIN_PASSWORD=... testate setup --yes` asks nothing.
+
+`testate service install` makes a per-user service: a systemd user unit on Linux, a LaunchAgent on macOS. It restarts Testate after a crash and starts it at boot. `testate service status`, `logs -f`, `stop`, `start` and `uninstall` manage it. On Linux, starting before anyone logs in needs `sudo loginctl enable-linger $USER` once; `install` says so when it cannot do it itself.
+
+`testate update --check` says whether a newer release is out; `testate update` installs it and restarts the service. These two are the only commands that contact the network. Testate never checks on its own.
+
+`testate whereis` lists every file it uses and whether it is there; `testate whereis env` prints just the env file's path. `testate help` lists the commands.
+
+**Where settings come from.** `testate` reads `--env-file <path>`, else `~/.config/testate/testate.env` when it exists, and then the process environment, which wins over the file. A `.env` next to the binary is not read; pass it with `--env-file`. Every variable in [`deploy/.env.example`](deploy/.env.example) works the same way. Testate listens on 7378 unless `setup` chose another port.
+
+**Other ways to run it.** All of them read the same env file.
+
+In the foreground, or in the background:
 
 ```sh
-umask 077
-cat > testate.env <<EOF
-TESTATE_DATA_DIR=$HOME/testate-data
-TESTATE_SECRETS_ACTIVE_KEY=$(openssl rand -base64 32)
-TESTATE_ADMIN_PASSWORD=change-me-now-1234
-EOF
+testate                                          # Ctrl-C stops it; running jobs get 30 s
+nohup testate > testate.log 2>&1 & echo $! > testate.pid
+kill "$(cat testate.pid)"
 ```
 
-Back up `testate.env`: without the key, the stored credentials cannot be read. The admin password is used on the first start only. Every other variable in [`deploy/.env.example`](deploy/.env.example) works the same way. Testate listens on 7378.
-
-**In the foreground:**
-
-```sh
-set -a; . ./testate.env; set +a
-testate
-```
-
-**In the background:**
-
-```sh
-set -a; . ./testate.env; set +a
-nohup testate > testate.log 2>&1 &
-echo $! > testate.pid
-kill "$(cat testate.pid)"      # to stop it; running jobs get 30 s to finish
-```
-
-**As a systemd service** (Linux). The unit runs `/usr/local/bin/testate` as its own user and keeps the data in `/var/lib/testate`, whatever `TESTATE_DATA_DIR` says:
+As a system-wide systemd service, with its own user and the data in `/var/lib/testate`:
 
 ```sh
 sudo install -m 755 ~/.local/bin/testate /usr/local/bin/testate
 sudo install -d -m 700 /etc/testate
-sudo install -m 600 testate.env /etc/testate/testate.env
+sudo install -m 600 "$(testate whereis env)" /etc/testate/testate.env
 curl -fsSL https://raw.githubusercontent.com/PT-Perkasa-Pilar-Utama/testate/main/deploy/systemd/testate.service \
   | sudo tee /etc/systemd/system/testate.service > /dev/null
 sudo systemctl daemon-reload
 sudo systemctl enable --now testate
-journalctl -u testate -f       # its log
 ```
 
-**Under pm2.** The ecosystem file reads `./testate.env`:
+Under pm2:
 
 ```sh
 curl -fsSLO https://raw.githubusercontent.com/PT-Perkasa-Pilar-Utama/testate/main/deploy/pm2/ecosystem.config.cjs
-pm2 start ecosystem.config.cjs
+TESTATE_ENV_FILE="$(testate whereis env)" pm2 start ecosystem.config.cjs
 pm2 save                       # and `pm2 startup` once, to start it at boot
 ```
-
-`testate --version` prints the installed version. To upgrade, run the install script again and restart the service.
 
 ## Verify a download
 
