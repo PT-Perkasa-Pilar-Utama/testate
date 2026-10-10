@@ -19,6 +19,7 @@ export * from "./schemas/logs.ts";
 export * from "./schemas/logs.form.ts";
 export * from "./schemas/logs.ingest.ts";
 export * from "./schemas/logs.server.ts";
+export * from "./schemas/logs.journald.ts";
 export * from "./schemas/audit.ts";
 export * from "./schemas/settings.ts";
 export * from "./schemas/tools.ts";
