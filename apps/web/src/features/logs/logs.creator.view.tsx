@@ -11,6 +11,8 @@ import { LogfileDialog } from "./logs.form.view.tsx";
 import type { ProjectPick } from "./logs.connection.view.tsx";
 import { createDockerFormPresenter } from "./logs.docker.ts";
 import { DockerDialog } from "./logs.docker.view.tsx";
+import { createEsFormPresenter } from "./logs.elasticsearch.ts";
+import { EsDialog } from "./logs.elasticsearch.view.tsx";
 import { createIngestPresenter } from "./logs.ingest.ts";
 import { createLokiFormPresenter } from "./logs.loki.ts";
 import { LokiDialog } from "./logs.loki.view.tsx";
@@ -30,6 +32,7 @@ function Creator(props: {
   const journal = createJournaldFormPresenter(slug, () => props.onCreated());
   const docker = createDockerFormPresenter(slug, () => props.onCreated());
   const loki = createLokiFormPresenter(slug, () => props.onCreated());
+  const search = createEsFormPresenter(slug, () => props.onCreated());
   const project = (): ProjectPick => ({
     options: props.projects,
     value: slug(),
@@ -62,6 +65,7 @@ function Creator(props: {
           <MenuItem onClick={() => journal.openCreate()}>systemd journal over SSH</MenuItem>
           <MenuItem onClick={() => docker.openCreate()}>Docker containers</MenuItem>
           <MenuItem onClick={() => loki.openCreate()}>Grafana Loki</MenuItem>
+          <MenuItem onClick={() => search.openCreate()}>Elasticsearch or OpenSearch</MenuItem>
           <MenuItem onClick={() => ingest.openCreate()}>Push from your app</MenuItem>
         </Menu>
       </Show>
@@ -69,6 +73,7 @@ function Creator(props: {
       <JournaldDialog presenter={journal} project={project()} />
       <DockerDialog presenter={docker} project={project()} />
       <LokiDialog presenter={loki} project={project()} />
+      <EsDialog presenter={search} project={project()} />
       <IngestDialog presenter={ingest} project={project()} />
       <IngestReveal presenter={ingest} />
     </>

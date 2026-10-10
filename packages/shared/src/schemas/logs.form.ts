@@ -3,6 +3,7 @@ import * as v from "valibot";
 import { adapterDraftSchema } from "./adapters.ts";
 import { CAP_RULE, RETENTION_RULE } from "./logs.ingest.ts";
 import { DOCKER_CONTAINER } from "./logs.docker.ts";
+import { ES_AUTHS, ES_QUERY_MAX, esFieldSchema, esIndexSchema } from "./logs.elasticsearch.ts";
 import { journalUnitSchema } from "./logs.journald.ts";
 import { LOKI_AUTHS, lokiQuerySchema } from "./logs.loki.ts";
 import { logFormatSchema, logGlobSchema, logSourceNameSchema, safePatternSchema } from "./logs.ts";
@@ -220,3 +221,43 @@ export const lokiFormSchema = v.object({
 });
 export type LokiFormInput = v.InferInput<typeof lokiFormSchema>;
 export type LokiForm = v.InferOutput<typeof lokiFormSchema>;
+
+/** One Elasticsearch source as the dialog shows it (#92, E3). */
+export const esSourceFormSchema = v.object({
+  name: logSourceNameSchema,
+  index: esIndexSchema,
+  query: v.pipe(
+    v.string(),
+    v.trim(),
+    v.maxLength(ES_QUERY_MAX, `Keep the query to ${ES_QUERY_MAX} characters.`)
+  ),
+  time_field: esFieldSchema,
+  message_field: esFieldSchema,
+  patterns: patternsText,
+});
+
+/** The dialog's static fields; the login's are `ES_FORMS[auth]` in the SPA. The CA is a text box. */
+export const esFormSchema = v.object({
+  name: adapterDraftSchema.entries.name,
+  auth: v.picklist(ES_AUTHS),
+  tls_ca: v.pipe(
+    v.string(),
+    v.trim(),
+    v.maxLength(16 * 1024),
+    v.check(
+      (ca) => ca === "" || ca.startsWith("-----BEGIN "),
+      "Paste the CA in PEM form, or leave it empty."
+    )
+  ),
+  sources: v.pipe(
+    v.array(esSourceFormSchema),
+    v.minLength(1, "Add at least one source."),
+    v.maxLength(32, "A log adapter holds at most 32 sources."),
+    v.check(
+      (sources) => new Set(sources.map((source) => source.name)).size === sources.length,
+      "Each source needs its own name."
+    )
+  ),
+});
+export type EsFormInput = v.InferInput<typeof esFormSchema>;
+export type EsForm = v.InferOutput<typeof esFormSchema>;

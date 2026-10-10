@@ -11,6 +11,8 @@ import { createLogfileFormPresenter } from "./logs.form.ts";
 import { LogfileDialog } from "./logs.form.view.tsx";
 import { createDockerFormPresenter } from "./logs.docker.ts";
 import { DockerDialog } from "./logs.docker.view.tsx";
+import { createEsFormPresenter } from "./logs.elasticsearch.ts";
+import { EsDialog } from "./logs.elasticsearch.view.tsx";
 import { createIngestPresenter } from "./logs.ingest.ts";
 import { createLokiFormPresenter } from "./logs.loki.ts";
 import { LokiDialog } from "./logs.loki.view.tsx";
@@ -97,6 +99,20 @@ function LokiControls(props: PanelProps): JSX.Element {
   );
 }
 
+/** An elasticsearch adapter's: edit its login, CA and searches (#92). */
+function EsControls(props: PanelProps): JSX.Element {
+  const edit = createEsFormPresenter(
+    () => props.slug,
+    () => props.onSaved()
+  );
+  return (
+    <>
+      <EditButton {...props} onEdit={() => edit.openEdit(props.adapter)} />
+      <EsDialog presenter={edit} />
+    </>
+  );
+}
+
 /** An ingest adapter's own controls (I3a, I8): edit, a new token, and clearing for an admin. */
 function IngestControls(props: PanelProps): JSX.Element {
   const ingest = createIngestPresenter(
@@ -151,6 +167,9 @@ export function LogsPanel(props: PanelProps): JSX.Element {
         </Match>
         <Match when={props.adapter.engine === "loki"}>
           <LokiControls {...props} onSaved={saved} />
+        </Match>
+        <Match when={props.adapter.engine === "elasticsearch"}>
+          <EsControls {...props} onSaved={saved} />
         </Match>
       </Switch>
       <Loading fallback={<Pending>Listing sources...</Pending>}>
