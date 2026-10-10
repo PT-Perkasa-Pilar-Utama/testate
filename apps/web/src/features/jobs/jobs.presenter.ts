@@ -1,16 +1,17 @@
 import { createEffect, createSignal } from "solid-js";
-import type { Job, JobKind, JobStatus, JsonObject } from "@testate/shared";
+import type { AdapterWithProject, Job, JobKind, JobStatus, JsonObject } from "@testate/shared";
 import { JOB_KINDS, JOB_STATUSES, TERMINAL_JOB_STATUSES } from "@testate/shared";
 import * as v from "valibot";
 
 import { attempt, showToast } from "@/lib/toast.ts";
-import { createPaged } from "@/lib/async.ts";
+import { createPaged, createRefreshable } from "@/lib/async.ts";
 import { createTableControls } from "@/lib/table.ts";
 import type { TableControls } from "@/lib/table.ts";
 import type { Paged } from "@/lib/async.ts";
 import { JOB_KIND_LABEL, JOB_STATUS_LABEL } from "@/lib/labels.ts";
 import { subscribeJob } from "@/lib/sse.ts";
 import { jobsModel } from "./jobs.model.ts";
+import { logsModel } from "../logs/logs.model.ts";
 
 export type JobSort = "kind" | "status" | "actor" | "created_at";
 
@@ -32,6 +33,8 @@ export type JobsPresenter = Paged<Job> & {
   filters: () => JobFilters;
   setFilters: (patch: Partial<JobFilters>) => void;
   cancel: (id: string) => Promise<void>;
+  /** The log adapters of a job's project, for "Logs during this run" (Q8). */
+  runLogs: (job: Job) => AdapterWithProject[];
 };
 
 export type LiveJob = {
@@ -149,8 +152,11 @@ export function createJobsPresenter(): JobsPresenter {
     () => `${controls.key()}|${filters().kind}|${filters().status}`
   );
   const table: TableControls<JobSort> & { rows: () => Job[] } = { ...controls, rows: jobs.value };
+  const logAdapters = createRefreshable(() => logsModel.adapters());
   return {
     ...jobs,
+    runLogs: (job) =>
+      logAdapters.value().filter((adapter) => adapter.project_id === job.project_id),
     table,
     filters,
     setFilters: (patch) => setFiltersSignal((current) => ({ ...current, ...patch })),

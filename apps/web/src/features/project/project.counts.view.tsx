@@ -8,6 +8,7 @@ import { href } from "@/lib/router.ts";
 const MENUS: { kind: AdapterKind; path: string; one: string; many: string }[] = [
   { kind: "database", path: "/databases", one: "database", many: "databases" },
   { kind: "storage", path: "/storage", one: "file store", many: "file stores" },
+  { kind: "logs", path: "/logs", one: "log source", many: "log sources" },
 ];
 
 /** "2 databases · 1 file store", each linking to its menu filtered to this project. */

@@ -29,6 +29,7 @@ import { createPreflightPresenter } from "./preflight.presenter.ts";
 import PreflightDialog from "./preflight.view.tsx";
 import { statesModel } from "../states/states.model.ts";
 import RecoveryActions from "./checkouts.actions.view.tsx";
+import { LogsDuringRun } from "../logs/logs.run.view.tsx";
 import { CountersDialog, DetailDialog } from "./checkouts.dialogs.view.tsx";
 
 /**
@@ -254,6 +255,11 @@ export default function CheckoutsView(props: {
                         >
                           Counters
                         </Button>
+                        <LogsDuringRun
+                          adapters={presenter.runLogs()}
+                          startedAt={checkout.created_at}
+                          finishedAt={checkout.finished_at}
+                        />
                         <RecoveryActions
                           presenter={presenter}
                           checkout={checkout}

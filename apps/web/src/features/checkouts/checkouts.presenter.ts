@@ -1,16 +1,17 @@
 import { createSignal } from "solid-js";
 import { CHECKOUT_RESULT_LABEL } from "@/lib/labels.ts";
 import * as v from "valibot";
-import type { Checkout, Counters } from "@testate/shared";
+import type { AdapterWithProject, Checkout, Counters } from "@testate/shared";
 
 import { attempt, showToast } from "@/lib/toast.ts";
-import { createPaged, refreshWhileBusy } from "@/lib/async.ts";
+import { createPaged, createRefreshable, refreshWhileBusy } from "@/lib/async.ts";
 import { createTableControls } from "@/lib/table.ts";
 import type { TableControls } from "@/lib/table.ts";
 import type { Paged } from "@/lib/async.ts";
 import { CHECKOUT_PURPOSE_LABEL, JOB_STATUS_LABEL } from "@/lib/labels.ts";
 import { createJobFollower } from "@/lib/sse.ts";
 import { checkoutsModel } from "./checkouts.model.ts";
+import { logsModel } from "../logs/logs.model.ts";
 
 export type CheckoutSort = "state" | "status" | "actor" | "created_at";
 
@@ -54,6 +55,8 @@ export const CHECKOUT_PURPOSE_FILTER_OPTIONS: { value: Checkout["purpose"] | "";
 
 export type CheckoutsPresenter = Paged<Checkout> & {
   table: TableControls<CheckoutSort> & { rows: () => Checkout[] };
+  /** The project's log adapters, for "Logs during this run" (Q8). */
+  runLogs: () => AdapterWithProject[];
   filters: () => CheckoutFilters;
   setFilters: (patch: Partial<CheckoutFilters>) => void;
   detail: () => Checkout | null;
@@ -206,9 +209,11 @@ export function createCheckoutsPresenter(
     checkouts.refresh();
     onChanged();
   };
+  const logAdapters = createRefreshable(() => logsModel.adapters());
   return {
     ...checkouts,
     table,
+    runLogs: () => logAdapters.value().filter((adapter) => adapter.project_slug === slug()),
     filters,
     setFilters: (patch) => setFiltersSignal((current) => ({ ...current, ...patch })),
     detail,
