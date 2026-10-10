@@ -136,8 +136,8 @@ main() {
   say "Installed $installed to $dir/testate"
   path_hint "$dir"
   say ""
-  say "Next: make a testate.env with a data directory, a sealing key and an admin password,"
-  say "then start it: https://github.com/$REPO#one-binary-no-docker"
+  say "Next: testate setup, then testate service install."
+  say "More: https://github.com/$REPO#one-binary-no-docker"
 }
 
 # Everything runs from here, so a download cut short runs nothing.
