@@ -1,3 +1,5 @@
+import type { Socket } from "node:net";
+import { Duplex } from "node:stream";
 import type { JsonValue } from "@testate/shared";
 
 import { AppError } from "../src/lib/http/index.ts";
@@ -130,4 +132,24 @@ export function memoryOpenDocker(
       close: () => daemon.close(),
     };
   };
+}
+
+/** A socket seen through a bare duplex, as an SSH channel is: no setTimeout, no setNoDelay. */
+export function bareChannel(socket: Socket): Duplex {
+  const channel = new Duplex({
+    read: () => socket.resume(),
+    write: (chunk: Buffer, _encoding, done: (error?: Error | null) => void) =>
+      void socket.write(chunk, done),
+    final: (done: () => void) => {
+      socket.end();
+      done();
+    },
+    destroy: (error: Error | null, done: (error: Error | null) => void) => {
+      socket.destroy();
+      done(error);
+    },
+  });
+  socket.on("data", (chunk: Buffer) => channel.push(chunk));
+  socket.on("end", () => channel.push(null));
+  return channel;
 }
