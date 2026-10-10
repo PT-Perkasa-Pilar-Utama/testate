@@ -25,7 +25,7 @@ function Creator(props: {
         onClick={() => presenter.openCreate()}
       >
         <Icon name="plus" class="h-4 w-4" />
-        New log source
+        New log adapter
       </Button>
       <LogfileDialog
         presenter={presenter}

@@ -61,7 +61,7 @@ export default function LogsView(): JSX.Element {
       <Errored
         fallback={(error) => (
           <Banner variant="error">
-            {humanMessage(error(), "The log sources could not be listed")}
+            {humanMessage(error(), "The log adapters could not be listed")}
           </Banner>
         )}
       >
@@ -69,7 +69,7 @@ export default function LogsView(): JSX.Element {
           <Show
             when={adapters.value().length > 0}
             fallback={
-              <EmptyState icon="file-text" title="No log sources yet">
+              <EmptyState icon="file-text" title="No log adapters yet">
                 Add one with the button above. It appears here under its project.
               </EmptyState>
             }
