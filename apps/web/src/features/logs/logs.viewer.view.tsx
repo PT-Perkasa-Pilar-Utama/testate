@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { For, Show, untrack } from "solid-js";
+import { For, Show, createEffect, untrack } from "solid-js";
 import type { Adapter, LogEntry } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
@@ -138,6 +138,13 @@ export function LogViewerPanel(props: { slug: string; adapter: Adapter }): JSX.E
     createLogViewer(props.slug, props.adapter.id, sourcesOf(props.adapter), window.location.search)
   );
   const sources = (): string[] => sourcesOf(props.adapter).map((source) => source.name);
+  // An edit that renames or drops the source on screen moves the viewer to the first one left.
+  createEffect(
+    () => ({ names: sources(), current: viewer.filters().source }),
+    ({ names, current }) => {
+      if (!names.includes(current)) viewer.setFilters({ source: names[0] ?? "" });
+    }
+  );
   return (
     <section class="grid gap-4">
       <Toolbar viewer={viewer} sources={sources()} />

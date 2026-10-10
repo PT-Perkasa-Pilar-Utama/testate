@@ -1,4 +1,4 @@
-import { createSignal, onCleanup } from "solid-js";
+import { createSignal, onCleanup, untrack } from "solid-js";
 import type { LogEntry, LogSource, LogsPage } from "@testate/shared";
 import { LOG_LINE_MAX } from "@testate/shared";
 
@@ -135,7 +135,8 @@ export function createLogViewer(
   return {
     filters,
     setFilters: (patch) => {
-      const next = { ...filters(), ...patch };
+      // A snapshot on purpose: the viewer view also calls this from an effect.
+      const next = { ...untrack(filters), ...patch };
       setFiltersSignal(next);
       void load(next);
     },
