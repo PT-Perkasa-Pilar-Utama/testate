@@ -107,8 +107,10 @@ export async function run(args: string[], ctx: Omit<CliContext, "args">): Promis
   try {
     await dispatch(args, ctx);
   } catch (cause: unknown) {
-    if (!(cause instanceof CliError)) throw cause;
-    process.stderr.write(`testate: ${cause.message}\n`);
-    process.exitCode = cause.exitCode;
+    // Any other failure (a folder it may not write, a port in use) is one line too, not a
+    // stack trace through minified code.
+    const message = cause instanceof Error ? cause.message : String(cause);
+    process.stderr.write(`testate: ${message}\n`);
+    process.exitCode = cause instanceof CliError ? cause.exitCode : 1;
   }
 }

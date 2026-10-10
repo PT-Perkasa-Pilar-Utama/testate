@@ -143,9 +143,10 @@ export async function setup(ctx: CliContext): Promise<void> {
       : await asked(existing, flags, ctx.env, dataDir);
   const plan = planSetup(existing, answers, newKey);
   if (!plan.changed) return say(`${path} is already set up; nothing changed.`);
+  // The data directory first: if it cannot be made, no env file is left pointing at it.
+  mkdirSync(answers.dataDir, { recursive: true, mode: 0o700 });
   writeEnvFile(path, plan.values, [
     "Written by testate setup. Holds the sealing key: keep it, back it up.",
   ]);
-  mkdirSync(answers.dataDir, { recursive: true, mode: 0o700 });
   report(path, plan);
 }
