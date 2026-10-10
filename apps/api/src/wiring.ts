@@ -57,6 +57,9 @@ import { createStatesService } from "./modules/states/states.service.ts";
 import type { StatesDeps, StatesService } from "./modules/states/states.service.ts";
 import type { JobsService } from "./modules/jobs/jobs.service.ts";
 import { createIngestStore } from "./lib/logs/ingest/store.ts";
+import { createSshShell } from "./lib/logs/journald/shell.ts";
+import { createShellResolver } from "./modules/adapters/adapters.shell.ts";
+import type { ShellResolver } from "./modules/adapters/adapters.shell.ts";
 import type { IngestStore } from "./lib/logs/ingest/store.ts";
 
 export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now" | "blobs"> & {
@@ -72,6 +75,8 @@ export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now" | "blobs"> & 
   hostKeys: HostKeysRepository;
   files: FilesResolver;
   ingest: IngestStore;
+  /** A journald adapter's checked SSH command channel (#86). */
+  shells: ShellResolver;
 };
 
 /** One authenticated, kind-agnostic adapter ownership check for all v1 adapter routes. */
@@ -125,7 +130,7 @@ export function createEngineWiring(
     engines,
     adapterLanes: config.TESTATE_JOB_CONCURRENCY,
     probe: createEngineProbe(engines, createScaffoldProbe()),
-    fileProbe: createFileProbe(openFileSource, createScaffoldFileProbe()),
+    fileProbe: createFileProbe(openFileSource, createScaffoldFileProbe(), createSshShell),
     hostKeys,
     files: createFilesResolver({
       repo: adapters,
@@ -133,6 +138,14 @@ export function createEngineWiring(
       ring,
       netguard,
       open: openFileSource,
+      now,
+    }),
+    shells: createShellResolver({
+      repo: adapters,
+      hostKeys,
+      ring,
+      netguard,
+      openShell: createSshShell,
       now,
     }),
     blobs: createSwitchableBlobStore(createLocalBlobStore(join(config.TESTATE_DATA_DIR, "blobs"))),

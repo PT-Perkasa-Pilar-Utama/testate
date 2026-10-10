@@ -3,7 +3,8 @@ import type { JournalSource, LogsQuery } from "@testate/shared";
 import * as v from "valibot";
 
 import { readJournal } from "./read.ts";
-import type { Shell } from "./read.ts";
+import { journalShell } from "../../../../test/journald.ts";
+import type { JournalRow } from "../../../../test/journald.ts";
 
 // #86, J4: pages on journald's own cursor, newest first, an older page from the oldest line shown
 // without repeating it, and follow with only what came after.
@@ -15,37 +16,7 @@ const JOURNAL = Array.from({ length: 7 }, (_, n) => ({
   _SYSTEMD_UNIT: n % 2 === 0 ? "api.service" : "worker.service",
 }));
 
-/** A host that answers like journalctl for -n, -r, --cursor, --after-cursor and -u. */
-function fakeHost(lines = JOURNAL): Shell & { commands: string[] } {
-  const commands: string[] = [];
-  return {
-    commands,
-    async run(command) {
-      commands.push(command);
-      const arg = (name: string) => command.match(new RegExp(`'${name}([^']*)'`))?.[1];
-      const n = Number(command.match(/'-n' '(\d+)'/)?.[1]);
-      const units = [...command.matchAll(/'-u' '([^']+)'/g)].map((match) => match[1]);
-      const at = arg("--cursor=");
-      const after = arg("--after-cursor=");
-      let rows = lines.filter((row) => units.length === 0 || units.includes(row._SYSTEMD_UNIT));
-      if (after !== undefined && after !== null)
-        rows = rows.slice(rows.findIndex((row) => row.__CURSOR === after) + 1).slice(-n);
-      else if (at !== undefined && at !== null)
-        rows = rows
-          .slice(0, rows.findIndex((row) => row.__CURSOR === at) + 1)
-          .reverse()
-          .slice(0, n);
-      else rows = rows.slice(-n);
-      return {
-        stdout: rows.map((row) => JSON.stringify(row)).join("\n"),
-        stderr: "",
-        code: 0,
-        capped: false,
-      };
-    },
-    close: async () => undefined,
-  };
-}
+const fakeHost = (rows: JournalRow[] = JOURNAL) => journalShell(rows);
 
 const ALL: JournalSource = { name: "all", units: [], patterns: [] };
 const query = (patch: Partial<LogsQuery> = {}): LogsQuery => ({

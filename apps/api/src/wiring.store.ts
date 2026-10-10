@@ -23,6 +23,7 @@ import { bootStoreTarget, createStoreFactory } from "./modules/settings/settings
 import type { StoreTarget } from "./modules/settings/settings.store.ts";
 import { createLogsService } from "./modules/logs/logs.service.ts";
 import { createServerLogReader } from "./modules/logs/logs.server.ts";
+import { createJournalReader } from "./modules/logs/logs.journal.ts";
 import type { LogsService } from "./modules/logs/logs.service.ts";
 import { createAdaptersService } from "./modules/adapters/adapters.service.ts";
 import { createMoveRepository } from "./modules/adapters/adapters.move.repository.ts";
@@ -104,6 +105,7 @@ export function logsService(wiring: EngineWiring, projects: ProjectsRepository):
     adapters: wiring.adapters,
     ingest: wiring.ingest,
     serverLogs: createServerLogReader({ engines: wiring.engines, ring: wiring.ring }),
+    journal: createJournalReader(wiring.shells),
   });
 }
 

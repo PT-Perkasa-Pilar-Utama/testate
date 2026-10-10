@@ -3,7 +3,7 @@
  * source of one `logs` adapter, masked for viewers and agents (Q5), and the same entries as a
  * download (S3). Nothing here writes: the tier has no write half.
  */
-import { logfileConfigSchema } from "@testate/shared";
+import { journaldConfigSchema, logfileConfigSchema } from "@testate/shared";
 import type { Actor, LogEntry, LogSource, LogsPage, LogsQuery, Project } from "@testate/shared";
 import * as v from "valibot";
 
@@ -23,6 +23,7 @@ import { masksApply } from "../data/data.masks.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import { readableOf } from "./logs.server.ts";
 import type { ServerLogReader } from "./logs.server.ts";
+import type { JournalReader } from "./logs.journal.ts";
 
 export type LogsDeps = {
   projects: Pick<ProjectsRepository, "bySlug">;
@@ -32,6 +33,8 @@ export type LogsDeps = {
   ingest: IngestStore;
   /** A database adapter's server logs, through its own connection (#84). */
   serverLogs: ServerLogReader;
+  /** A `journald` adapter's journal, through its SSH login (#86). */
+  journal: JournalReader;
 };
 
 /** What one read cost, for the request's wide event; never a line of the log itself. */
@@ -153,6 +156,11 @@ export function createLogsService(deps: LogsDeps): LogsService {
     const adapter = deps.adapters.byId(adapterId);
     return adapter?.project_id === project.id && adapter.engine === "ingest" ? adapter : null;
   };
+  /** The project's journald adapter, or null for any other adapter id. */
+  const journaldOf = (project: Project, adapterId: string): AdapterRecord | null => {
+    const adapter = deps.adapters.byId(adapterId);
+    return adapter?.project_id === project.id && adapter.engine === "journald" ? adapter : null;
+  };
   /** The project's database adapter, or null for any other adapter id. */
   const databaseOf = (project: Project, adapterId: string): AdapterRecord | null => {
     const adapter = deps.adapters.byId(adapterId);
@@ -182,6 +190,8 @@ export function createLogsService(deps: LogsDeps): LogsService {
       if (ingest !== null) return readIngest(actor, ingest, query);
       const database = databaseOf(project, adapterId);
       if (database !== null) return deps.serverLogs(actor, database, query);
+      const journald = journaldOf(project, adapterId);
+      if (journald !== null) return deps.journal(actor, journald, query);
       const trustAs = actor.kind === "user" ? actor.id : null;
       const { adapter, source } = await deps.files.resolve(project.id, adapterId, trustAs, "logs");
       try {
@@ -200,6 +210,9 @@ export function createLogsService(deps: LogsDeps): LogsService {
       if (ingest !== null) return deps.ingest.sources(ingest.id);
       const database = databaseOf(project, adapterId);
       if (database !== null) return readableOf(database);
+      const journald = journaldOf(project, adapterId);
+      if (journald !== null)
+        return v.parse(journaldConfigSchema, journald.config).sources.map((item) => item.name);
       const adapter = requireStorage(deps.adapters.byId(adapterId), project.id, "logs");
       return v.parse(logfileConfigSchema, adapter.config).sources.map((item) => item.name);
     },
