@@ -10,9 +10,8 @@ import type { FilesResolver } from "../src/modules/adapters/adapters.files.ts";
 import { createHostKeysRepository } from "../src/modules/adapters/adapters.hostkeys.ts";
 import type { HostKeysRepository } from "../src/modules/adapters/adapters.hostkeys.ts";
 import type { SwitchableBlobStore } from "../src/lib/blobstore/index.ts";
-import { createFakeEngine } from "../src/lib/engines/fake/engine.ts";
 import type { FakeDatabase, FakeEngineOptions } from "../src/lib/engines/fake/engine.ts";
-import type { DbEngine, EngineRegistry } from "../src/lib/engines/index.ts";
+import type { EngineRegistry } from "../src/lib/engines/index.ts";
 import type { Check, Verdict } from "../src/lib/netguard/index.ts";
 import { loadKeyRing, open } from "../src/lib/sealed/index.ts";
 import type { KeyRing } from "../src/lib/sealed/index.ts";
@@ -50,32 +49,17 @@ import { createIngestStore } from "../src/lib/logs/ingest/store.ts";
 import type { IngestStore } from "../src/lib/logs/ingest/store.ts";
 import { createIngestTokensRepository } from "../src/modules/ingest/ingest.repository.ts";
 import { createMoveRepository } from "../src/modules/adapters/adapters.move.repository.ts";
+import { memoryOpenShell } from "./journald.ts";
+import { createShellResolver } from "../src/modules/adapters/adapters.shell.ts";
+import type { ShellResolver } from "../src/modules/adapters/adapters.shell.ts";
+import type { JournalRow } from "./journald.ts";
 import { createIngestService } from "../src/modules/ingest/ingest.service.ts";
 import type { IngestService } from "../src/modules/ingest/ingest.service.ts";
+import { fakeRegistry, shopDatabase } from "./adapters.fixtures.ts";
+
+export { PG, S3, fakeRegistry, shopDatabase } from "./adapters.fixtures.ts";
 
 export const PROJECT_ID = "01991f00-0000-7000-8000-000000000010";
-
-export const PG: AdapterDraft = {
-  kind: "database",
-  engine: "postgres",
-  name: "orders-db",
-  mode: "sandbox",
-  config: { host: "pg.sit.internal", port: 5432, database: "shop", user: "testate" },
-  secrets: { password: "pg-secret" },
-};
-
-export const S3: AdapterDraft = {
-  kind: "storage",
-  engine: "s3",
-  name: "exports",
-  mode: "sandbox",
-  config: {
-    bucket: "exports",
-    region: "ap-southeast-1",
-    endpoint: "https://minio.sit.internal:9000",
-  },
-  secrets: { access_key_id: "AKIA", secret_access_key: "s3-secret" },
-};
 
 export type AdaptersHarness = {
   adapters: AdaptersService;
@@ -114,6 +98,8 @@ export type AdaptersHarness = {
   db: AccountsHarness["db"];
   now: () => Date;
   hostKeys: HostKeysRepository;
+  journals: Map<string, JournalRow[]>;
+  shells: ShellResolver;
   files: FilesResolver;
   /** In-memory file trees by S3 bucket or SFTP/FTP host; storage adapters in tests browse these. */
   trees: Map<string, MemoryTree>;
@@ -122,30 +108,6 @@ export type AdaptersHarness = {
 };
 
 /** A registry with one fake postgres engine; other engines are absent, as in the real build. */
-export function fakeRegistry(opts: FakeEngineOptions): EngineRegistry {
-  const engine: DbEngine = createFakeEngine(opts);
-  return {
-    get: (name) => (name === "postgres" ? engine : null),
-    require(name) {
-      if (name !== "postgres") throw new Error(`${name} has no engine in the test registry`);
-      return engine;
-    },
-  };
-}
-
-export function shopDatabase(): FakeDatabase {
-  return new Map([
-    [
-      "public.customers",
-      [
-        { id: 1, email: "a@x.io" },
-        { id: 2, email: "b@x.io" },
-      ],
-    ],
-    ["public.orders", [{ id: 1, customer_id: 1, total: "10.00" }]],
-  ]);
-}
-
 type Netguard = { check(input: Check): Promise<Verdict> };
 
 /** Verdicts by host name: `blocked` hosts hit the policy, `.invalid` hosts never resolve, the rest pass. */
@@ -249,6 +211,8 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
   });
   runtime.dispatcher.start();
   const trees = new Map<string, MemoryTree>();
+  /** SSH hosts' journals, by host name, behind the same host key as the SFTP hosts (#86). */
+  const journals = new Map<string, JournalRow[]>();
   const sftpKey = { current: "SHA256:fake-host-key-1" };
   const hostKeys = createHostKeysRepository(accounts.db);
   const files = createFilesResolver({
@@ -284,7 +248,11 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
         : result;
     },
     // The real file probe, over the same memory trees the resolver opens (logfile globs, #69).
-    fileProbe: createFileProbe(memoryOpen(trees, sftpKey), createScaffoldFileProbe()),
+    fileProbe: createFileProbe(
+      memoryOpen(trees, sftpKey),
+      createScaffoldFileProbe(),
+      memoryOpenShell(journals, sftpKey)
+    ),
     jobs: runtime.jobs,
     states,
     now: accounts.now,
@@ -322,5 +290,14 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     files,
     trees,
     sftpKey,
+    journals,
+    shells: createShellResolver({
+      repo,
+      hostKeys,
+      ring,
+      netguard: stubNetguard(blocked),
+      openShell: memoryOpenShell(journals, sftpKey),
+      now: accounts.now,
+    }),
   };
 }

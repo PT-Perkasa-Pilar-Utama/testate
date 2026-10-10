@@ -13,6 +13,8 @@ import { splitGlob } from "../../lib/logs/read.ts";
 import { fileTargetOf } from "./adapters.logfile.ts";
 import type { HostKeysRepository } from "./adapters.hostkeys.ts";
 import type { FileProbeFn } from "./adapters.probe.ts";
+import { probeJournald } from "./adapters.shell.ts";
+import type { OpenShell } from "./adapters.shell.ts";
 import type { AdapterRecord, AdaptersRepository } from "./adapters.repository.ts";
 import { CONFIG_COLUMN, openSecrets } from "./adapters.secrets.ts";
 import type { Secrets } from "./adapters.secrets.ts";
@@ -71,6 +73,46 @@ function openAs(engine: Engine, config: JsonObject): OpenTarget {
   return fileTargetOf(v.parse(logfileConfigSchema, config));
 }
 
+export type HostKeyTrust = {
+  verify: (key: HostKey) => boolean;
+  /** Whether the last refusal was a first-seen key a token may not trust. */
+  untrusted: () => boolean;
+  presented: () => HostKey | null;
+};
+
+/**
+ * Trust on first use for an SSH host (05 §5.11): a stored key must match; a first key is stored
+ * for a user and refused for a token. Shared by SFTP files and journald's command channel.
+ */
+export function hostKeyTrust(
+  deps: Pick<FilesResolverDeps, "hostKeys" | "now">,
+  adapterId: string,
+  trustAs: string | null
+): HostKeyTrust {
+  let presented: HostKey | null = null;
+  let untrusted = false;
+  return {
+    verify: (key) => {
+      presented = key;
+      const known = deps.hostKeys.byAdapter(adapterId);
+      if (known !== null) return known.fingerprint === key.fingerprint;
+      if (trustAs === null) {
+        untrusted = true;
+        return false;
+      }
+      deps.hostKeys.replace(adapterId, {
+        key_type: key.type,
+        fingerprint: key.fingerprint,
+        accepted_by: trustAs,
+        accepted_at: deps.now().toISOString(),
+      });
+      return true;
+    },
+    untrusted: () => untrusted,
+    presented: () => presented,
+  };
+}
+
 /**
  * Address check, opened secrets, and host-key trust in one place, so storage, imports, and the
  * agent all see a checked source and never a credential. The SSH host key is trusted on first use
@@ -102,35 +144,13 @@ export function createFilesResolver(deps: FilesResolverDeps): FilesResolver {
         purpose: "files",
         address,
       };
-      let presented: HostKey | null = null;
-      let untrusted = false;
+      const trust = hostKeyTrust(deps, adapter.id, trustAs);
       const opened = openAs(adapter.engine, validated.config);
-      const source = deps.open(
-        opened.engine,
-        opened.config,
-        secrets,
-        (key) => {
-          presented = key;
-          const known = deps.hostKeys.byAdapter(adapter.id);
-          if (known !== null) return known.fingerprint === key.fingerprint;
-          if (trustAs === null) {
-            untrusted = true;
-            return false;
-          }
-          deps.hostKeys.replace(adapter.id, {
-            key_type: key.type,
-            fingerprint: key.fingerprint,
-            accepted_by: trustAs,
-            accepted_at: deps.now().toISOString(),
-          });
-          return true;
-        },
-        target
-      );
+      const source = deps.open(opened.engine, opened.config, secrets, trust.verify, target);
       return {
         adapter,
-        source: untrustedAware(source, () => untrusted),
-        presented: () => presented,
+        source: untrustedAware(source, trust.untrusted),
+        presented: trust.presented,
       };
     },
   };
@@ -210,7 +230,11 @@ async function probeLogfile(
   return { engine: "logfile", tier: "logs", reachable: true, warnings };
 }
 
-export function createFileProbe(open: OpenFileSource, fallback: FileProbeFn): FileProbeFn {
+export function createFileProbe(
+  open: OpenFileSource,
+  fallback: FileProbeFn,
+  openShell: OpenShell
+): FileProbeFn {
   return async (
     engine: Engine,
     config: JsonObject,
@@ -218,6 +242,7 @@ export function createFileProbe(open: OpenFileSource, fallback: FileProbeFn): Fi
     target?: CheckedTarget
   ): Promise<FileProbeResult> => {
     if (engine === "logfile") return probeLogfile(open, config, secrets, target);
+    if (engine === "journald") return probeJournald(openShell, config, secrets, target);
     if (TIER_OF_ENGINE[engine] !== "files") return fallback(engine, config, secrets, target);
     const source = open(engine, config, secrets, () => true, target);
     try {
