@@ -6,6 +6,7 @@ import { createScaffoldFileProbe, probeTarget } from "./adapters.probe.ts";
 import type { ValidatedConfig } from "./adapters.config.ts";
 import type { FileSource } from "../../lib/files/index.ts";
 import type { OpenFileSource } from "../../lib/files/open.ts";
+import { memoryOpenDocker } from "../../../test/docker.ts";
 import { memoryOpenShell } from "../../../test/journald.ts";
 
 const validated: ValidatedConfig = {
@@ -47,7 +48,8 @@ describe("adapter network target pinning", () => {
     const fileProbe = createFileProbe(
       open,
       createScaffoldFileProbe(),
-      memoryOpenShell(new Map(), { current: "k" })
+      memoryOpenShell(new Map(), { current: "k" }),
+      memoryOpenDocker(new Map(), { current: "k" })
     );
 
     await probeTarget(
