@@ -99,6 +99,17 @@ describe("an Elasticsearch source", () => {
     expect([page.cursor, page.cutBy]).toEqual([null, "lines"]);
   });
 
+  it("says lines on a follow whose newest stamp holds more documents than a mark carries", async () => {
+    const docs = fakeDocs(1);
+    const es = fakeEs(docs);
+    const first = await readEs(es, SHOP, query());
+    docs.push(...tied(SEEN_MAX + 50, ES_START_MS + 5000));
+    let poll = await readEs(es, SHOP, query({ after: first.after, limit: 100 }));
+    poll = await readEs(es, SHOP, query({ after: poll.after, limit: 100 }));
+    const stuck = await readEs(es, SHOP, query({ after: poll.after, limit: 100 }));
+    expect([stuck.hits.length, stuck.cutBy]).toEqual([50, "lines"]);
+  });
+
   it("asks for the source's query, the time field present, and nothing streamed", async () => {
     const es = fakeEs(fakeDocs(3));
     await readEs(es, { ...SHOP, query: "service.name:api" }, query());

@@ -72,6 +72,7 @@ export function unanswered(name: string, host: string, cause: string): AppError 
       {
         reason: "certificate",
         where: host,
+        cause,
       }
     );
   return new AppError("ADAPTER_UNREACHABLE", `${name} did not answer: ${cause}`, { where: host });
