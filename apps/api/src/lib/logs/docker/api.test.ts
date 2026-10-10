@@ -4,6 +4,7 @@ import net from "node:net";
 import * as v from "valibot";
 
 import { createDockerApi, pathOf } from "./api.ts";
+import { bareChannel } from "../../../../test/docker.ts";
 
 // #88, K2 (docs/decisions/2026-10-10-docker.md): five GET paths built from a request, logs never
 // streaming, and a container name that is not one never reaches a path.
@@ -52,14 +53,14 @@ afterAll(() => server.close());
 const api = createDockerApi(
   () =>
     new Promise((resolve, reject) => {
-      const socket = net.connect(port, "127.0.0.1", () => resolve(socket));
+      const socket = net.connect(port, "127.0.0.1", () => resolve(bareChannel(socket)));
       socket.on("error", reject);
     }),
   async () => undefined
 );
 
 describe("the Docker client", () => {
-  it("speaks HTTP over the channel it is given, and stops a body at its ceiling", async () => {
+  it("speaks HTTP over a bare channel, as an SSH one, and stops a body at its ceiling", async () => {
     const ping = await api.get({ kind: "ping" }, 1024);
     const big = await api.get({ kind: "version" }, 1000);
     expect([

@@ -99,9 +99,12 @@ function getOver(channel: Duplex, path: string, capBytes: number): Promise<Docke
         response.on("error", reject);
       }
     );
-    request.setTimeout(REQUEST_TIMEOUT_MS, () =>
-      request.destroy(new AppError("ADAPTER_UNREACHABLE", "Docker did not answer in time"))
+    // Not request.setTimeout: it calls the socket's, and an SSH channel has none.
+    const timer = setTimeout(
+      () => request.destroy(new AppError("ADAPTER_UNREACHABLE", "Docker did not answer in time")),
+      REQUEST_TIMEOUT_MS
     );
+    request.on("close", () => clearTimeout(timer));
     request.on("error", reject);
     request.end();
   });
