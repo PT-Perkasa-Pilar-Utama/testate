@@ -54,7 +54,7 @@ export default function LogsView(): JSX.Element {
       <PageHeader
         eyebrow="Workspace"
         title="Logs"
-        description="Log files over SFTP or object storage, systemd journals over SSH, Docker containers, and logs your apps push, read-only, across every project you can see."
+        description="Log files over SFTP or object storage, systemd journals over SSH, Docker containers, Grafana Loki, and logs your apps push, read-only, across every project you can see."
         actions={
           <Show when={hasRole("qa")}>
             <NewLogSource onCreated={() => adapters.refresh()} />

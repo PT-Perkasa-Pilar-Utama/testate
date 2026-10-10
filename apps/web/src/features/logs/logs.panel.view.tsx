@@ -12,6 +12,8 @@ import { LogfileDialog } from "./logs.form.view.tsx";
 import { createDockerFormPresenter } from "./logs.docker.ts";
 import { DockerDialog } from "./logs.docker.view.tsx";
 import { createIngestPresenter } from "./logs.ingest.ts";
+import { createLokiFormPresenter } from "./logs.loki.ts";
+import { LokiDialog } from "./logs.loki.view.tsx";
 import { createJournaldFormPresenter } from "./logs.journald.ts";
 import { JournaldDialog } from "./logs.journald.view.tsx";
 import { IngestConfirms, IngestDialog, IngestReveal } from "./logs.ingest.view.tsx";
@@ -26,6 +28,19 @@ type PanelProps = {
   onSaved: () => void;
 };
 
+/** The edit button a tester or admin who manages the adapter sees. */
+function EditButton(props: PanelProps & { onEdit: () => void }): JSX.Element {
+  return (
+    <Show when={hasRole("qa") && props.manages}>
+      <div>
+        <Button size="sm" variant="secondary" onClick={() => props.onEdit()}>
+          Edit log adapter
+        </Button>
+      </div>
+    </Show>
+  );
+}
+
 /** Built only for a logfile adapter, so an ingest page never asks for host suggestions. */
 function LogfileControls(props: PanelProps): JSX.Element {
   const edit = createLogfileFormPresenter(
@@ -34,13 +49,7 @@ function LogfileControls(props: PanelProps): JSX.Element {
   );
   return (
     <>
-      <Show when={hasRole("qa") && props.manages}>
-        <div>
-          <Button size="sm" variant="secondary" onClick={() => edit.openEdit(props.adapter)}>
-            Edit log adapter
-          </Button>
-        </div>
-      </Show>
+      <EditButton {...props} onEdit={() => edit.openEdit(props.adapter)} />
       <LogfileDialog presenter={edit} />
     </>
   );
@@ -54,13 +63,7 @@ function JournaldControls(props: PanelProps): JSX.Element {
   );
   return (
     <>
-      <Show when={hasRole("qa") && props.manages}>
-        <div>
-          <Button size="sm" variant="secondary" onClick={() => edit.openEdit(props.adapter)}>
-            Edit log adapter
-          </Button>
-        </div>
-      </Show>
+      <EditButton {...props} onEdit={() => edit.openEdit(props.adapter)} />
       <JournaldDialog presenter={edit} />
     </>
   );
@@ -74,14 +77,22 @@ function DockerControls(props: PanelProps): JSX.Element {
   );
   return (
     <>
-      <Show when={hasRole("qa") && props.manages}>
-        <div>
-          <Button size="sm" variant="secondary" onClick={() => edit.openEdit(props.adapter)}>
-            Edit log adapter
-          </Button>
-        </div>
-      </Show>
+      <EditButton {...props} onEdit={() => edit.openEdit(props.adapter)} />
       <DockerDialog presenter={edit} />
+    </>
+  );
+}
+
+/** A loki adapter's: edit its login and its queries (#90). */
+function LokiControls(props: PanelProps): JSX.Element {
+  const edit = createLokiFormPresenter(
+    () => props.slug,
+    () => props.onSaved()
+  );
+  return (
+    <>
+      <EditButton {...props} onEdit={() => edit.openEdit(props.adapter)} />
+      <LokiDialog presenter={edit} />
     </>
   );
 }
@@ -137,6 +148,9 @@ export function LogsPanel(props: PanelProps): JSX.Element {
         </Match>
         <Match when={props.adapter.engine === "docker"}>
           <DockerControls {...props} onSaved={saved} />
+        </Match>
+        <Match when={props.adapter.engine === "loki"}>
+          <LokiControls {...props} onSaved={saved} />
         </Match>
       </Switch>
       <Loading fallback={<Pending>Listing sources...</Pending>}>
