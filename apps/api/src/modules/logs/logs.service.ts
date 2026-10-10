@@ -70,7 +70,16 @@ export function logFilesOf(source: FileSource): LogFiles {
       } while (cursor !== undefined);
       return files;
     },
-    readRange: (path, start, end) => source.readRange(path, start, end),
+    // pm2 rotates on size, so a file listed a moment ago can be gone or shorter by the time it is
+    // read. Gone reads as empty; shorter comes back short from the port.
+    readRange: async (path, start, end) => {
+      try {
+        return await source.readRange(path, start, end);
+      } catch (cause: unknown) {
+        if (cause instanceof AppError && cause.code === "NOT_FOUND") return new Uint8Array();
+        throw cause;
+      }
+    },
   };
 }
 
