@@ -29,7 +29,7 @@ function validateLogin(config: LokiConfig, secrets: Secrets): void {
     throw invalid(`${config.auth} auth needs the secret ${wanted}`, { key: wanted });
 }
 
-export function lokiTarget(url: string): Target {
+export function baseUrlTarget(url: string): Target {
   const parsed = new URL(url);
   const fallback = parsed.protocol === "https:" ? 443 : 80;
   return { host: parsed.hostname, port: parsed.port === "" ? fallback : Number(parsed.port) };
@@ -38,7 +38,7 @@ export function lokiTarget(url: string): Target {
 export function validateLoki(config: JsonObject, secrets: Secrets): ValidatedConfig {
   const parsed = parseWith(lokiConfigSchema, config);
   validateLogin(parsed, secrets);
-  const target = lokiTarget(parsed.url);
+  const target = baseUrlTarget(parsed.url);
   const login = `${parsed.auth}|${parsed.user ?? ""}|${parsed.tenant ?? ""}`;
   return {
     kind: "logs",

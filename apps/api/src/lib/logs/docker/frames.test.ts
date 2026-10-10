@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
-import { dockerLines, nanosOf, secondsOf } from "./frames.ts";
+import { nanosOf } from "../time.ts";
+import { dockerLines, secondsOf } from "./frames.ts";
 
 // #88, K5 (docs/decisions/2026-10-10-docker.md): a multiplexed body is split per stream, in the
 // order lines finish, and a cut read never yields half a line.

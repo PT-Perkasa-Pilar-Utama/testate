@@ -4,6 +4,7 @@ import * as v from "valibot";
 
 import { AppError } from "../../lib/http/index.ts";
 import { sha256 } from "../../lib/password/index.ts";
+import { validateElasticsearch } from "./adapters.elasticsearch.ts";
 import { validateIngest } from "./adapters.ingest.ts";
 import { validateDocker } from "./adapters.docker.ts";
 import { validateJournald } from "./adapters.journald.ts";
@@ -25,6 +26,7 @@ export const KIND_OF_ENGINE = {
   journald: "logs",
   docker: "logs",
   loki: "logs",
+  elasticsearch: "logs",
 } as const satisfies Record<Engine, AdapterKind>;
 
 export const TIER_OF_ENGINE = {
@@ -40,6 +42,7 @@ export const TIER_OF_ENGINE = {
   journald: "logs",
   docker: "logs",
   loki: "logs",
+  elasticsearch: "logs",
 } as const satisfies Record<Engine, Tier>;
 
 const DEFAULT_PORT = {
@@ -59,6 +62,8 @@ const DEFAULT_PORT = {
   docker: 22,
   // validateLoki takes the port from the URL.
   loki: 3100,
+  // validateElasticsearch takes the port from the URL.
+  elasticsearch: 9200,
 } as const satisfies Record<Engine, number>;
 
 const port = v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(65535));
@@ -140,6 +145,8 @@ const SECRET_RULES = {
   },
   // Checked per auth by validateLoki: a password for basic, a token for bearer (L1).
   loki: { allowed: ["password", "bearer_token"], alternatives: [] },
+  // Checked per auth by validateElasticsearch (E1).
+  elasticsearch: { allowed: ["password", "api_key", "bearer_token"], alternatives: [] },
 } as const satisfies Record<Engine, SecretRule>;
 
 export type Target = { host: string; port: number };
@@ -226,6 +233,7 @@ const LOG_ENGINE_CHECKS = new Map<
   ["journald", validateJournald],
   ["docker", validateDocker],
   ["loki", validateLoki],
+  ["elasticsearch", validateElasticsearch],
 ]);
 
 /**

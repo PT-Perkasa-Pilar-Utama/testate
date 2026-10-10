@@ -33,7 +33,7 @@ export const lokiSourceSchema = v.pipe(
 export type LokiSource = v.InferOutput<typeof lokiSourceSchema>;
 
 /** `http(s)://host[:port][/prefix]`: no login in the URL, no query, no fragment (L1). */
-const BASE_URL = /^https?:\/\/[^\s/?#@]+(\/[^\s?#@]*)?$/;
+export const BASE_URL = /^https?:\/\/[^\s/?#@]+(\/[^\s?#@]*)?$/;
 
 /** The address rule, shared with the dialog so a typo is named before the API sees it. */
 export const lokiUrlSchema = v.pipe(

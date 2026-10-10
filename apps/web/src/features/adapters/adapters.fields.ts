@@ -118,6 +118,8 @@ export const ENGINE_FORMS = {
   docker: { kind: "logs", label: "Docker containers", config: [], secrets: [] },
   // Its login is LOKI_FORMS[auth]; its dialog is in features/logs (#90).
   loki: { kind: "logs", label: "Grafana Loki", config: [], secrets: [] },
+  // Its login is ES_FORMS[auth]; its dialog is in features/logs (#92).
+  elasticsearch: { kind: "logs", label: "Elasticsearch", config: [], secrets: [] },
 } as const satisfies Record<Engine, EngineForm>;
 
 // Neither type is exported from the shared package (labels.ts derives AdapterStatus the same way);
