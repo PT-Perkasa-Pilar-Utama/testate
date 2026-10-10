@@ -28,6 +28,7 @@ import { check as netguardCheck, parseDenyList } from "./lib/netguard/index.ts";
 import type { Netguard } from "./lib/engines/index.ts";
 import { createJobsService } from "./modules/jobs/jobs.service.ts";
 import type { JobsService } from "./modules/jobs/jobs.service.ts";
+import type { RetentionReport } from "./modules/settings/settings.retention.ts";
 import type { UsersService } from "./modules/users/users.service.ts";
 
 const RULE = "=".repeat(72);
@@ -199,19 +200,29 @@ export type Retention = { start(): void; stop(): void };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Step 9 and the daily timer: sweep terminal jobs older than `retention.job_history_days` (16 §16.1). */
-export function createRetention(
-  logger: Logger,
-  sweep: () => (days: number) => { deleted: number; stubbed: number },
-  historyDays: () => Promise<number>,
-  expireDiffs: () => Promise<number>
-): Retention {
+export type RetentionTasks = {
+  sweepJobs: () => (days: number) => { deleted: number; stubbed: number };
+  historyDays: () => Promise<number>;
+  expireDiffs: () => Promise<number>;
+  /** Stashes, query history, audit rows and payloads, import runs, download backups (16 §16.1). */
+  settings: () => Promise<RetentionReport>;
+};
+
+/** Step 9 and the daily timer: every retention the settings name (16 §16.1), once a day. */
+export function createRetention(logger: Logger, tasks: RetentionTasks): Retention {
   let timer: ReturnType<typeof setInterval> | null = null;
   const run = async (): Promise<void> => {
-    const swept = sweep()(await historyDays());
-    const diffs = await expireDiffs();
+    const swept = tasks.sweepJobs()(await tasks.historyDays());
+    const diffs = await tasks.expireDiffs();
+    const settings = await tasks.settings();
     const event = logger.create("job");
-    event.add("op", { name: "retention", deleted: swept.deleted, stubbed: swept.stubbed, diffs });
+    event.add("op", {
+      name: "retention",
+      deleted: swept.deleted,
+      stubbed: swept.stubbed,
+      diffs,
+      ...settings,
+    });
     event.emit();
   };
   return {
