@@ -38,6 +38,12 @@ export function createAdaptersRouter(h: AdaptersHandlers): Hono {
     h.databases
   );
   router.get(
+    "/log-adapters",
+    requireRole("viewer"),
+    describe("adapters", "Every log source this caller may see", v.array(adapterWithProjectSchema)),
+    h.logs
+  );
+  router.get(
     P,
     requireRole("viewer"),
     describe("adapters", "List adapters", v.array(adapterSchema)),

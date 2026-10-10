@@ -18,6 +18,8 @@ import { createStorageRouter } from "./storage/storage.router.ts";
 import { createToolsRouter } from "./tools/tools.router.ts";
 import { createUsersRouter } from "./users/users.router.ts";
 import { createV1 } from "./index.ts";
+import { createLogsRouter } from "./logs/logs.router.ts";
+import { MATRIX } from "./roles.table.ts";
 import { requireProjectInScope } from "./projects/projects.scope.ts";
 import type { SlugLookup } from "./projects/projects.scope.ts";
 
@@ -80,6 +82,7 @@ function appFor(caller: Caller): Hono {
     createCheckoutsRouter,
     createDiffsRouter,
     createStorageRouter,
+    createLogsRouter,
     createJobsRouter,
     createAuditRouter,
     createSettingsRouter,
@@ -105,76 +108,6 @@ async function status(who: string, method: string, path: string): Promise<number
   });
   return response.status;
 }
-
-const P = "/projects/demo";
-const A = `${P}/adapters/a1`;
-
-/** Every route worth asserting a role on, with the lowest role that may reach it. */
-const MATRIX: [string, string, Role][] = [
-  ["GET", "/projects", "viewer"],
-  ["GET", "/projects/defaults", "qa"],
-  ["GET", "/adapter-hosts", "qa"],
-  ["POST", `${P}/adapters/test`, "qa"],
-  ["POST", `${A}/retest`, "qa"],
-  ["GET", `${A}/deletion-plan`, "qa"],
-  ["POST", `${A}/deletion`, "qa"],
-  ["POST", `${P}/checkouts/preflight`, "qa"],
-  ["POST", `${P}/checkouts/c1/retry`, "qa"],
-  ["GET", `${P}/checkouts/c1/counters`, "viewer"],
-  ["POST", `${P}/checkouts/c1/repair-counters`, "qa"],
-  ["GET", `${P}/uploads/u1/archive-manifest`, "qa"],
-  ["POST", "/tools/random", "viewer"],
-  ["POST", "/projects", "qa"],
-  ["PATCH", P, "qa"],
-  ["POST", `${P}/deletion`, "admin"],
-  ["GET", `${P}/deletion-plan`, "admin"],
-  ["GET", `${P}/adapters`, "viewer"],
-  ["POST", `${P}/adapters`, "qa"],
-  ["PATCH", A, "qa"],
-  ["POST", `${A}/mode`, "admin"],
-  ["GET", "/storage-adapters", "viewer"],
-  ["GET", "/database-adapters", "viewer"],
-  ["GET", `${P}/states`, "viewer"],
-  ["POST", `${P}/states`, "qa"],
-  ["PATCH", `${P}/states/s1`, "qa"],
-  ["DELETE", `${P}/states/s1`, "qa"],
-  ["GET", `${P}/states/s1/archive`, "viewer"],
-  ["POST", `${P}/states/import`, "qa"],
-  ["GET", `${P}/checkouts`, "viewer"],
-  ["POST", `${P}/checkouts`, "qa"],
-  ["POST", `${P}/checkouts/c1/terminate-blockers`, "qa"],
-  ["GET", `${P}/diffs`, "viewer"],
-  ["POST", `${P}/diffs`, "qa"],
-  ["DELETE", `${P}/diffs/d1`, "qa"],
-  ["GET", `${A}/tables/t/rows`, "viewer"],
-  ["POST", `${A}/query`, "viewer"],
-  ["POST", `${A}/write-sessions`, "qa"],
-  ["POST", `${A}/tables/t/row-edits`, "qa"],
-  ["PUT", `${A}/policies/t/c`, "qa"],
-  ["POST", `${A}/policies/t/c/lock`, "admin"],
-  ["POST", `${A}/policies/t/c/unlock`, "admin"],
-  ["GET", `${A}/entries`, "viewer"],
-  ["GET", `${A}/entries/download`, "viewer"],
-  ["POST", `${A}/entries`, "qa"],
-  ["DELETE", `${A}/entries`, "qa"],
-  ["POST", `${A}/host-key/accept`, "qa"],
-  ["GET", `${P}/imports`, "viewer"],
-  ["POST", `${P}/imports`, "qa"],
-  ["GET", "/jobs", "viewer"],
-  ["POST", "/jobs/j1/cancel", "qa"],
-  ["GET", "/audit-logs", "viewer"],
-  ["GET", "/audit-logs/a1/payload", "admin"],
-  ["GET", "/users", "admin"],
-  ["POST", "/users", "admin"],
-  ["DELETE", "/users/u1", "admin"],
-  ["GET", "/tokens", "admin"],
-  ["POST", "/tokens", "admin"],
-  ["DELETE", "/tokens/t1", "admin"],
-  ["GET", "/settings", "admin"],
-  ["PATCH", "/settings", "admin"],
-  ["POST", "/tools/hash", "viewer"],
-  ["POST", "/tools/uuid", "viewer"],
-];
 
 const RANK = { viewer: 0, qa: 1, admin: 2 } satisfies Record<Role, number>;
 const WHO: [string, Role][] = [
