@@ -158,6 +158,8 @@ export function hitsOf(answer: HttpAnswer): EsHit[] {
   const parsed = v.parse(hitsSchema, JSON.parse(answer.body.toString()));
   return parsed.hits.hits.flatMap((hit) => {
     const nanos = nanosOf(hit.sort[0]);
+    // ponytail: a sort value that is not a stamp drops its document and makes the page look short,
+    // ending the paging; the `exists` filter keeps it rare. Counting raw hits for `full` is the fix.
     if (nanos === null) return [];
     return [
       {

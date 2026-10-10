@@ -19,6 +19,7 @@ Measured first on Elasticsearch 8.15.3: `search_after` on a time sort is strict,
 
 ## What building it changed
 
+- E4: past 200 documents at the newest stamp, follow cannot move its mark, so each poll shows that stamp's overflow again, now said with `cut_by: "lines"`, until a newer stamp arrives; PIT remains the upgrade.
 - E1: the dialog takes the CA in a text box, not through the API only: a self-hosted Elasticsearch 8 is HTTPS with its own CA by default, so most setups need it. A refused certificate now says to set the CA.
 - Checked by hand on Elasticsearch 8.15.3: four documents in one millisecond split across a page boundary, each shown once; follow with a late document at the newest millisecond; a query that cannot run, a missing time field and a missing index each named; with security on, no CA named, the CA with a basic login and with an API key read, and a user without `read` named; 320 documents in one millisecond paged through the real router in pages of 100, the cursor at most about 4 KB of URL, stopping at 300 with `cut_by: "lines"`. The dialog drove the address typo, the missing CA, the pasted CA, Create, the viewer and Edit. Not checked: OpenSearch, Elastic Cloud.
 

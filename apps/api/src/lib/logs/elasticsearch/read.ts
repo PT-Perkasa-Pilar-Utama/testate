@@ -98,12 +98,15 @@ async function follow(api: EsApi, source: EsSource, mark: Mark, pageSize: number
   const got = await search(api, source, searchBody(source, { gte: mark.stamp }, "asc", size));
   const page = unseen(got.hits, mark).slice(0, pageSize);
   const newest = page.at(-1);
-  const next = newest === undefined ? mark : (markAt(newest, page, mark) ?? mark);
+  const next = newest === undefined ? null : markAt(newest, page, mark);
+  // ponytail: past SEEN_MAX documents at the newest stamp the mark cannot move, so each poll shows
+  // that stamp's overflow again, said with `lines`, until a newer stamp arrives. PIT is the upgrade.
+  const overflow = newest !== undefined && next === null;
   return {
     hits: page.reverse(),
     cursor: null,
-    after: encode({ newer: next }),
-    cutBy: null,
+    after: encode({ newer: next ?? mark }),
+    cutBy: overflow ? "lines" : null,
     bytes: got.bytes,
   };
 }
