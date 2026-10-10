@@ -7,7 +7,7 @@ The fourth tier (#37). A Logs adapter reads logs and never writes them: there is
 | Concern | Decision |
 | --- | --- |
 | Shape | Adapters of kind `logs`, tier `logs`, in the `adapters` table (rebuilt by migration 0011 to admit them). Always `read_only`; `sandbox` is refused at create and any mode change after, admins included |
-| Engines | `logfile` (#69), `ingest` (#75, §25.7). `journald`, `docker`, `loki` and `elasticsearch` follow one step each of #37; the CHECK already admits all six |
+| Engines | `logfile` (#69), `ingest` (#75, §25.7), `journald` (#86, §25.9). `docker`, `loki` and `elasticsearch` follow one step each of #37; the CHECK already admits all six |
 | `logfile` | One connection, SFTP or S3, holding named sources `{ name, glob, format, patterns }`. Its files open through the storage resolver as the transport it names, so netguard and host-key trust are shared (05 §5.11) |
 | Formats | `pm2`, `json-lines`, `testate` (the wide-event shape of 21), `syslog` (RFC 5424 and 3164), `plain`, `regex` (named groups `time`, `level`, `message`; the rest become fields) |
 | Limits | 200 lines by default, 5 000 at most; at most 10 MB read per request; a `from`–`to` window of at most 7 days (older entries are paged with the cursor); an answer cut short names its limit and carries a cursor |
@@ -44,7 +44,8 @@ Each file gives up a run from its end and never a line from its middle, so the n
 
 - The cursor is opaque base64 and parsed with valibot when it comes back; a cursor this server did not give out answers `VALIDATION_ERROR`.
 - Tester-supplied regexes (`regex` format, masking patterns) are checked at save: they compile, stay under 200 characters, and hold no nested quantifier. The runtime has no regex timeout; RE2 is the upgrade (marked `ponytail:` in `logs.ts`).
-- An agent token cannot trust a first-seen SFTP host key: a person reads the source once first.
+- An agent token cannot trust a first-seen SFTP host key: a person reads the source once first. The same holds for a `journald` adapter's SSH key.
+- A `journald` adapter runs one command, `journalctl`, and nothing else. Testate builds every argument from an allow-list and single-quotes each one. Nothing a person types reaches the shell: a unit name is checked at save and again when the command is built, and a cursor is checked by its characters (§25.9).
 
 ## 25.5 Component and contract
 
@@ -57,6 +58,7 @@ Each file gives up a run from its end and never a line from its middle, so the n
 | Service, routes | `modules/logs` (`api-specs/12-logs.md`) |
 | MCP tool | `modules/agent/agent.logs.ts` |
 | `ingest`: contract, store, push, token | `schemas/logs.ingest.ts`, `lib/logs/ingest/`, `modules/ingest/`, migration 0012 |
+| `journald`: contract, command, parser, page, SSH shell | `schemas/logs.journald.ts`, `lib/logs/journald/`, `modules/adapters/adapters.shell.ts`, `modules/logs/logs.journal.ts` |
 | Menu, dialog, viewer, run links | `apps/web/src/features/logs/` |
 
 One wide event per read carries `logs_source`, `logs_files`, `logs_bytes`, `logs_entries` and `logs_cut_by`. It never carries a line of the log.
@@ -104,3 +106,20 @@ Decisions D1–D7 of `docs/decisions/2026-10-10-db-server-logs.md` (#84). A read
 | One row per session | PostgreSQL "Statements" is one row per session, its latest statement, so a session idle for hours keeps its last query near the top until it runs another |
 | What a reader sees | Whatever the engine shows the adapter's own role: on PostgreSQL that can include other users' statements. MySQL and MariaDB statements include Testate's own reads through the same user |
 | Not here | The general query log (too large, and it is the data); managed-host log APIs (RDS, Cloud SQL); files on the database host, which a `logfile` adapter reads |
+
+## 25.9 `journald`: a host's systemd journal over SSH
+
+Decisions J1–J6 of `docs/decisions/2026-10-10-journald.md` (#86). A `journald` adapter logs in to a Linux host over SSH and reads its journal with `journalctl -o json`.
+
+| Concern | Decision |
+| --- | --- |
+| Config | `{ host, port (default 22), user, sources }`, secrets `password` or `private_key` (with `passphrase`). The dialog asks for a password, as the SFTP one does; a key goes through the API |
+| Connection | The SFTP adapter's `ssh2` client with an `exec` channel instead of `sftp`. Netguard and host-key trust are shared with `logfile`: a person's first read trusts the key, a changed key answers `CONFLICT host_key_changed` |
+| Source | `{ name, units, patterns }`, 1–32 per adapter. `units` holds systemd unit names (`-u`); none reads the whole journal |
+| Command | `journalctl -o json --no-pager --quiet -n <N> [-r] [--since=@<s>] [--until=@<s>] [--after-cursor=<c> \| --cursor=<c>] [-u <unit>]... [-p <level>]`. Times go as `@` and whole seconds since the epoch, journalctl's absolute form, so no zone can be misread. There is no `--grep`: the text filter runs in Testate on the page |
+| Paging | journald's own `__CURSOR`, inside Testate's opaque cursor. The first page is the last N lines, reversed to newest first. "Older" reads back from the oldest cursor shown, without that line. Follow reads `--after-cursor` the newest shown, and keeps its mark when nothing came |
+| Lines | `__REALTIME_TIMESTAMP` is the time. `PRIORITY` 0–2 is `fatal`, 3 `error`, 4 `warn`, 5–6 `info`, 7 `debug`. `MESSAGE` is the message; a byte array is decoded as UTF-8, else shown as `<binary>`. Only `_SYSTEMD_UNIT`, `SYSLOG_IDENTIFIER`, `_PID` and `_HOSTNAME` are kept as fields: `_CMDLINE` and the rest can carry a secret |
+| Rights | The SSH user needs the `systemd-journal` group, or root. Test connection runs `journalctl -n 1` and warns `no_journal` when the host has none, `journal_access` with the `usermod` line when the user cannot read it all |
+| Limits | §25.1's: 200 lines, 5 000 at most, 10 MB of output a read (the channel closes there and the page says `cut_by: "bytes"`), a 7-day window |
+| Masking | Built-in patterns plus the source's own, for viewers and agents (Q5) |
+| Not here | Remote journals over `systemd-journal-gatewayd`; container journals with `--machine`; macOS, which has no journal |
