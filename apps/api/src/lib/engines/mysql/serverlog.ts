@@ -7,7 +7,7 @@ import type { SQL } from "bun";
 import type { LogLevel, ServerLogSource } from "@testate/shared";
 import * as v from "valibot";
 
-import { pageWindow } from "../../logs/server.ts";
+import { maskLiterals, pageWindow } from "../../logs/server.ts";
 import type { ServerLogEntry, ServerLogPage, ServerLogRead } from "../types.ts";
 
 /** The most of any one table a page looks at: the history ring's default size. */
@@ -40,6 +40,12 @@ const statementRow = v.object({
   db: v.nullable(v.string()),
   examined: v.nullable(counter),
 });
+
+/** MySQL's digest, with an error's message after it, literals masked; null with no digest. */
+export function digestOf(digest: string | null, error: string): string | null {
+  if (digest === null) return null;
+  return error === "" ? digest : `${digest}\n${maskLiterals(error)}`;
+}
 
 function statementLevel(errno: number, warnings: number): LogLevel {
   if (errno > 0) return "error";
@@ -75,7 +81,8 @@ async function statements(sql: SQL): Promise<ServerLogEntry[]> {
       },
       level,
       message: errno > 0 ? `${row.text ?? ""}\n${row.message ?? ""}` : (row.text ?? ""),
-      digest: row.digest,
+      // The error keeps its sentence for a masked reader, with its values taken out (D7).
+      digest: digestOf(row.digest, errno > 0 ? (row.message ?? "") : ""),
       fields: {
         thread: String(row.thread),
         db: row.db,

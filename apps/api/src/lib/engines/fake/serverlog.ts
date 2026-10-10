@@ -23,6 +23,14 @@ export const FAKE_STATEMENTS: ServerLogEntry[] = [
     fields: { pid: "102", user: "app" },
   },
   {
+    // A statement the engine keeps a digest for, its error carrying a value (D7).
+    key: { time: Date.parse("2026-10-10T08:00:00.000Z"), id: "000000" },
+    level: "error",
+    message: "INSERT INTO users (email) VALUES ('ana@shop.test')\nDuplicate entry 'ana@shop.test'",
+    digest: "INSERT INTO `users` ( `email` ) VALUES (?)\nDuplicate entry ?",
+    fields: { pid: "100", user: "app" },
+  },
+  {
     key: { time: Date.parse("2026-10-10T08:00:02.000Z"), id: "000003" },
     level: "error",
     message: "INSERT INTO refunds (token) VALUES ('tok_live_abc123')\nduplicate key",

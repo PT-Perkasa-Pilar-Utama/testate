@@ -101,5 +101,6 @@ Decisions D1–D7 of `docs/decisions/2026-10-10-db-server-logs.md` (#84). A read
 | Paging | Each source is a bounded window (a snapshot, a ring buffer, a tail) paged newest first by `(time, id)` behind an opaque cursor of its own; follow polls `after` every 3 s; the window's end answers `cut_by: "window"` |
 | Times | MySQL statement times are derived from `Uptime`, so they are within a second of the clock |
 | Masking | Statement text is the data. A viewer or an agent sees the engine's digest (MySQL `DIGEST_TEXT`), else the statement with its quoted strings and numbers as `?`; a MongoDB command shows its keys with every value as `"?"`; fields show their keys with values hidden; built-in secret patterns apply on top. Testers and admins read raw text |
+| One row per session | PostgreSQL "Statements" is one row per session, its latest statement, so a session idle for hours keeps its last query near the top until it runs another |
 | What a reader sees | Whatever the engine shows the adapter's own role: on PostgreSQL that can include other users' statements. MySQL and MariaDB statements include Testate's own reads through the same user |
 | Not here | The general query log (too large, and it is the data); managed-host log APIs (RDS, Cloud SQL); files on the database host, which a `logfile` adapter reads |
