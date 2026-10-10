@@ -123,7 +123,7 @@ export function createTokensPresenter(): TokensPresenter {
   return {
     ...tokens,
     table,
-    projects: createRefreshable(() => projectsModel.choices()),
+    projects: createRefreshable(() => projectsModel.list()),
     kind,
     setKind,
     revoked,

@@ -96,7 +96,7 @@ export function createUsersPresenter(): UsersPresenter {
   return {
     ...users,
     table,
-    projects: createRefreshable(() => projectsModel.choices()),
+    projects: createRefreshable(() => projectsModel.list()),
     role,
     setRole,
     creating,

@@ -258,3 +258,20 @@ export function createTableControls<TKey extends string>(
     draining: () => typed().trim() !== settled().trim(),
   };
 }
+
+/** One page of a list and the cursor of the next, as `apiClient.page` answers. */
+export type PageOf<T> = { data: T[]; next: string | null };
+
+/** Every item of a paged list: asks for the next page until there is none. */
+export async function allPages<T>(
+  fetchPage: (cursor: string | undefined) => Promise<PageOf<T>>
+): Promise<T[]> {
+  const items: T[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await fetchPage(cursor);
+    items.push(...page.data);
+    cursor = page.next ?? undefined;
+  } while (cursor !== undefined);
+  return items;
+}
