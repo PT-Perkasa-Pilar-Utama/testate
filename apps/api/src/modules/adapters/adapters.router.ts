@@ -30,6 +30,13 @@ export function createAdaptersRouter(h: AdaptersHandlers): Hono {
     describe("adapters", "Every file store this caller may see", v.array(adapterWithProjectSchema)),
     h.stores
   );
+  // A tier is a menu (#63): every database this caller may see, for the Databases screen.
+  router.get(
+    "/database-adapters",
+    requireRole("viewer"),
+    describe("adapters", "Every database this caller may see", v.array(adapterWithProjectSchema)),
+    h.databases
+  );
   router.get(
     P,
     requireRole("viewer"),

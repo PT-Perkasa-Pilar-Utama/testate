@@ -180,6 +180,16 @@ describe("adapters", () => {
     expect(await names([])).toStrictEqual([]);
   });
 
+  it("the instance-wide database list holds databases only, within the caller's projects (#63)", async () => {
+    const { adapters, qa } = await createAdaptersHarness();
+    const { adapter } = await adapters.create(qa, "shop", PG, TEST_META);
+    await adapters.create(qa, "shop", S3, TEST_META);
+    const names = async (scope: string[] | null) =>
+      (await adapters.listByKind(scope, "database")).map((a) => [a.name, a.project_slug]);
+    expect(await names(null)).toStrictEqual([[adapter.name, "shop"]]);
+    expect(await names(["01991f00-0000-7000-8000-0000000000ff"])).toStrictEqual([]);
+  });
+
   it("lets only an admin change the mode, on a file store as much as on a database", async () => {
     const { adapters, qa, admin } = await createAdaptersHarness();
     const { adapter } = await adapters.create(qa, "shop", PG, TEST_META);
