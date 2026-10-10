@@ -7,7 +7,7 @@ The fourth tier (#37). A Logs adapter reads logs and never writes them: there is
 | Concern | Decision |
 | --- | --- |
 | Shape | Adapters of kind `logs`, tier `logs`, in the `adapters` table (rebuilt by migration 0011 to admit them). Always `read_only`; `sandbox` is refused at create and any mode change after, admins included |
-| Engines | `logfile` (#69), `ingest` (#75, §25.7), `journald` (#86, §25.9). `docker`, `loki` and `elasticsearch` follow one step each of #37; the CHECK already admits all six |
+| Engines | `logfile` (#69), `ingest` (#75, §25.7), `journald` (#86, §25.9), `docker` (#88, §25.10). `loki` and `elasticsearch` follow one step each of #37; the CHECK already admits all six |
 | `logfile` | One connection, SFTP or S3, holding named sources `{ name, glob, format, patterns }`. Its files open through the storage resolver as the transport it names, so netguard and host-key trust are shared (05 §5.11) |
 | Formats | `pm2`, `json-lines`, `testate` (the wide-event shape of 21), `syslog` (RFC 5424 and 3164), `plain`, `regex` (named groups `time`, `level`, `message`; the rest become fields) |
 | Limits | 200 lines by default, 5 000 at most; at most 10 MB read per request; a `from`–`to` window of at most 7 days (older entries are paged with the cursor); an answer cut short names its limit and carries a cursor |
@@ -46,6 +46,7 @@ Each file gives up a run from its end and never a line from its middle, so the n
 - Tester-supplied regexes (`regex` format, masking patterns) are checked at save: they compile, stay under 200 characters, and hold no nested quantifier. The runtime has no regex timeout; RE2 is the upgrade (marked `ponytail:` in `logs.ts`).
 - An agent token cannot trust a first-seen SFTP host key: a person reads the source once first. The same holds for a `journald` adapter's SSH key.
 - A `journald` adapter runs one command, `journalctl`, and nothing else. Testate builds every argument from an allow-list and single-quotes each one. Nothing a person types reaches the shell: a unit name is checked at save and again when the command is built, and a cursor is checked by its characters (§25.9).
+- A `docker` adapter makes five `GET` calls and nothing else, logs always with `follow=0`. Testate builds each path from a request; a container name is checked against its pattern and URL-encoded (§25.10).
 
 ## 25.5 Component and contract
 
@@ -59,6 +60,7 @@ Each file gives up a run from its end and never a line from its middle, so the n
 | MCP tool | `modules/agent/agent.logs.ts` |
 | `ingest`: contract, store, push, token | `schemas/logs.ingest.ts`, `lib/logs/ingest/`, `modules/ingest/`, migration 0012 |
 | `journald`: contract, command, parser, page, SSH shell | `schemas/logs.journald.ts`, `lib/logs/journald/`, `modules/adapters/adapters.shell.ts`, `modules/logs/logs.journal.ts` |
+| `docker`: contract, calls, frames, pager, transports | `schemas/logs.docker.ts`, `lib/logs/docker/`, `lib/logs/ssh.ts`, `modules/adapters/adapters.docker*.ts`, `modules/logs/logs.docker.ts` |
 | Menu, dialog, viewer, run links | `apps/web/src/features/logs/` |
 
 One wide event per read carries `logs_source`, `logs_files`, `logs_bytes`, `logs_entries` and `logs_cut_by`. It never carries a line of the log.
@@ -123,3 +125,19 @@ Decisions J1–J6 of `docs/decisions/2026-10-10-journald.md` (#86). A `journald`
 | Limits | §25.1's: 200 lines, 5 000 at most, 10 MB of output a read (the channel closes there and the page says `cut_by: "bytes"`), a 7-day window |
 | Masking | Built-in patterns plus the source's own, for viewers and agents (Q5) |
 | Not here | Remote journals over `systemd-journal-gatewayd`; container journals with `--machine`; macOS, which has no journal |
+
+## 25.10 `docker`: a host's container logs through the Engine API
+
+Decisions K1–K7 of `docs/decisions/2026-10-10-docker.md` (#88). A `docker` adapter reads container logs through the Engine API, over SSH to the host's socket or over TCP.
+
+| Concern | Decision |
+| --- | --- |
+| Config | `ssh`: `{ host, port (22), user, socket_path (/var/run/docker.sock), sources }`, the SFTP login's secrets. `tcp`: `{ host, port (2376), scheme (https or http), tls_cert?, tls_ca?, sources }`, secret `tls_key`, which comes with `tls_cert` and only over https. The dialog has no box for a PEM block: a client certificate goes through the API, and an edit keeps it |
+| Connection | `ssh`: journald's login and host-key trust (`lib/logs/ssh.ts`), then an OpenSSH `streamlocal` channel to the socket for each call. `tcp`: a TCP or TLS socket to the address netguard approved; TLS checks the certificate against the host name. One HTTP client speaks over either |
+| Calls | `GET /_ping`, `/version`, `/containers/json?all=1`, `/containers/{name}/json`, `/containers/{name}/logs?stdout=1&stderr=1&timestamps=1&follow=0&tail=…[&since=…][&until=…]`. A name matches `^[A-Za-z0-9][A-Za-z0-9_.-]{0,254}$`. Times go as seconds with nine decimals |
+| Source | `{ name, container, format, regex?, patterns }`, 1–32 per adapter. Each read inspects the container for its TTY and log driver; a missing container answers `NOT_FOUND container_missing`, a driver Docker cannot read back `ENGINE_UNSUPPORTED log_driver` |
+| Lines | Without a TTY the body is frames (`[stream, 0, 0, 0, length]`); each stream keeps its own unfinished line, as bytes. With a TTY it is one raw stream. Every line starts with its RFC 3339 stamp. The format's time and level win; else Docker's stamp and `info`. The stream is the field `stream`, never a level. Each line is its own entry: a stack trace is not joined |
+| Paging | By position, never by time: Docker takes `tail` before `since` and `until`, and stamps can step back. The first page is `tail=N`. An older page grows the tail from the last depth, doubling while short, and takes the N lines before the oldest shown, found by its stamp, stream and text. A read shorter than its tail is the start of the log. Follow reads `since` the newest shown minus 5 s, with no tail, and keeps the lines after the newest shown |
+| Limits | §25.1's. Docker streams oldest first, so a read cut at 10 MB loses its newest lines: `tail` is the bound, a grown tail is sized from the read's line length, and older pages reach back about 10 MB from a log's end. Past that the page says `cut_by: "bytes"` and has no older cursor |
+| Probe | `/_ping`, then API 1.41 (Engine 20.10) or later, else `ENGINE_UNSUPPORTED version`. Warnings: `container_missing` (with up to eight names the host has), `log_driver` (only `json-file`, `local` and `journald` read back), `tty`, `plaintext` for http, `docker_access` when the SSH user may not open the socket |
+| Not here | Swarm service logs, Kubernetes, a streaming follow. Podman speaks the same API and may work; untested |

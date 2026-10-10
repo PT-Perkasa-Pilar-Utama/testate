@@ -188,3 +188,19 @@ sudo usermod -aG systemd-journal deploy
 ```
 
 The host key is trusted the first time a person reads, as for SFTP. A changed key stops every read until someone accepts the new one. A host with no journal yet gets a `no_journal` warning; a host without systemd, and so without journalctl, gets `no_journalctl`.
+
+## J. Read a Docker host's container logs
+
+Open **Logs**, click **New log adapter**, and pick "Docker containers". Add one source per container, by its name: `docker ps --format '{{.Names}}'` lists them. A compose container keeps its name, such as `shop-api-1`, when it is recreated.
+
+Testate only reads. It calls five read-only paths of the Engine API and never opens a streaming call.
+
+| Way in | When | What it needs |
+| --- | --- | --- |
+| SSH to the socket | Docker runs on a host you can SSH into | OpenSSH on the host, and a user in the `docker` group. That group is root on the host |
+| TCP to a socket proxy | You can run one more container beside Docker | A read-only proxy that allows containers and nothing else, such as `tecnativa/docker-socket-proxy` with `CONTAINERS=1`, on a private network. Turn on "Plain http" for it |
+| TCP to the Engine API | The daemon already listens with TLS on 2376 | Its CA and a client certificate, set through the API (`tls_ca`, `tls_cert`, secret `tls_key`) |
+
+The socket proxy is the safer choice. Docker access over SSH lets that user do anything on the host.
+
+**Test connection** names what will not read: a container that does not exist (with the ones that do), a container whose log driver ships its logs elsewhere (Docker reads back only `json-file`, `local` and `journald`), a TTY container (its stdout and stderr are one stream), plain http, and an SSH user who may not open the socket.
