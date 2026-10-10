@@ -151,6 +151,17 @@ export function createFtpSource(
         return Readable.toWeb(pipe);
       });
     },
+    async readRange(path, start, end) {
+      const clean = normalizePath(path);
+      return guard(clean, async (ftp) => {
+        // FTP can start at an offset (REST) but not stop at one, so the tail past `end` is cut off.
+        const pipe = new PassThrough();
+        const parts: Uint8Array[] = [];
+        pipe.on("data", (part: Buffer) => parts.push(new Uint8Array(part)));
+        await ftp.downloadTo(pipe, joinPath(config.root_path, clean), start);
+        return new Uint8Array(Buffer.concat(parts)).slice(0, Math.max(0, end - start));
+      });
+    },
     async put(path, body) {
       const clean = normalizePath(path);
       if (clean === "") throw notAFile(clean);

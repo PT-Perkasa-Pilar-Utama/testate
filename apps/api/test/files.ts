@@ -43,6 +43,7 @@ export function memoryOpen(
       list: (path, query) => guard(() => source.list(path, query)),
       stat: (path) => guard(() => source.stat(path)),
       read: (path) => guard(() => source.read(path)),
+      readRange: (path, start, end) => guard(() => source.readRange(path, start, end)),
       put: (path, body) => guard(() => source.put(path, body)),
       remove: (path) => guard(() => source.remove(path)),
       move: (from, to) => guard(() => source.move(from, to)),

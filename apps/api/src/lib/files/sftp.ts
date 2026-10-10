@@ -139,6 +139,20 @@ export function createSftpSource(
         return Readable.toWeb(sftp.createReadStream(joinPath(config.root_path, clean)));
       });
     },
+    async readRange(path, start, end) {
+      const clean = normalizePath(path);
+      if (end <= start) return new Uint8Array();
+      return guard(clean, async (sftp) => {
+        // ssh2's `end` is inclusive.
+        const stream = sftp.createReadStream(joinPath(config.root_path, clean), {
+          start,
+          end: end - 1,
+        });
+        const parts: Uint8Array[] = [];
+        for await (const part of stream) parts.push(new Uint8Array(part));
+        return new Uint8Array(Buffer.concat(parts));
+      });
+    },
     async put(path, body) {
       const clean = normalizePath(path);
       if (clean === "") throw notAFile(clean);

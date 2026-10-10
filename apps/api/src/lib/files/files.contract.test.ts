@@ -156,7 +156,7 @@ async function dropFtpDir(): Promise<void> {
 }
 
 function writesAndDeletes(open: () => FileSource, dropDir: () => Promise<void>): void {
-  test("writes a file, overwrites it, reads it back, then deletes it", async () => {
+  test("writes a file, overwrites it, reads it and a range back, then deletes it", async () => {
     const source = open();
     const path = "scratch/note.txt";
     try {
@@ -164,6 +164,12 @@ function writesAndDeletes(open: () => FileSource, dropDir: () => Promise<void>):
       expect((await source.stat(path)).size_bytes).toBe(5);
       await source.put(path, new TextEncoder().encode("second"));
       expect(await new Response(await source.read(path)).text()).toBe("second");
+      // A range reads only its bytes, and one past the end comes back short (the Logs tier, #69).
+      const decode = (bytes: Uint8Array): string => new TextDecoder().decode(bytes);
+      expect([
+        decode(await source.readRange(path, 1, 4)),
+        decode(await source.readRange(path, 3, 99)),
+      ]).toEqual(["eco", "ond"]);
       await source.remove(path);
       await expect(source.stat(path)).rejects.toMatchObject({ code: "NOT_FOUND" });
       await expect(source.remove(path)).rejects.toMatchObject({ code: "NOT_FOUND" });
