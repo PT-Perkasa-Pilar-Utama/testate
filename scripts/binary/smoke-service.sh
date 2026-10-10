@@ -75,7 +75,12 @@ if ! wait_live "pm2 start"; then
 fi
 pm2 restart testate
 wait_live "pm2 restart"
+crashed=$(pm2 pid testate)
+kill -9 "$crashed"
+sleep 3
+wait_live "kill -9 under pm2 (autorestart)"
+[ "$(pm2 pid testate)" != "$crashed" ] || { echo "pm2 did not start a new process" >&2; exit 1; }
 pm2 delete testate
 wait_down "pm2 delete"
-echo "pm2: started and restarted from the same testate.env"
+echo "pm2: started, restarted and came back from kill -9, from the same testate.env"
 rm -f "$env_file"

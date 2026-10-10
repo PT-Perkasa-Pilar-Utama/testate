@@ -82,6 +82,12 @@ jobs:
       - name: stop the API
         if: always()
         run: kill "$(cat api.pid)" || true
+      # The CLI from the README on a real systemd, on the pull request rather than at release:
+      # setup twice, a per-user service, whereis, uninstall (docs/decisions/2026-10-10-cli.md).
+      - name: compile the binary for this runner
+        run: bun scripts/binary/build-binaries.ts --skip-web
+      - name: setup and a per-user service from the binary
+        run: sh scripts/binary/smoke-cli.sh .bin-build/linux_amd64/testate
 
   image:
     name: docker build
