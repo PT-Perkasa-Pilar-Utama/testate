@@ -1,5 +1,125 @@
 # Changelog
 
+## 2.0.0 (unreleased)
+
+Testate becomes one binary you install with one line, gains a fourth tier for logs, and scopes
+each viewer and tester to the projects someone chose. Upgrading runs four migrations on boot
+(0009 to 0012). Read "Before you upgrade" first: four changes break a script or delete data,
+and two change a URL or a name.
+
+### Before you upgrade
+
+- **The first boot deletes old rows.** The daily retention sweep now runs the settings sweep,
+  which never ran in production before. The first boot after the upgrade deletes stashes past
+  `stash_keep`, audit rows past `audit_days`, audit payloads past `audit_payload_days`, query
+  history past `query_history_days`, old import runs, and expired download backups. Check those
+  settings first.
+- **`POST /tokens` needs `project_ids`.** Send a list of project IDs, or `null` for every
+  project. A body without it answers `400 VALIDATION_ERROR`.
+- **Release archives have new names.** They are `testate_<os>_<arch>.tar.gz` (`.zip` on Windows),
+  with one `checksums.txt` and a `testate.intoto.jsonl` attestation. A script that downloads by
+  the old name breaks.
+- **The binary reads no `.env` beside it.** It no longer loads a `.env` or `bunfig.toml` from its
+  own folder. Pass `--env-file`, or put the file at `~/.config/testate/testate.env`. An unknown
+  argument now exits with code 2.
+- **`inspect` is a reserved project slug.** An existing project named `inspect` keeps its slug;
+  the built-in Inspect project takes `inspect-2`.
+- **The project page has no Databases tab.** Databases moved to their own menu.
+  `?tab=adapters` redirects to `/databases?project=<slug>`.
+
+Migration 0011 rebuilds the `adapters` table for the Logs tier. It runs in one transaction with
+foreign keys held and rolls back whole on failure; boot keeps a copy of the database from before
+the migration.
+
+### New
+
+**Native binaries for five platforms.** Linux amd64 and arm64, macOS amd64 and arm64, and
+Windows amd64. Install with
+`curl -fsSL https://pt-perkasa-pilar-utama.github.io/testate/install.sh | sh`, which checks the
+archive against `checksums.txt`. Linux amd64 is Bun's baseline build, so it runs on a CPU
+without AVX2.
+
+**A `testate` CLI on the same binary.** `testate setup` writes `testate.env` and keeps the
+sealing key. `testate service install|start|stop|status|logs|uninstall` runs it as a per-user
+systemd service or LaunchAgent. `testate update` installs the latest release after checking it,
+and `testate update --check` only says whether one exists. `testate whereis` prints where this
+install keeps its data, logs and pushed logs. `testate --version` prints the version. A systemd
+unit and a pm2 file ship for servers.
+
+**Project access for viewers and testers.** An admin chooses each viewer's and tester's projects:
+every project, or a list. Existing users keep every project on upgrade. A token states its
+projects too, and a token that reaches Inspect is a viewer.
+
+**A built-in Inspect project.** Every instance has one read-only project for looking at live
+databases, files and logs. It refuses snapshots, checkouts, diffs and imports
+(`PROJECT_READ_ONLY`, 403). An adapter there stays read-only and is managed by its creator or an
+admin. One click makes an Inspect agent token. `GET /projects` returns each project's `kind`
+and takes a `kind` filter.
+
+**A tier is a menu.** The sidebar reads Projects, Databases, Storage, Logs. Databases lists every
+database adapter in scope, grouped by project with Inspect first (`GET /database-adapters`). A
+project page keeps its states and activity.
+
+**Move an adapter to another project.** "Move to project…" on the adapter page, Inspect included
+(`POST /projects/{slug}/adapters/{id}/move`). The source project's states for it are marked
+removed (ADR 0005).
+
+**The Logs tier.** Log adapters read logs and never write them. The viewer filters by source,
+level, text and a window of up to 7 days, pages back, follows new lines every 3 seconds, and
+downloads what it shows as JSON lines. Viewers and agents see secrets masked: built-in patterns
+plus a source's own, where it has them. "Logs during this run" on a checkout or a job opens the
+viewer on its window. Agents read logs with the MCP tool `read_logs`, always masked.
+
+| Engine          | Reads                                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `logfile`       | Log files over SFTP or S3: pm2, JSON lines, Testate's own format, syslog, plain text, or a regex                               |
+| `ingest`        | Lines your app pushes to `POST /api/v1/ingest/{id}` with the adapter's own token, kept on disk with a retention and a size cap |
+| `journald`      | A Linux host's systemd journal over SSH, by unit                                                                               |
+| `docker`        | Container logs through the Engine API, over SSH to the socket or over TCP                                                      |
+| `loki`          | Grafana Loki or Grafana Cloud with LogQL log queries                                                                           |
+| `elasticsearch` | Elasticsearch 7.10+ or OpenSearch 1.0+ with an index pattern and a Lucene query                                                |
+
+Database adapters gain a **Server logs** tab: recent statements on PostgreSQL, MySQL, MariaDB and
+MongoDB, and the server, error or slow log where the adapter's user may read it. A source the
+user cannot read shows the grant that opens it.
+
+New API surface: `GET /log-adapters`; `GET .../logs`, `.../logs/download` and `.../logs/sources`
+on an adapter; `POST /api/v1/ingest/{id}`; `POST .../ingest-token/rotation` to rotate a token;
+`POST .../logs/clear` (admin). New error `INGEST_FULL` (507). New setting
+`limits.ingest_requests_per_minute` (600). The probe result gains `capabilities.serverLogs`.
+
+**The table diagram draws the whole schema.** It used to draw only the first table above 40.
+Each foreign key now runs from its own column to the column it references, and boxes fit their
+widest line.
+
+### Changed
+
+- Testate names its own PostgreSQL connections `application_name = 'testate'`, so they are
+  easy to tell apart in `pg_stat_activity`.
+- An S3 endpoint over plain `http` always uses path-style addressing, whatever the adapter's
+  `virtual_hosted` says (ADR 0004). A MinIO adapter over `http` with `virtual_hosted` on now
+  addresses its bucket by path.
+- Long cell values open in full in one dialog, with JSON over several lines and a copy button,
+  in the grid, the query console and the diff.
+- CI runs on Bun 1.4.2.
+- A tester guide in English and Indonesian, under `docs/user-guide/`.
+
+### Fixed
+
+- An adapter route now checks that the adapter belongs to the project in the path, and every
+  outbound connection uses the address netguard approved. An HTTPS endpoint keeps its host
+  name, so TLS still checks it (ADR 0004).
+- A caller limited to some projects no longer reaches instance-wide reads: instance jobs, the
+  full health report, and instance audit rows go to an unscoped admin only.
+- The project pickers and Home listed only the first 50 projects.
+- A MongoDB browse no longer fails with "client was closed" when a checkout ends beside it.
+- HEAD refreshes after a checkout even when you leave the States tab before it ends.
+- The log file being written is never deleted by its own retention sweep.
+- "New database" no longer picks the Inspect project by default.
+- The compose MinIO comes from `pgsty`: `minio/minio` left Docker Hub.
+- Dependencies past advisories: hono 4.13.12, brace-expansion 5.0.12, seroval, source-map-js,
+  and in the pm2 smoke lockfile js-yaml 4.3.2, chokidar 4 and basic-ftp 6.2.2.
+
 ## 1.2.0
 
 The query console completes what you type. Upgrading changes nothing on disk: no migration, no
