@@ -137,6 +137,13 @@ export const LOG_TRANSPORT_OPTIONS = [
   { value: "sftp", label: "SFTP" },
   { value: "s3", label: "Object storage (S3-compatible)" },
 ] as const satisfies { value: LogTransport; label: string }[];
+/** How an elasticsearch adapter logs in (#92, E1). */
+export const ES_AUTH_OPTIONS = [
+  { value: "none", label: "None" },
+  { value: "basic", label: "User and password" },
+  { value: "api_key", label: "API key" },
+  { value: "bearer", label: "Bearer token" },
+] as const satisfies { value: "none" | "basic" | "api_key" | "bearer"; label: string }[];
 /** How a loki adapter logs in (#90, L1). */
 export const LOKI_AUTH_OPTIONS = [
   { value: "none", label: "None" },
