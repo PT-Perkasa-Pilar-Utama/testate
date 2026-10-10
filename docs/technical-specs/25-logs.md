@@ -56,6 +56,7 @@ Each file gives up a run from its end and never a line from its middle, so the n
 | Config, probe, read-only rule | `modules/adapters` (`adapters.logfile.ts`, `adapters.files.ts`, `adapters.inspect.ts`) |
 | Service, routes | `modules/logs` (`api-specs/12-logs.md`) |
 | MCP tool | `modules/agent/agent.logs.ts` |
+| Menu, dialog, viewer, run links | `apps/web/src/features/logs/` |
 
 One wide event per read carries `logs_source`, `logs_files`, `logs_bytes`, `logs_entries` and `logs_cut_by`. It never carries a line of the log.
 
