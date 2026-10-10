@@ -116,9 +116,10 @@ describe("migrate", () => {
       "0008_audit_payloads.sql",
       "0009_user_project_scope.sql",
       "0010_inspect_project.sql",
+      "0011_logs_tier.sql",
     ]);
     expect(second.applied).toStrictEqual([]);
-    expect(second.skipped).toBe(10);
+    expect(second.skipped).toBe(11);
     const tables = db
       .query<{ name: string }, []>(
         "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"

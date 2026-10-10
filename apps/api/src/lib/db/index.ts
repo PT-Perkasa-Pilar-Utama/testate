@@ -20,6 +20,34 @@ type LedgerRow = { version: number };
 
 export const DEFAULT_MIGRATIONS_DIR = join(import.meta.dir, "..", "..", "db", "migrations");
 
+/**
+ * A migration that rebuilds a table other tables point at starts with this line. SQLite applies
+ * foreign keys per statement, so dropping the old table would delete every row that references
+ * it; this runs the migration with them off, as SQLite's own rebuild procedure does, and refuses
+ * the migration if any reference is broken at the end.
+ */
+export const FOREIGN_KEYS_OFF = "-- testate:foreign-keys-off";
+
+function applyOne(db: MetadataDb, version: number, file: string, text: string): void {
+  const keysOff = text.startsWith(FOREIGN_KEYS_OFF);
+  // The pragma is a no-op inside a transaction, so it is set before the transaction opens.
+  if (keysOff) db.exec("PRAGMA foreign_keys = OFF");
+  try {
+    db.transaction(() => {
+      db.exec(text);
+      const broken = keysOff ? db.query("PRAGMA foreign_key_check").all().length : 0;
+      if (broken > 0) throw new Error(`${file} left ${broken} broken foreign key reference(s)`);
+      db.query("INSERT INTO schema_migrations (version, name, applied_at) VALUES (?1, ?2, ?3)").run(
+        version,
+        file,
+        new Date().toISOString()
+      );
+    })();
+  } finally {
+    if (keysOff) db.exec("PRAGMA foreign_keys = ON");
+  }
+}
+
 /** Applies numbered SQL files in order, one transaction each, recorded in schema_migrations. */
 export function migrate(
   db: MetadataDb,
@@ -41,16 +69,7 @@ export function migrate(
       skipped += 1;
       continue;
     }
-    const text = readFileSync(join(migrationsDir, file), "utf8");
-    const run = db.transaction(() => {
-      db.exec(text);
-      db.query("INSERT INTO schema_migrations (version, name, applied_at) VALUES (?1, ?2, ?3)").run(
-        version,
-        file,
-        new Date().toISOString()
-      );
-    });
-    run();
+    applyOne(db, version, file, readFileSync(join(migrationsDir, file), "utf8"));
     applied.push(file);
   }
   return { applied, skipped };
