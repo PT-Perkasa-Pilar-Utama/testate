@@ -40,7 +40,10 @@ describe("a database adapter's statements", () => {
         "INSERT INTO refunds (token) VALUES ('tok_live_abc123')",
         "UPDATE orders SET total = 42 WHERE id = 7",
       ],
-      ["SELECT * FROM users WHERE email = 'ana@shop.test'"],
+      [
+        "SELECT * FROM users WHERE email = 'ana@shop.test'",
+        "INSERT INTO users (email) VALUES ('ana@shop.test')",
+      ],
       null,
       "window",
     ]);
@@ -61,7 +64,9 @@ describe("a database adapter's statements", () => {
       ["INSERT INTO refunds (token) VALUES (?)", { pid: "?", user: "?" }, true],
       ["UPDATE orders SET total = ? WHERE id = ?", { pid: "?", user: "?" }, true],
       ["SELECT * FROM users WHERE email = ?", { pid: "?", user: "?" }, true],
+      ["INSERT INTO `users` ( `email` ) VALUES (?)", { pid: "?", user: "?" }, true],
     ]);
+    expect(JSON.stringify(page.entries).includes("ana@shop.test")).toBe(false);
   });
 
   it("filter by level, and follow shows nothing it already showed", async () => {
@@ -81,7 +86,10 @@ describe("a database adapter's statements", () => {
       null
     );
     expect([messages(errors.page), follow.page.entries]).toEqual([
-      ["INSERT INTO refunds (token) VALUES ('tok_live_abc123')"],
+      [
+        "INSERT INTO refunds (token) VALUES ('tok_live_abc123')",
+        "INSERT INTO users (email) VALUES ('ana@shop.test')",
+      ],
       [],
     ]);
   });
