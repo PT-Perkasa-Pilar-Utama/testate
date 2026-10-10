@@ -25,6 +25,7 @@ import { readableOf } from "./logs.server.ts";
 import type { ServerLogReader } from "./logs.server.ts";
 import type { DockerReader } from "./logs.docker.ts";
 import type { JournalReader } from "./logs.journal.ts";
+import type { LokiReader } from "./logs.loki.ts";
 
 export type LogsDeps = {
   projects: Pick<ProjectsRepository, "bySlug">;
@@ -38,6 +39,8 @@ export type LogsDeps = {
   journal: JournalReader;
   /** A `docker` adapter's container logs, through the Engine API (#88). */
   docker: DockerReader;
+  /** A `loki` adapter's LogQL queries, through `query_range` (#90). */
+  loki: LokiReader;
 };
 
 /** What one read cost, for the request's wide event; never a line of the log itself. */
@@ -62,7 +65,7 @@ export type LogsService = {
   sources(slug: string, adapterId: string, scope: string[] | null): Promise<string[]>;
 };
 
-/** journald and docker both name their configured sources (#86, #88). */
+/** journald, docker and loki all name their configured sources (#86, #88, #90). */
 const namedSourcesSchema = v.object({ sources: v.array(v.object({ name: v.string() })) });
 
 /** An unknown source names the ones there are, so a person or an agent can pick again. */
@@ -163,11 +166,12 @@ export function createLogsService(deps: LogsDeps): LogsService {
     return adapter?.project_id === project.id && adapter.engine === "ingest" ? adapter : null;
   };
   /** The engines read through a connection of their own rather than a file source. */
-  const remote = new Map<string, JournalReader | DockerReader>([
+  const remote = new Map<string, JournalReader | DockerReader | LokiReader>([
     ["journald", deps.journal],
     ["docker", deps.docker],
+    ["loki", deps.loki],
   ]);
-  /** The project's journald or docker adapter, or null for any other adapter id. */
+  /** The project's journald, docker or loki adapter, or null for any other adapter id. */
   const remoteOf = (project: Project, adapterId: string): AdapterRecord | null => {
     const adapter = deps.adapters.byId(adapterId);
     return adapter?.project_id === project.id && remote.has(adapter.engine) ? adapter : null;

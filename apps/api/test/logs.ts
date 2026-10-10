@@ -2,6 +2,7 @@ import type { AdapterDraft } from "@testate/shared";
 
 import { createServerLogReader } from "../src/modules/logs/logs.server.ts";
 import { createDockerReader } from "../src/modules/logs/logs.docker.ts";
+import { createLokiReader } from "../src/modules/logs/logs.loki.ts";
 import { createJournalReader } from "../src/modules/logs/logs.journal.ts";
 import type { LogsDeps } from "../src/modules/logs/logs.service.ts";
 import type { AdaptersHarness } from "./adapters.ts";
@@ -31,5 +32,6 @@ export function logsDepsOf(harness: AdaptersHarness): LogsDeps {
     serverLogs: createServerLogReader({ engines: harness.engines, ring: harness.ring }),
     journal: createJournalReader(harness.shells),
     docker: createDockerReader(harness.dockers),
+    loki: createLokiReader(harness.lokis),
   };
 }

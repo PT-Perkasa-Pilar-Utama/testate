@@ -1,6 +1,7 @@
 import type { JsonValue } from "@testate/shared";
 
 import type { LokiAnswer, LokiApi, LokiRequest } from "../src/lib/logs/loki/api.ts";
+import type { OpenLoki } from "../src/modules/adapters/adapters.loki.api.ts";
 
 export type FakeStream = { labels: Map<string, string>; values: [bigint, string][] };
 
@@ -99,4 +100,13 @@ export function fakeLokiLines(count: number, start = LOKI_START): [bigint, strin
     start + BigInt(n) * 1_000_000_000n,
     `line ${n + 1}`,
   ]);
+}
+
+/** The harness's Loki instances by host name, each insisting on the tenant `shop` when set so. */
+export function memoryOpenLoki(
+  hosts: Map<string, FakeStream[]>,
+  options: FakeLokiOptions = {}
+): OpenLoki {
+  return (connection) =>
+    fakeLoki(hosts.get(new URL(connection.url).hostname) ?? [], options, connection.tenant);
 }
