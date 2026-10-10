@@ -63,6 +63,20 @@ async function bodyOf(response: Response, capBytes: number): Promise<Body> {
   return { body: Buffer.concat(parts), capped: false };
 }
 
+/** A certificate signed by a CA Testate was not given reads as that, with its fix. */
+export function unanswered(name: string, host: string, cause: string): AppError {
+  if (/self[- ]signed|unable to (get|verify)|certificate/i.test(cause))
+    return new AppError(
+      "ADAPTER_UNREACHABLE",
+      `${name}'s certificate is not trusted: set the adapter's CA`,
+      {
+        reason: "certificate",
+        where: host,
+      }
+    );
+  return new AppError("ADAPTER_UNREACHABLE", `${name} did not answer: ${cause}`, { where: host });
+}
+
 /** `name` says who did not answer: "Loki", "Elasticsearch". */
 export function createPinnedHttp(target: HttpTarget, name: string): PinnedHttp {
   const base = pinHttpEndpoint(target.url, target.address, target.port).replace(/\/+$/, "");
@@ -90,9 +104,7 @@ export function createPinnedHttp(target: HttpTarget, name: string): PinnedHttp {
       try {
         response = await fetch(`${base}${call.path}`, init);
       } catch (cause: unknown) {
-        throw new AppError("ADAPTER_UNREACHABLE", `${name} did not answer: ${String(cause)}`, {
-          where: host,
-        });
+        throw unanswered(name, host, String(cause));
       }
       return { status: response.status, ...(await bodyOf(response, capBytes)) };
     },
