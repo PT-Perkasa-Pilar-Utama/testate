@@ -77,6 +77,13 @@ export function createAdaptersRouter(h: AdaptersHandlers): Hono {
     describe("adapters", "Update an adapter", createAdapterResponseSchema),
     h.update
   );
+  // M5 of docs/decisions/2026-10-10-move-adapter.md: a tester's act, like a deletion.
+  router.post(
+    `${P}/:id/move`,
+    requireRole("qa"),
+    describe("adapters", "Move to another project", createAdapterResponseSchema),
+    h.move
+  );
   router.post(
     `${P}/:id/mode`,
     requireRole("admin"),

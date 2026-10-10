@@ -18,7 +18,7 @@ import { idempotentRequest, replayWith } from "../jobs/jobs.idempotency.ts";
 import type { IdempotentRequest } from "../jobs/jobs.idempotency.ts";
 import type { EnqueueInput, JobsService } from "../jobs/jobs.service.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
-import { preflight } from "./checkouts.preflight.ts";
+import { liveAdapter, preflight } from "./checkouts.preflight.ts";
 import type {
   AdapterCounters,
   CheckoutsFilter,
@@ -100,8 +100,8 @@ export function createCheckoutsService(deps: CheckoutsDeps): CheckoutsService {
     requested: string[] | undefined
   ): AdapterRecord[] => {
     const live = state.adapters.flatMap((entry) => {
-      const adapter = deps.adapters.byId(entry.adapter_id);
-      return adapter === null || adapter.project_id !== project.id ? [] : [adapter];
+      const adapter = liveAdapter(deps.adapters, project.id, entry.adapter_id);
+      return adapter === null ? [] : [adapter];
     });
     const chosen =
       requested === undefined ? live : live.filter((adapter) => requested.includes(adapter.id));
@@ -171,7 +171,7 @@ export function createCheckoutsService(deps: CheckoutsDeps): CheckoutsService {
       const outside = deps.adapters
         .list(project.id, { kind: "database" })
         .filter((adapter) => !manifests.some((manifest) => manifest.adapter_id === adapter.id));
-      return preflight(deps, state, manifests, outside, input.adapter_ids, input.force);
+      return preflight(deps, project.id, state, manifests, outside, input.adapter_ids, input.force);
     },
     async create(actor, slug, input, meta) {
       const project = writableProject(projectOf(slug));

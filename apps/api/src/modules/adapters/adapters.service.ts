@@ -42,6 +42,9 @@ import type { FileProbeFn, ProbeFn } from "./adapters.probe.ts";
 import type { AdapterRecord, AdaptersFilter, AdaptersRepository } from "./adapters.repository.ts";
 import { CONFIG_COLUMN, READONLY_COLUMN, openSecrets, sealSecrets } from "./adapters.secrets.ts";
 import type { Secrets } from "./adapters.secrets.ts";
+import { moveAdapter } from "./adapters.move.ts";
+import type { MoveRequest } from "./adapters.move.ts";
+import type { MoveRepository } from "./adapters.move.repository.ts";
 import {
   assertMayManage,
   assertModeChangeable,
@@ -99,6 +102,8 @@ export type AdaptersService = {
   ): Promise<Job>;
   /** Disables every adapter whose target the deny list now blocks; returns their ids (16 §16.2). */
   recheckDenyList(): Promise<string[]>;
+  /** Moves an adapter to another project, Inspect included (#77). */
+  move(request: MoveRequest): Promise<AdapterWithJob>;
 };
 
 export type AdaptersDeps = {
@@ -113,6 +118,7 @@ export type AdaptersDeps = {
   states: Pick<StatesRepository, "insert" | "nameTaken" | "update" | "initOf">;
   /** An `ingest` adapter's token is minted with it and answered once (I8). */
   ingest: Pick<IngestService, "mint">;
+  moves: MoveRepository;
   now: () => Date;
 };
 
@@ -317,5 +323,6 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
       };
       return enqueueDeletion(removal, slug, id, planId, action, actor, meta);
     },
+    move: (request) => moveAdapter({ ...deps, repo, assertAtInit, initJob, record }, request),
   };
 }

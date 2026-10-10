@@ -24,6 +24,7 @@ import type { StoreTarget } from "./modules/settings/settings.store.ts";
 import { createLogsService } from "./modules/logs/logs.service.ts";
 import type { LogsService } from "./modules/logs/logs.service.ts";
 import { createAdaptersService } from "./modules/adapters/adapters.service.ts";
+import { createMoveRepository } from "./modules/adapters/adapters.move.repository.ts";
 import type { AdaptersDeps, AdaptersService } from "./modules/adapters/adapters.service.ts";
 import { createIngestTokensRepository } from "./modules/ingest/ingest.repository.ts";
 import { createIngestService } from "./modules/ingest/ingest.service.ts";
@@ -121,12 +122,14 @@ export function ingestService(
 
 /** The adapters service on the shared engine wiring (05 §5.5). */
 export function adaptersService(
+  db: MetadataDb,
   wiring: EngineWiring,
   deps: Pick<AdaptersDeps, "projects" | "audit" | "ring" | "netguard" | "jobs" | "ingest" | "now">
 ): AdaptersService {
   return createAdaptersService({
     ...deps,
     repo: wiring.adapters,
+    moves: createMoveRepository(db),
     probe: wiring.probe,
     fileProbe: wiring.fileProbe,
     states: wiring.states,
