@@ -298,12 +298,12 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   bootEvent.emit();
   ready = true;
 
-  const retention = createRetention(
-    logger,
-    () => jobs.sweep,
-    async () => (await settings.get()).retention.job_history_days,
-    () => core.diffs.expire()
-  );
+  const retention = createRetention(logger, {
+    sweepJobs: () => jobs.sweep,
+    historyDays: async () => (await settings.get()).retention.job_history_days,
+    expireDiffs: () => core.diffs.expire(),
+    settings: () => settings.runRetention(),
+  });
   return {
     fetch: app.fetch,
     port: config.PORT,
