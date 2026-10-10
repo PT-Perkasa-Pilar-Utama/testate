@@ -53,6 +53,7 @@ function queryToolDeps(query: DataService["query"]): AgentToolDeps {
     checkouts: unused(),
     diffs: unused(),
     storage: unused(),
+    logs: unused(),
     jobs: unused(),
     // SAFETY: `runTool` calls `audit.record` on every path; the rest of AuditService is unused.
     audit: { ...unused<AuditService>(), record: () => undefined },

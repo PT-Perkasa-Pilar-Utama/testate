@@ -25,11 +25,12 @@ import { createEngineWiring, createStateServices, scopeDeps, settingsDeps } from
 import {
   bootStore,
   lazyJobs,
-  logsHandlers,
+  logsService,
   opsDeps,
   resetHandler,
   storageDeps,
 } from "./wiring.store.ts";
+import { createLogsHandlers } from "./modules/logs/logs.handler.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import { openMetadataDb } from "./lib/db/index.ts";
 import { requireReader } from "./lib/http/auth.ts";
@@ -40,9 +41,7 @@ import { createPasswordHasher } from "./lib/password/index.ts";
 import { loadKeyRing } from "./lib/sealed/index.ts";
 import { createAdaptersHandlers } from "./modules/adapters/adapters.handler.ts";
 import { createAdaptersService } from "./modules/adapters/adapters.service.ts";
-import { createAgentHandlers } from "./modules/agent/agent.handler.ts";
-import { createAgentService } from "./modules/agent/agent.service.ts";
-import { createAgentTools } from "./modules/agent/agent.tools.ts";
+import { agentHandlers } from "./wiring.agent.ts";
 import { createAuditHandlers } from "./modules/audit/audit.handler.ts";
 import { createAuditModule } from "./modules/audit/audit.wiring.ts";
 import { createAuthHandlers } from "./modules/auth/auth.handler.ts";
@@ -173,6 +172,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
       (await adapters.create(actor, project.slug, draft, meta)).adapter,
   });
   const storage = createStorageService(storageDeps(wiring, projectsRepo, audit, now));
+  const logs = logsService(wiring, projectsRepo);
   const adapters = createAdaptersService({
     repo: wiring.adapters,
     projects: projectsRepo,
@@ -237,23 +237,23 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
       config.TESTATE_TRUST_PROXY,
       config.TESTATE_MAX_UPLOAD_MB * 1024 * 1024
     ),
-    logs: logsHandlers(wiring, projectsRepo),
+    logs: createLogsHandlers(logs),
     jobs: createJobsHandlers(jobs),
     audit: createAuditHandlers(audit),
     settings: createSettingsHandlers(settings, prefix, config.TESTATE_TRUST_PROXY),
     tools: createToolsHandlers(createToolsService()),
-    agent: createAgentHandlers(
-      createAgentService(VERSION),
-      createAgentTools({
+    agent: agentHandlers(
+      {
         projects,
         projectsRepo,
         adapters,
         adaptersRepo: wiring.adapters,
         storage,
+        logs,
         jobs,
         audit,
         ...core,
-      }),
+      },
       { settings, trustProxy: config.TESTATE_TRUST_PROXY, now }
     ),
   };

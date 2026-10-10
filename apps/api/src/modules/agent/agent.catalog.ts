@@ -16,6 +16,7 @@ import type { ProjectsRepository } from "../projects/projects.repository.ts";
 import type { ProjectsService } from "../projects/projects.service.ts";
 import type { StatesService } from "../states/states.service.ts";
 import type { StorageService } from "../storage/storage.service.ts";
+import { logTools } from "./agent.logs.ts";
 import { agentGuide } from "./agent.guide.ts";
 import type { AgentContext } from "./agent.service.ts";
 import { writeTools } from "./agent.write.ts";
@@ -30,6 +31,7 @@ export type AgentToolDeps = {
   checkouts: CheckoutsService;
   diffs: DiffsService;
   storage: StorageService;
+  logs: Parameters<typeof logTools>[0]["logs"];
   jobs: Pick<JobsService, "get" | "wait">;
   audit: AuditService;
 };
@@ -163,6 +165,7 @@ export function tools(deps: AgentToolDeps): ReadonlyMap<string, Tool> {
   return new Map<string, Tool>(
     Object.entries({
       ...writeTools(deps),
+      ...logTools(deps),
       // First in the map so it leads `tools/list`: an agent that reads top to bottom is told how
       // to use the rest before it calls one and guesses.
       help: async (_args, ctx) => json(agentGuide(ctx.actor.role)),

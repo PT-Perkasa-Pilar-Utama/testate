@@ -38,6 +38,8 @@ export const TOOL_DESCRIPTIONS = new Map<string, string>(
     diff_summary:
       "What changed between two states, or between a state and the live database, per table. Ask for the diff you need rather than paging both sides yourself.",
     list_files: "Entries in a file adapter (S3, SFTP, FTP). Directories first, then files.",
+    read_logs:
+      "Entries from one source of a Logs adapter, newest first: time, level, file, message and fields, with secrets masked. Narrow with from, to, level and text; page older with the cursor it returns.",
     preview_file:
       "The head of one file from a file adapter, as text. Binary content is refused rather than mangled.",
     run_write_query:

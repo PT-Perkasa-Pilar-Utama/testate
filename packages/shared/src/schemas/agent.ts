@@ -1,6 +1,7 @@
 import * as v from "valibot";
 
-import { slugSchema } from "./common.ts";
+import { slugSchema, timestampSchema } from "./common.ts";
+import { LOG_LINE_MAX, logLevelSchema } from "./logs.ts";
 import { jsonObjectSchema } from "./json.ts";
 
 const adapterRef = v.pipe(v.string(), v.minLength(1));
@@ -53,6 +54,18 @@ export const AGENT_TOOL_INPUTS = {
     cursor: v.optional(v.string()),
   }),
   preview_file: v.object({ project: slugSchema, adapter: adapterRef, path: v.string() }),
+  // One source of a Logs adapter, always masked for an agent (#69, Q9).
+  read_logs: v.object({
+    project: slugSchema,
+    adapter: adapterRef,
+    source: v.pipe(v.string(), v.minLength(1)),
+    from: v.optional(timestampSchema),
+    to: v.optional(timestampSchema),
+    level: v.optional(logLevelSchema),
+    text: v.optional(v.pipe(v.string(), v.maxLength(200))),
+    limit: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(LOG_LINE_MAX))),
+    cursor: v.optional(v.string()),
+  }),
   // The tester half (23 §23.2). Listed for every agent; a viewer token is refused when it calls
   // one, which is a clearer answer than a tool that is not there.
   run_write_query: v.object({
