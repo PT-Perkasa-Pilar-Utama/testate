@@ -13,10 +13,12 @@ import { describeOutcome } from "../adapters/adapters.presenter.ts";
 import type { Values } from "../adapters/adapters.fields.ts";
 import { adapterModel } from "./adapter.model.ts";
 import { draftFrom, toPatchBody } from "./adapter.edit.ts";
+import { menuOf } from "./adapter.menu.ts";
 
 export type AdapterDetail =
   | { view: "tables"; schema: Introspection }
-  | { view: "files"; entries: Entry[] };
+  | { view: "files"; entries: Entry[] }
+  | { view: "logs" };
 
 /**
  * Rename, exclusions, schemas and the restore knobs live in the Formisch form now
@@ -45,8 +47,9 @@ export type AdapterPresenter = {
   confirmDelete: () => Promise<void>;
 };
 
-/** The Files tier lists entries; every other tier introspects. */
+/** The Files tier lists entries, the Logs tier reads on its own panel; the rest introspect. */
 async function loadDetail(slug: string, adapter: Adapter): Promise<AdapterDetail> {
+  if (adapter.tier === "logs") return { view: "logs" };
   if (adapter.tier === "files") {
     return { view: "files", entries: await adapterModel.entries(slug, adapter.id) };
   }
@@ -148,11 +151,7 @@ export function createAdapterPresenter(slug: () => string, id: () => string): Ad
             done.status === "succeeded" ? "success" : "error"
           );
           // Each kind goes back to its own menu (a tier is a menu, #63).
-          navigate(
-            staticKind === "storage"
-              ? "/storage"
-              : `/databases?project=${encodeURIComponent(staticSlug)}`
-          );
+          navigate(menuOf(staticKind, staticSlug).to);
         });
       });
     },

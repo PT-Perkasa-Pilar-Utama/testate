@@ -24,7 +24,9 @@ import DocumentBrowser from "../data/document.view.tsx";
 import { createGridPresenter, qualifiedName } from "../data/grid.presenter.ts";
 import { FilesView, JunctionToolbar, TablesView } from "./adapter.junction.view.tsx";
 import EditDialog from "./adapter.edit.view.tsx";
+import { LogsPanel } from "../logs/logs.panel.view.tsx";
 import { mayManage } from "./adapter.access.ts";
+import { menuOf } from "./adapter.menu.ts";
 import { createAdapterPresenter } from "./adapter.presenter.ts";
 import type { AdapterPresenter } from "./adapter.presenter.ts";
 
@@ -41,7 +43,8 @@ function AdminActions(props: { presenter: AdapterPresenter; adapter: Adapter }):
   return (
     <Show when={hasRole("qa")}>
       <div class="flex flex-wrap items-center gap-2">
-        <Show when={manages()}>
+        {/* A log adapter's sources are edited on its own panel below. */}
+        <Show when={manages() && a().kind !== "logs"}>
           <Button size="sm" variant="secondary" onClick={() => props.presenter.openEdit()}>
             Edit adapter
           </Button>
@@ -70,7 +73,9 @@ function AdminActions(props: { presenter: AdapterPresenter; adapter: Adapter }):
             Make read-only
           </Button>
         </Show>
-        <Show when={hasRole("admin") && !inspect() && a().mode === "read_only"}>
+        <Show
+          when={hasRole("admin") && !inspect() && a().mode === "read_only" && a().kind !== "logs"}
+        >
           <Button
             size="sm"
             variant="outline"
@@ -189,15 +194,8 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
       <Loading fallback={<Pending>Loading adapter...</Pending>}>
         <AdapterBreadcrumbs slug={props.slug} id={props.id} />
         <PageHeader
-          back={
-            presenter.adapter.value().kind === "storage"
-              ? { to: "/storage", label: "Back to Storage" }
-              : {
-                  to: `/databases?project=${encodeURIComponent(props.slug)}`,
-                  label: "Back to Databases",
-                }
-          }
-          eyebrow="Database"
+          back={menuOf(presenter.adapter.value().kind, props.slug)}
+          eyebrow={menuOf(presenter.adapter.value().kind, props.slug).eyebrow}
           title={presenter.adapter.value().name}
           actions={<AdminActions presenter={presenter} adapter={presenter.adapter.value()} />}
         />
@@ -250,6 +248,14 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
             </Match>
             <Match when={presenter.entries()}>
               {(entries) => <FilesView entries={entries()} />}
+            </Match>
+            <Match when={presenter.detail.value().view === "logs"}>
+              <LogsPanel
+                slug={props.slug}
+                adapter={presenter.adapter.value()}
+                manages={mayManage(presenter.adapter.value(), presenter.inspect.value(), actor())}
+                onSaved={() => presenter.adapter.refresh()}
+              />
             </Match>
           </Switch>
         </div>

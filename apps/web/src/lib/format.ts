@@ -27,6 +27,19 @@ export function formatWhen(iso: string): string {
   return PARTS.format(at).replace(", ", " ");
 }
 
+/** An ISO instant as a `datetime-local` value in this browser's zone, to the second. */
+export function toLocalInput(iso: string): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return "";
+  return new Date(at.getTime() - at.getTimezoneOffset() * 60_000).toISOString().slice(0, 19);
+}
+
+/** A `datetime-local` value back to an ISO instant; a blank or broken value is "". */
+export function fromLocalInput(value: string): string {
+  const at = new Date(value);
+  return value === "" || Number.isNaN(at.getTime()) ? "" : at.toISOString();
+}
+
 /** `2026-08-30T03:46:56.037Z` -> `2026-08-30`, for a date input's value. */
 export function toDateInput(iso: string): string {
   return iso.slice(0, 10);

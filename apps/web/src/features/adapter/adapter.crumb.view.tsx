@@ -1,5 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { For, Loading, Show, createSignal } from "solid-js";
+import type { AdapterKind } from "@testate/shared";
 
 import Breadcrumbs from "@/components/breadcrumbs.tsx";
 import type { Crumb } from "@/components/breadcrumbs.tsx";
@@ -76,8 +77,8 @@ function Switcher(props: { slug: string; id: string; name?: JSX.Element }): JSX.
  * flicker every time a person moves between an adapter's screens. The last known name stands in.
  */
 const NAMES = new Map<string, string>();
-/** Which adapters are file stores, by id, remembered the same way: a store's crumb starts at Storage. */
-const STORES = new Set<string>();
+/** Each adapter's kind, by id, remembered the same way: the crumb starts at that kind's menu. */
+const KINDS = new Map<string, AdapterKind>();
 
 /**
  * The path down to an adapter's sub-screen: Databases, the project, the adapter, and the screen
@@ -96,7 +97,7 @@ export default function AdapterBreadcrumbs(props: {
   const adapter = createRefreshable(async () => {
     const found = await adaptersModel.get(props.slug, props.id);
     NAMES.set(found.id, found.name);
-    if (found.kind === "storage") STORES.add(found.id);
+    KINDS.set(found.id, found.kind);
     return found;
   });
   const base = (): string => `/projects/${props.slug}/adapters/${props.id}`;
@@ -120,12 +121,19 @@ export default function AdapterBreadcrumbs(props: {
       : { label: name(), href: base(), after: <Switcher slug={props.slug} id={props.id} /> },
     ...leaf(),
   ];
+  // Logs / project / adapter: a log adapter has no sub-screens, so its name is always the page.
+  const logItems = (): Crumb[] => [
+    { label: "Logs", href: "/logs" },
+    { label: props.slug, href: `/logs?project=${encodeURIComponent(props.slug)}` },
+    { label: name() },
+  ];
+  const items = { database: databaseItems, storage: storeItems, logs: logItems };
   // The kind is known once the adapter answers; until then the last answer for this id stands.
-  const known = (): Crumb[] => (STORES.has(props.id) ? storeItems() : databaseItems());
+  const known = (): Crumb[] => items[KINDS.get(props.id) ?? "database"]();
   return (
     <span class="flex items-center gap-1">
       <Loading fallback={<Breadcrumbs items={known()} />}>
-        <Breadcrumbs items={adapter.value().kind === "storage" ? storeItems() : databaseItems()} />
+        <Breadcrumbs items={items[adapter.value().kind]()} />
       </Loading>
     </span>
   );
