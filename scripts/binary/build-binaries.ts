@@ -102,6 +102,10 @@ async function compile(target: Target): Promise<string> {
     `--target=${target.bun}`,
     "--minify",
     "--sourcemap=none",
+    // The binary reads only the env file the CLI names and the process env, never a stray .env
+    // or bunfig.toml in whatever folder it starts from (docs/decisions/2026-10-10-cli.md, Q4).
+    "--no-compile-autoload-dotenv",
+    "--no-compile-autoload-bunfig",
     "--external",
     "*.node",
     "apps/api/src/index.ts",
