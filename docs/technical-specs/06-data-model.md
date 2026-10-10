@@ -425,7 +425,7 @@ Terminal: `succeeded`, `partial`, `failed`, `cancelled`, `interrupted`.
 
 ## 6.10 Migrations and seeding
 
-Migrations are numbered SQL files under `apps/api/src/db/migrations/`, applied at boot by `lib/db/migrate.ts` inside one transaction per file, recorded in `schema_migrations`. A migration that rebuilds a table other tables reference starts with `-- testate:foreign-keys-off`: the runner switches foreign keys off around it, as SQLite's rebuild procedure requires, and rolls it back if `PRAGMA foreign_key_check` then finds a broken reference (0011 rebuilds `adapters` this way). The runner resolves the folder relative to its own module and takes the database path from the environment. There is no Drizzle and no ORM; the ledger is the truth.
+Migrations are numbered SQL files under `apps/api/src/db/migrations/`, applied at boot by `lib/db/migrate.ts` inside one transaction per file, recorded in `schema_migrations`. A migration that rebuilds a table other tables reference carries `-- testate:foreign-keys-off` in its leading comments (a marker anywhere else is refused, never ignored): the runner switches foreign keys off around it, as SQLite's rebuild procedure requires, and rolls it back if `PRAGMA foreign_key_check` then finds a broken reference (0011 rebuilds `adapters` this way). The runner resolves the folder relative to its own module and takes the database path from the environment. There is no Drizzle and no ORM; the ledger is the truth.
 
 ```ts
 // apps/api/src/lib/db/migrate.ts

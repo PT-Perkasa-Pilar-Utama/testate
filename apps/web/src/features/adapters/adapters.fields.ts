@@ -1,12 +1,7 @@
 import type { Adapter, AdapterKind, AdapterMode, Engine, JsonObject, Tier } from "@testate/shared";
-import { ADAPTER_MODES, ADAPTER_STATUSES, ENGINES, TIERS } from "@testate/shared";
+import { ADAPTER_MODES, ADAPTER_STATUSES } from "@testate/shared";
 
-import {
-  ADAPTER_MODE_LABEL,
-  ADAPTER_STATUS_LABEL,
-  ENGINE_LABEL,
-  TIER_LABEL,
-} from "@/lib/labels.ts";
+import { ADAPTER_MODE_LABEL, ADAPTER_STATUS_LABEL } from "@/lib/labels.ts";
 
 export type FieldType = "text" | "number" | "password" | "url" | "boolean";
 
@@ -124,14 +119,6 @@ export type AdapterFilters = {
 };
 export const ADAPTER_FILTERS_EMPTY: AdapterFilters = { engine: "", tier: "", mode: "", status: "" };
 
-export const ENGINE_FILTER_OPTIONS: { value: Engine | ""; label: string }[] = [
-  { value: "", label: "All engines" },
-  ...ENGINES.map((value) => ({ value, label: ENGINE_LABEL[value] })),
-];
-export const TIER_FILTER_OPTIONS: { value: Tier | ""; label: string }[] = [
-  { value: "", label: "All tiers" },
-  ...TIERS.map((value) => ({ value, label: TIER_LABEL[value] })),
-];
 export const ADAPTER_MODE_FILTER_OPTIONS: { value: AdapterMode | ""; label: string }[] = [
   { value: "", label: "All modes" },
   ...ADAPTER_MODES.map((value) => ({ value, label: ADAPTER_MODE_LABEL[value] })),
