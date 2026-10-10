@@ -104,6 +104,10 @@ async function getJson<TSchema extends v.GenericSchema>(
     throw new AppError("ADAPTER_UNREACHABLE", `Docker answered ${answer.status}`, {
       status: answer.status,
     });
+  if (answer.capped)
+    throw new AppError("ADAPTER_UNREACHABLE", "Docker's answer passed 1 MB", {
+      reason: "too_large",
+    });
   return v.parse(schema, JSON.parse(answer.body.toString()));
 }
 
@@ -173,12 +177,19 @@ function sourceWarnings(
   return [];
 }
 
+/** The host's container names, for a hint; none when the list is too long to read. */
+async function namesOn(api: DockerApi): Promise<v.InferOutput<typeof namesSchema>> {
+  try {
+    return (await getJson(api, { kind: "containers" }, namesSchema)) ?? [];
+  } catch {
+    return [];
+  }
+}
+
 async function sourcesWarnings(api: DockerApi, sources: DockerSource[]): Promise<EngineWarning[]> {
   const facts = await Promise.all(sources.map((source) => containerFacts(api, source.container)));
-  const listed = facts.includes(null)
-    ? await getJson(api, { kind: "containers" }, namesSchema)
-    : [];
-  const known = (listed ?? []).flatMap((item) => item.Names.map((name) => name.replace(/^\//, "")));
+  const listed = facts.includes(null) ? await namesOn(api) : [];
+  const known = listed.flatMap((item) => item.Names.map((name) => name.replace(/^\//, "")));
   const names = known.length > 0 ? ` (it has ${known.slice(0, 8).join(", ")})` : "";
   return sources.flatMap((source, n) => sourceWarnings(source, facts[n] ?? null, names));
 }

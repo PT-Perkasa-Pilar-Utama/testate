@@ -64,11 +64,25 @@ describe("a container's log", () => {
     expect([texts(quiet), texts(next), texts(again)]).toEqual([[], ["line 27", "late stamp"], []]);
   });
 
-  it("ends a window's page before the first line stamped after its end", async () => {
-    const lines = fakeLines(25);
-    const { read } = container(lines);
-    const to = new Date(Number((FAKE_START + 11_000_000_000n) / 1_000_000n)).toISOString();
-    expect(texts(await readContainer(read, query({ to })))).toEqual(numbers(12, 3));
+  it("pages a window that ends long before the log does, past a ceiling's worth of later lines", async () => {
+    const early = fakeLines(25);
+    const later = fakeLines(30, FAKE_START + 3_600_000_000_000n).map((line) => ({
+      ...line,
+      text: "x".repeat(1024 * 1024),
+    }));
+    const { read } = container([...early, ...later]);
+    const to = new Date(Number((FAKE_START + 24_000_000_000n) / 1_000_000n)).toISOString();
+    const first = await readContainer(read, query({ to }));
+    const second = await readContainer(
+      read,
+      query({ to, cursor: v.parse(v.string(), first.cursor) })
+    );
+    const third = await readContainer(
+      read,
+      query({ to, cursor: v.parse(v.string(), second.cursor) })
+    );
+    expect([...texts(first), ...texts(second), ...texts(third)]).toEqual(numbers(25, 1));
+    expect([first.cutBy, third.cursor]).toEqual(["lines", null]);
   });
 
   it("says bytes when the ceiling stops a read before its tail", async () => {
