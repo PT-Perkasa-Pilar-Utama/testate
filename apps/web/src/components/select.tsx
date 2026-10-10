@@ -3,7 +3,8 @@ import { For, merge, omit } from "solid-js";
 
 import { FIELD_BASE, FIELD_SIZES, FIELD_VARIANTS } from "./input.tsx";
 
-export type SelectOption<T extends string> = { value: T; label: string };
+/** `disabled` greys an option out; say why in its label, since a native option has no hint. */
+export type SelectOption<T extends string> = { value: T; label: string; disabled?: boolean };
 
 export type SelectProps<T extends string> = Omit<ComponentProps<"select">, "onChange" | "value"> & {
   options: readonly SelectOption<T>[];
@@ -35,7 +36,11 @@ export default function Select<T extends string>(props: SelectProps<T>): JSX.Ele
     >
       <For each={local.options} keyed={(option) => option.value}>
         {(option) => (
-          <option value={option().value} selected={option().value === local.value}>
+          <option
+            value={option().value}
+            selected={option().value === local.value}
+            disabled={option().disabled === true}
+          >
             {option().label}
           </option>
         )}

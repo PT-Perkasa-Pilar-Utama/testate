@@ -93,8 +93,8 @@ function FieldInput(props: {
 }
 
 /**
- * One dialog for both kinds. A database adapter is made from a project's Databases tab; a storage
- * adapter (object storage, SFTP, FTP) from the Storage screen, which picks the project first.
+ * One dialog for both kinds, opened from the Databases or the Storage screen, each of which picks
+ * the project inside the dialog (a tier is a menu, #63).
  */
 export function CreateDialog(props: {
   presenter: AdaptersPresenter;
@@ -104,7 +104,7 @@ export function CreateDialog(props: {
   /** Offered when the dialog is not already inside a project: the Storage screen's case. */
   project?:
     | {
-        options: { value: string; label: string }[];
+        options: { value: string; label: string; disabled?: boolean }[];
         value: string;
         onChange: (slug: string) => void;
       }
