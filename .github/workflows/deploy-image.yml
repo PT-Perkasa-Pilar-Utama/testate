@@ -555,12 +555,25 @@ jobs:
         with:
           ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || '' }}
 
-      - name: curl the install script into sh
+      # The one-liner, in two checked halves: the Pages site must serve exactly the reviewed
+      # docs/install.sh from this checkout, and that copy, not the download, is what runs (a
+      # downloaded script is never piped into a shell here, per Scorecard's Pinned-Dependencies).
+      # Pages serves main's copy, so a backfill from an older tag skips the comparison.
+      - name: Pages serves the reviewed install script
+        if: inputs.tag == ''
+        run: |
+          curl -fsSL https://pt-perkasa-pilar-utama.github.io/testate/install.sh -o served.sh
+          if ! cmp -s served.sh docs/install.sh; then
+            echo "::error::the Pages site serves an install.sh that differs from this commit's docs/install.sh"
+            diff docs/install.sh served.sh || true
+            exit 1
+          fi
+
+      - name: install.sh installs the release just published
         run: |
           version=$(jq -r .version package.json)
           for attempt in 1 2 3 4 5; do
-            if curl -fsSL https://pt-perkasa-pilar-utama.github.io/testate/install.sh \
-              | TESTATE_VERSION="$version" sh; then
+            if TESTATE_VERSION="$version" sh docs/install.sh; then
               break
             fi
             [ "$attempt" = 5 ] && exit 1

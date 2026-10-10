@@ -9,6 +9,11 @@ updates:
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
+  # pm2 for the release smoke test (scripts/binary/smoke-service.sh), pinned by its own lockfile.
+  - package-ecosystem: "npm"
+    directory: "/scripts/binary/pm2"
+    schedule:
+      interval: "weekly"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

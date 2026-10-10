@@ -11,7 +11,6 @@ set -eu
 bin=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
 root=$(cd "$(dirname "$0")/../.." && pwd)
 health=http://127.0.0.1:7378/api/v1/health/live
-PM2_VERSION=7.0.4
 
 # Waits for /health/live to answer 204. $1 says what was just done, for the failure message.
 wait_live() {
@@ -64,23 +63,25 @@ wait_down "systemctl stop"
 echo "systemd: started, restarted, came back from kill -9 ($before -> $after)"
 
 echo "== pm2"
-npm install -g --silent "pm2@$PM2_VERSION"
+# From a checked-in lockfile, so pm2 and every package under it is pinned by hash (Scorecard).
+npm ci --silent --prefix "$root/scripts/binary/pm2"
+pm2="$root/scripts/binary/pm2/node_modules/.bin/pm2"
 work=$(mktemp -d)
 sed "s|^TESTATE_DATA_DIR=.*|TESTATE_DATA_DIR=$work/data|" "$env_file" > "$work/testate.env"
 cd "$work"
-pm2 start "$root/deploy/pm2/ecosystem.config.cjs"
+"$pm2" start "$root/deploy/pm2/ecosystem.config.cjs"
 if ! wait_live "pm2 start"; then
-  pm2 logs testate --nostream --lines 50
+  "$pm2" logs testate --nostream --lines 50
   exit 1
 fi
-pm2 restart testate
+"$pm2" restart testate
 wait_live "pm2 restart"
-crashed=$(pm2 pid testate)
+crashed=$("$pm2" pid testate)
 kill -9 "$crashed"
 sleep 3
 wait_live "kill -9 under pm2 (autorestart)"
-[ "$(pm2 pid testate)" != "$crashed" ] || { echo "pm2 did not start a new process" >&2; exit 1; }
-pm2 delete testate
+[ "$("$pm2" pid testate)" != "$crashed" ] || { echo "pm2 did not start a new process" >&2; exit 1; }
+"$pm2" delete testate
 wait_down "pm2 delete"
 echo "pm2: started, restarted and came back from kill -9, from the same testate.env"
 rm -f "$env_file"
