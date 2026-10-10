@@ -193,8 +193,8 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
             presenter.adapter.value().kind === "storage"
               ? { to: "/storage", label: "Back to Storage" }
               : {
-                  to: `/projects/${encodeURIComponent(props.slug)}?tab=adapters`,
-                  label: "Back to the project",
+                  to: `/databases?project=${encodeURIComponent(props.slug)}`,
+                  label: "Back to Databases",
                 }
           }
           eyebrow="Database"

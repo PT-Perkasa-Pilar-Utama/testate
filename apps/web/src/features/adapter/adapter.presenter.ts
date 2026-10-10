@@ -147,8 +147,12 @@ export function createAdapterPresenter(slug: () => string, id: () => string): Ad
             `Adapter deletion ${done.status}`,
             done.status === "succeeded" ? "success" : "error"
           );
-          // A file store is the Storage screen's; a database is the project's.
-          navigate(staticKind === "storage" ? "/storage" : `/projects/${staticSlug}?tab=adapters`);
+          // Each kind goes back to its own menu (a tier is a menu, #63).
+          navigate(
+            staticKind === "storage"
+              ? "/storage"
+              : `/databases?project=${encodeURIComponent(staticSlug)}`
+          );
         });
       });
     },

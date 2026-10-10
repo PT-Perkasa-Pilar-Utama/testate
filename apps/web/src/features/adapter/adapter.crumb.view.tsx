@@ -80,7 +80,7 @@ const NAMES = new Map<string, string>();
 const STORES = new Set<string>();
 
 /**
- * The path down to an adapter's sub-screen: Projects, the project, the adapter, and the screen
+ * The path down to an adapter's sub-screen: Databases, the project, the adapter, and the screen
  * itself. The five sub-screens (table, query, masks, files, imports) each led with the literal
  * word "adapter", so the one line that says where you are named nothing at all; this names all of
  * it and links every level above the page. The adapter level is a switcher over the project's
@@ -111,9 +111,10 @@ export default function AdapterBreadcrumbs(props: {
     props.leaf === undefined ? { label: name() } : { label: name(), href: base() },
     ...leaf(),
   ];
+  // Databases / project / adapter: the menu the reader came from, then the project's group in it.
   const databaseItems = (): Crumb[] => [
-    { label: "Projects", href: "/projects" },
-    { label: props.slug, href: `/projects/${props.slug}` },
+    { label: "Databases", href: "/databases" },
+    { label: props.slug, href: `/databases?project=${encodeURIComponent(props.slug)}` },
     props.leaf === undefined
       ? { label: <Switcher slug={props.slug} id={props.id} name={name()} /> }
       : { label: name(), href: base(), after: <Switcher slug={props.slug} id={props.id} /> },
