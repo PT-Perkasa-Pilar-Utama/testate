@@ -12,7 +12,8 @@ import * as v from "valibot";
 import { AppError } from "../../http/index.ts";
 import { READ_CEILING } from "../read.ts";
 import type { DockerApi } from "./api.ts";
-import { dockerLines, nanosOf } from "./frames.ts";
+import { nanosOf } from "../time.ts";
+import { dockerLines } from "./frames.ts";
 import type { DockerLine } from "./frames.ts";
 
 export type ContainerRead = {

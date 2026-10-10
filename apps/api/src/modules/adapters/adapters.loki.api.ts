@@ -10,7 +10,7 @@ import * as v from "valibot";
 import type { LokiApi, LokiConnection, LokiLogin } from "../../lib/logs/loki/api.ts";
 import { linesOf, refusalOf } from "../../lib/logs/loki/parse.ts";
 import type { CheckedTarget } from "../../lib/netguard/index.ts";
-import { lokiTarget } from "./adapters.loki.ts";
+import { baseUrlTarget } from "./adapters.loki.ts";
 import type { AdapterRecord } from "./adapters.repository.ts";
 import type { Secrets } from "./adapters.secrets.ts";
 import { checkedLogin } from "./adapters.shell.ts";
@@ -44,7 +44,7 @@ export function connectionOf(
   return {
     url: config.url,
     address,
-    port: lokiTarget(config.url).port,
+    port: baseUrlTarget(config.url).port,
     login: loginOf(config, secrets),
     tenant: config.tenant,
   };
@@ -99,7 +99,7 @@ export async function probeLoki(
 ): Promise<FileProbeResult> {
   const parsed = v.parse(lokiConfigSchema, config);
   const api = openLoki(
-    connectionOf(parsed, secrets, target?.address ?? lokiTarget(parsed.url).host)
+    connectionOf(parsed, secrets, target?.address ?? baseUrlTarget(parsed.url).host)
   );
   const now = BigInt(clock()) * 1_000_000n;
   const labels = await api.get({ kind: "labels", start: now - DAY_NS, end: now }, PROBE_CAP);

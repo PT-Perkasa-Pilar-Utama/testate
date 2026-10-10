@@ -4,6 +4,8 @@
  * can span frames and the two streams interleave, so each stream keeps its own unfinished line.
  * With a TTY the body is one raw stream. `timestamps=1` puts an RFC 3339 stamp before every line.
  */
+import { nanosOf } from "../time.ts";
+
 export type DockerStream = "stdout" | "stderr";
 
 export type DockerLine = {
@@ -14,17 +16,6 @@ export type DockerLine = {
   stream: DockerStream | null;
   text: string;
 };
-
-const STAMP = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?(Z|[+-]\d{2}:\d{2})$/;
-
-/** A stamp as nanoseconds since the epoch, or null when it is not one. */
-export function nanosOf(stamp: string): bigint | null {
-  const match = STAMP.exec(stamp);
-  if (match?.[1] === undefined || match[3] === undefined) return null;
-  const ms = Date.parse(`${match[1]}${match[3]}`);
-  if (Number.isNaN(ms)) return null;
-  return BigInt(ms) * 1_000_000n + BigInt((match[2] ?? "").padEnd(9, "0"));
-}
 
 /** Nanoseconds as the Engine API's `since` and `until` take them: seconds with nine decimals. */
 export function secondsOf(nanos: bigint): string {

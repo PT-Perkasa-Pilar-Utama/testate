@@ -69,6 +69,7 @@ export const FK_MAPPING = {
   journald: null,
   docker: null,
   loki: null,
+  elasticsearch: null,
 } as const satisfies Record<Engine, string | null>;
 
 export function createWriteSessions(deps: SessionDeps): WriteSessions {

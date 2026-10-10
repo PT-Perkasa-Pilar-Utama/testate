@@ -120,6 +120,7 @@ export const ENGINE_LABEL = {
   journald: "systemd journal",
   docker: "Docker containers",
   loki: "Grafana Loki",
+  elasticsearch: "Elasticsearch",
 } as const satisfies Record<Engine, string>;
 export const ENGINE_OPTIONS = ENGINES.map((value) => ({ value, label: ENGINE_LABEL[value] }));
 /** The engines a database adapter can be; a storage adapter is made from the Storage screen. */

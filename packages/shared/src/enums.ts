@@ -27,6 +27,7 @@ export const ENGINES = [
   "journald",
   "docker",
   "loki",
+  "elasticsearch",
 ] as const;
 export const engineSchema = v.picklist(ENGINES);
 export type Engine = v.InferOutput<typeof engineSchema>;
