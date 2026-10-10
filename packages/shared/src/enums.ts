@@ -24,6 +24,7 @@ export const ENGINES = [
   "ftp",
   "logfile",
   "ingest",
+  "journald",
 ] as const;
 export const engineSchema = v.picklist(ENGINES);
 export type Engine = v.InferOutput<typeof engineSchema>;

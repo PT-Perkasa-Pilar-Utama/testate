@@ -106,6 +106,8 @@ export const ENGINE_FORMS = {
   logfile: { kind: "logs", label: "Log files", config: [], secrets: [] },
   // Pushed to, not dialled: its dialog is in features/logs (#75), and no engine picker offers it.
   ingest: { kind: "logs", label: "Pushed logs", config: [], secrets: [] },
+  // Its SSH login is ENGINE_FORMS.sftp's; its dialog is in features/logs (#86).
+  journald: { kind: "logs", label: "systemd journal", config: [], secrets: [] },
 } as const satisfies Record<Engine, EngineForm>;
 
 // Neither type is exported from the shared package (labels.ts derives AdapterStatus the same way);

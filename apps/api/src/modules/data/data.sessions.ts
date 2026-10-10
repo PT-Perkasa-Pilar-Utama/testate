@@ -66,6 +66,7 @@ export const FK_MAPPING = {
   ftp: null,
   logfile: null,
   ingest: null,
+  journald: null,
 } as const satisfies Record<Engine, string | null>;
 
 export function createWriteSessions(deps: SessionDeps): WriteSessions {
