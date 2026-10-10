@@ -48,6 +48,11 @@ services:
 
   mariadb:
     image: mariadb:11.4
+    # Off by default in MariaDB; the server-log contract reads its statement history (#84).
+    command:
+      - "--performance-schema=ON"
+      - "--performance-schema-consumer-events-statements-current=ON"
+      - "--performance-schema-consumer-events-statements-history=ON"
     environment:
       MARIADB_ROOT_PASSWORD: testate
       MARIADB_DATABASE: shop

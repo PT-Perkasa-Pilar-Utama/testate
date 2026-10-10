@@ -30,7 +30,7 @@ const activityRow = v.object({
 async function statements(sql: SQL): Promise<ServerLogEntry[]> {
   const rows = await sql.unsafe(
     `SELECT pid::text AS id,
-            extract(epoch FROM COALESCE(query_start, state_change, backend_start)) * 1000 AS time,
+            (extract(epoch FROM COALESCE(query_start, state_change, backend_start)) * 1000)::float8 AS time,
             state, query, usename AS user, application_name AS application,
             CASE WHEN wait_event IS NULL THEN NULL ELSE wait_event_type || ':' || wait_event END AS wait
      FROM pg_stat_activity
