@@ -10,6 +10,7 @@ import { CliError, say, usage } from "./io.ts";
 import type { CliContext } from "./io.ts";
 import { service } from "./service.ts";
 import { setup } from "./setup.ts";
+import { update } from "./update.ts";
 import { whereis } from "./whereis.ts";
 import { refuse, serve } from "../boot.ts";
 import { readEnvFile, withEnvFile } from "./envfile.ts";
@@ -64,6 +65,14 @@ const COMMANDS = new Map<string, Command>([
       usage: "service install|start|stop|status|logs [-f]|uninstall",
       summary: "Keep it running as a per-user service (Linux, macOS)",
       run: service,
+    },
+  ],
+  [
+    "update",
+    {
+      usage: "update [--check]",
+      summary: "Install the latest release, verified, and restart the service",
+      run: update,
     },
   ],
   [
