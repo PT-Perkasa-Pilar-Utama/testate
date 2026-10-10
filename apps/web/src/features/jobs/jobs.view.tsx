@@ -37,6 +37,7 @@ import {
   progressFraction,
 } from "./jobs.presenter.ts";
 import type { JobsPresenter } from "./jobs.presenter.ts";
+import { LogsDuringRun } from "../logs/logs.run.view.tsx";
 
 const STATUS_VARIANT = {
   queued: "secondary",
@@ -122,16 +123,23 @@ function JobRow(props: { presenter: JobsPresenter; job: Job }): JSX.Element {
       </Cell>
       <Cell class="whitespace-nowrap">{formatWhen(props.job.created_at)}</Cell>
       <Cell pinned>
-        <Show when={showCancel()}>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => void props.presenter.cancel(props.job.id)}
-          >
-            <Icon name="x" class="h-3.5 w-3.5" />
-            Cancel
-          </Button>
-        </Show>
+        <div class="flex justify-end gap-1 whitespace-nowrap">
+          <LogsDuringRun
+            adapters={props.presenter.runLogs(props.job)}
+            startedAt={props.job.started_at ?? props.job.created_at}
+            finishedAt={props.job.finished_at}
+          />
+          <Show when={showCancel()}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => void props.presenter.cancel(props.job.id)}
+            >
+              <Icon name="x" class="h-3.5 w-3.5" />
+              Cancel
+            </Button>
+          </Show>
+        </div>
       </Cell>
     </Row>
   );
