@@ -177,6 +177,11 @@ function BackupCard(props: { presenter: SettingsPresenter }): JSX.Element {
   return (
     <LayerCard class="grid gap-3 px-5 py-4">
       <h3 class="text-lg font-semibold tracking-tight text-heading">Backup</h3>
+      {/* I7 of docs/decisions/2026-10-10-logs-tier.md: pushed logs are operational, like Testate's own. */}
+      <p class="text-sm text-muted">
+        Logs pushed to ingest adapters are not in a backup. Copy the folder{" "}
+        <code class="text-[0.9em]">testate whereis ingest</code> prints if you need them.
+      </p>
       <div class="flex flex-wrap items-center gap-4">
         <Switch
           label="Include snapshot blobs"

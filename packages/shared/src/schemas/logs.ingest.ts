@@ -12,9 +12,15 @@ export const INGEST_BODY_MAX = 1024 * 1024;
 const whole = (min: number, max: number, message: string) =>
   v.pipe(v.number(), v.integer(message), v.minValue(min, message), v.maxValue(max, message));
 
+export const RETENTION_RULE = { min: 1, max: 90, message: "Keep logs for 1 to 90 days." } as const;
+export const CAP_RULE = { min: 1, max: 10240, message: "Cap the logs at 1 to 10240 MB." } as const;
+
+const retentionDaysSchema = whole(RETENTION_RULE.min, RETENTION_RULE.max, RETENTION_RULE.message);
+const capMbSchema = whole(CAP_RULE.min, CAP_RULE.max, CAP_RULE.message);
+
 export const ingestConfigSchema = v.object({
-  retention_days: v.optional(whole(1, 90, "Keep logs for 1 to 90 days."), INGEST_RETENTION_DEFAULT),
-  cap_mb: v.optional(whole(1, 10240, "Cap the logs at 1 to 10240 MB."), INGEST_CAP_MB_DEFAULT),
+  retention_days: v.optional(retentionDaysSchema, INGEST_RETENTION_DEFAULT),
+  cap_mb: v.optional(capMbSchema, INGEST_CAP_MB_DEFAULT),
 });
 export type IngestConfig = v.InferOutput<typeof ingestConfigSchema>;
 

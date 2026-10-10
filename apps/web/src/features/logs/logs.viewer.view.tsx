@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { For, Show, createEffect, untrack } from "solid-js";
-import type { Adapter, LogEntry } from "@testate/shared";
+import type { LogEntry } from "@testate/shared";
 
 import Badge from "@/components/badge.tsx";
 import Banner from "@/components/banner.tsx";
@@ -15,7 +15,6 @@ import Pending from "@/components/pending.tsx";
 import Select from "@/components/select.tsx";
 import { formatWhen, fromLocalInput, toLocalInput } from "@/lib/format.ts";
 import { LOG_LEVEL_OPTIONS } from "@/lib/labels.ts";
-import { sourcesOf } from "./logs.model.ts";
 import { createLogViewer, endNote } from "./logs.viewer.ts";
 import type { LogFilters, LogViewer } from "./logs.viewer.ts";
 
@@ -132,12 +131,17 @@ function Toolbar(props: { viewer: LogViewer; sources: string[] }): JSX.Element {
  * One source of a log adapter, newest first (#69): filters, older pages, follow and a download of
  * what is on screen. A viewer reads it masked (Q5); a masked entry says so.
  */
-export function LogViewerPanel(props: { slug: string; adapter: Adapter }): JSX.Element {
+export function LogViewerPanel(props: {
+  slug: string;
+  adapterId: string;
+  /** The adapter's source names, from `GET .../logs/sources`. */
+  sources: string[];
+}): JSX.Element {
   // Built once per adapter page; an edit that renames a source shows in the picker straight away.
   const viewer = untrack(() =>
-    createLogViewer(props.slug, props.adapter.id, sourcesOf(props.adapter), window.location.search)
+    createLogViewer(props.slug, props.adapterId, props.sources, window.location.search)
   );
-  const sources = (): string[] => sourcesOf(props.adapter).map((source) => source.name);
+  const sources = (): string[] => props.sources;
   // An edit that renames or drops the source on screen moves the viewer to the first one left.
   createEffect(
     () => ({ names: sources(), current: viewer.filters().source }),

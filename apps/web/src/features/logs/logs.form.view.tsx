@@ -31,6 +31,13 @@ import { BLANK_SOURCE } from "./logs.form.ts";
 import { SourceFields } from "./logs.source.view.tsx";
 import type { LogfileFormPresenter } from "./logs.form.ts";
 
+/** The project picker a dialog shows when it opens outside a project: the Logs menu. */
+export type ProjectPick = {
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (slug: string) => void;
+};
+
 /**
  * Add or edit a logfile adapter (S1): one SFTP or S3 connection, holding named sources. The
  * connection's fields are the storage engine's own, so a host or a bucket reads the same here.
@@ -38,13 +45,7 @@ import type { LogfileFormPresenter } from "./logs.form.ts";
 export function LogfileDialog(props: {
   presenter: LogfileFormPresenter;
   /** Offered when the dialog is not already inside a project: the Logs screen's case. */
-  project?:
-    | {
-        options: { value: string; label: string }[];
-        value: string;
-        onChange: (slug: string) => void;
-      }
-    | undefined;
+  project?: ProjectPick | undefined;
 }): JSX.Element {
   const form = createForm({
     schema: logfileFormSchema,

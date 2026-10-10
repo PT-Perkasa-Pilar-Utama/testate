@@ -1,6 +1,7 @@
 import * as v from "valibot";
 
 import { adapterDraftSchema } from "./adapters.ts";
+import { CAP_RULE, RETENTION_RULE } from "./logs.ingest.ts";
 import { logFormatSchema, logGlobSchema, logSourceNameSchema, safePatternSchema } from "./logs.ts";
 
 /**
@@ -77,3 +78,23 @@ export const logfileFormSchema = v.object({
 });
 export type LogfileFormInput = v.InferInput<typeof logfileFormSchema>;
 export type LogfileForm = v.InferOutput<typeof logfileFormSchema>;
+
+/** A number box's text as a whole number in range: a form field holds text (`adapterEditFormSchema`). */
+const wholeText = (rule: { min: number; max: number; message: string }) =>
+  v.pipe(
+    v.string(),
+    v.check((raw) => {
+      const value = Number(raw);
+      return raw.trim() !== "" && Number.isInteger(value) && value >= rule.min && value <= rule.max;
+    }, rule.message),
+    v.transform(Number)
+  );
+
+/** The "Push from your app" dialog (I8): a name, how long to keep lines, and the size cap. */
+export const ingestFormSchema = v.object({
+  name: adapterDraftSchema.entries.name,
+  retention_days: wholeText(RETENTION_RULE),
+  cap_mb: wholeText(CAP_RULE),
+});
+export type IngestFormInput = v.InferInput<typeof ingestFormSchema>;
+export type IngestForm = v.InferOutput<typeof ingestFormSchema>;

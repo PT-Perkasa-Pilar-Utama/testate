@@ -1,36 +1,61 @@
 import type { JSX } from "@solidjs/web";
-import { Loading, createSignal } from "solid-js";
+import { Loading, Show, createSignal } from "solid-js";
 
-import Button from "@/components/button.tsx";
+import Button, { buttonClass } from "@/components/button.tsx";
 import Icon from "@/components/icon.tsx";
+import { Menu, MenuItem } from "@/components/menu.tsx";
 import { createRefreshable } from "@/lib/async.ts";
 import { projectsModel } from "../projects/projects.model.ts";
 import { createLogfileFormPresenter } from "./logs.form.ts";
 import { LogfileDialog } from "./logs.form.view.tsx";
+import type { ProjectPick } from "./logs.form.view.tsx";
+import { createIngestPresenter } from "./logs.ingest.ts";
+import { IngestDialog, IngestReveal } from "./logs.ingest.view.tsx";
 
-/** Built once the projects are known; the project is picked inside the dialog, as on Storage. */
+/** Built once the projects are known; the project is picked inside each dialog, as on Storage. */
 function Creator(props: {
   projects: { value: string; label: string }[];
   onCreated: () => void;
 }): JSX.Element {
   const [picked, setPicked] = createSignal("");
   const slug = (): string => picked() || (props.projects[0]?.value ?? "");
-  const presenter = createLogfileFormPresenter(slug, () => props.onCreated());
+  const files = createLogfileFormPresenter(slug, () => props.onCreated());
+  const ingest = createIngestPresenter(slug, () => props.onCreated());
+  const project = (): ProjectPick => ({
+    options: props.projects,
+    value: slug(),
+    onChange: setPicked,
+  });
+  // A type first (I8): the two kinds ask for different things, so each has its own dialog.
   return (
     <>
-      <Button
-        variant="primary"
-        disabled={props.projects.length === 0}
-        title={props.projects.length === 0 ? "Create a project first" : undefined}
-        onClick={() => presenter.openCreate()}
+      <Show
+        when={props.projects.length > 0}
+        fallback={
+          <Button variant="primary" disabled title="Create a project first">
+            <Icon name="plus" class="h-4 w-4" />
+            New log adapter
+          </Button>
+        }
       >
-        <Icon name="plus" class="h-4 w-4" />
-        New log adapter
-      </Button>
-      <LogfileDialog
-        presenter={presenter}
-        project={{ options: props.projects, value: slug(), onChange: setPicked }}
-      />
+        <Menu
+          label="New log adapter"
+          trigger={
+            <span class={buttonClass("primary")}>
+              <Icon name="plus" class="h-4 w-4" />
+              New log adapter
+              <Icon name="chevron-down" class="h-4 w-4" />
+            </span>
+          }
+          panelClass="min-w-60"
+        >
+          <MenuItem onClick={() => files.openCreate()}>Files over SFTP or S3</MenuItem>
+          <MenuItem onClick={() => ingest.openCreate()}>Push from your app</MenuItem>
+        </Menu>
+      </Show>
+      <LogfileDialog presenter={files} project={project()} />
+      <IngestDialog presenter={ingest} project={project()} />
+      <IngestReveal presenter={ingest} />
     </>
   );
 }
