@@ -1,12 +1,13 @@
 {
   "name": "testate-pm2-smoke",
   "private": true,
-  "description": "pm2 for scripts/binary/smoke-service.sh, installed with npm ci so every package is pinned by its lockfile hash. The overrides drop two vulnerable transitive packages (Scorecard): js-yaml to its fixed 4.3.2 (GHSA-2883-xcg3-v3hh), and chokidar to 4, which no longer depends on braces (GHSA-vfj7-8cjw-p6xm, no fixed release); pm2 uses chokidar only for --watch, which the smoke test does not.",
+  "description": "pm2 for scripts/binary/smoke-service.sh, installed with npm ci so every package is pinned by its lockfile hash. The overrides drop three vulnerable transitive packages (Scorecard): js-yaml to its fixed 4.3.2 (GHSA-2883-xcg3-v3hh); chokidar to 4, which no longer depends on braces (GHSA-vfj7-8cjw-p6xm, no fixed release), and pm2 uses chokidar only for --watch, which the smoke test does not; and basic-ftp to 6.2.2 (GHSA-c475-qrg2-pj4r, fixed only in 6.2.1), under get-uri, whose calls 6.x still has.",
   "dependencies": {
     "pm2": "7.0.4"
   },
   "overrides": {
     "js-yaml": "4.3.2",
-    "chokidar": "4.0.3"
+    "chokidar": "4.0.3",
+    "basic-ftp": "6.2.2"
   }
 }
