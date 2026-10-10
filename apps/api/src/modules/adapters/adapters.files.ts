@@ -87,12 +87,18 @@ export function createFilesResolver(deps: FilesResolverDeps): FilesResolver {
         adapter.config_sealed
       );
       const validated = validateConfig(adapter.engine, adapter.kind, adapter.config, secrets);
-      const verdict = await deps.netguard.check({ ...validated.target, purpose: "files" });
-      if (!verdict.allowed) throw refusal(verdict, validated.target);
+      // An `ingest` adapter's files are Testate's own; the logs service reads them from disk.
+      const remote = validated.target;
+      if (remote === null)
+        throw new AppError("ENGINE_UNSUPPORTED", "this adapter has no remote files", {
+          reason: "tier",
+        });
+      const verdict = await deps.netguard.check({ ...remote, purpose: "files" });
+      if (!verdict.allowed) throw refusal(verdict, remote);
       const address = verdict.addresses[0];
       if (address === undefined) throw new AppError("CONFLICT", "no address was resolved");
       const target: CheckedTarget = {
-        ...validated.target,
+        ...remote,
         purpose: "files",
         address,
       };

@@ -4,6 +4,7 @@ import * as v from "valibot";
 
 import { AppError } from "../../lib/http/index.ts";
 import { sha256 } from "../../lib/password/index.ts";
+import { validateIngest } from "./adapters.ingest.ts";
 import { validateLogfile } from "./adapters.logfile.ts";
 import type { Secrets } from "./adapters.secrets.ts";
 
@@ -17,6 +18,7 @@ export const KIND_OF_ENGINE = {
   sftp: "storage",
   ftp: "storage",
   logfile: "logs",
+  ingest: "logs",
 } as const satisfies Record<Engine, AdapterKind>;
 
 export const TIER_OF_ENGINE = {
@@ -28,6 +30,7 @@ export const TIER_OF_ENGINE = {
   sftp: "files",
   ftp: "files",
   logfile: "logs",
+  ingest: "logs",
 } as const satisfies Record<Engine, Tier>;
 
 const DEFAULT_PORT = {
@@ -40,6 +43,8 @@ const DEFAULT_PORT = {
   ftp: 21,
   // Over SFTP; a logfile source over S3 takes its port from the endpoint, as s3 does.
   logfile: 22,
+  // Nothing is dialled: apps push to Testate (I1).
+  ingest: 0,
 } as const satisfies Record<Engine, number>;
 
 const port = v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(65535));
@@ -107,6 +112,8 @@ const SECRET_RULES = {
     allowed: ["password", "private_key", "passphrase", "access_key_id", "secret_access_key"],
     alternatives: [],
   },
+  // Its token is minted by Testate and kept hashed in `ingest_tokens`, never sent in a draft.
+  ingest: { allowed: [], alternatives: [] },
 } as const satisfies Record<Engine, SecretRule>;
 
 export type Target = { host: string; port: number };
@@ -115,7 +122,8 @@ export type ValidatedConfig = {
   kind: AdapterKind;
   tier: Tier;
   config: JsonObject;
-  target: Target;
+  /** Where Testate connects; null for `ingest`, which nothing dials (I1). */
+  target: Target | null;
   targetHash: string;
 };
 
@@ -195,6 +203,7 @@ export function validateConfig(
   if (KIND_OF_ENGINE[engine] !== kind)
     throw invalid(`engine ${engine} is not a ${kind} adapter`, { engine, kind });
   if (engine === "logfile") return validateLogfile(config, secrets);
+  if (engine === "ingest") return validateIngest(config, secrets);
   validateSecrets(engine, secrets);
   const tier = TIER_OF_ENGINE[engine];
   if (kind === "database") {

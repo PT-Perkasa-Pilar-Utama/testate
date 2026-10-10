@@ -104,6 +104,8 @@ export const ENGINE_FORMS = {
   // Its connection is ENGINE_FORMS.sftp or .s3 by transport, and its sources have their own
   // dialog (features/logs); no engine picker offers it.
   logfile: { kind: "logs", label: "Log files", config: [], secrets: [] },
+  // SCAFFOLD: the ingest dialog arrives with #75's web PR; no engine picker offers it.
+  ingest: { kind: "logs", label: "Pushed logs", config: [], secrets: [] },
 } as const satisfies Record<Engine, EngineForm>;
 
 // Neither type is exported from the shared package (labels.ts derives AdapterStatus the same way);

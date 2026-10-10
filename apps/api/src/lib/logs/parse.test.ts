@@ -83,6 +83,16 @@ describe("the formats", () => {
     ]);
   });
 
+  it("testate: an app's own message comes first, and leaves the fields", () => {
+    const pushed = `{"ts":"2026-10-10T08:15:30Z","level":"warn","message":"refund retried","service":{"name":"billing"},"request":{"method":"POST","path":"/refunds"}}`;
+    const parsed = testate(pushed);
+    expect([parsed.message, parsed.level, parsed.fields]).toEqual([
+      "refund retried",
+      "warn",
+      { service: { name: "billing" }, request: { method: "POST", path: "/refunds" } },
+    ]);
+  });
+
   it("syslog: RFC 5424, and RFC 3164 with no year read as this year or the last", () => {
     expect(syslog("<11>1 2026-10-10T08:15:30Z web-1 nginx 77 - - upstream timed out")).toEqual({
       time: T,

@@ -23,6 +23,7 @@ export const ENGINES = [
   "sftp",
   "ftp",
   "logfile",
+  "ingest",
 ] as const;
 export const engineSchema = v.picklist(ENGINES);
 export type Engine = v.InferOutput<typeof engineSchema>;
@@ -113,6 +114,7 @@ export const ERROR_CODES = [
   "CHECKOUT_BLOCKED",
   "QUOTA_EXCEEDED",
   "PAYLOAD_TOO_LARGE",
+  "INGEST_FULL",
   "ENGINE_UNSUPPORTED",
   "HOST_BLOCKED",
   "RATE_LIMITED",
@@ -135,6 +137,8 @@ export const ERROR_STATUS = {
   CHECKOUT_BLOCKED: 409,
   QUOTA_EXCEEDED: 409,
   PAYLOAD_TOO_LARGE: 413,
+  /** An ingest adapter's day is over its size cap (I5). */
+  INGEST_FULL: 507,
   ENGINE_UNSUPPORTED: 422,
   HOST_BLOCKED: 422,
   RATE_LIMITED: 429,
