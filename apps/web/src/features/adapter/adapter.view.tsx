@@ -49,14 +49,17 @@ function AdminActions(props: { presenter: AdapterPresenter; adapter: Adapter }):
             Edit adapter
           </Button>
         </Show>
-        <Button
-          size="sm"
-          variant="secondary"
-          title="Run the connection test again: engine version, privileges, restore strategy, table count"
-          onClick={() => void props.presenter.retest()}
-        >
-          Retest connection
-        </Button>
+        {/* An ingest adapter dials nothing, so there is no connection to test again (#75). */}
+        <Show when={a().engine !== "ingest"}>
+          <Button
+            size="sm"
+            variant="secondary"
+            title="Run the connection test again: engine version, privileges, restore strategy, table count"
+            onClick={() => void props.presenter.retest()}
+          >
+            Retest connection
+          </Button>
+        </Show>
         {/* A file store has a mode too, and until now no screen could loosen one: the seeded
             store came read-only and every write control on its files screen stayed hidden. */}
         <Show when={hasRole("admin") && !inspect() && a().mode === "sandbox"}>

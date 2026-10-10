@@ -29,7 +29,10 @@ function SourceRow(props: { adapter: AdapterWithProject }): JSX.Element {
         </a>
       </Cell>
       <Cell>{ENGINE_LABEL[props.adapter.engine]}</Cell>
-      <Cell class="text-muted">{sources().join(", ")}</Cell>
+      <Cell class="text-muted">
+        {/* An ingest adapter's sources are the services that push to it, listed on its page. */}
+        {props.adapter.engine === "ingest" ? "Pushed by your apps" : sources().join(", ")}
+      </Cell>
       <Cell>
         <Badge variant={STATUS_VARIANT[props.adapter.status]}>
           {ADAPTER_STATUS_LABEL[props.adapter.status]}
@@ -51,7 +54,7 @@ export default function LogsView(): JSX.Element {
       <PageHeader
         eyebrow="Workspace"
         title="Logs"
-        description="Log files over SFTP or object storage, read-only, across every project you can see."
+        description="Log files over SFTP or object storage, and logs your apps push, read-only, across every project you can see."
         actions={
           <Show when={hasRole("qa")}>
             <NewLogSource onCreated={() => adapters.refresh()} />

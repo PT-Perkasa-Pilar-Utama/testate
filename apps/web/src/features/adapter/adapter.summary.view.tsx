@@ -88,12 +88,23 @@ export function ConnectionCard(props: { adapter: Adapter }): JSX.Element {
     <LayerCard class="grid gap-2">
       <h3 class="text-xs font-medium text-muted">Connection</h3>
       <dl class="grid gap-1.5 text-sm">
-        <div class="flex items-center justify-between gap-4">
-          <dt class="text-muted">Password</dt>
-          <dd>
-            <Sealed sealed={credential()} />
-          </dd>
-        </div>
+        {/* An ingest adapter holds no password: its push token is shown once and rotated (#75). */}
+        <Show
+          when={props.adapter.engine !== "ingest"}
+          fallback={
+            <div class="flex items-center justify-between gap-4">
+              <dt class="text-muted">Push token</dt>
+              <dd class="text-muted">shown once; rotate it above to replace it</dd>
+            </div>
+          }
+        >
+          <div class="flex items-center justify-between gap-4">
+            <dt class="text-muted">Password</dt>
+            <dd>
+              <Sealed sealed={credential()} />
+            </dd>
+          </div>
+        </Show>
         <Show when={props.adapter.kind === "database"}>
           <div class="flex items-center justify-between gap-4">
             <dt class="text-muted">Read-only password</dt>

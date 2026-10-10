@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import type { LogSource } from "@testate/shared";
 
 import { fromLocalInput, toLocalInput } from "@/lib/format.ts";
 import { menuOf } from "../adapter/adapter.menu.ts";
@@ -7,10 +6,7 @@ import { endNote, readLogQuery, requestOf } from "./logs.viewer.ts";
 
 // #69, Q6–Q8 (docs/decisions/2026-10-10-logs-tier.md): the viewer opens on the source and window a
 // link names, says why a page stopped, and a log adapter's page leads back to the Logs menu.
-const SOURCES: LogSource[] = [
-  { name: "api", glob: "logs/api-*.log", format: "pm2", patterns: [] },
-  { name: "worker", glob: "logs/worker-*.log", format: "json-lines", patterns: [] },
-];
+const SOURCES = ["api", "worker"];
 
 describe("opening the viewer", () => {
   test("takes the source and window from a 'Logs during this run' link", () => {

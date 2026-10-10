@@ -54,7 +54,7 @@ const SKIP = new Set([
  * ADAPTER_UNREACHABLE, honestly. Cancelled after the form is exercised.
  */
 const DESTRUCTIVE =
-  /delete|remove|reset|revoke|return to init|new (storage |log )?adapter|new database|edit log adapter/i;
+  /delete|remove|reset|revoke|return to init|new (storage |log )?adapter|new database|edit log adapter|rotate the token|clear every line/i;
 const MAX_CLICKS = 60;
 const CLICK_TIMEOUT = 3_000;
 const SAMPLE = new Map([

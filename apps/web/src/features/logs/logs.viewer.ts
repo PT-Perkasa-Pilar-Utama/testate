@@ -1,5 +1,5 @@
 import { createSignal, onCleanup, untrack } from "solid-js";
-import type { LogEntry, LogSource, LogsPage } from "@testate/shared";
+import type { LogEntry, LogsPage } from "@testate/shared";
 import { LOG_LINE_MAX } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
@@ -18,12 +18,12 @@ export type CutBy = LogsPage["cut_by"];
  * `?source`, `?from` and `?to` open the viewer on one source and window: the "Logs during this
  * run" links (Q8). An unknown source falls back to the first.
  */
-export function readLogQuery(search: string, sources: readonly LogSource[]): LogFilters {
+export function readLogQuery(search: string, sources: readonly string[]): LogFilters {
   const params = new URLSearchParams(search);
   const asked = params.get("source") ?? "";
-  const known = sources.some((source) => source.name === asked);
+  const known = sources.includes(asked);
   return {
-    source: known ? asked : (sources[0]?.name ?? ""),
+    source: known ? asked : (sources[0] ?? ""),
     from: params.get("from") ?? "",
     to: params.get("to") ?? "",
     level: "",
@@ -72,7 +72,7 @@ export type LogViewer = {
 export function createLogViewer(
   slug: string,
   id: string,
-  sources: readonly LogSource[],
+  sources: readonly string[],
   search: string
 ): LogViewer {
   const initial = readLogQuery(search, sources);
