@@ -87,6 +87,14 @@ export function parseQuery<TSchema extends v.GenericSchema>(
   return parseAt(schema, c.req.queries(), "query");
 }
 
+/** Parses the query with one value per name (the first given): for schemas of plain scalars. */
+export function parseSingleQuery<TSchema extends v.GenericSchema>(
+  c: Context,
+  schema: TSchema
+): v.InferOutput<TSchema> {
+  return parseAt(schema, c.req.query(), "query");
+}
+
 /** Parses path parameters. */
 export function parseParams<TSchema extends v.GenericSchema>(
   c: Context,

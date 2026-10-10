@@ -21,6 +21,9 @@ import { createSettingsRepository } from "./modules/settings/settings.repository
 import type { SettingsDeps } from "./modules/settings/settings.service.ts";
 import { bootStoreTarget, createStoreFactory } from "./modules/settings/settings.store.ts";
 import type { StoreTarget } from "./modules/settings/settings.store.ts";
+import { createLogsHandlers } from "./modules/logs/logs.handler.ts";
+import type { LogsHandlers } from "./modules/logs/logs.handler.ts";
+import { createLogsService } from "./modules/logs/logs.service.ts";
 import type { StorageDeps } from "./modules/storage/storage.service.ts";
 import type { EngineWiring } from "./wiring.ts";
 
@@ -85,6 +88,11 @@ export function storageDeps(
   now: () => Date
 ): StorageDeps {
   return { projects, files: wiring.files, hostKeys: wiring.hostKeys, audit, now };
+}
+
+/** The Logs tier reads through the same checked files resolver storage uses (#69). */
+export function logsHandlers(wiring: EngineWiring, projects: ProjectsRepository): LogsHandlers {
+  return createLogsHandlers(createLogsService({ projects, files: wiring.files }));
 }
 
 export type SeedServices = Pick<SeedDeps, "users" | "projects" | "adapters" | "states" | "jobs"> & {

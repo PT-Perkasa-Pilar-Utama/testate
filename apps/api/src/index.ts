@@ -22,7 +22,14 @@ import {
   sweepSealed,
 } from "./boot.ts";
 import { createEngineWiring, createStateServices, scopeDeps, settingsDeps } from "./wiring.ts";
-import { bootStore, lazyJobs, opsDeps, resetHandler, storageDeps } from "./wiring.store.ts";
+import {
+  bootStore,
+  lazyJobs,
+  logsHandlers,
+  opsDeps,
+  resetHandler,
+  storageDeps,
+} from "./wiring.store.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import { openMetadataDb } from "./lib/db/index.ts";
 import { requireReader } from "./lib/http/auth.ts";
@@ -230,6 +237,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
       config.TESTATE_TRUST_PROXY,
       config.TESTATE_MAX_UPLOAD_MB * 1024 * 1024
     ),
+    logs: logsHandlers(wiring, projectsRepo),
     jobs: createJobsHandlers(jobs),
     audit: createAuditHandlers(audit),
     settings: createSettingsHandlers(settings, prefix, config.TESTATE_TRUST_PROXY),

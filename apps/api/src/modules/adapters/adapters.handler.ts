@@ -23,6 +23,7 @@ export type AdaptersHandlers = {
   hosts: Handler;
   stores: Handler;
   databases: Handler;
+  logs: Handler;
   list: Handler;
   testDraft: Handler;
   create: Handler;
@@ -82,6 +83,7 @@ export function createAdaptersHandlers(
     /** Across projects, because a file store is not a project primitive; the scope still applies. */
     stores: async (c) => ok(c, await service.listByKind(c.get("projectScope"), "storage")),
     databases: async (c) => ok(c, await service.listByKind(c.get("projectScope"), "database")),
+    logs: async (c) => ok(c, await service.listByKind(c.get("projectScope"), "logs")),
     testDraft: async (c) =>
       ok(c, await service.testDraft(param(c, "slug"), await parseBody(c, adapterDraftSchema))),
     create: async (c) => {
