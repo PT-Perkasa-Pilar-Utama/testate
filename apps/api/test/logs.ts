@@ -1,5 +1,8 @@
 import type { AdapterDraft } from "@testate/shared";
 
+import type { LogsDeps } from "../src/modules/logs/logs.service.ts";
+import type { AdaptersHarness } from "./adapters.ts";
+
 /** A `logfile` adapter over the harness's in-memory SFTP host: a pm2 app's logs (#69). */
 export const PM2_LOGS: AdapterDraft = {
   kind: "logs",
@@ -14,3 +17,13 @@ export const PM2_LOGS: AdapterDraft = {
   },
   secrets: { password: "deploy-secret" },
 };
+
+/** The logs service's deps over the adapters harness: remote files and ingested lines. */
+export function logsDepsOf(harness: AdaptersHarness): LogsDeps {
+  return {
+    projects: harness.projectsRepo,
+    files: harness.files,
+    adapters: harness.repo,
+    ingest: harness.ingest,
+  };
+}

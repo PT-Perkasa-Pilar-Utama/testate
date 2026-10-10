@@ -46,6 +46,13 @@ export function places(env: Env, os: Os, envFlag: string | undefined, version: s
       state: os === "win32" ? "not on Windows" : there(unit, "installed", "not installed"),
     },
     logPlace(os, env, dataDir),
+    // Pushed logs (#75): not in a backup, so this is where to copy them from (I7).
+    {
+      name: "ingest",
+      path: dataDir === null ? null : join(dataDir, "logs-ingest"),
+      state:
+        dataDir === null ? "" : there(join(dataDir, "logs-ingest"), "exists", "nothing pushed yet"),
+    },
   ];
 }
 

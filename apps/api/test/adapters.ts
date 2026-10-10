@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import type { Actor, Adapter, AdapterDraft } from "@testate/shared";
 import * as v from "valibot";
 
@@ -45,6 +46,11 @@ import { TEST_META, actorOf, createAccounts } from "./accounts.ts";
 import { createJobsHarness } from "./jobs.ts";
 import type { JobsHarness } from "./jobs.ts";
 import type { AccountsHarness } from "./accounts.ts";
+import { createIngestStore } from "../src/lib/logs/ingest/store.ts";
+import type { IngestStore } from "../src/lib/logs/ingest/store.ts";
+import { createIngestTokensRepository } from "../src/modules/ingest/ingest.repository.ts";
+import { createIngestService } from "../src/modules/ingest/ingest.service.ts";
+import type { IngestService } from "../src/modules/ingest/ingest.service.ts";
 
 export const PROJECT_ID = "01991f00-0000-7000-8000-000000000010";
 
@@ -92,6 +98,11 @@ export type AdaptersHarness = {
   imports: ImportsRepository;
   policies: PoliciesRepository;
   dataDir: string;
+  /** Pushed lines of `ingest` adapters, under the data dir (#75). */
+  ingest: IngestStore;
+  ingestService: IngestService;
+  /** `limits.ingest_requests_per_minute`; lower it to test the 429. */
+  ingestBudget: { current: number };
   engines: EngineRegistry;
   /** Live options of the fake engine; set `failCheckout` to make the next checkout fail that way. */
   fakeOptions: FakeEngineOptions;
@@ -207,6 +218,8 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
   const imports = createImportsRepository(accounts.db);
   const policies = createPoliciesRepository(accounts.db);
   const dataDir = runtime.dataDir;
+  const ingest = createIngestStore(join(dataDir, "logs-ingest"), accounts.now);
+  const ingestBudget = { current: 600 };
   const failCounters = { current: false };
   // The fake reads its options at call time, so a test can flip a failure on and off.
   const rowHashTables = new Set<string>();
@@ -230,6 +243,7 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     imports,
     policies,
     dataDir,
+    ingest,
     projects: accounts.projectsRepo,
   });
   runtime.dispatcher.start();
@@ -244,8 +258,18 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     open: memoryOpen(trees, sftpKey),
     now: accounts.now,
   });
+  const ingestService = createIngestService({
+    tokens: createIngestTokensRepository(accounts.db),
+    adapters: repo,
+    projects: accounts.projectsRepo,
+    store: ingest,
+    audit: accounts.audit,
+    budget: async () => ingestBudget.current,
+    now: accounts.now,
+  });
   const adapters = createAdaptersService({
     repo,
+    ingest: ingestService,
     projects: accounts.projectsRepo,
     audit: accounts.audit,
     ring,
@@ -282,6 +306,9 @@ export async function createAdaptersHarness(): Promise<AdaptersHarness> {
     imports,
     policies,
     dataDir,
+    ingest,
+    ingestService,
+    ingestBudget,
     engines,
     fakeOptions,
     quota,

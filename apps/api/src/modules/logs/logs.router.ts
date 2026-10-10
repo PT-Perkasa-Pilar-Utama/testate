@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { logsPageSchema } from "@testate/shared";
+import { logSourcesSchema, logsPageSchema } from "@testate/shared";
 import * as v from "valibot";
 
 import { requireRole } from "../../lib/http/auth.ts";
@@ -16,6 +16,12 @@ export function createLogsRouter(h: LogsHandlers): Hono {
     requireRole("viewer"),
     describe("logs", "Read a log source", logsPageSchema),
     h.read
+  );
+  router.get(
+    `${P}/sources`,
+    requireRole("viewer"),
+    describe("logs", "The sources a log adapter has", logSourcesSchema),
+    h.sources
   );
   router.get(
     `${P}/download`,

@@ -78,7 +78,7 @@ const COMMANDS = new Map<string, Command>([
   [
     "whereis",
     {
-      usage: "whereis [env|data|bin|service|log]",
+      usage: "whereis [env|data|bin|service|log|ingest]",
       summary: "Show where this install keeps things",
       run: whereis,
     },

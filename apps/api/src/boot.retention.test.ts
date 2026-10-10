@@ -9,7 +9,7 @@ import { createLogger } from "./lib/logger/index.ts";
 // 16 §16.1: every retention the settings name runs once a day. The settings sweep (stashes, query
 // history, audit rows, import runs, download backups) had no caller in production.
 describe("the daily retention", () => {
-  it("runs the settings sweep with the jobs and diffs, from the first start", async () => {
+  it("runs the settings and ingest sweeps with the jobs and diffs, from the first start", async () => {
     const dir = mkdtempSync(join(tmpdir(), "testate-retention-"));
     const logger = createLogger({
       dir,
@@ -42,10 +42,14 @@ describe("the daily retention", () => {
           backups: 0,
         };
       },
+      ingest: async () => {
+        ran.push("ingest");
+        return 0;
+      },
     });
     retention.start();
     retention.stop();
     await Bun.sleep(0);
-    expect(ran).toEqual(["jobs", "diffs", "settings"]);
+    expect(ran).toEqual(["jobs", "diffs", "settings", "ingest"]);
   });
 });

@@ -26,11 +26,14 @@ import {
   bootStore,
   lazyJobs,
   logsService,
+  ingestService,
+  adaptersService,
   opsDeps,
   resetHandler,
   storageDeps,
 } from "./wiring.store.ts";
 import { createLogsHandlers } from "./modules/logs/logs.handler.ts";
+import { createIngestHandlers } from "./modules/ingest/ingest.handler.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import { openMetadataDb } from "./lib/db/index.ts";
 import { requireReader } from "./lib/http/auth.ts";
@@ -40,7 +43,6 @@ import { mountOpenApi } from "./lib/openapi.ts";
 import { createPasswordHasher } from "./lib/password/index.ts";
 import { loadKeyRing } from "./lib/sealed/index.ts";
 import { createAdaptersHandlers } from "./modules/adapters/adapters.handler.ts";
-import { createAdaptersService } from "./modules/adapters/adapters.service.ts";
 import { agentHandlers } from "./wiring.agent.ts";
 import { createAuditHandlers } from "./modules/audit/audit.handler.ts";
 import { createAuditModule } from "./modules/audit/audit.wiring.ts";
@@ -173,18 +175,9 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   });
   const storage = createStorageService(storageDeps(wiring, projectsRepo, audit, now));
   const logs = logsService(wiring, projectsRepo);
-  const adapters = createAdaptersService({
-    repo: wiring.adapters,
-    projects: projectsRepo,
-    audit,
-    ring,
-    netguard,
-    probe: wiring.probe,
-    fileProbe: wiring.fileProbe,
-    jobs,
-    states: wiring.states,
-    now,
-  });
+  const shared = { projects: projectsRepo, audit, now };
+  const ingest = ingestService(db, wiring, { ...shared, settings });
+  const adapters = adaptersService(wiring, { ...shared, ring, netguard, jobs, ingest });
   const projects = createProjectsService({
     repo: projectsRepo,
     audit,
@@ -238,6 +231,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
       config.TESTATE_MAX_UPLOAD_MB * 1024 * 1024
     ),
     logs: createLogsHandlers(logs),
+    ingest: createIngestHandlers(ingest, config.TESTATE_TRUST_PROXY, now),
     jobs: createJobsHandlers(jobs),
     audit: createAuditHandlers(audit),
     settings: createSettingsHandlers(settings, prefix, config.TESTATE_TRUST_PROXY),
@@ -303,6 +297,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
     historyDays: async () => (await settings.get()).retention.job_history_days,
     expireDiffs: () => core.diffs.expire(),
     settings: () => settings.runRetention(),
+    ingest: () => ingest.sweep(),
   });
   return {
     fetch: app.fetch,

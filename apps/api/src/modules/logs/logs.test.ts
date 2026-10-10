@@ -11,6 +11,7 @@ import { WideEvent } from "../../lib/logger/event.ts";
 import { createLogsHandlers } from "./logs.handler.ts";
 import { createLogsRouter } from "./logs.router.ts";
 import { createLogsService, logFilesOf } from "./logs.service.ts";
+import { logsDepsOf } from "../../../test/logs.ts";
 
 // #69 (docs/decisions/2026-10-10-logs-tier.md): one source read through the files resolver, over
 // the harness's in-memory SFTP host, masked for viewers and agents (Q5).
@@ -30,7 +31,7 @@ async function setup() {
     bytes: encoder.encode(LOG),
     modified_at: "2026-10-10T08:00:03.000Z",
   });
-  const logs = createLogsService({ projects: harness.projectsRepo, files: harness.files });
+  const logs = createLogsService(logsDepsOf(harness));
   const viewer: Actor = { ...harness.qa, role: "viewer" };
   return { harness, adapter, logs, viewer };
 }
@@ -93,6 +94,7 @@ describe("reading logs", () => {
       logs.read(harness.qa, "shop", adapter.id, { ...query, source: "nope" }, null)
     ).rejects.toMatchObject({
       code: "NOT_FOUND",
+      details: { sources: ["api"] },
     });
     await expect(logs.read(harness.qa, "shop", store.id, query, null)).rejects.toMatchObject({
       code: "ENGINE_UNSUPPORTED",
@@ -152,6 +154,8 @@ describe("edges of a read", () => {
     const response = await app.request(
       `/projects/shop/adapters/${adapter.id}/logs/download?source=api`
     );
+    const sources = await app.request(`/projects/shop/adapters/${adapter.id}/logs/sources`);
+    expect(await sources.json()).toEqual({ data: ["api"] });
     const lines = (await response.text()).trim().split("\n");
     expect([
       response.status,

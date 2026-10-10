@@ -20,6 +20,7 @@ import type { StatesService } from "../states/states.service.ts";
 import { createStorageService } from "../storage/storage.service.ts";
 import type { AgentContext, AgentRuntime } from "./agent.service.ts";
 import { createAgentTools } from "./agent.tools.ts";
+import { logsDepsOf } from "../../../test/logs.ts";
 
 export type Harness = {
   harness: AdaptersHarness;
@@ -98,7 +99,7 @@ export async function createHarness(): Promise<Harness> {
       audit: harness.audit,
       now: harness.now,
     }),
-    logs: createLogsService({ projects: harness.projectsRepo, files: harness.files }),
+    logs: createLogsService(logsDepsOf(harness)),
     audit: harness.audit,
     checkouts,
     jobs: harness.runtime.jobs,

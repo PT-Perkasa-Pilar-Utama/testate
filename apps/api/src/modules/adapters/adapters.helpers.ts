@@ -1,11 +1,20 @@
 import { inContainer } from "./adapters.hosts.ts";
-import type { Adapter, AdapterDraft, EngineWarning, ProbeOutcome } from "@testate/shared";
+import type {
+  Actor,
+  Adapter,
+  AdapterDraft,
+  EngineWarning,
+  JsonObject,
+  ProbeOutcome,
+} from "@testate/shared";
 
+import type { RequestMeta } from "../../lib/http/auth.ts";
 import { AppError } from "../../lib/http/index.ts";
 import type { Check, Verdict } from "../../lib/netguard/index.ts";
 import type { Target } from "./adapters.config.ts";
 import type { AdapterRecord, ProbeColumns, TargetShare } from "./adapters.repository.ts";
 import type { Secrets } from "./adapters.secrets.ts";
+import type { AuditService } from "../audit/audit.service.ts";
 
 /** The API shape: the sealed envelopes and the target hash never leave the module. */
 export function toPublic(record: AdapterRecord): Adapter {
@@ -117,4 +126,30 @@ export function sharedTargetWarning(shared: TargetShare[]): EngineWarning {
     code: "target_shared",
     message: `${names} already tracks this database. A reset through either one rewinds the other's work.`,
   };
+}
+
+export type AdapterRecorder = (
+  actor: Actor,
+  action: string,
+  adapter: AdapterRecord,
+  slug: string,
+  meta: RequestMeta,
+  details?: JsonObject
+) => void;
+
+/** One audit row about an adapter, with its project and its name (15 §15.2). */
+export function adapterRecorder(audit: Pick<AuditService, "record">): AdapterRecorder {
+  return (actor, action, adapter, slug, meta, details = {}) =>
+    audit.record({
+      actor,
+      action,
+      target_type: "adapter",
+      target_id: adapter.id,
+      target_label: adapter.name,
+      project: { id: adapter.project_id, slug },
+      adapter: { id: adapter.id, name: adapter.name },
+      details,
+      outcome: "succeeded",
+      meta,
+    });
 }

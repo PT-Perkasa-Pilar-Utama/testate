@@ -56,6 +56,8 @@ import { createStatesRepository } from "./modules/states/states.repository.ts";
 import { createStatesService } from "./modules/states/states.service.ts";
 import type { StatesDeps, StatesService } from "./modules/states/states.service.ts";
 import type { JobsService } from "./modules/jobs/jobs.service.ts";
+import { createIngestStore } from "./lib/logs/ingest/store.ts";
+import type { IngestStore } from "./lib/logs/ingest/store.ts";
 
 export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now" | "blobs"> & {
   netguard: Netguard;
@@ -69,6 +71,7 @@ export type EngineWiring = Omit<RunnerDeps, "db" | "audit" | "now" | "blobs"> & 
   fileProbe: FileProbeFn;
   hostKeys: HostKeysRepository;
   files: FilesResolver;
+  ingest: IngestStore;
 };
 
 /** One authenticated, kind-agnostic adapter ownership check for all v1 adapter routes. */
@@ -142,6 +145,7 @@ export function createEngineWiring(
     diffs: createDiffsRepository(db),
     imports: createImportsRepository(db),
     dataDir: config.TESTATE_DATA_DIR,
+    ingest: createIngestStore(join(config.TESTATE_DATA_DIR, "logs-ingest"), now),
     projects,
   };
 }

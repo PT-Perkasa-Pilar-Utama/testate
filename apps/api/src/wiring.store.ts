@@ -18,11 +18,16 @@ import type { UsersRepository } from "./modules/users/users.repository.ts";
 import { createBackupRunner } from "./modules/settings/settings.backup.ts";
 import { createStoreMigrationRunner } from "./modules/settings/settings.migration.ts";
 import { createSettingsRepository } from "./modules/settings/settings.repository.ts";
-import type { SettingsDeps } from "./modules/settings/settings.service.ts";
+import type { SettingsDeps, SettingsService } from "./modules/settings/settings.service.ts";
 import { bootStoreTarget, createStoreFactory } from "./modules/settings/settings.store.ts";
 import type { StoreTarget } from "./modules/settings/settings.store.ts";
 import { createLogsService } from "./modules/logs/logs.service.ts";
 import type { LogsService } from "./modules/logs/logs.service.ts";
+import { createAdaptersService } from "./modules/adapters/adapters.service.ts";
+import type { AdaptersDeps, AdaptersService } from "./modules/adapters/adapters.service.ts";
+import { createIngestTokensRepository } from "./modules/ingest/ingest.repository.ts";
+import { createIngestService } from "./modules/ingest/ingest.service.ts";
+import type { IngestDeps, IngestService } from "./modules/ingest/ingest.service.ts";
 import type { StorageDeps } from "./modules/storage/storage.service.ts";
 import type { EngineWiring } from "./wiring.ts";
 
@@ -91,7 +96,41 @@ export function storageDeps(
 
 /** The Logs tier reads through the same checked files resolver storage uses (#69). */
 export function logsService(wiring: EngineWiring, projects: ProjectsRepository): LogsService {
-  return createLogsService({ projects, files: wiring.files });
+  return createLogsService({
+    projects,
+    files: wiring.files,
+    adapters: wiring.adapters,
+    ingest: wiring.ingest,
+  });
+}
+
+/** The `ingest` engine's write side (#75): tokens, pushes, rotation, clearing, the sweep. */
+export function ingestService(
+  db: MetadataDb,
+  wiring: EngineWiring,
+  deps: Pick<IngestDeps, "projects" | "audit" | "now"> & { settings: Pick<SettingsService, "get"> }
+): IngestService {
+  return createIngestService({
+    ...deps,
+    tokens: createIngestTokensRepository(db),
+    adapters: wiring.adapters,
+    store: wiring.ingest,
+    budget: async () => (await deps.settings.get()).limits.ingest_requests_per_minute,
+  });
+}
+
+/** The adapters service on the shared engine wiring (05 §5.5). */
+export function adaptersService(
+  wiring: EngineWiring,
+  deps: Pick<AdaptersDeps, "projects" | "audit" | "ring" | "netguard" | "jobs" | "ingest" | "now">
+): AdaptersService {
+  return createAdaptersService({
+    ...deps,
+    repo: wiring.adapters,
+    probe: wiring.probe,
+    fileProbe: wiring.fileProbe,
+    states: wiring.states,
+  });
 }
 
 export type SeedServices = Pick<SeedDeps, "users" | "projects" | "adapters" | "states" | "jobs"> & {

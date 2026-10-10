@@ -26,6 +26,8 @@ export type IngestStore = {
   clear(adapterId: string): Promise<void>;
   /** The sources that hold at least one day file, by name. */
   sources(adapterId: string): Promise<string[]>;
+  /** The adapter ids that have a folder, so the sweep can drop a deleted adapter's. */
+  held(): Promise<string[]>;
   files(adapterId: string): LogFiles;
 };
 
@@ -112,6 +114,7 @@ export function createIngestStore(root: string, now: () => Date): IngestStore {
         if ((await dayFilesIn(base(adapterId), source)).length > 0) held.push(source);
       return held.sort();
     },
+    held: async () => (await orNothing(readdir(root), [])).filter((name) => ADAPTER_ID.test(name)),
     files: (adapterId) => ingestFiles(base(adapterId)),
   };
 }
