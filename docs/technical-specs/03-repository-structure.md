@@ -10,6 +10,7 @@ testate/                                  # github.com/pt-perkasa-pilar-utama/te
 │   ├── api/                              # Hono API + job dispatcher, one Bun process
 │   │   ├── src/
 │   │   │   ├── index.ts                  # composition root: app, middleware, job kinds, listen
+│   │   │   ├── cli/                      # the binary's commands: start, setup, service, update, whereis
 │   │   │   ├── modules/                  # vertical slices (see 05)
 │   │   │   │   ├── auth/                 # auth.router.ts, auth.handler.ts, auth.service.ts, auth.repository.ts, auth.schema.ts, auth.test.ts
 │   │   │   │   ├── users/

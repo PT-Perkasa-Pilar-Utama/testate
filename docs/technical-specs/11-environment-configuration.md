@@ -41,6 +41,8 @@ Everything else (retention counts, quotas, limits, deny list, rate budgets) live
 | Log settings | Yes | Not in the UI |
 | Everything else | No | Editable |
 
+Where the environment comes from, for the binary: the process environment wins over the env file, which is `--env-file <path>` or else `~/.config/testate/testate.env` when it exists (`testate setup` writes it). The compiled binary never loads a `.env` or `bunfig.toml` from the folder it starts in (`docs/decisions/2026-10-10-cli.md`). The container and the systemd and pm2 files pass process environment, so they are unaffected.
+
 ## 11.3 Example files
 
 `deploy/.env.example`:
