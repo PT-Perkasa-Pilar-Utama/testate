@@ -17,6 +17,7 @@ import {
 } from "@testate/shared";
 import * as v from "valibot";
 
+import { TIER_OF_ENGINE } from "./adapters.config.ts";
 import type { MetadataDb } from "../../lib/db/index.ts";
 import { isSealed, kidOfSealed } from "../../lib/sealed/index.ts";
 import type { Sealed } from "../../lib/sealed/index.ts";
@@ -154,7 +155,7 @@ function toRecord(row: AdapterRow): AdapterRecord {
     project_id: row.project_id,
     kind: row.kind,
     engine: row.engine,
-    tier: TIER_BY_ENGINE[row.engine],
+    tier: TIER_OF_ENGINE[row.engine],
     name: row.name,
     mode: row.mode,
     status: row.status,
@@ -183,16 +184,6 @@ function toRecord(row: AdapterRow): AdapterRecord {
     target_hash: row.target_hash,
   };
 }
-
-const TIER_BY_ENGINE = {
-  postgres: "tabular",
-  mysql: "tabular",
-  mariadb: "tabular",
-  mongodb: "document",
-  s3: "files",
-  sftp: "files",
-  ftp: "files",
-} as const satisfies Record<AdapterRow["engine"], Adapter["tier"]>;
 
 type Column = [string, string | number | null];
 

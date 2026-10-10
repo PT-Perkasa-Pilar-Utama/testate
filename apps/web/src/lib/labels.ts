@@ -105,6 +105,7 @@ export const ENGINE_LABEL = {
   s3: "Object storage",
   sftp: "SFTP",
   ftp: "FTP",
+  logfile: "Log files",
 } as const satisfies Record<Engine, string>;
 export const ENGINE_OPTIONS = ENGINES.map((value) => ({ value, label: ENGINE_LABEL[value] }));
 /** The engines a database adapter can be; a storage adapter is made from the Storage screen. */
@@ -121,6 +122,7 @@ export const TIER_LABEL = {
   files: "Files",
   document: "Documents",
   tabular: "Tables",
+  logs: "Logs",
 } as const satisfies Record<Tier, string>;
 
 export const ADAPTER_MODE_LABEL = {

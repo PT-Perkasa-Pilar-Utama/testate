@@ -106,6 +106,9 @@ export const ENGINE_FORMS = {
     ],
     secrets: [{ key: "password", label: "Password", type: "password", required: true }],
   },
+  // ponytail: the form arrives with the Logs viewer (#69, the web PR); the API refuses logfile
+  // until its engine lands, so this entry is never offered.
+  logfile: { kind: "logs", label: "Log files", config: [], secrets: [] },
 } as const satisfies Record<Engine, EngineForm>;
 
 // Neither type is exported from the shared package (labels.ts derives AdapterStatus the same way);

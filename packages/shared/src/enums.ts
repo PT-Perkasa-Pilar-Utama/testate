@@ -8,15 +8,26 @@ export const TOKEN_KINDS = ["standard", "agent"] as const;
 export const tokenKindSchema = v.picklist(TOKEN_KINDS);
 export type TokenKind = v.InferOutput<typeof tokenKindSchema>;
 
-export const ADAPTER_KINDS = ["database", "storage"] as const;
+/** `logs`: the Logs tier, read-only by construction (#37). */
+export const ADAPTER_KINDS = ["database", "storage", "logs"] as const;
 export const adapterKindSchema = v.picklist(ADAPTER_KINDS);
 export type AdapterKind = v.InferOutput<typeof adapterKindSchema>;
 
-export const ENGINES = ["postgres", "mysql", "mariadb", "mongodb", "s3", "sftp", "ftp"] as const;
+// The Logs engines join one per step of #37; migration 0011 already admits all six.
+export const ENGINES = [
+  "postgres",
+  "mysql",
+  "mariadb",
+  "mongodb",
+  "s3",
+  "sftp",
+  "ftp",
+  "logfile",
+] as const;
 export const engineSchema = v.picklist(ENGINES);
 export type Engine = v.InferOutput<typeof engineSchema>;
 
-export const TIERS = ["files", "document", "tabular"] as const;
+export const TIERS = ["files", "document", "tabular", "logs"] as const;
 export const tierSchema = v.picklist(TIERS);
 export type Tier = v.InferOutput<typeof tierSchema>;
 
