@@ -40,10 +40,10 @@ test.describe("adapter settings stories", () => {
     const qa = await apiContext("qa");
     await checkoutInit(qa);
     await qa.dispose();
-    // A project opens on States now; adapters are plumbing and no longer the front door.
-    await page.goto("/projects/demo?tab=adapters");
+    // Databases have their own menu; filtered to the project, its dialog picks the project.
+    await page.goto("/databases?project=demo");
     await settle(page);
-    await page.getByRole("button", { name: "New adapter" }).click();
+    await page.getByRole("button", { name: "New database" }).click();
     const create = page.locator("dialog[open]");
     await create.getByLabel("Name").fill(`cfg-${STAMP}`);
     await create.getByLabel("Host").fill("127.0.0.1");
@@ -57,7 +57,8 @@ test.describe("adapter settings stories", () => {
     await openStatesList(page);
     await expect(stateRow(page, "init")).toHaveCount(1);
     await initHolds(page, `cfg-${STAMP}`);
-    await page.getByRole("tab", { name: "Databases" }).click();
+    await page.goto("/databases?project=demo");
+    await settle(page);
     await page.getByRole("link", { name: `cfg-${STAMP}` }).click();
     await settle(page);
     await page.getByRole("button", { name: "Edit adapter" }).click();
@@ -87,15 +88,16 @@ test.describe("adapter settings stories", () => {
     await openStatesList(page);
     await expect(stateRow(page, "init")).toHaveCount(1);
     await initHolds(page, `cfg-${STAMP}-2`);
-    await page.getByRole("tab", { name: "Databases" }).click();
+    await page.goto("/databases?project=demo");
+    await settle(page);
     await page.getByRole("link", { name: `cfg-${STAMP}-2` }).click();
     await settle(page);
     await page.getByRole("button", { name: "Delete" }).click();
     const plan = page.locator("dialog[open]");
     await expect(plan.getByText(/init state/)).toBeVisible();
     await plan.locator('button[type="submit"]').click();
-    // Deleting drops you back on the tab you came from, not on the project's front door.
-    await expect(page).toHaveURL(/\/projects\/demo\?tab=adapters$/);
+    // Deleting drops you back on the Databases menu, filtered to the project.
+    await expect(page).toHaveURL(/\/databases\?project=demo$/);
     await settle(page);
     await expect(page.getByRole("link", { name: `cfg-${STAMP}-2` })).toHaveCount(0, {
       timeout: 60_000,

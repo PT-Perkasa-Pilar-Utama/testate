@@ -50,7 +50,7 @@ const SKIP = new Set([
 ]);
 /**
  * Dialogs whose submit destroys shared demo data, or reaches out to a host that does not exist:
- * a New adapter filled with sample text asks the API to probe "e2e1071", which answers 502
+ * a New database filled with sample text asks the API to probe "e2e1071", which answers 502
  * ADAPTER_UNREACHABLE, honestly. Cancelled after the form is exercised.
  */
 const DESTRUCTIVE = /delete|remove|reset|revoke|return to init|new (storage )?adapter/i;

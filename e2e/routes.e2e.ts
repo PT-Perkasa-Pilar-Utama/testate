@@ -240,13 +240,12 @@ for (const role of ROLES) {
       await page.goto(`${base}/tables/${encodeURIComponent(table)}`);
       await settle(page);
       await expect(page.getByText("Write mode")).toBeVisible({ visible: allows(role, "qa") });
-      // A project now opens on States; the adapter list lives at ?tab=adapters.
-      await page.goto("/projects/demo?tab=adapters");
+      // Databases have their own menu now (a tier is a menu, #63).
+      await page.goto("/databases?project=demo");
       await settle(page);
-      // New adapter, or the way to the starting point when the databases are not on it.
-      await expect(
-        page.getByRole("button", { name: /New adapter|Check out the starting point/ })
-      ).toBeVisible({ visible: allows(role, "qa") });
+      await expect(page.getByRole("button", { name: "New database" })).toBeVisible({
+        visible: allows(role, "qa"),
+      });
     });
   });
 }
