@@ -17,6 +17,7 @@ import { hasRole } from "@/lib/session.ts";
 import { CreateDialog } from "../adapters/adapters.create.view.tsx";
 import { createAdaptersPresenter } from "../adapters/adapters.presenter.ts";
 import { projectsModel } from "../projects/projects.model.ts";
+import { storeGroups } from "./storage.groups.ts";
 import { storageModel } from "./storage.model.ts";
 import { humanMessage } from "@/lib/api-error.ts";
 
@@ -70,24 +71,6 @@ function NewStore(props: { onCreated: () => void }): JSX.Element {
   );
 }
 
-/** Stores by project, each project once, in the order the projects list them. */
-type StoreGroup = { slug: string; name: string; inspect: boolean; stores: AdapterWithProject[] };
-
-function byProject(stores: AdapterWithProject[]): StoreGroup[] {
-  const groups = new Map<string, StoreGroup>();
-  for (const store of stores) {
-    const group = groups.get(store.project_slug) ?? {
-      slug: store.project_slug,
-      name: store.project_name,
-      inspect: store.project_kind === "inspect",
-      stores: [],
-    };
-    group.stores.push(store);
-    groups.set(store.project_slug, group);
-  }
-  return [...groups.values()];
-}
-
 const TONE = { ok: "success", error: "error", disabled: "warning" } as const;
 
 function StoreRow(props: { store: AdapterWithProject }): JSX.Element {
@@ -119,6 +102,7 @@ function StoreRow(props: { store: AdapterWithProject }): JSX.Element {
  */
 export default function StoresView(): JSX.Element {
   const stores = createRefreshable(() => storageModel.stores());
+  const only = new URLSearchParams(window.location.search).get("project") ?? "";
   return (
     <section class="grid gap-4">
       <PageHeader
@@ -146,7 +130,15 @@ export default function StoresView(): JSX.Element {
             }
           >
             <div class="grid gap-5">
-              <For each={byProject(stores.value())}>
+              <Show when={only !== ""}>
+                <p class="text-sm text-muted">
+                  One project only.{" "}
+                  <a class="text-info-fg hover:underline" href={href("/storage")}>
+                    Show every project
+                  </a>
+                </p>
+              </Show>
+              <For each={storeGroups(stores.value(), only)}>
                 {(group) => (
                   <section class="grid gap-2">
                     <h3 class="flex items-baseline gap-2 text-sm font-medium text-heading">
