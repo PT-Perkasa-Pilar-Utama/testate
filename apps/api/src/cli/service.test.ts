@@ -119,3 +119,16 @@ describe("what testate service refuses", () => {
     );
   });
 });
+
+describe("when Linux has no user session", () => {
+  it("says why systemctl --user failed and what to do", async () => {
+    const m = machine("linux");
+    const deps: ServiceDeps = {
+      ...m.deps,
+      run: () => ({ code: 1, out: "", err: "Failed to connect to bus: No medium found" }),
+    };
+    await expect(serviceWith(m.ctx(["install"]), deps)).rejects.toThrow(
+      "This shell has no user session (ssh -T, su, or a script)"
+    );
+  });
+});
