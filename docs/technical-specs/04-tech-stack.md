@@ -53,6 +53,7 @@ Every choice below was confirmed in the architecture grill on 2026-08-28. Versio
 | Metadata | `${TESTATE_DATA_DIR}/metadata.db` (SQLite, WAL) | Every entity in 06 | Backup job; pre-migration copy at boot |
 | Snapshot store | `${TESTATE_DATA_DIR}/blobs/` or S3 prefix | Content-addressed gzip blobs, manifests | Backup job (optional blobs); volume snapshot |
 | Logs | `${TESTATE_DATA_DIR}/logs/` | Daily wide-event files, 30 days | None; operational |
+| Pushed logs | `${TESTATE_DATA_DIR}/logs-ingest/<adapter>/` | `ingest` adapters' day files (25 §25.7), per-adapter retention and cap | None; operational. `testate whereis ingest` prints the folder to copy |
 | Uploads | `${TESTATE_DATA_DIR}/uploads/` | Import files during a job | Deleted when the job ends |
 | Import artifacts | `${TESTATE_DATA_DIR}/imports/<run>/` | Rejected-rows CSV | Import-run retention sweep |
 | Boot files | `${TESTATE_DATA_DIR}/run/` | Base-path-rewritten SPA, metadata copies | Overwritten each boot; copies kept for the last three boots |

@@ -158,6 +158,18 @@ The projects a viewer or tester with `all_projects = 0` may see and act on (#55,
 | accepted_by | TEXT | no | | FK users | |
 | accepted_at | TEXT | no | | | |
 
+### INGEST_TOKENS
+
+One active token per `ingest` adapter (0012, #75; 25 §25.7). Not an `api_tokens` kind: it pushes lines to its adapter and resolves to no actor.
+
+| column | type | nullable | default | key | notes |
+| --- | --- | --- | --- | --- | --- |
+| adapter_id | TEXT | no | | PK, FK adapters CASCADE | |
+| token_hash | TEXT | no | | UNIQUE | SHA-256 of `tsi_...` |
+| prefix | TEXT | no | | | first eight characters after `tsi_` |
+| created_at | TEXT | no | | | a rotation replaces the row |
+| last_used_at | TEXT | yes | | | written at most once a minute |
+
 ## 6.5 States and blobs
 
 ### STATES (UI label: "States")
