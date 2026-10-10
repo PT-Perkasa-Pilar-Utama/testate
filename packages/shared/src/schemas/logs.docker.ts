@@ -13,6 +13,13 @@ export const DOCKER_CONTAINER = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,254}$/;
 /** An absolute socket path on the host: no space, no `..` (K1). */
 export const DOCKER_SOCKET = /^\/[A-Za-z0-9._/-]{1,255}$/;
 
+/** The socket path rule, shared with the dialog so a typo is named before the API sees it. */
+export const dockerSocketSchema = v.pipe(
+  v.string(),
+  v.regex(DOCKER_SOCKET, "An absolute path, like /var/run/docker.sock."),
+  v.check((path) => !path.split("/").includes(".."), "A socket path has no ..")
+);
+
 export const dockerSourceSchema = v.pipe(
   v.object({
     name: logSourceNameSchema,
@@ -55,14 +62,7 @@ export const dockerConfigSchema = v.variant("transport", [
     host: text,
     port: v.optional(port),
     user: text,
-    socket_path: v.optional(
-      v.pipe(
-        v.string(),
-        v.regex(DOCKER_SOCKET, "An absolute path, like /var/run/docker.sock."),
-        v.check((path) => !path.split("/").includes(".."), "A socket path has no ..")
-      ),
-      "/var/run/docker.sock"
-    ),
+    socket_path: v.optional(dockerSocketSchema, "/var/run/docker.sock"),
     sources: sourcesSchema,
   }),
   v.object({

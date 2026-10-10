@@ -1,6 +1,6 @@
 import * as v from "valibot";
 import type { Adapter, JsonObject, LokiConfig, LokiForm, LokiFormInput } from "@testate/shared";
-import { lokiConfigSchema, patternLines } from "@testate/shared";
+import { lokiConfigSchema, lokiTenantSchema, lokiUrlSchema, patternLines } from "@testate/shared";
 
 import { connectionOf } from "../adapters/adapters.fields.ts";
 import type { Connection, EngineForm, Field, Values } from "../adapters/adapters.fields.ts";
@@ -118,6 +118,10 @@ const LOKI_KIND: ConnectionKind<LokiFormInput, LokiForm> = {
   toBody: toLokiBody,
   toPatch: toLokiPatch,
   formOf: (input) => LOKI_FORMS[input.auth],
+  rules: [
+    { key: "config.url", schema: lokiUrlSchema },
+    { key: "config.tenant", schema: lokiTenantSchema },
+  ],
 };
 
 export function createLokiFormPresenter(

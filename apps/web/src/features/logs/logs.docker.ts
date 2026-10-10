@@ -6,7 +6,7 @@ import type {
   DockerFormInput,
   JsonObject,
 } from "@testate/shared";
-import { dockerConfigSchema, patternLines } from "@testate/shared";
+import { dockerConfigSchema, dockerSocketSchema, patternLines } from "@testate/shared";
 
 import { HOST_PORT, connectionOf } from "../adapters/adapters.fields.ts";
 import type { Connection, EngineForm, Values } from "../adapters/adapters.fields.ts";
@@ -144,6 +144,7 @@ const DOCKER_KIND: ConnectionKind<DockerFormInput, DockerForm> = {
   toBody: toDockerBody,
   toPatch: toDockerPatch,
   formOf: (input) => DOCKER_FORMS[input.transport],
+  rules: [{ key: "config.socket_path", schema: dockerSocketSchema }],
 };
 
 export function createDockerFormPresenter(
