@@ -24,16 +24,31 @@ function unsupported(operation: string): EngineError {
 export function createMongodbEngine(netguard: Netguard): DbEngine {
   const clients = createMongoClientManager(netguard);
   const topologies = new Map<string, Topology>();
-  const open = async (
-    conn: Parameters<DbEngine["introspect"]>[0]
-  ): Promise<{ handle: MongoHandle; topology: Topology }> => {
-    const handle = await clients.acquire(conn);
-    let topology = topologies.get(conn.connectionId);
-    if (topology === undefined) {
-      topology = await guarded("hello", () => topologyOf(handle));
-      topologies.set(conn.connectionId, topology);
+  type Conn = Parameters<DbEngine["introspect"]>[0];
+  type Opened = { handle: MongoHandle; topology: Topology; release: () => Promise<void> };
+  /** A leased client and the server's topology; the caller releases the lease when done. */
+  const open = async (conn: Conn): Promise<Opened> => {
+    const { handle, release } = await clients.acquire(conn);
+    try {
+      let topology = topologies.get(conn.connectionId);
+      if (topology === undefined) {
+        topology = await guarded("hello", () => topologyOf(handle));
+        topologies.set(conn.connectionId, topology);
+      }
+      return { handle, topology, release };
+    } catch (cause: unknown) {
+      await release();
+      throw cause;
     }
-    return { handle, topology };
+  };
+  /** One operation on a leased client, released however it ends. */
+  const use = async <T>(conn: Conn, run: (opened: Opened) => Promise<T>): Promise<T> => {
+    const opened = await open(conn);
+    try {
+      return await run(opened);
+    } finally {
+      await opened.release();
+    }
   };
   return {
     async probe(config) {
@@ -47,15 +62,14 @@ export function createMongodbEngine(netguard: Netguard): DbEngine {
       }
     },
     async introspect(conn, excluded) {
-      const { handle, topology } = await open(conn);
-      return guarded("introspect", () =>
-        introspect(handle.db, excluded, topology.timeSeriesDeletes)
+      return use(conn, ({ handle, topology }) =>
+        guarded("introspect", () => introspect(handle.db, excluded, topology.timeSeriesDeletes))
       );
     },
     snapshot(conn, opts): SnapshotRun {
-      const pending = (async (): Promise<SnapshotRun> => {
-        const { handle, topology } = await open(conn);
-        return snapshot(handle, topology, opts);
+      const pending = (async (): Promise<SnapshotRun & { release: () => Promise<void> }> => {
+        const { handle, topology, release } = await open(conn);
+        return Object.assign(snapshot(handle, topology, opts), { release });
       })();
       void swallow(pending);
       // The manifest is a second chain off `pending`: the job drains the stream first and reads
@@ -71,7 +85,11 @@ export function createMongodbEngine(netguard: Netguard): DbEngine {
         async [Symbol.asyncDispose]() {
           try {
             const run = await pending;
-            await run[Symbol.asyncDispose]();
+            try {
+              await run[Symbol.asyncDispose]();
+            } finally {
+              await run.release();
+            }
           } catch {
             return;
           }
@@ -79,12 +97,20 @@ export function createMongodbEngine(netguard: Netguard): DbEngine {
       };
     },
     checkout(conn, plan): CheckoutRun {
-      const pending = (async (): Promise<CheckoutRun> => {
-        const { handle, topology } = await open(conn);
-        return checkout(handle, topology, plan);
+      const pending = (async (): Promise<CheckoutRun & { release: () => Promise<void> }> => {
+        const { handle, topology, release } = await open(conn);
+        return Object.assign(checkout(handle, topology, plan), { release });
       })();
       void swallow(pending);
-      const result = (async () => (await pending).result)();
+      // A checkout has no dispose; its lease goes back once its result settles.
+      const result = (async () => {
+        const run = await pending;
+        try {
+          return await run.result;
+        } finally {
+          await run.release();
+        }
+      })();
       void swallow(result);
       return {
         result,
@@ -97,17 +123,20 @@ export function createMongodbEngine(netguard: Netguard): DbEngine {
       return { counters: [] };
     },
     async *readTable(conn, table, opts: ReadOptions) {
-      const { handle, topology } = await open(conn);
-      const live = await introspect(handle.db, [], topology.timeSeriesDeletes);
-      const schema = live.tables.find((item) => item.name === table.name);
-      if (schema === undefined)
-        throw new EngineError("batch_failed", `collection ${table.name} not found`);
-      const readOpts = { chunkRows: opts.chunkRows ?? 5000, signal: opts.signal };
-      yield* readCollection(handle.db.collection(table.name), schema, readOpts);
+      const { handle, topology, release } = await open(conn);
+      try {
+        const live = await introspect(handle.db, [], topology.timeSeriesDeletes);
+        const schema = live.tables.find((item) => item.name === table.name);
+        if (schema === undefined)
+          throw new EngineError("batch_failed", `collection ${table.name} not found`);
+        const readOpts = { chunkRows: opts.chunkRows ?? 5000, signal: opts.signal };
+        yield* readCollection(handle.db.collection(table.name), schema, readOpts);
+      } finally {
+        await release();
+      }
     },
     async pageRows(conn, query) {
-      const { handle } = await open(conn);
-      return guarded("rows", () => pageRows(handle, query));
+      return use(conn, ({ handle }) => guarded("rows", () => pageRows(handle, query)));
     },
     async writeRows() {
       throw unsupported("editing");
@@ -116,20 +145,16 @@ export function createMongodbEngine(netguard: Netguard): DbEngine {
       throw unsupported("import");
     },
     async runQuery(conn, query, opts) {
-      const { handle } = await open(conn);
-      return guarded("query", () => runQuery(handle, query, opts));
+      return use(conn, ({ handle }) => guarded("query", () => runQuery(handle, query, opts)));
     },
     async listRunningQueries(conn) {
-      const { handle } = await open(conn);
-      return guarded("list queries", () => listRunningQueries(handle));
+      return use(conn, ({ handle }) => guarded("list queries", () => listRunningQueries(handle)));
     },
     async cancelQuery(conn, queryId) {
-      const { handle } = await open(conn);
-      await guarded("cancel", () => cancelQuery(handle, queryId));
+      await use(conn, ({ handle }) => guarded("cancel", () => cancelQuery(handle, queryId)));
     },
     async terminateSessions(conn, ids) {
-      const { handle } = await open(conn);
-      return guarded("terminate", () => terminateSessions(handle, ids));
+      return use(conn, ({ handle }) => guarded("terminate", () => terminateSessions(handle, ids)));
     },
     decodeRow,
     evict: (connectionId) => {

@@ -11,10 +11,20 @@ const CONNECT_TIMEOUT_MS = 10000;
 
 export type MongoHandle = { client: MongoClient; db: Db };
 
+/** A client on loan: give it back with `release`, once, when the operation is over. */
+export type MongoLease = { handle: MongoHandle; release: () => Promise<void> };
+
 export type MongoClientManager = {
-  acquire(ref: ConnectionRef): Promise<MongoHandle>;
+  acquire(ref: ConnectionRef): Promise<MongoLease>;
+  /**
+   * Retires the cached client: the next operation opens a fresh one, and the retired one closes
+   * once the operations already holding it have released it. Closing it at once cut a browse or a
+   * query off mid-command whenever a checkout or a snapshot of the same adapter ended beside it.
+   */
   evict(connectionId: string): Promise<void>;
 };
+
+type Entry = { handle: MongoHandle; key: string; users: number; retired: boolean };
 
 function keyOf(config: MongodbConfig): string {
   return sha256(
@@ -51,24 +61,42 @@ export async function connect(config: MongodbConfig, netguard: Netguard): Promis
 }
 
 export function createMongoClientManager(netguard: Netguard): MongoClientManager {
-  const clients = new Map<string, { handle: MongoHandle; key: string }>();
+  const clients = new Map<string, Entry>();
+  const closeIfIdle = async (entry: Entry): Promise<void> => {
+    if (entry.retired && entry.users === 0) await entry.handle.client.close();
+  };
+  const retire = async (connectionId: string): Promise<void> => {
+    const entry = clients.get(connectionId);
+    if (entry === undefined) return;
+    clients.delete(connectionId);
+    entry.retired = true;
+    await closeIfIdle(entry);
+  };
   return {
     async acquire(ref) {
       if (ref.config.engine !== "mongodb")
         throw new EngineError("unsupported", `${ref.config.engine} config on the mongodb engine`);
       const key = keyOf(ref.config);
-      const existing = clients.get(ref.connectionId);
-      if (existing !== undefined && existing.key === key) return existing.handle;
-      if (existing !== undefined) await existing.handle.client.close();
-      const handle = await connect(ref.config, netguard);
-      clients.set(ref.connectionId, { handle, key });
-      return handle;
+      if (clients.get(ref.connectionId)?.key !== key) await retire(ref.connectionId);
+      let entry = clients.get(ref.connectionId);
+      if (entry === undefined) {
+        entry = { handle: await connect(ref.config, netguard), key, users: 0, retired: false };
+        clients.set(ref.connectionId, entry);
+      }
+      const held = entry;
+      held.users += 1;
+      let released = false;
+      return {
+        handle: held.handle,
+        release: async () => {
+          if (released) return;
+          released = true;
+          held.users -= 1;
+          await closeIfIdle(held);
+        },
+      };
     },
-    async evict(connectionId) {
-      const entry = clients.get(connectionId);
-      clients.delete(connectionId);
-      if (entry !== undefined) await entry.handle.client.close();
-    },
+    evict: retire,
   };
 }
 
