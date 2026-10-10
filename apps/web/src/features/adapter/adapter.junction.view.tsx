@@ -16,16 +16,20 @@ import { formatBytes } from "../states/states.format.ts";
  * Everything else on the page (status, connection identity) is context for this decision, so it
  * sits above it and the buttons that make it stay grouped and legible.
  */
-function junctionHeading(tier: Adapter["tier"]): string {
-  if (tier === "files") return "Files";
-  return tier === "document" ? "Collections" : "Tables";
-}
+const JUNCTION_HEADING = {
+  files: "Files",
+  document: "Collections",
+  tabular: "Tables",
+  logs: "Entries",
+} as const satisfies Record<Adapter["tier"], string>;
 
 export function JunctionToolbar(props: { adapter: Adapter; base: string }): JSX.Element {
   const a = (): Adapter => props.adapter;
   return (
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h3 class="text-lg font-semibold tracking-tight text-heading">{junctionHeading(a().tier)}</h3>
+      <h3 class="text-lg font-semibold tracking-tight text-heading">
+        {JUNCTION_HEADING[a().tier]}
+      </h3>
       <div class="flex flex-wrap items-center gap-2">
         <Show when={a().kind === "database"}>
           <Button size="sm" variant="secondary" onClick={() => navigate(`${props.base}/query`)}>

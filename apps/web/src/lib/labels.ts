@@ -148,7 +148,11 @@ export const LOG_FORMAT_OPTIONS = LOG_FORMATS.map((value) => ({
 
 export const LOG_LEVEL_OPTIONS = [
   { value: "", label: "Every level" },
-  ...LOG_LEVELS.map((value) => ({ value, label: value })),
+  // The API's level is a floor: "warn" also returns error and fatal.
+  ...LOG_LEVELS.map((value) => ({
+    value,
+    label: value === "fatal" ? value : `${value} and above`,
+  })),
 ];
 
 export const TIER_LABEL = {
