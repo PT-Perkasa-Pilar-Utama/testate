@@ -22,6 +22,7 @@ testate/                                  # github.com/pt-perkasa-pilar-utama/te
 │   │   │   │   ├── checkouts/            # checkouts.plan.ts, checkouts.job.ts, checkouts.return-to-init.ts
 │   │   │   │   ├── diffs/
 │   │   │   │   ├── storage/
+│   │   │   │   ├── logs/                 # the Logs tier's read routes (25)
 │   │   │   │   ├── jobs/                 # jobs.dispatcher.ts, jobs.events.ts (SSE), jobs.recovery.ts
 │   │   │   │   ├── audit/
 │   │   │   │   ├── settings/             # settings.store-migration.job.ts, settings.backup.job.ts
@@ -36,6 +37,7 @@ testate/                                  # github.com/pt-perkasa-pilar-utama/te
 │   │   │   │   │   └── fake/             #   in-memory engine for API tests
 │   │   │   │   ├── blobstore/            # port + local/, s3/, memory/
 │   │   │   │   ├── files/                # port + s3/, sftp/, ftp/, memory/
+│   │   │   │   ├── logs/                 # parsers, masking, the multi-file reader and its cursor (25)
 │   │   │   │   ├── snapshot/             # ndjson codec, manifest, merge (diff), tar (PAX writer)
 │   │   │   │   ├── sealed/               # envelope, key list, sweep, banners, registry.ts (sealed columns)
 │   │   │   │   ├── netguard/             # address check, deny list matching

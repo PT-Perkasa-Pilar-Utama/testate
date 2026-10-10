@@ -49,6 +49,7 @@ Legend: `OK` implemented and tested · `WIP` in progress · `TODO` not started �
 | [09-checkouts.md](09-checkouts.md) | Preflight, checkout, retry, blockers, counters |
 | [10-diffs.md](10-diffs.md) | Diffs, rows, export |
 | [11-storage.md](11-storage.md) | Browse, preview, download, host keys |
+| [12-logs.md](12-logs.md) | Read, filter, follow and download a Logs adapter's sources; the Logs menu's list |
 | [14-jobs.md](14-jobs.md) | Job object, list, wait, cancel, SSE |
 | [15-audit-logs.md](15-audit-logs.md) | Audit rows and export |
 | [16-settings.md](16-settings.md) | Settings, store migration, backup |

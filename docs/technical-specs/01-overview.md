@@ -93,7 +93,7 @@ In scope: relation view, FK lookups, typed insert and edit forms with functions,
 
 ### 1.2.18 Out of scope
 
-Firebase and Firestore; SQLite as a target; snapshot or restore through the application's REST API; schema migrations of the target; Postgres large-object content; MongoDB import and MongoDB write forms (the Document tier is view, state, diff, extract); branches and merges between states; single sign-on, LDAP, email; multi-tenant hosting; metrics and tracing; internationalized UI. See `../PRD.md` §6.
+Firebase and Firestore; SQLite as a target; snapshot or restore through the application's REST API; schema migrations of the target; Postgres large-object content; MongoDB import and MongoDB write forms (the Document tier is view, state, diff, extract); branches and merges between states; single sign-on, LDAP, email; multi-tenant hosting; metrics and tracing (logs are in scope through the Logs tier, 25); internationalized UI. See `../PRD.md` §6.
 
 ## 1.3 User base
 

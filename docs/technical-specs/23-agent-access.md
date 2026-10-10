@@ -35,6 +35,7 @@ Developers debugging on a dev box, SIT, or UAT want an AI agent to inspect the d
 | `diff_summary` | `project`, `diff` | per table counts | existing diffs only; no creation |
 | `list_files` | `project`, `adapter`, `path?`, `cursor?` | entries | Files tier |
 | `preview_file` | `project`, `adapter`, `path` | text or JSON up to 256 KiB; images and binaries refused | |
+| `read_logs` | `project`, `adapter`, `source`, filters, `cursor` | one page of a Logs source (25), up to 5 000 entries | always masked; an SFTP host key must be trusted by a person first |
 | `run_write_query` | `project`, `adapter`, `sql`, `limit?` | rows, columns, the write session it used | `qa` only; sandbox adapters; opens or reuses a write session |
 | `end_write_session` | `project`, `adapter` | the session id and its stash | `qa` only; the next write takes a new stash |
 | `take_snapshot` | `project`, `name`, `notes?`, `adapters?` | the state and its job | `qa` only; waits 15 s on the job, then reports it running |
