@@ -6,44 +6,16 @@
 import { parseArgs } from "node:util";
 
 import type { App } from "../index.ts";
+import { CliError, say, usage } from "./io.ts";
+import type { CliContext } from "./io.ts";
+import { setup } from "./setup.ts";
 import { refuse, serve } from "../boot.ts";
 import { readEnvFile, withEnvFile } from "./envfile.ts";
 import type { EnvValues } from "./envfile.ts";
 import { currentOs, defaultEnvFile } from "./paths.ts";
 import type { Env } from "./paths.ts";
 
-export type CliContext = {
-  /** The arguments after the command word. */
-  args: string[];
-  env: Env;
-  version: string;
-  boot: (env: Env) => Promise<App>;
-};
-
 type Command = { usage: string; summary: string; run: (ctx: CliContext) => Promise<void> };
-
-/** A refusal the CLI reports as one line on stderr, with its own exit code. */
-export class CliError extends Error {
-  constructor(
-    readonly exitCode: number,
-    message: string
-  ) {
-    super(message);
-  }
-}
-
-export function say(text: string): void {
-  process.stdout.write(`${text}\n`);
-}
-
-/** Runs a `util.parseArgs` call; an unknown or malformed option becomes a usage error (exit 2). */
-export function usage<T>(parse: () => T): T {
-  try {
-    return parse();
-  } catch (cause: unknown) {
-    throw new CliError(2, cause instanceof Error ? cause.message : String(cause));
-  }
-}
 
 /** The env file `start` reads: `--env-file`, else the default one when it exists (Q3). */
 export function envFileFor(flag: string | undefined, env: Env): EnvValues | null {
@@ -75,6 +47,14 @@ const COMMANDS = new Map<string, Command>([
   [
     "start",
     { usage: "start [--env-file <path>]", summary: "Run the server (the default)", run: start },
+  ],
+  [
+    "setup",
+    {
+      usage: "setup [--yes] [--env-file <path>] [--data-dir <dir>] [--port <n>]",
+      summary: "Write testate.env: data directory, port, sealing key, first admin",
+      run: setup,
+    },
   ],
   ["version", { usage: "version", summary: "Print the version", run: version }],
 ]);
