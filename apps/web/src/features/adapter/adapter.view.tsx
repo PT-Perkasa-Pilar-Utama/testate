@@ -24,6 +24,7 @@ import DocumentBrowser from "../data/document.view.tsx";
 import { createGridPresenter, qualifiedName } from "../data/grid.presenter.ts";
 import { FilesView, JunctionToolbar, TablesView } from "./adapter.junction.view.tsx";
 import EditDialog from "./adapter.edit.view.tsx";
+import { MoveControl } from "./adapter.move.view.tsx";
 import { LogsPanel } from "../logs/logs.panel.view.tsx";
 import { mayManage } from "./adapter.access.ts";
 import { menuOf } from "./adapter.menu.ts";
@@ -35,7 +36,11 @@ import type { AdapterPresenter } from "./adapter.presenter.ts";
  * apart from the junction below: renaming and retesting stay ordinary buttons, and Delete stays
  * last and marked, the way `states.view.tsx`'s row menu keeps it.
  */
-function AdminActions(props: { presenter: AdapterPresenter; adapter: Adapter }): JSX.Element {
+function AdminActions(props: {
+  presenter: AdapterPresenter;
+  adapter: Adapter;
+  slug: string;
+}): JSX.Element {
   const a = (): Adapter => props.adapter;
   // In Inspect the mode is fixed, and only the adapter's creator or an admin changes it (#56).
   const inspect = (): boolean => props.presenter.inspect.value();
@@ -43,6 +48,9 @@ function AdminActions(props: { presenter: AdapterPresenter; adapter: Adapter }):
   return (
     <Show when={hasRole("qa")}>
       <div class="flex flex-wrap items-center gap-2">
+        <Show when={manages()}>
+          <MoveControl slug={props.slug} adapter={a()} inspect={inspect()} />
+        </Show>
         {/* A log adapter's sources are edited on its own panel below. */}
         <Show when={manages() && a().kind !== "logs"}>
           <Button size="sm" variant="secondary" onClick={() => props.presenter.openEdit()}>
@@ -200,7 +208,13 @@ export default function AdapterView(props: { slug: string; id: string }): JSX.El
           back={menuOf(presenter.adapter.value().kind, props.slug)}
           eyebrow={menuOf(presenter.adapter.value().kind, props.slug).eyebrow}
           title={presenter.adapter.value().name}
-          actions={<AdminActions presenter={presenter} adapter={presenter.adapter.value()} />}
+          actions={
+            <AdminActions
+              presenter={presenter}
+              adapter={presenter.adapter.value()}
+              slug={props.slug}
+            />
+          }
         />
         <StatusLine adapter={presenter.adapter.value()} />
         <Show when={presenter.inspect.value() ? presenter.adapter.value().created_by_label : null}>

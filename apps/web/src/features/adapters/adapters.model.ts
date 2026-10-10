@@ -39,6 +39,12 @@ export const adaptersModel = {
     apiClient.post(base(slug), { schema: createAdapterResponseSchema, body }),
   update: (slug: string, id: string, body: JsonObject): Promise<CreatedAdapter> =>
     apiClient.patch(one(slug, id), { schema: createAdapterResponseSchema, body }),
+  /** Moves the adapter to the project `target` names (#77); a database there gets an init job. */
+  move: (slug: string, id: string, target: string): Promise<CreatedAdapter> =>
+    apiClient.post(`${one(slug, id)}/move`, {
+      schema: createAdapterResponseSchema,
+      body: { project: target },
+    }),
   setMode: (slug: string, id: string, mode: "sandbox" | "read_only"): Promise<Adapter> =>
     apiClient.post(`${one(slug, id)}/mode`, { schema: adapterSchema, body: { mode } }),
   retest: (slug: string, id: string): Promise<ProbeOutcome> =>
