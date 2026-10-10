@@ -43,8 +43,11 @@ type Capabilities = {
   transactionalRestore: boolean;         // PG: true; MySQL: true in atomic mode; Mongo: false
   snapshotRead: "repeatable-read" | "consistent-snapshot" | "snapshot-read-concern" | "best-effort";
   timeSeriesDeletes: boolean;            // Mongo >= 7.0
+  serverLogs: ServerLogSource[];         // the server-log sources this credential can read, each found by trying it (25 §25.8)
 };
 ```
+
+`readServerLog(conn, source, { limit, before, after })` answers one page of a source the probe listed, newest first, ordered by `(time, id)`, with `end` once nothing older is left (25 §25.8).
 
 Probe queries: Postgres `version()`, `has_table_privilege`, `pg_has_role(current_user, 'pg_signal_backend', 'member')`, `rolsuper`, `pg_settings` for `session_replication_role` grant, `pg_class.reltuples` sums; MySQL `VERSION()`, `SHOW GRANTS`, `information_schema.TABLES` sums; MongoDB `buildInfo`, `connectionStatus` roles, `hello` (replica set), `listCollections` count, `dbStats`.
 

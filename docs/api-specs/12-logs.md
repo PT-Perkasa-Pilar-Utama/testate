@@ -18,6 +18,10 @@ Module: `logs` ([../technical-specs/25-logs.md](../technical-specs/25-logs.md)).
 
 The same read as 12.1 for an agent token, always masked (18). Arguments: `project`, `adapter` (name or id), `source`, and optionally `from`, `to`, `level`, `text`, `limit`, `cursor`. An unknown `source` answers with the names there are.
 
+## 12.4a A database adapter
+
+`GET .../logs`, `.../logs/download`, `.../logs/sources` and `read_logs` also take a database adapter (#84; 25 §25.8). Its sources are `statements`, `server-log`, `error-log` and `slow-log`, as far as `capabilities.serverLogs` lists them; any other answers `NOT_FOUND { "sources": [...] }`. Entries carry `file: ""`. A viewer or an agent sees each statement's digest or its literals as `?`, and field values hidden.
+
 ## 12.5 `GET .../logs/sources`
 
 **Purpose.** The sources a log adapter has: a `logfile` adapter's configured names, or the sources an `ingest` adapter holds (its `service.name` folders with at least one day file). **Access.** `viewer`. **Output.** `200 { "data": ["auth", "billing", "default"] }`. **Errors.** `NOT_FOUND`, `ENGINE_UNSUPPORTED`.

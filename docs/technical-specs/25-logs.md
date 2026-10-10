@@ -83,3 +83,23 @@ Decisions Q4b and I1–I9 of the decision log. An `ingest` adapter dials nothing
 | Not here | Not in Inspect (`PROJECT_READ_ONLY`). Not in a backup (16): copy the folder. A crash can leave a torn last line; the reader shows it as plain text |
 
 One wide event per push carries `ingest_adapter`, `ingest_lines` and `ingest_malformed`, never a line.
+
+## 25.8 Database server logs
+
+Decisions D1–D7 of `docs/decisions/2026-10-10-db-server-logs.md` (#84). A read on a database adapter, not a Logs engine: a "Server logs" tab beside its tables, the same viewer, `GET .../logs` and `read_logs`.
+
+| Engine | Statements (no special role, unless noted) | Also, when the credential can read it |
+| --- | --- | --- |
+| PostgreSQL | `pg_stat_activity`: each session's latest statement and when it started; other users' sessions need `pg_read_all_stats`. Testate names its own connections `application_name = 'testate'` and leaves them out | Server log: the last 1 MB of `pg_current_logfile()` through `pg_read_file`, with `pg_read_server_files` and `logging_collector = on` |
+| MySQL | `performance_schema.events_statements_history` and `_history_long` (on when its consumer is), with `SELECT` on `performance_schema` | Error log: `performance_schema.error_log` (8.0.22+). Slow log: `mysql.slow_log` with `log_output` including `TABLE` and `slow_query_log` on |
+| MariaDB | As MySQL, and only with `performance_schema = ON` and the `events_statements_current` and a history consumer on, all off by default | Slow log, as MySQL |
+| MongoDB | `currentOp`: every user's operations with `clusterMonitor`, this user's own without it | Server log: `getLog: "global"`, the last 1024 lines in memory, with `clusterMonitor` |
+
+| Concern | Decision |
+| --- | --- |
+| Finding a source | The probe tries each candidate with the real read and stores the answers in `capabilities.serverLogs`; Retest picks up a new grant. A source the credential cannot read shows its exact grant, never a dead tab |
+| Paging | Each source is a bounded window (a snapshot, a ring buffer, a tail) paged newest first by `(time, id)` behind an opaque cursor of its own; follow polls `after` every 3 s; the window's end answers `cut_by: "window"` |
+| Times | MySQL statement times are derived from `Uptime`, so they are within a second of the clock |
+| Masking | Statement text is the data. A viewer or an agent sees the engine's digest (MySQL `DIGEST_TEXT`), else the statement with its quoted strings and numbers as `?`; a MongoDB command shows its keys with every value as `"?"`; fields show their keys with values hidden; built-in secret patterns apply on top. Testers and admins read raw text |
+| What a reader sees | Whatever the engine shows the adapter's own role: on PostgreSQL that can include other users' statements. MySQL and MariaDB statements include Testate's own reads through the same user |
+| Not here | The general query log (too large, and it is the data); managed-host log APIs (RDS, Cloud SQL); files on the database host, which a `logfile` adapter reads |

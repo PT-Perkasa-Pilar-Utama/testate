@@ -27,6 +27,15 @@ The user delegated these decisions to the advisor; they are recorded as decided 
 
 Detect each source in the probe the way `canTerminateSessions` is detected (`lib/engines/*/probe.ts`): one cheap read per candidate under a `try`, kept in the probe columns.
 
+## Build notes (amend D1)
+
+Found while building, against the compose databases:
+
+- PostgreSQL "Statements" is `pg_stat_activity`, not `pg_stat_statements`: the latter keeps totals per statement with no time per run, so it is no log. Testate's own connections now carry `application_name = 'testate'` and are left out.
+- MySQL statement times come from `TIMER_START` and `Uptime`, so they are within a second of the clock. The long history's consumer is off by default, so the per-thread history is read too.
+- MariaDB keeps every statement consumer off, even with `performance_schema` on, and history records only what `events_statements_current` passes on. The probe lists statements only when both are on; the grant line says so.
+- MongoDB `currentOp` lists internal operations with no command; they are skipped.
+
 ## Deferred
 
 | Branch | Reason | Who decides |
