@@ -51,6 +51,7 @@ Every tool takes `project` (slug) except `help`, `list_projects` and `get_job`, 
 | `diff_summary` | `project`, `diff` | 10.2 shape | existing diffs only |
 | `list_files` | `project`, `adapter`, `path?`, `cursor?` | 11.1 entries | Files adapters |
 | `preview_file` | `project`, `adapter`, `path` | `{ kind: "text" \| "json" \| "csv", content \| rows, truncated }` | 256 KiB; binaries refused |
+| `read_logs` | `project`, `adapter`, `source`, `from?`, `to?`, `level?`, `text?`, `limit?`, `cursor?` | the page of 12-logs §12.1 | 5 000 entries; always masked |
 | `run_write_query` | `project`, `adapter`, `sql`, `limit?` | `{ columns, rows, truncated, masked_columns, write_session_id }` | `qa` only; sandbox adapters; opens or reuses the token's write session; same caps as the read query |
 | `end_write_session` | `project`, `adapter` | `{ ended, stash_state_id }` | `qa` only |
 | `take_snapshot` | `project`, `name`, `notes?`, `adapters?` | `{ state: { id, name, kind }, job }` | `qa` only; waits 15 s on the job |

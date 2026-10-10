@@ -237,6 +237,18 @@ admin, exactly as a database does. Nothing stashes a file store, so a delete the
 
 **Owns.** none (host keys belong to `adapters`). **Stories.** 91 to 94. **Seams.** `lib/files`. **Deep because** three protocols look like one directory tree.
 
+## 5.11a `logs`
+
+**Responsibility.** Reading one source of a Logs adapter (25): a page newest first, filtered, masked for viewers and agents, and the same entries as JSON lines.
+
+```ts
+read(actor, slug, adapterId, query, scope): Promise<{ page: LogsPage; stats; adapterName }>
+```
+
+**Invariants.** Read-only by construction: the module has no write route and the Logs adapter no write mode. Files open through the storage resolver as the adapter's transport, so netguard and host-key trust are shared; an agent token never trusts a first-seen host key. A read never loads a whole file (10 MB ceiling, ranged reads). The wide event records what a read cost, never a line.
+
+**Owns.** none. **Stories.** see PRD (Logs). **Seams.** `lib/logs`, `lib/files`. **Deep because** several rotated files merge into one ordered, pageable stream.
+
 ## 5.12 `jobs`
 
 **Responsibility.** The persisted queue and dispatcher for every long operation.

@@ -123,17 +123,28 @@ const numberish = v.pipe(
   v.maxValue(LOG_LINE_MAX)
 );
 
+export const LOG_WINDOW_MAX_MS = 7 * 24 * 60 * 60 * 1000;
+
 /** The read query (Q6): a window, filters, and a cursor going back (`cursor`) or forward (`after`). */
-export const logsQuerySchema = v.object({
-  source: v.pipe(v.string(), v.minLength(1)),
-  from: v.optional(timestampSchema),
-  to: v.optional(timestampSchema),
-  level: v.optional(logLevelSchema),
-  text: v.optional(v.pipe(v.string(), v.maxLength(200))),
-  limit: v.optional(numberish, LOG_LINE_DEFAULT),
-  cursor: v.optional(v.string()),
-  after: v.optional(v.string()),
-});
+export const logsQuerySchema = v.pipe(
+  v.object({
+    source: v.pipe(v.string(), v.minLength(1)),
+    from: v.optional(timestampSchema),
+    to: v.optional(timestampSchema),
+    level: v.optional(logLevelSchema),
+    text: v.optional(v.pipe(v.string(), v.maxLength(200))),
+    limit: v.optional(numberish, LOG_LINE_DEFAULT),
+    cursor: v.optional(v.string()),
+    after: v.optional(v.string()),
+  }),
+  v.check(
+    (query) =>
+      query.from === undefined ||
+      query.to === undefined ||
+      Date.parse(query.to) - Date.parse(query.from) <= LOG_WINDOW_MAX_MS,
+    "A window is at most 7 days; page older entries with the cursor instead."
+  )
+);
 export type LogsQuery = v.InferOutput<typeof logsQuerySchema>;
 
 /** What cut an answer short, so a reader knows older lines exist and which ceiling hid them. */

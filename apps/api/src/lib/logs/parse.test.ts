@@ -1,4 +1,6 @@
 import { describe, expect, it } from "bun:test";
+import { logsQuerySchema } from "@testate/shared";
+import * as v from "valibot";
 
 import { fallbackLevel, levelOf, timeOf } from "./fields.ts";
 import { LINE_CAP, jsonLines, parserFor, plain, pm2, regexParser, testate } from "./parse.ts";
@@ -121,5 +123,19 @@ describe("the formats", () => {
   it("cuts a line at 16 KB before any pattern sees it", () => {
     const long = `2026-10-10T08:15:30Z ${"x".repeat(LINE_CAP * 2)}`;
     expect(parserFor({ format: "plain" })(long).message.length).toBeLessThan(LINE_CAP);
+  });
+});
+
+describe("the read query", () => {
+  it("refuses a window longer than 7 days and takes limit as a query-string number", () => {
+    const week = {
+      source: "api",
+      from: "2026-10-01T00:00:00Z",
+      to: "2026-10-08T00:00:00Z",
+      limit: "50",
+    };
+    const longer = { source: "api", from: "2026-10-01T00:00:00Z", to: "2026-10-08T00:00:01Z" };
+    expect(v.parse(logsQuerySchema, week).limit).toBe(50);
+    expect(v.safeParse(logsQuerySchema, longer).success).toBe(false);
   });
 });

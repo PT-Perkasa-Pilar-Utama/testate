@@ -36,6 +36,7 @@
 22. [Base Path and Boot](22-base-path-and-boot.md)
 23. [Agent Access](23-agent-access.md)
 24. [Table Editing, Policies, and Fixtures](24-table-editing.md)
+25. [Logs](25-logs.md)
 
 Documents 12 to 24 are ad-hoc specifications: each is the single source of truth for its concern. Other documents and task cards cite them and do not restate them.
 
