@@ -4,7 +4,7 @@
  * download (S3). Nothing here writes: the tier has no write half.
  */
 import { logfileConfigSchema } from "@testate/shared";
-import type { Actor, LogEntry, LogsPage, LogsQuery, Project } from "@testate/shared";
+import type { Actor, LogEntry, LogSource, LogsPage, LogsQuery, Project } from "@testate/shared";
 import * as v from "valibot";
 
 import type { FileSource } from "../../lib/files/index.ts";
@@ -14,13 +14,20 @@ import { createMasker, maskEntry } from "../../lib/logs/mask.ts";
 import type { Masker } from "../../lib/logs/mask.ts";
 import type { LogFile, LogFiles, SourceRead } from "../../lib/logs/read.ts";
 import { readSource } from "../../lib/logs/source.ts";
+import { isSourceName } from "../../lib/logs/ingest/line.ts";
+import type { IngestStore } from "../../lib/logs/ingest/store.ts";
+import { requireStorage } from "../adapters/adapters.files.ts";
 import type { FilesResolver } from "../adapters/adapters.files.ts";
+import type { AdapterRecord, AdaptersRepository } from "../adapters/adapters.repository.ts";
 import { masksApply } from "../data/data.masks.ts";
 import type { ProjectsRepository } from "../projects/projects.repository.ts";
 
 export type LogsDeps = {
   projects: Pick<ProjectsRepository, "bySlug">;
   files: FilesResolver;
+  adapters: Pick<AdaptersRepository, "byId">;
+  /** An `ingest` adapter's lines are Testate's own, read from disk (#75, I2). */
+  ingest: IngestStore;
 };
 
 /** What one read cost, for the request's wide event; never a line of the log itself. */
@@ -41,7 +48,13 @@ export type LogsService = {
     query: LogsQuery,
     scope: string[] | null
   ): Promise<LogsAnswer>;
+  /** A `logfile`'s configured source names, or the sources an `ingest` adapter holds. */
+  sources(slug: string, adapterId: string, scope: string[] | null): Promise<string[]>;
 };
+
+/** An unknown source names the ones there are, so a person or an agent can pick again. */
+const unknownSource = (sources: string[]): AppError =>
+  new AppError("NOT_FOUND", "log source not found", { sources });
 
 /** The directory listing and the ranged read the reader needs, over a file source. */
 export function logFilesOf(source: FileSource): LogFiles {
@@ -101,7 +114,52 @@ function pageOf(read: SourceRead, masker: Masker | null): LogsPage {
   };
 }
 
+/** One read's page and its cost, masked for viewers and agents (Q5). */
+function answerOf(
+  read: SourceRead,
+  source: LogSource,
+  actor: Actor,
+  adapterName: string
+): LogsAnswer {
+  const masker = masksApply(actor) ? createMasker(source.patterns) : null;
+  return {
+    page: pageOf(read, masker),
+    adapterName,
+    stats: {
+      source: source.name,
+      files: read.filesOpened,
+      bytes: read.bytesRead,
+      entries: read.entries.length,
+      cutBy: read.cutBy,
+    },
+  };
+}
+
+/** An ingest source is a folder of `testate` day files, with the built-in masks only (I2). */
+const ingestSource = (name: string): LogSource => ({
+  name,
+  glob: `${name}/*.jsonl`,
+  format: "testate",
+  patterns: [],
+});
+
 export function createLogsService(deps: LogsDeps): LogsService {
+  /** The project's ingest adapter, or null for any other adapter id. */
+  const ingestOf = (project: Project, adapterId: string): AdapterRecord | null => {
+    const adapter = deps.adapters.byId(adapterId);
+    return adapter?.project_id === project.id && adapter.engine === "ingest" ? adapter : null;
+  };
+  const readIngest = async (
+    actor: Actor,
+    adapter: AdapterRecord,
+    query: LogsQuery
+  ): Promise<LogsAnswer> => {
+    const held = await deps.ingest.sources(adapter.id);
+    if (!isSourceName(query.source) || !held.includes(query.source)) throw unknownSource(held);
+    const source = ingestSource(query.source);
+    const read = await readSource(deps.ingest.files(adapter.id), source, query);
+    return answerOf(read, source, actor, adapter.name);
+  };
   const projectOf = (slug: string, scope: string[] | null): Project => {
     const project = deps.projects.bySlug(slug);
     if (project === null || (scope !== null && !scope.includes(project.id)))
@@ -111,28 +169,26 @@ export function createLogsService(deps: LogsDeps): LogsService {
   return {
     async read(actor, slug, adapterId, query, scope) {
       const project = projectOf(slug, scope);
+      const ingest = ingestOf(project, adapterId);
+      if (ingest !== null) return readIngest(actor, ingest, query);
       const trustAs = actor.kind === "user" ? actor.id : null;
       const { adapter, source } = await deps.files.resolve(project.id, adapterId, trustAs, "logs");
       try {
         const config = v.parse(logfileConfigSchema, adapter.config);
         const logSource = config.sources.find((candidate) => candidate.name === query.source);
-        if (logSource === undefined) throw notFound("log source");
+        if (logSource === undefined) throw unknownSource(config.sources.map((item) => item.name));
         const read = await readSource(logFilesOf(source), logSource, query);
-        const masker = masksApply(actor) ? createMasker(logSource.patterns) : null;
-        return {
-          page: pageOf(read, masker),
-          adapterName: adapter.name,
-          stats: {
-            source: logSource.name,
-            files: read.filesOpened,
-            bytes: read.bytesRead,
-            entries: read.entries.length,
-            cutBy: read.cutBy,
-          },
-        };
+        return answerOf(read, logSource, actor, adapter.name);
       } finally {
         await source.close();
       }
+    },
+    async sources(slug, adapterId, scope) {
+      const project = projectOf(slug, scope);
+      const ingest = ingestOf(project, adapterId);
+      if (ingest !== null) return deps.ingest.sources(ingest.id);
+      const adapter = requireStorage(deps.adapters.byId(adapterId), project.id, "logs");
+      return v.parse(logfileConfigSchema, adapter.config).sources.map((item) => item.name);
     },
   };
 }

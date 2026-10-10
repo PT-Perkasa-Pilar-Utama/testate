@@ -11,8 +11,13 @@ type Kind = Pick<Project, "kind">;
  */
 export function modeOnCreate(
   project: Kind,
-  draft: Pick<AdapterDraft, "kind" | "mode">
+  draft: Pick<AdapterDraft, "kind" | "mode"> & { engine?: AdapterDraft["engine"] }
 ): AdapterMode {
+  // Pushed logs are records Testate keeps, and Inspect keeps none of its own (Q10).
+  if (draft.engine === "ingest" && project.kind === "inspect")
+    throw new AppError("PROJECT_READ_ONLY", "Inspect stores no pushed logs; use a project.", {
+      engine: draft.engine,
+    });
   if (draft.kind === "logs") return logsMode(draft.mode);
   if (project.kind === "inspect") {
     if (draft.mode === "sandbox") {

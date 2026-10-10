@@ -5,7 +5,7 @@ import { ok, param, parseSingleQuery } from "../../lib/http/index.ts";
 import type { Handler } from "../../lib/http/index.ts";
 import type { LogsAnswer, LogsService } from "./logs.service.ts";
 
-export type LogsHandlers = { read: Handler; download: Handler };
+export type LogsHandlers = { read: Handler; download: Handler; sources: Handler };
 
 type Context = Parameters<Handler>[0];
 
@@ -32,6 +32,8 @@ async function readFor(service: LogsService, c: Context): Promise<LogsAnswer> {
 export function createLogsHandlers(service: LogsService): LogsHandlers {
   return {
     read: async (c) => ok(c, (await readFor(service, c)).page),
+    sources: async (c) =>
+      ok(c, await service.sources(param(c, "slug"), param(c, "id"), c.get("projectScope"))),
     // The entries on screen as JSON lines, masked exactly as on screen (S3).
     download: async (c) => {
       const answer = await readFor(service, c);

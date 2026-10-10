@@ -7,13 +7,13 @@ import type {
   AdapterWithProject,
   Engine,
   Job,
-  JsonObject,
   ProbeOutcome,
   Project,
 } from "@testate/shared";
 
 import type { RequestMeta } from "../../lib/http/auth.ts";
 import { AppError, conflict, forbidden, notFound } from "../../lib/http/index.ts";
+import type { IngestService } from "../ingest/ingest.service.ts";
 import type { Check, Verdict } from "../../lib/netguard/index.ts";
 import type { KeyRing } from "../../lib/sealed/index.ts";
 import type { AuditService } from "../audit/audit.service.ts";
@@ -28,6 +28,7 @@ import type { StatesRepository } from "../states/states.repository.ts";
 import type { RemoveDeps } from "./adapters.deletion.ts";
 import type { AdapterDeletionPlan, DeletionAction } from "./adapters.deletion.ts";
 import {
+  adapterRecorder,
   probeColumns,
   readonlySecretsOf,
   sharedTargetWarning,
@@ -53,7 +54,12 @@ export { PLAN_TTL_MS } from "./adapters.deletion.ts";
 export type { AdapterPatch } from "./adapters.patch.ts";
 export { mergeSecrets } from "./adapters.secrets.ts";
 
-export type AdapterWithJob = { adapter: Adapter; init_job: Job | null };
+export type AdapterWithJob = {
+  adapter: Adapter;
+  init_job: Job | null;
+  /** An `ingest` adapter's token, in the create answer only (I8). */
+  ingest_token?: string | null;
+};
 
 export type AdaptersService = {
   list(slug: string, filter: AdaptersFilter): Promise<Adapter[]>;
@@ -105,6 +111,8 @@ export type AdaptersDeps = {
   fileProbe: FileProbeFn;
   jobs: Pick<JobsService, "enqueue" | "replay">;
   states: Pick<StatesRepository, "insert" | "nameTaken" | "update" | "initOf">;
+  /** An `ingest` adapter's token is minted with it and answered once (I8). */
+  ingest: Pick<IngestService, "mint">;
   now: () => Date;
 };
 
@@ -128,26 +136,9 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
     validated: ValidatedConfig,
     secrets: Secrets
   ): Promise<ProbeOutcome> => probeTarget(deps, engine, validated, secrets);
-  const record = (
-    actor: Actor,
-    action: string,
-    adapter: AdapterRecord,
-    slug: string,
-    meta: RequestMeta,
-    details: JsonObject = {}
-  ): void =>
-    audit.record({
-      actor,
-      action,
-      target_type: "adapter",
-      target_id: adapter.id,
-      target_label: adapter.name,
-      project: { id: adapter.project_id, slug },
-      adapter: { id: adapter.id, name: adapter.name },
-      details,
-      outcome: "succeeded",
-      meta,
-    });
+  const record = adapterRecorder(audit);
+  const ingestToken = (adapter: AdapterRecord): string | null =>
+    adapter.engine === "ingest" ? deps.ingest.mint(adapter.id).token : null;
   const initJob = createInitJob({ states: deps.states, jobs: deps.jobs, now: deps.now });
   /**
    * A database joins the starting point, or is repointed at another one, only while every
@@ -228,7 +219,7 @@ export function createAdaptersService(deps: AdaptersDeps): AdaptersService {
         kind: adapter.kind,
       });
       const init = takesInit(project) ? await initJob(adapter, actor, meta) : null;
-      return { adapter: toPublic(adapter), init_job: init };
+      return { adapter: toPublic(adapter), init_job: init, ingest_token: ingestToken(adapter) };
     },
     async get(slug, id) {
       return toPublic(find(projectOf(slug).id, id));

@@ -21,6 +21,7 @@ import { createArchiveImportRunner } from "../states/states.import.ts";
 import { createSnapshotRunner } from "../states/states.snapshot.ts";
 import type { QuotaSettings } from "../states/states.snapshot.ts";
 import type { Dispatcher, JobRunner, JobRunnerContext } from "./jobs.dispatcher.ts";
+import type { IngestStore } from "../../lib/logs/ingest/store.ts";
 
 export type RunnerDeps = ReturnToInitDeps & {
   db: MetadataDb;
@@ -32,6 +33,8 @@ export type RunnerDeps = ReturnToInitDeps & {
   imports: ImportsRepository;
   policies: PoliciesRepository;
   dataDir: string;
+  /** A deleted `ingest` adapter's pushed lines go with it (I3a). */
+  ingest: Pick<IngestStore, "clear">;
   audit: AuditService;
   projects: Pick<
     ProjectsRepository,
@@ -110,6 +113,7 @@ export function registerRunners(dispatcher: Dispatcher, deps: RunnerDeps): void 
     const orphans = deps.states.unpinnedOrphans(candidates);
     for (const hash of orphans) await deps.blobs.delete(hash);
     deps.states.forgetBlobs(orphans);
+    for (const action of payload.actions) await deps.ingest.clear(action.adapter_id);
     // No target_label: only the slug reaches this payload, not the project's display name, and
     // the slug already has its own column on this row (project.slug below).
     deps.audit.record({
@@ -148,6 +152,7 @@ export function registerRunners(dispatcher: Dispatcher, deps: RunnerDeps): void 
       .query("UPDATE state_adapters SET removed = 1 WHERE adapter_id = ?")
       .run(payload.adapter_id).changes;
     deps.db.query("DELETE FROM adapters WHERE id = ?").run(payload.adapter_id);
+    await deps.ingest.clear(payload.adapter_id);
     deps.audit.record({
       actor: actorOf(job),
       action: "adapter.deleted",

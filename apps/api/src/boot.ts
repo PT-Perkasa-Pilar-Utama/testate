@@ -206,6 +206,8 @@ export type RetentionTasks = {
   expireDiffs: () => Promise<number>;
   /** Stashes, query history, audit rows and payloads, import runs, download backups (16 §16.1). */
   settings: () => Promise<RetentionReport>;
+  /** Pushed logs past each ingest adapter's retention, and deleted adapters' folders (I5). */
+  ingest: () => Promise<number>;
 };
 
 /** Step 9 and the daily timer: every retention the settings name (16 §16.1), once a day. */
@@ -215,6 +217,7 @@ export function createRetention(logger: Logger, tasks: RetentionTasks): Retentio
     const swept = tasks.sweepJobs()(await tasks.historyDays());
     const diffs = await tasks.expireDiffs();
     const settings = await tasks.settings();
+    const ingest_files = await tasks.ingest();
     const event = logger.create("job");
     event.add("op", {
       name: "retention",
@@ -222,6 +225,7 @@ export function createRetention(logger: Logger, tasks: RetentionTasks): Retentio
       stubbed: swept.stubbed,
       diffs,
       ...settings,
+      ingest_files,
     });
     event.emit();
   };

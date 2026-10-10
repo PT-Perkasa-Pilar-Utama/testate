@@ -160,7 +160,9 @@ export function anonymousLimit(options: AnonymousLimit): MiddlewareHandler {
   return async (c, next) => {
     const anonymous = c.get("actor") === null;
     const probe = /\/health(\/|$)/.test(c.req.path);
-    if (anonymous && !probe) {
+    // A push carries an ingest token, not a credential; its handler charges refusals per address.
+    const push = /\/ingest\/[^/]+$/.test(c.req.path);
+    if (anonymous && !probe && !push) {
       const address = requestMeta(c, options.trustProxy).ip ?? "unknown";
       const wait = limiter.hit(address, options.anonymousPerMinute);
       if (wait !== null) throw rateLimited(wait);

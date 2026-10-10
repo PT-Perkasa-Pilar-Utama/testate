@@ -27,6 +27,7 @@ describe("testate whereis", () => {
       "not the standalone binary",
       "not installed",
       "",
+      "nothing pushed yet",
     ]);
   });
 
@@ -34,10 +35,11 @@ describe("testate whereis", () => {
     const home = mkdtempSync(join(tmpdir(), "testate-whereis-"));
     const file = join(home, ".config", "testate", "testate.env");
     writeEnvFile(file, new Map([["TESTATE_DATA_DIR", "/srv/elsewhere"]]), []);
-    const answers = [whereis(home, ["env"]), whereis(home, ["data"])];
+    const answers = [whereis(home, ["env"]), whereis(home, ["data"]), whereis(home, ["ingest"])];
     expect(answers.map((a) => [a.code, a.out])).toEqual([
       [0, `${file}\n`],
       [0, "/srv/elsewhere\n"],
+      [0, "/srv/elsewhere/logs-ingest\n"],
     ]);
   });
 
@@ -45,7 +47,7 @@ describe("testate whereis", () => {
     const answer = whereis(mkdtempSync(join(tmpdir(), "testate-whereis-")), ["config"]);
     expect([answer.code, answer.err]).toEqual([
       2,
-      "testate: whereis takes one of: env, data, bin, service, log\n",
+      "testate: whereis takes one of: env, data, bin, service, log, ingest\n",
     ]);
   });
 

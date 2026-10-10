@@ -6,6 +6,7 @@ import { TEST_META } from "../../../test/accounts.ts";
 import { PM2_LOGS } from "../../../test/logs.ts";
 import { createLogsService } from "../logs/logs.service.ts";
 import { call, createHarness } from "./agent.harness.ts";
+import { logsDepsOf } from "../../../test/logs.ts";
 
 // #69, Q9 (docs/decisions/2026-10-10-logs-tier.md): an agent reads a log source, always masked,
 // once a person has trusted the host the way storage requires.
@@ -26,7 +27,7 @@ async function withLogs() {
     ])
   );
   // A person trusts the SFTP host key on first read; an agent token never may (05 §5.11).
-  const logs = createLogsService({ projects: h.harness.projectsRepo, files: h.harness.files });
+  const logs = createLogsService(logsDepsOf(h.harness));
   await logs.read(h.harness.qa, "shop", adapter.id, { source: "api", limit: 1 }, null);
   return { h, adapter };
 }

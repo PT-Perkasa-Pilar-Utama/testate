@@ -78,6 +78,7 @@ describe("anonymous budget (07 §7.5)", () => {
     );
     a.get(`${PREFIX}/health/live`, (c) => c.body(null, 204));
     a.get(`${PREFIX}/thing`, (c) => c.json({ ok: true }));
+    a.post(`${PREFIX}/ingest/:id`, (c) => c.body(null, 202));
     return a;
   }
 
@@ -98,6 +99,15 @@ describe("anonymous budget (07 §7.5)", () => {
         200
       );
     }
+  });
+
+  // #75: a push carries an ingest token, which is no credential; its handler budgets it (I4).
+  it("never charges an app pushing logs", async () => {
+    const a = guarded();
+    const statuses: number[] = [];
+    for (const _ of [1, 2, 3, 4])
+      statuses.push((await a.request(`${PREFIX}/ingest/a1`, { method: "POST" })).status);
+    expect(statuses).toEqual([202, 202, 202, 202]);
   });
 });
 
