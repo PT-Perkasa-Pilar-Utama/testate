@@ -107,3 +107,14 @@ describe("testate setup --yes", () => {
     expect(readEnvFile(envFile(home))?.get("PORT")).toBe("7400");
   });
 });
+
+describe("when setup cannot make the data directory", () => {
+  it("says so in one line, exits 1, and writes no env file", () => {
+    const home = fresh();
+    const run = setup(home, ["--yes", "--data-dir", "/proc/testate-cannot-be-here"], PASSWORD);
+    expect(run.code).toBe(1);
+    expect(run.err.startsWith("testate: ")).toBe(true);
+    expect(run.err.split("\n").length).toBe(2);
+    expect(existsSync(envFile(home))).toBe(false);
+  });
+});
