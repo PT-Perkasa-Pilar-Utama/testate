@@ -91,7 +91,7 @@ describe("a journald adapter", () => {
 });
 
 describe("the journald probe", () => {
-  it("names the group a user needs, and a host with no journal", () => {
+  it("names the group a user needs, a host with no journal, and one with no journalctl", () => {
     const hint = "Hint: You are currently not seeing messages from other users and the system.";
     expect([
       journalWarnings(
@@ -103,6 +103,10 @@ describe("the journald probe", () => {
         "deploy"
       ),
       journalWarnings({ stdout: '{"MESSAGE":"x"}', stderr: "", code: 0, capped: false }, "deploy"),
+      journalWarnings(
+        { stdout: "", stderr: "sh: 1: journalctl: not found", code: 127, capped: false },
+        "deploy"
+      ),
     ]).toEqual([
       [
         {
@@ -112,6 +116,7 @@ describe("the journald probe", () => {
       ],
       [{ code: "no_journal", message: "journalctl found no journal on this host yet" }],
       [],
+      [{ code: "no_journalctl", message: "this host has no journalctl: it does not run systemd" }],
     ]);
   });
 });

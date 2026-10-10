@@ -109,6 +109,11 @@ export function createShellResolver(deps: ShellResolverDeps): ShellResolver {
 /** What a first `journalctl -n 1` says about the host, as warnings with their fix (J5). */
 export function journalWarnings(result: ShellResult, user: string): EngineWarning[] {
   const said = `${result.stderr}\n${result.stdout}`;
+  // A shell answers 127 for a command it cannot find: a host without systemd.
+  if (result.code === 127 || /journalctl: (command )?not found/i.test(result.stderr))
+    return [
+      { code: "no_journalctl", message: "this host has no journalctl: it does not run systemd" },
+    ];
   if (
     /no journal files were found/i.test(said) ||
     (result.code === 0 && result.stdout.trim() === "")
