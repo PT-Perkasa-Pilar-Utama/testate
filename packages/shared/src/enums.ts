@@ -25,6 +25,7 @@ export const ENGINES = [
   "logfile",
   "ingest",
   "journald",
+  "docker",
 ] as const;
 export const engineSchema = v.picklist(ENGINES);
 export type Engine = v.InferOutput<typeof engineSchema>;
