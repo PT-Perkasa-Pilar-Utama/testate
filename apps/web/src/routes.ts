@@ -2,6 +2,7 @@ import type { RouteDef } from "./lib/router.ts";
 
 export const ROUTE_NAMES = [
   "home",
+  "databases",
   "storage",
   "login",
   "projects",
@@ -47,8 +48,8 @@ export const ROUTES: readonly RouteDef<RouteName>[] = [
   // The old name still resolves: it was in links and in the toolbar for a release.
   { name: "policies", pattern: "/projects/:slug/adapters/:id/policies", role: "admin" },
   { name: "files", pattern: "/projects/:slug/adapters/:id/files", role: "viewer" },
-  // A file store never enters a state and never gets checked out, so it is not a project
-  // primitive; it gets its own screen.
+  // A tier is a menu (#63): every database, every file store, each on its own screen.
+  { name: "databases", pattern: "/databases", role: "viewer" },
   { name: "storage", pattern: "/storage", role: "viewer" },
   { name: "jobs", pattern: "/jobs", role: "viewer" },
   { name: "account", pattern: "/account", role: "viewer" },

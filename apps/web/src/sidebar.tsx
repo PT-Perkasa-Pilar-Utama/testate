@@ -32,6 +32,7 @@ const NAV: readonly {
 }[] = [
   { label: "Home", path: "/", role: "viewer", icon: "house" },
   { label: "Projects", path: "/projects", role: "viewer", icon: "folder" },
+  { label: "Databases", path: "/databases", role: "viewer", icon: "database" },
   { label: "Storage", path: "/storage", role: "viewer", icon: "hard-drive" },
   { label: "Jobs", path: "/jobs", role: "viewer", icon: "activity" },
   { label: "Tools", path: "/tools", role: "viewer", icon: "wrench" },

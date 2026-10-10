@@ -1,8 +1,9 @@
 import * as v from "valibot";
-import type { Adapter, JsonObject } from "@testate/shared";
+import type { Adapter, AdapterWithProject, JsonObject } from "@testate/shared";
 import {
   adapterDeletionPlanSchema,
   adapterSchema,
+  adapterWithProjectSchema,
   createAdapterResponseSchema,
   jobSchema,
   probeOutcomeSchema,
@@ -27,6 +28,9 @@ export const adaptersModel = {
   /** Databases only: a file store lives on its own screen. */
   list: (slug: string): Promise<Adapter[]> =>
     apiClient.get(base(slug), { schema: v.array(adapterSchema), query: { kind: "database" } }),
+  /** Every database this session may see, across projects: the Databases screen (#63). */
+  everywhere: (): Promise<AdapterWithProject[]> =>
+    apiClient.get("/database-adapters", { schema: v.array(adapterWithProjectSchema) }),
   get: (slug: string, id: string): Promise<Adapter> =>
     apiClient.get(one(slug, id), { schema: adapterSchema }),
   test: (slug: string, body: JsonObject): Promise<ProbeOutcome> =>
