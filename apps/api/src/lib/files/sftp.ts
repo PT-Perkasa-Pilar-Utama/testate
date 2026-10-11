@@ -64,8 +64,19 @@ export function createSftpSource(
   let client: SftpClient | null = null;
   let wrapper: SFTPWrapper | null = null;
   let rejected: HostKey | null = null;
+  // Calls made together share one connect: each used to open its own, and close() ended only the
+  // last, so a parallel read (a resource reading's five) left SSH connections open behind it.
+  let connecting: Promise<SftpClient> | null = null;
   const connect = async (): Promise<SftpClient> => {
     if (client !== null) return client;
+    connecting ??= open();
+    try {
+      return await connecting;
+    } finally {
+      connecting = null;
+    }
+  };
+  const open = async (): Promise<SftpClient> => {
     const next = createClient();
     const options: Parameters<SftpClient["connect"]>[0] = {
       host: config.address ?? config.host,
@@ -216,10 +227,17 @@ export function createSftpSource(
       return { client: sftp, wrapper };
     }),
     async close() {
-      const open = client;
+      let opened = client;
+      if (opened === null && connecting !== null) {
+        try {
+          opened = await connecting;
+        } catch {
+          opened = null;
+        }
+      }
       client = null;
       wrapper = null;
-      if (open !== null) await open.end().catch(() => false);
+      if (opened !== null) await opened.end().catch(() => false);
     },
   };
 }
