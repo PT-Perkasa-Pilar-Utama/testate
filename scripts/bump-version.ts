@@ -41,9 +41,9 @@ const SLOTS: Slot[] = [
     pattern: VERSION_CONSTANT,
     render: (version: string) => `export const VERSION = "${version}";`,
   },
-  // What a person reads: the README's install command and status line, the homepage's eyebrow,
-  // structured data and install command, and the banner's eyebrow. These drifted for a release
-  // once because only the manifests were written.
+  // What a person reads: the README's install command and status line, the verify commands in
+  // docs/INSTALL.md, the homepage's eyebrow, structured data and install command, and the
+  // banner's eyebrow. These drifted for a release once because only the manifests were written.
   {
     file: "README.md",
     pattern: /ghcr\.io\/pt-perkasa-pilar-utama\/testate:([^\s"'`]+)/,
@@ -51,7 +51,13 @@ const SLOTS: Slot[] = [
     all: true,
   },
   {
-    file: "README.md",
+    file: "docs/INSTALL.md",
+    pattern: /ghcr\.io\/pt-perkasa-pilar-utama\/testate:([^\s"'`]+)/,
+    render: (version: string) => `ghcr.io/pt-perkasa-pilar-utama/testate:${version}`,
+    all: true,
+  },
+  {
+    file: "docs/INSTALL.md",
     pattern: /docker\.io\/snowfluke\/testate:([^\s"'`]+)/,
     render: (version: string) => `docker.io/snowfluke/testate:${version}`,
     all: true,

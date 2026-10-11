@@ -38,9 +38,9 @@ The controls behind this, checked against the OWASP lists, the IEEE secure-desig
 secure engineering practices, are in [docs/SECURITY_STANDARDS.md](docs/SECURITY_STANDARDS.md),
 which also says what has to be true before an instance faces the internet.
 
-Reports in scope: anything that lets a role do more than the table in the README says, reads a
-sealed value back, reaches a denied address, escapes a masked column, or writes through a Guest
-agent token.
+Reports in scope: anything that lets a role do more than the role table in
+[docs/PRD.md](docs/PRD.md) says, reads a sealed value back, reaches a denied address, escapes a
+masked column, or writes through a Guest agent token.
 
 Out of scope: vulnerabilities in the database engines themselves, issues that require write
 access to the host filesystem or the data volume, and findings against a deliberately weakened
@@ -57,8 +57,8 @@ check without trusting us:
   `cosign`.
 - **A CycloneDX SBOM** attached to each release.
 
-The exact commands are in the README under "Verify a download". An artifact that lacks a matching
-attestation is not ours; report it through the address above.
+The exact commands are in [docs/INSTALL.md](docs/INSTALL.md#verify-a-download). An artifact that
+lacks a matching attestation is not ours; report it through the address above.
 
 ## Dependencies
 
