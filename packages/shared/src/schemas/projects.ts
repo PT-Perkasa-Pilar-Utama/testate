@@ -1,6 +1,6 @@
 import * as v from "valibot";
 
-import { headStatusSchema, projectKindSchema } from "../enums.ts";
+import { dataChangeActionSchema, headStatusSchema, projectKindSchema } from "../enums.ts";
 import { idSchema, slugSchema, timestampSchema } from "./common.ts";
 
 export const headSchema = v.object({
@@ -16,6 +16,24 @@ export const headSchema = v.object({
   dirty: v.boolean(),
 });
 export type Head = v.InferOutput<typeof headSchema>;
+
+/**
+ * The newest act by someone other than the caller that changed this project's live data (#60).
+ * `target_label` is the state for a checkout, the normalizer for an import, the path for a file,
+ * and null for a write session; `adapter_name` is null for a checkout, which spans the project.
+ */
+export const lastChangeSchema = v.object({
+  last_change: v.nullable(
+    v.object({
+      action: dataChangeActionSchema,
+      actor: v.object({ kind: v.picklist(["user", "token"]), label: v.string() }),
+      target_label: v.nullable(v.string()),
+      adapter_name: v.nullable(v.string()),
+      at: timestampSchema,
+    })
+  ),
+});
+export type LastChange = v.InferOutput<typeof lastChangeSchema>;
 
 export const projectSchema = v.object({
   id: idSchema,

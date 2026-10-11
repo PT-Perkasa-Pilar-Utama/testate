@@ -1,7 +1,7 @@
 import { createdRangeConditions } from "../../lib/db/date-range.ts";
 import { likeTerm } from "../../lib/db/like.ts";
 import type { AuditRow, JsonObject } from "@testate/shared";
-import { jsonObjectSchema } from "@testate/shared";
+import { DATA_CHANGE_ACTIONS, jsonObjectSchema } from "@testate/shared";
 import * as v from "valibot";
 
 import type { MetadataDb } from "../../lib/db/index.ts";
@@ -78,6 +78,8 @@ export type AuditRepository = {
   list(query: AuditListQuery): AuditPage;
   /** How many rows the filter matches, ignoring the page. */
   total(query: AuditListQuery): number;
+  /** The newest row that changed the project's live data, by anyone but `actorId` (#60). */
+  lastChange(projectId: string, actorId: string): AuditRow | null;
 };
 
 function actorOf(record: AuditRecord): AuditRow["actor"] {
@@ -234,6 +236,19 @@ export function createAuditRepository(db: MetadataDb): AuditRepository {
         .query(`SELECT COUNT(*) AS n FROM audit_logs${where}`)
         .get(...found.flatMap((item) => item.params));
       return v.parse(v.object({ n: v.number() }), row).n;
+    },
+    lastChange(projectId, actorId) {
+      const marks = DATA_CHANGE_ACTIONS.map(() => "?").join(",");
+      // A dry-run import writes nothing; a system row has neither id and is never the caller.
+      const record = db
+        .query(
+          `SELECT * FROM audit_logs WHERE project_id = ? AND action IN (${marks})
+             AND NOT (action = 'import.run' AND json_extract(details, '$.dry_run') = 1)
+             AND COALESCE(actor_user_id, actor_token_id, '') <> ?
+           ORDER BY created_at DESC, id DESC LIMIT 1`
+        )
+        .get(projectId, ...DATA_CHANGE_ACTIONS, actorId);
+      return record === null ? null : toRow(v.parse(auditRecordSchema, record));
     },
     list(query) {
       const found = conditions(query);

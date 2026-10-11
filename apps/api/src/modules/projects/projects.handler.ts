@@ -24,6 +24,7 @@ export type ProjectsHandlers = {
   get: Handler;
   update: Handler;
   head: Handler;
+  lastChange: Handler;
   quota: Handler;
   deletionPlan: Handler;
   deleteProject: Handler;
@@ -126,6 +127,7 @@ export function createProjectsHandlers(
       return ok(c, await service.update(currentActor(c), param(c, "slug"), patch, meta(c)));
     },
     head: async (c) => ok(c, await service.head(param(c, "slug"))),
+    lastChange: async (c) => ok(c, await service.lastChange(currentActor(c), param(c, "slug"))),
     quota: async (c) => ok(c, await service.quota(param(c, "slug"))),
     deletionPlan: async (c) => ok(c, await service.deletionPlan(param(c, "slug"))),
     deleteProject: async (c) => {
