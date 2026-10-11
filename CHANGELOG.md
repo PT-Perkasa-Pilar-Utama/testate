@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0 (unreleased)
+## 2.0.0
 
 Testate becomes one binary you install with one line, gains a fourth tier for logs, and scopes
 each viewer and tester to the projects someone chose. Upgrading runs five migrations on boot

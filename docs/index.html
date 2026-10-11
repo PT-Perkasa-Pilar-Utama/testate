@@ -34,7 +34,7 @@
         "name": "Testate",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Linux, macOS, Windows",
-        "softwareVersion": "1.2.0",
+        "softwareVersion": "2.0.0",
         "license": "https://opensource.org/licenses/MIT",
         "url": "https://pt-perkasa-pilar-utama.github.io/testate/",
         "codeRepository": "https://github.com/PT-Perkasa-Pilar-Utama/testate",
@@ -72,6 +72,7 @@
         <a href="#agents">Agents</a>
         <a href="#integrate">Integration</a>
         <a href="#start">Start</a>
+        <a href="demo/">Demo</a>
         <a class="gh" href="https://github.com/PT-Perkasa-Pilar-Utama/testate">GitHub</a>
       </nav>
     </header>
@@ -86,6 +87,7 @@
       <li><a href="#integrate">Agent</a></li>
       <li><a href="#start">Start</a></li>
       <li><a href="#not">Limits</a></li>
+      <li><a href="demo/">Demo</a></li>
     </ol>
 
     <main id="top">
@@ -104,7 +106,7 @@
 
         <div class="wrap">
           <div class="copy">
-            <p class="eyebrow fade">Self-hosted · v1.2.0 · MIT</p>
+            <p class="eyebrow fade">Self-hosted · v2.0.0 · MIT</p>
             <h1 aria-label="Git for your test database.">
               <span class="w"><span style="animation-delay: 0ms">Git</span></span>
               <span class="w"><span style="animation-delay: 60ms">for</span></span>
@@ -117,8 +119,8 @@
               <strong>Break them. Put them back in seconds,</strong> and see exactly what changed.
             </p>
             <div class="actions fade" style="animation-delay: 420ms">
-              <a class="btn" href="#get">Install in one line</a>
-              <a class="btn ghost" href="demo/">Try it in your browser</a>
+              <a class="btn" href="demo/">Try the demo</a>
+              <a class="btn ghost" href="#get">Install in one line</a>
             </div>
             <div class="hud fade" style="animation-delay: 600ms" aria-live="off">
               <div class="ticks" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
@@ -160,13 +162,13 @@
                 data-cmd='docker run -d --name testate -p 7378:7378 -v testate-data:/data \
   -e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
   -e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
-  ghcr.io/pt-perkasa-pilar-utama/testate:1.2.0'
+  ghcr.io/pt-perkasa-pilar-utama/testate:2.0.0'
               >
                 <pre><span class="ps">$</span> docker run -d --name testate -p 7378:7378 \
     -v testate-data:/data \
     -e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
     -e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
-    ghcr.io/pt-perkasa-pilar-utama/testate:1.2.0</pre>
+    ghcr.io/pt-perkasa-pilar-utama/testate:2.0.0</pre>
                 <button class="copy" type="button">copy</button>
               </div>
               <p class="label">Or connect your agent, with an agent token from the dashboard</p>
@@ -179,6 +181,9 @@
     --header "Authorization: Bearer tst_YOUR_TOKEN"</pre>
                 <button class="copy" type="button">copy</button>
               </div>
+              <p class="label">
+                Or no install at all: <a href="demo/">try it in your browser</a>, on sample data.
+              </p>
               <p class="label muted">
                 Windows: <code>testate_windows_amd64.zip</code> from the
                 <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate/releases">releases</a>.
@@ -521,7 +526,7 @@ testate service install"
               <div class="bar" aria-hidden="true"><i></i><i></i><i></i></div>
               <button class="copy" type="button">copy</button>
               <div class="p">curl -fsSL https://pt-perkasa-pilar-utama.github.io/testate/install.sh | sh</div>
-              <div class="o">Installed testate 1.2.0 to /home/you/.local/bin/testate</div>
+              <div class="o">Installed testate 2.0.0 to /home/you/.local/bin/testate</div>
               <div class="p">testate setup</div>
               <div class="o">Wrote /home/you/.config/testate/testate.env (mode 600)</div>
               <div class="p">testate service install</div>

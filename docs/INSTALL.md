@@ -64,13 +64,13 @@ pm2 save                       # and `pm2 startup` once, to start it at boot
 Every release is built by this repository's own workflow and leaves a trail you can check without trusting us: SLSA build provenance and a keyless Sigstore signature on the image and on every binary, plus a CycloneDX SBOM.
 
 ```sh
-gh attestation verify oci://ghcr.io/pt-perkasa-pilar-utama/testate:1.2.0 \
+gh attestation verify oci://ghcr.io/pt-perkasa-pilar-utama/testate:2.0.0 \
   --repo PT-Perkasa-Pilar-Utama/testate
-cosign verify ghcr.io/pt-perkasa-pilar-utama/testate:1.2.0 \
+cosign verify ghcr.io/pt-perkasa-pilar-utama/testate:2.0.0 \
   --certificate-identity-regexp 'https://github.com/PT-Perkasa-Pilar-Utama/testate/' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
-Both commands hold for `docker.io/snowfluke/testate:1.2.0` too: it is the same manifest, copied by digest and signed again where it lives.
+Both commands hold for `docker.io/snowfluke/testate:2.0.0` too: it is the same manifest, copied by digest and signed again where it lives.
 
 For a binary, run the same two commands on the archive, with `--bundle <archive>.sigstore.json` for cosign; the release also carries `testate.intoto.jsonl`, the provenance statement for every archive, for a check without network access (`gh attestation verify <archive> --bundle <that file>`). A download that fails either check is not ours; [SECURITY.md](../SECURITY.md) says how to report it.

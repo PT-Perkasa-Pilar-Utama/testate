@@ -20,7 +20,7 @@
 
 **Git for your test database.** Snapshot it, break it, put it back in seconds.
 
-Testate runs beside the system under test, takes data-only snapshots of its databases, and puts any of them back on demand. One binary or one container, one data directory, no account, no telemetry. Version 1.2.0.
+Testate runs beside the system under test, takes data-only snapshots of its databases, and puts any of them back on demand. One binary or one container, one data directory, no account, no telemetry. Version 2.0.0.
 
 Every QA team knows this chat:
 
@@ -65,7 +65,7 @@ openssl rand -base64 32 > testate.key     # keep this file; every upgrade needs 
 docker run -d --name testate -p 7378:7378 -v testate-data:/data \
   -e TESTATE_SECRETS_ACTIVE_KEY="$(cat testate.key)" \
   -e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
-  ghcr.io/pt-perkasa-pilar-utama/testate:1.2.0
+  ghcr.io/pt-perkasa-pilar-utama/testate:2.0.0
 ```
 
 The same image is on Docker Hub as `snowfluke/testate`. Compose, a reverse proxy and upgrades: [Deployment plan](docs/DEPLOYMENT_PLAN.md).
