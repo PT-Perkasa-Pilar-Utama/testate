@@ -97,3 +97,7 @@ Project object:
 **Access.** `qa`.
 
 **Output.** `200 { "data": { "quota_bytes": 10737418240 } }` — the instance's `quota.default_bytes` setting. **Traceability.** Story 10.
+
+## 4.10 `GET /projects/{slug}/last-change`
+
+**Purpose.** Who else changed the project's data last, for the warning before a checkout, an import or a write session ([decisions](../decisions/2026-10-11-tester-collisions.md)). **Access.** `viewer`, under the project scope. **Behavior.** The newest audit row in the project whose action is `checkout.created`, `import.run` (not a dry run), `write_session.started`, `file.uploaded`, `file.renamed`, `file.copied` or `file.deleted`, and whose actor is not the caller. A token counts as another actor. A row past `audit_days` is gone, and then the answer is `null`. **Output.** `200 { "data": { "last_change": { "action": "checkout.created", "actor": { "kind": "user", "label": "tina" }, "target_label": "before-refund", "adapter_name": null, "at": "..." } } }`, or `{ "last_change": null }`. `target_label` is the state, the normalizer or the path; `adapter_name` is null for a checkout. **Errors.** `NOT_FOUND`. **Traceability.** Story 164.

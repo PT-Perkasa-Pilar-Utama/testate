@@ -71,6 +71,7 @@ get(actor, slug): Promise<ProjectOverview>          // HEAD, head status, adapte
 list(actor, page): Promise<Page<Project>>           // scoped for tokens
 setHead(slug, stateId | null, status: "at_state" | "unknown" | "none", event): Promise<void>   // called by checkouts, states, jobs recovery
 quotaUsage(slug): Promise<{ usedBytes; quotaBytes; instanceUsedBytes; instanceCeilingBytes }>
+lastChange(actor, slug): Promise<LastChange>         // newest data change by anyone but actor, from audit (#60)
 deletionPlan(actor, slug): Promise<DeletionPlan>    // per database adapter: restore | force | skip(reason)
 deleteProject(actor, slug, { confirmSlug; plan: PlanChoice[] }, event): Promise<Job>   // job kind project_delete
 ```
@@ -79,7 +80,7 @@ deleteProject(actor, slug, { confirmSlug; plan: PlanChoice[] }, event): Promise<
 | Ordering | `deletionPlan` must be fetched before `deleteProject`; the plan is re-validated at job start (adapter mode, reachability) and the job fails on a mismatch. |
 | Error modes | `CONFLICT` (slug taken, wrong confirm slug, plan stale), `JOB_IN_PROGRESS` (any job on the project), `FORBIDDEN`. |
 
-**Owns.** `projects`. **Stories.** 10 to 16. **Deep because** HEAD semantics and the deletion recipe live here and nowhere else.
+**Owns.** `projects`. **Stories.** 10 to 16, 164. **Deep because** HEAD semantics and the deletion recipe live here and nowhere else.
 
 ## 5.5 `adapters`
 

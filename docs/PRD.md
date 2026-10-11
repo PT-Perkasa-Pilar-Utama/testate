@@ -75,6 +75,7 @@ apart on what a checkout does.
 14. As an admin, I want a deletion plan that shows, per adapter, whether Testate will restore, force-restore over drift, or skip (read-only, unreachable, or removed), and lets me choose per adapter, so that deletion never surprises me.
 15. As an admin, I want the project to stay in place when any planned restore fails, with HEAD unknown on the failed adapters and a retry, so that a failed cleanup is visible, not silent.
 16. As an admin, I want to set a storage quota per project and an instance-wide storage ceiling, so that neither one project nor the sum of projects fills the disk.
+164. As a QA engineer, I want to see who last changed a project's data, and when, before I check out, import or start writing, so that I do not overwrite a colleague's work without asking first.
 165. As a QA engineer, I want to take a reading of the hosts and database servers behind a project before and after a test run, and compare the two, so that I can tell a failure the machine caused from one the data caused.
 
 ### Database adapters
