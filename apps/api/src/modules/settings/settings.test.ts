@@ -2,7 +2,8 @@ import { describe, expect, it } from "bun:test";
 
 import { TEST_META } from "../../../test/accounts.ts";
 import { PG, createSettled } from "../../../test/adapters.ts";
-import { settingsSchema } from "@testate/shared";
+import { settingsSchema, updateSettingsSchema } from "@testate/shared";
+import * as v from "valibot";
 import { expectContract } from "../../../test/contract.ts";
 import { IDLE_SETTINGS_DEPS } from "../../../test/settings.ts";
 import { createSettingsHarness } from "../../../test/settings-harness.ts";
@@ -49,6 +50,16 @@ describe("settings", () => {
       ["a.b", 1],
       ["log.sample_rate_by_route", { x: 0.5 }],
     ]);
+  });
+
+  it("takes 0 as the monitor interval, which pauses polling, and refuses less (#101)", async () => {
+    const h = await createSettingsHarness();
+    const paused = v.parse(updateSettingsSchema, { limits: { monitor_interval_seconds: 0 } });
+    const updated = await h.settings.update(h.harness.admin, paused, TEST_META);
+    expect(updated.limits.monitor_interval_seconds).toBe(0);
+    expect(
+      v.safeParse(updateSettingsSchema, { limits: { monitor_interval_seconds: -1 } }).success
+    ).toBe(false);
   });
 
   it("a deny list change re-checks every adapter and disables the blocked ones", async () => {

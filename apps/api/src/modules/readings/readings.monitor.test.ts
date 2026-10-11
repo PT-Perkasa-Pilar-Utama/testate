@@ -20,12 +20,12 @@ const bytes = (text: string): MemoryFile => ({
 
 type Counted = { opened: number; closed: number };
 
-/** The resolver, counting the logins it opens and the ones closed. */
+/** The resolver, counting the logins it tries to open and the ones closed. */
 function counting(files: FilesResolver, count: Counted): FilesResolver {
   return {
     resolve: async (...args) => {
-      const resolved = await files.resolve(...args);
       count.opened += 1;
+      const resolved = await files.resolve(...args);
       const close = resolved.source.close;
       resolved.source.close = async () => {
         count.closed += 1;
@@ -58,6 +58,7 @@ async function monitor(): Promise<Monitor> {
     ring: h.ring,
     files,
     pause: async () => {},
+    now: () => h.now().getTime(),
   });
   const readings = createReadingsService({
     repo: createReadingsRepository(h.db),
@@ -131,7 +132,7 @@ describe("the monitor's polled readings (#101)", () => {
     expect(count).toEqual({ opened: 2, closed: 2 });
   });
 
-  it("drops a kept login that read nothing, and opens a fresh one on the next poll", async () => {
+  it("drops a kept login that read nothing, and waits five minutes before the next", async () => {
     const { h, readings, count } = await monitor();
     await readings.poll(PROJECT_ID);
     const key = h.sftpKey.current;
@@ -140,7 +141,38 @@ describe("the monitor's polled readings (#101)", () => {
     expect(count).toEqual({ opened: 1, closed: 1 });
     h.sftpKey.current = key;
     await readings.poll(PROJECT_ID);
+    expect(count.opened).toBe(1);
+    h.advance(5 * 60_000);
+    await readings.poll(PROJECT_ID);
     expect(count).toEqual({ opened: 2, closed: 1 });
+  });
+
+  it("tries a host whose key no one trusted once per five minutes, not once per tick", async () => {
+    const h = await createAdaptersHarness();
+    await h.adapters.create(h.qa, "shop", SFTP, { ip: null, user_agent: null, request_id: null });
+    const count = { opened: 0, closed: 0 };
+    const sources = readingSources({
+      engines: h.engines,
+      ring: h.ring,
+      files: counting(h.files, count),
+      pause: async () => {},
+      now: () => h.now().getTime(),
+    });
+    const readings = createReadingsService({
+      repo: createReadingsRepository(h.db),
+      projects: h.projectsRepo,
+      adapters: h.repo,
+      readServer: sources.readServer,
+      readHost: sources.readHost,
+      now: h.now,
+    });
+    for (const _tick of [1, 2, 3]) await readings.poll(PROJECT_ID);
+    expect(count.opened).toBe(1);
+    const [row] = (await readings.list("shop", 1)).rows;
+    expect(row?.adapters[0]?.unavailable[0]?.reason).toContain("not trusted yet");
+    h.advance(5 * 60_000);
+    await readings.poll(PROJECT_ID);
+    expect(count.opened).toBe(2);
   });
 });
 

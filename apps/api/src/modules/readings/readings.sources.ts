@@ -9,6 +9,7 @@ import type { EngineRegistry } from "../../lib/engines/index.ts";
 import { AppError } from "../../lib/http/index.ts";
 import { readHost } from "../../lib/resources/host.ts";
 import type { Pause } from "../../lib/resources/host.ts";
+import { reasonOf } from "../../lib/resources/read.ts";
 import type { ResourceRead } from "../../lib/resources/read.ts";
 import type { KeyRing } from "../../lib/sealed/index.ts";
 import type { FileSource } from "../../lib/files/index.ts";
@@ -23,7 +24,24 @@ export type ReadingSourceDeps = {
   files: FilesResolver;
   /** Between the two reads of a counter; tests pass one that does not wait. */
   pause?: Pause;
+  /** Milliseconds since the epoch, for the wait after a refusal; tests move it. */
+  now?: () => number;
 };
+
+/**
+ * How long the poller leaves a host alone after a login that read nothing: an untrusted host key,
+ * a wrong password, a host that is down. Without it each tick is one more failed SSH login in the
+ * host's auth log. ponytail: a fixed 5 minutes; back off further if a host stays down for days.
+ */
+const RETRY_MS = 5 * 60_000;
+
+/** A login that read nothing: the adapter as it was then, when, and the first reason given. */
+type Refusal = { stamp: string; at: number; reason: string };
+
+const refusedRead = (reason: string): ResourceRead => ({
+  values: [],
+  unavailable: [{ key: "adapter", reason }],
+});
 
 /** A kept login: the adapter as it was when opened, and whether a read is still on it. */
 type Kept = { stamp: string; source: Promise<FileSource>; busy: boolean };
@@ -48,6 +66,8 @@ async function readOnce(source: FileSource, pause: Pause | undefined): Promise<R
 
 export function readingSources(deps: ReadingSourceDeps): ReadingSources {
   const kept = new Map<string, Kept>();
+  const refused = new Map<string, Refusal>();
+  const now = deps.now ?? Date.now;
   const open = (adapter: AdapterRecord, trustAs: string | null): Promise<FileSource> => {
     const kind = adapter.kind === "logs" ? "logs" : "storage";
     return deps.files
@@ -67,6 +87,35 @@ export function readingSources(deps: ReadingSourceDeps): ReadingSources {
     const fresh = { stamp: adapter.updated_at, source: open(adapter, null), busy: false };
     kept.set(adapter.id, fresh);
     return fresh;
+  };
+  /** The last refusal, while it is recent and the adapter has not changed since. */
+  const recentRefusal = (adapter: AdapterRecord): Refusal | null => {
+    const refusal = refused.get(adapter.id);
+    if (refusal === undefined) return null;
+    if (refusal.stamp === adapter.updated_at && now() - refusal.at < RETRY_MS) return refusal;
+    refused.delete(adapter.id);
+    return null;
+  };
+  const refuse = async (adapter: AdapterRecord, reason: string): Promise<void> => {
+    refused.set(adapter.id, { stamp: adapter.updated_at, at: now(), reason });
+    await drop(adapter.id);
+  };
+  const readKept = async (adapter: AdapterRecord): Promise<ResourceRead> => {
+    const refusal = recentRefusal(adapter);
+    if (refusal !== null) return refusedRead(refusal.reason);
+    const entry = await keptFor(adapter);
+    entry.busy = true;
+    try {
+      const read = await readOnce(await entry.source, deps.pause);
+      entry.busy = false;
+      // Every part failed: the login is refused or dead, so wait before the next attempt.
+      if (read.values.length === 0)
+        await refuse(adapter, read.unavailable[0]?.reason ?? "the host answered nothing");
+      return read;
+    } catch (cause: unknown) {
+      if (kept.get(adapter.id) === entry) await refuse(adapter, reasonOf(cause));
+      throw cause;
+    }
   };
   return {
     async readServer(adapter: AdapterRecord): Promise<ResourceRead> {
@@ -90,21 +139,10 @@ export function readingSources(deps: ReadingSourceDeps): ReadingSources {
           await source.close();
         }
       }
-      const entry = await keptFor(adapter);
-      entry.busy = true;
-      try {
-        const read = await readOnce(await entry.source, deps.pause);
-        entry.busy = false;
-        // Every part failed: the login itself is likely dead, so the next tick opens a fresh one.
-        if (read.values.length === 0) await drop(adapter.id);
-        return read;
-      } catch (cause: unknown) {
-        // A refused or dropped login opens afresh on the next tick.
-        if (kept.get(adapter.id) === entry) await drop(adapter.id);
-        throw cause;
-      }
+      return readKept(adapter);
     },
     async release(live) {
+      for (const id of refused.keys()) if (!live.has(id)) refused.delete(id);
       await Promise.all([...kept.keys()].filter((id) => !live.has(id)).map(drop));
     },
     async closeAll() {
