@@ -3,6 +3,7 @@ import type { Reading } from "@testate/shared";
 
 import { humanMessage } from "@/lib/api-error.ts";
 import { createRefreshable } from "@/lib/async.ts";
+import { counted } from "@/lib/format.ts";
 import type { Refreshable } from "@/lib/async.ts";
 import { showToast } from "@/lib/toast.ts";
 import { readingsModel } from "./readings.model.ts";
@@ -49,7 +50,9 @@ export function createReadingsPresenter(slug: () => string): ReadingsPresenter {
         const reading = await readingsModel.take(staticSlug);
         const missing = reading.adapters.reduce((sum, item) => sum + item.unavailable.length, 0);
         showToast(
-          missing === 0 ? "Reading taken" : `Reading taken; ${missing} values could not be read`,
+          missing === 0
+            ? "Reading taken"
+            : `Reading taken; ${counted(missing, "values")} could not be read`,
           missing === 0 ? "success" : "info"
         );
         setPicked([reading.id]);
