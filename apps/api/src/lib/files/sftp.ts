@@ -1,8 +1,12 @@
 import { Readable } from "node:stream";
 import type { Entry } from "@testate/shared";
+import type { SFTPWrapper } from "ssh2";
 import SftpClient from "ssh2-sftp-client";
+import * as v from "valibot";
 
 import { AppError } from "../http/index.ts";
+import { HOST_FILES } from "../resources/host.ts";
+import type { HostIo, Statvfs } from "../resources/host.ts";
 import {
   alreadyThere,
   byName,
@@ -58,6 +62,7 @@ export function createSftpSource(
 ): FileSource {
   const where = `${config.host}:${config.port}`;
   let client: SftpClient | null = null;
+  let wrapper: SFTPWrapper | null = null;
   let rejected: HostKey | null = null;
   const connect = async (): Promise<SftpClient> => {
     if (client !== null) return client;
@@ -79,7 +84,7 @@ export function createSftpSource(
     if (config.privateKey !== undefined) options.privateKey = config.privateKey;
     if (config.passphrase !== undefined) options.passphrase = config.passphrase;
     try {
-      await next.connect(options);
+      wrapper = await next.connect(options);
     } catch (cause: unknown) {
       if (rejected !== null) {
         throw new AppError("CONFLICT", "the SFTP host key changed", {
@@ -205,10 +210,59 @@ export function createSftpSource(
         await sftp.rename(joinPath(config.root_path, source), joinPath(config.root_path, target));
       });
     },
+    host: hostOf(config.root_path, async () => {
+      const sftp = await connect();
+      if (wrapper === null) throw unreachable(new Error("no SFTP channel"), "sftp", where);
+      return { client: sftp, wrapper };
+    }),
     async close() {
       const open = client;
       client = null;
+      wrapper = null;
       if (open !== null) await open.end().catch(() => false);
+    },
+  };
+}
+
+/** A `/proc` file is small; this caps a server that streams something else at that path. */
+const HOST_TEXT_MAX = 256 * 1024;
+
+const statvfsAnswer = v.object({
+  f_frsize: v.number(),
+  f_blocks: v.number(),
+  f_bavail: v.number(),
+});
+
+type Channel = { client: SftpClient; wrapper: SFTPWrapper };
+
+/**
+ * The host behind the login (#38): only the files in HOST_FILES, by absolute path, whatever the
+ * root; and the disk the root sits on, through the OpenSSH `statvfs` extension.
+ */
+function hostOf(rootPath: string, channel: () => Promise<Channel>): HostIo {
+  return {
+    async text(path) {
+      if (!HOST_FILES.some((file) => file === path))
+        throw new AppError("VALIDATION_ERROR", `${path} is not a host file Testate reads`);
+      const { client } = await channel();
+      const parts: Uint8Array[] = [];
+      let size = 0;
+      for await (const part of client.createReadStream(path)) {
+        parts.push(new Uint8Array(part));
+        size += part.length;
+        if (size > HOST_TEXT_MAX) break;
+      }
+      return Buffer.concat(parts).subarray(0, HOST_TEXT_MAX).toString("utf8");
+    },
+    async statvfs(path) {
+      const { wrapper } = await channel();
+      const target = joinPath(rootPath, normalizePath(path));
+      return new Promise<Statvfs>((resolve, reject) => {
+        wrapper.ext_openssh_statvfs(target, (error, info) => {
+          if (error !== undefined) reject(error);
+          else resolve(v.parse(statvfsAnswer, info));
+        });
+      });
     },
   };
 }

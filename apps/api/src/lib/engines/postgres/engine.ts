@@ -29,6 +29,7 @@ import { checkout, resetCounters } from "./restore.ts";
 import { importRows } from "./import.ts";
 import { pageRows } from "./rows.ts";
 import { writeRows } from "./write.ts";
+import { readResources } from "./resources.ts";
 import { readServerLog } from "./serverlog.ts";
 
 /** Schemas only exist on the postgres config; the union narrows here once. */
@@ -134,6 +135,10 @@ export function createPostgresEngine(netguard: Netguard): DbEngine {
     async cancelQuery(conn, queryId) {
       const sql = await pools.acquire(conn);
       await guarded("cancel", () => cancelQuery(sql, conn.connectionId, cancel, queryId));
+    },
+    async readResources(conn) {
+      const sql = await pools.acquire(conn);
+      return guarded("resources", () => readResources(sql));
     },
     async readServerLog(conn, source, page) {
       const sql = await pools.acquire(conn);

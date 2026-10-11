@@ -2,6 +2,7 @@ import * as v from "valibot";
 import type { Entry } from "@testate/shared";
 
 import { AppError, notFound } from "../http/index.ts";
+import type { HostIo } from "../resources/host.ts";
 
 /** A directory page; `next_cursor` is driver-defined and opaque to callers (11 §11.1). */
 export type ListQuery = { cursor?: string; limit: number; q?: string };
@@ -54,6 +55,8 @@ export type FileSource = {
    * `remove` refuses a directory at all: recursive delete is the one mistake here nothing undoes.
    */
   removeDirectory(path: string): Promise<void>;
+  /** The host's `/proc` and disk, for a resource reading (#38). SFTP only; the others have no host. */
+  host?: HostIo;
   close(): Promise<void>;
 };
 
