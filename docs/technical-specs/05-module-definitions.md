@@ -249,6 +249,21 @@ read(actor, slug, adapterId, query, scope): Promise<{ page: LogsPage; stats; ada
 
 **Owns.** none. **Stories.** see PRD (Logs). **Seams.** `lib/logs`, `lib/files`. **Deep because** several rotated files merge into one ordered, pageable stream.
 
+## 5.11b `readings`
+
+**Responsibility.** Resource readings (26): one point-in-time reading of every readable adapter in a project, stored as one row; list and read them.
+
+```ts
+take(actor, slug): Promise<{ reading: Reading; stats }>   // adapters in parallel, 15 s each
+list(slug, limit, cursor?): Promise<ReadingsPage>         // newest first
+get(slug, id): Promise<Reading>
+sweep(days): number                                       // with the job history
+```
+
+**Invariants.** Reads only: no command on a host, no write to a target. Host files are a fixed list read by absolute path; the disk is `statvfs` of the adapter's root. Database adapters open through their engine, SFTP logins through the files resolver, so netguard and host-key trust are shared. A value or an adapter that cannot be read is unavailable with the reason, and the reading still saves.
+
+**Owns.** `resource_readings`. **Stories.** 165. **Seams.** `lib/resources`, `DbEngine.readResources`, `FileSource.host`. **Deep because** five kinds of source answer one comparable shape.
+
 ## 5.12 `jobs`
 
 **Responsibility.** The persisted queue and dispatcher for every long operation.

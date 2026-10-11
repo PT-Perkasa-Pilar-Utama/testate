@@ -49,6 +49,8 @@ type Capabilities = {
 
 `readServerLog(conn, source, { limit, before, after })` answers one page of a source the probe listed, newest first, ordered by `(time, id)`, with `end` once nothing older is left (25 §25.8).
 
+`readResources(conn)` answers the server's counters for a resource reading (26 §26.2): values the login reads, and the rest unavailable with the grant that opens them.
+
 Probe queries: Postgres `version()`, `has_table_privilege`, `pg_has_role(current_user, 'pg_signal_backend', 'member')`, `rolsuper`, `pg_settings` for `session_replication_role` grant, `pg_class.reltuples` sums; MySQL `VERSION()`, `SHOW GRANTS`, `information_schema.TABLES` sums; MongoDB `buildInfo`, `connectionStatus` roles, `hello` (replica set), `listCollections` count, `dbStats`.
 
 ## 12.3 Restore strategy matrix

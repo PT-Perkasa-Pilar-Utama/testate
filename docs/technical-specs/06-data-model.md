@@ -29,6 +29,7 @@ erDiagram
   projects ||--o{ diffs : owns
   projects ||--o{ import_runs : owns
   projects ||--o{ jobs : scopes
+  projects ||--o{ resource_readings : holds
   adapters ||--o{ known_host_keys : trusts
   adapters ||--o{ column_policies : polices
   adapters ||--o{ normalizers : targets
@@ -296,6 +297,19 @@ One active token per `ingest` adapter (0012, #75; 25 §25.7). Not an `api_tokens
 | token_id | TEXT | no | | PK part | |
 | job_id | TEXT | no | | FK jobs | |
 | expires_at | TEXT | no | | | twenty-four hours |
+
+### RESOURCE_READINGS (UI label: "Readings")
+
+One resource reading across a project (0013, #38; 26). Swept after `retention.job_history_days`.
+
+| column | type | nullable | default | key | notes |
+| --- | --- | --- | --- | --- | --- |
+| id | TEXT | no | | PK | |
+| project_id | TEXT | no | | FK projects CASCADE | indexed with `taken_at` |
+| actor_kind | TEXT | no | | | `user` or `token` |
+| actor_id, actor_label | TEXT | no | | | copied, as an audit row copies them, so a reading outlives its actor |
+| body | TEXT | no | | | JSON: per adapter, its values and what was unavailable (26 §26.2) |
+| taken_at | TEXT | no | | | |
 
 ## 6.7 Data and imports
 
