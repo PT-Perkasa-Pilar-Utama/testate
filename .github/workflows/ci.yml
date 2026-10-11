@@ -2,7 +2,8 @@ name: ci
 
 # Every push runs the fast gate: the same `complete-check` the pre-push hook runs, plus a boot.
 # The slow jobs, the engine contract suites, the browser suite and the image build, run on pull
-# requests, on a version tag, and on demand, so a push to main does not pay for them.
+# requests, on a version tag, and on demand, so a push to main does not pay for them. A pull
+# request that touches only documentation runs the fast gate alone (`changes` below).
 on:
   push:
     branches: [main]
@@ -19,6 +20,33 @@ permissions:
   contents: read
 
 jobs:
+  # A pull request that touches only documentation (`docs/` and Markdown, the same rule the e2e
+  # shard keys use in e2e/lib/shards.ts) skips the slow jobs: none of them reads those files. A
+  # skipped job still answers a required check. Pushes and tags always run everything they run.
+  changes:
+    name: what changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then echo "code=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          # HEAD is the merge of the pull request into its base; its first parent is that base.
+          changed=$(git diff --name-only HEAD^1 HEAD)
+          # No `grep -q`: it exits on the first match, and under pipefail that fails the pipeline.
+          code_files=$(printf '%s\n' "$changed" | grep -vE '^docs/|\.md$' || true)
+          if [ -n "$code_files" ]; then code=true; else code=false; fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "::notice::code changed: $code"
+
   check:
     name: type-check, lint, format, test, build
     runs-on: ubuntu-latest
@@ -44,9 +72,10 @@ jobs:
 
   smoke:
     name: boot and smoke
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: check
+    needs: [check, changes]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
@@ -91,10 +120,10 @@ jobs:
 
   image:
     name: docker build
-    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')
+    if: (github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')) && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: check
+    needs: [check, changes]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
@@ -114,10 +143,10 @@ jobs:
     # The engines it needs cost a compose start, so it rides with the other slow jobs: pull
     # requests, version tags, and on demand. `bun run contract` fails on a skipped suite, which
     # is how these came to never run at all.
-    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')
+    if: (github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')) && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: check
+    needs: [check, changes]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # The image pulls are the slowest thing in this job, so they start first and run while Bun
@@ -167,10 +196,10 @@ jobs:
   # inputs skips itself: its key hashes every tracked file it depends on (e2e/lib/shards.ts).
   e2e:
     name: browser end-to-end (${{ matrix.shard }})
-    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')
+    if: (github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')) && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    needs: check
+    needs: [check, changes]
     strategy:
       fail-fast: false
       matrix:
@@ -179,6 +208,8 @@ jobs:
       E2E_SHARD: ${{ matrix.shard }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: "1.4.2"
@@ -193,32 +224,56 @@ jobs:
           path: .e2e-pass
           key: ${{ steps.key.outputs.key }}
           lookup-only: true
-      - name: skip, this shard passed on the same inputs
-        if: steps.passed.outputs.cache-hit == 'true'
-        run: echo "::notice::${{ matrix.shard }} passed before on these inputs (${{ steps.key.outputs.key }}); skipped."
+      # A pass is cached per pull request, and main runs no e2e, so a new pull request never finds
+      # one. Its base passed this shard when it merged, though: if the shard's inputs are the same
+      # as the base's, this pull request changed nothing the shard reads.
+      - name: same inputs as the base?
+        id: base
+        if: github.event_name == 'pull_request'
+        env:
+          KEY: ${{ steps.key.outputs.key }}
+        run: |
+          git worktree add -q ../base HEAD^1
+          base="e2e-pass-$E2E_SHARD-$(cd ../base && bun e2e/lib/shard-key.ts "$E2E_SHARD" || echo none)"
+          if [ "$base" = "$KEY" ]; then echo "same=true" >> "$GITHUB_OUTPUT"; else echo "same=false" >> "$GITHUB_OUTPUT"; fi
+      - name: run this shard?
+        id: run
+        env:
+          HIT: ${{ steps.passed.outputs.cache-hit }}
+          SAME: ${{ steps.base.outputs.same }}
+        run: |
+          if [ "$HIT" = "true" ]; then
+            echo "::notice::$E2E_SHARD passed before on these inputs; skipped."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          elif [ "$SAME" = "true" ]; then
+            echo "::notice::$E2E_SHARD reads nothing this pull request changed; skipped."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
       # The image pulls are the slowest thing in this job, so they start first and run while Bun
       # installs; the wait below finds them already up.
       - name: pull and start the compose engines
-        if: steps.passed.outputs.cache-hit != 'true'
+        if: steps.run.outputs.run == 'true'
         run: |
           docker compose -f deploy/compose.engines.yml up -d \
             postgres postgres-old mysql mariadb mongo minio sftp ftp
       # Bun's package cache, keyed on the lockfile: an install from it takes seconds, one from the
       # registry took up to forty on a cold runner.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: steps.passed.outputs.cache-hit != 'true'
+        if: steps.run.outputs.run == 'true'
         with:
           path: ~/.bun/install/cache
           key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
           restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
-        if: steps.passed.outputs.cache-hit != 'true'
+        if: steps.run.outputs.run == 'true'
       # `--wait` fails as soon as one container is unhealthy, and the ftp image is known to need a
       # few restarts on a cold stack (`restart: always` in the compose file) before vsftpd answers.
       # One retry five seconds later was not enough on CI, so it gets five tries ten seconds apart,
       # and a last failure prints the state and the file servers' logs instead of a bare exit 1.
       - name: start the compose engines
-        if: steps.passed.outputs.cache-hit != 'true'
+        if: steps.run.outputs.run == 'true'
         run: |
           up() {
             docker compose -f deploy/compose.engines.yml up -d --wait \
@@ -235,23 +290,23 @@ jobs:
       # `--wait` fails on a container that exits, however cleanly, so the one-shot bucket
       # creation runs on its own and answers with its own exit code.
       - name: create the MinIO bucket
-        if: steps.passed.outputs.cache-hit != 'true'
+        if: steps.run.outputs.run == 'true'
         run: docker compose -f deploy/compose.engines.yml run --rm minio-init
       # The seeded demo adapters point at `shop` on each engine, and the tables in it are created
       # by the contract suites, which run on their own stack in another job. A fresh stack here has
       # an empty `shop`, so every adapter would introspect zero tables. Each suite drops and
       # recreates its own schema, so running them first is idempotent.
       - name: create the demo schema in the engines
-        if: steps.passed.outputs.cache-hit != 'true'
+        if: steps.run.outputs.run == 'true'
         run: bun run contract
       # `boot.e2e.ts` starts an instance from `apps/api/dist/index.js` on purpose: story 123 is
       # about the artifact the image runs, not the sources. Nothing else in this job builds it.
       - run: bun run build
-        if: steps.passed.outputs.cache-hit != 'true'
+        if: steps.run.outputs.run == 'true'
       - run: bun run e2e
-        if: steps.passed.outputs.cache-hit != 'true'
+        if: steps.run.outputs.run == 'true'
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always() && steps.passed.outputs.cache-hit != 'true'
+        if: always() && steps.run.outputs.run == 'true'
         with:
           name: e2e-report-${{ matrix.shard }}
           path: |
@@ -263,10 +318,10 @@ jobs:
         if: always()
         run: docker compose -f deploy/compose.engines.yml down -v
       - name: record the pass
-        if: success() && steps.passed.outputs.cache-hit != 'true'
+        if: success() && steps.run.outputs.run == 'true'
         run: mkdir -p .e2e-pass && echo "${{ github.sha }}" > .e2e-pass/passed
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: success() && steps.passed.outputs.cache-hit != 'true'
+        if: success() && steps.run.outputs.run == 'true'
         with:
           path: .e2e-pass
           key: ${{ steps.key.outputs.key }}
@@ -278,5 +333,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: e2e
     steps:
+      # Skipped when the pull request touches only documentation.
       - name: every shard passed
-        run: test "${{ needs.e2e.result }}" = "success"
+        env:
+          RESULT: ${{ needs.e2e.result }}
+        run: test "$RESULT" = "success" || test "$RESULT" = "skipped"
