@@ -44,3 +44,30 @@ describe("SFTP outbound address pinning", () => {
     ]);
   });
 });
+
+describe("SFTP connections", () => {
+  it("opens one connection for calls made together, and close ends it", async () => {
+    const made: SftpClient[] = [];
+    const ended: SftpClient[] = [];
+    const factory = (): SftpClient => {
+      const client = new SftpClient();
+      client.connect = mock(async () => {
+        await Bun.sleep(5);
+        // SAFETY: the source keeps the channel only for statvfs, which this test never calls.
+        return {} as Awaited<ReturnType<SftpClient["connect"]>>;
+      });
+      client.list = mock(async () => []);
+      client.end = mock(async () => {
+        ended.push(client);
+        return true;
+      });
+      made.push(client);
+      return client;
+    };
+    const source = createSftpSource(CONFIG, factory);
+    const page = { limit: 10 };
+    await Promise.all([source.list("", page), source.list("a", page), source.list("b", page)]);
+    await source.close();
+    expect([made.length, ended.length]).toEqual([1, 1]);
+  });
+});
