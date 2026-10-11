@@ -90,6 +90,11 @@ const SLOTS: Slot[] = [
     render: (version: string) => `Self-hosted · v${version} · MIT`,
   },
   {
+    file: "docs/index.html",
+    pattern: /Installed testate ([^\s<]+) to/,
+    render: (version: string) => `Installed testate ${version} to`,
+  },
+  {
     file: "docs/assets/hero.svg",
     pattern: /SELF-HOSTED · V([^\s<]+) · MIT/,
     render: (version: string) => `SELF-HOSTED · V${version.toUpperCase()} · MIT`,

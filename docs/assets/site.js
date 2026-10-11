@@ -392,9 +392,9 @@ new IntersectionObserver(([e]) => rail.classList.toggle("show", !e.isIntersectin
 }).observe(hero);
 
 // Copy the install command
-document.querySelectorAll(".terminal .copy").forEach((btn) => {
+document.querySelectorAll("[data-cmd] .copy").forEach((btn) => {
   btn.addEventListener("click", async () => {
-    const text = btn.parentElement.dataset.cmd;
+    const text = btn.closest("[data-cmd]").dataset.cmd;
     try {
       await navigator.clipboard.writeText(text);
       btn.textContent = "copied";
