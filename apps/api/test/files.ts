@@ -49,6 +49,14 @@ export function memoryOpen(
       move: (from, to) => guard(() => source.move(from, to)),
       makeDirectory: (path) => guard(() => source.makeDirectory(path)),
       removeDirectory: (path) => guard(() => source.removeDirectory(path)),
+      // The fake host's `/proc` sits in the tree at `proc/...`, beside the adapter's files (#38).
+      host: {
+        text: (path) =>
+          guard(async () =>
+            new TextDecoder().decode(await source.readRange(path.slice(1), 0, 65536))
+          ),
+        statvfs: () => guard(async () => ({ f_frsize: 4096, f_blocks: 1000, f_bavail: 250 })),
+      },
       close: () => source.close(),
     };
   };

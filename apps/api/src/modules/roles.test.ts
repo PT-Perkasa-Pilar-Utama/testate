@@ -19,6 +19,7 @@ import { createToolsRouter } from "./tools/tools.router.ts";
 import { createUsersRouter } from "./users/users.router.ts";
 import { createV1 } from "./index.ts";
 import { createLogsRouter } from "./logs/logs.router.ts";
+import { createReadingsRouter } from "./readings/readings.router.ts";
 import { MATRIX } from "./roles.table.ts";
 import { requireProjectInScope } from "./projects/projects.scope.ts";
 import type { SlugLookup } from "./projects/projects.scope.ts";
@@ -83,6 +84,7 @@ function appFor(caller: Caller): Hono {
     createDiffsRouter,
     createStorageRouter,
     createLogsRouter,
+    createReadingsRouter,
     createJobsRouter,
     createAuditRouter,
     createSettingsRouter,

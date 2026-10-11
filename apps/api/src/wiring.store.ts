@@ -36,6 +36,10 @@ import { createIngestService } from "./modules/ingest/ingest.service.ts";
 import type { IngestDeps, IngestService } from "./modules/ingest/ingest.service.ts";
 import type { StorageDeps } from "./modules/storage/storage.service.ts";
 import type { EngineWiring } from "./wiring.ts";
+import { createReadingsRepository } from "./modules/readings/readings.repository.ts";
+import { createReadingsService } from "./modules/readings/readings.service.ts";
+import type { ReadingsService } from "./modules/readings/readings.service.ts";
+import { readingSources } from "./modules/readings/readings.sources.ts";
 
 /** Settings are built before the jobs runtime; these closures resolve the service at call time. */
 export function lazyJobs(get: () => JobsService): SettingsDeps["jobs"] {
@@ -256,4 +260,20 @@ export function opsDeps(
     sinkDegraded: () => logger.sink.degraded,
     dispatcher: () => live.jobs.heartbeat(),
   };
+}
+
+/** Resource readings (#38): database adapters through their engines, SFTP logins through files. */
+export function readingsService(
+  db: MetadataDb,
+  wiring: EngineWiring,
+  projects: ProjectsRepository,
+  now: () => Date
+): ReadingsService {
+  return createReadingsService({
+    repo: createReadingsRepository(db),
+    projects,
+    adapters: wiring.adapters,
+    ...readingSources({ engines: wiring.engines, ring: wiring.ring, files: wiring.files }),
+    now,
+  });
 }
