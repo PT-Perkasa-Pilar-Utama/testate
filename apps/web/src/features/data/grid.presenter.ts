@@ -32,6 +32,7 @@ export const PAGE_SIZES = ["25", "100", "500"] as const;
 export type PageSize = (typeof PAGE_SIZES)[number];
 
 export type GridPresenter = {
+  slug: () => string;
   page: Refreshable<RowsPage>;
   adapter: Refreshable<Adapter>;
   /** The table's schema from the adapter's introspection; null until it loads or when unknown. */
@@ -197,6 +198,7 @@ export function createGridPresenter(
     );
   };
   return {
+    slug,
     page,
     adapter,
     table,

@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 
-import { counted, formatAddress, formatScope, formatWhen, toDateInput } from "./format.ts";
+import {
+  counted,
+  formatAddress,
+  formatAgo,
+  formatScope,
+  formatWhen,
+  toDateInput,
+} from "./format.ts";
 
 describe("when something happened", () => {
   test("day, month, year, and the clock down to the second", () => {
@@ -23,6 +30,21 @@ describe("when something happened", () => {
 
   test("a date input wants the day alone", () => {
     expect(toDateInput("2026-08-30T03:46:56.037Z")).toBe("2026-08-30");
+  });
+});
+
+describe("how long ago", () => {
+  const NOW = new Date("2026-10-11T12:00:00.000Z");
+
+  test("in the largest unit that fits, rounded", () => {
+    expect(formatAgo("2026-10-11T11:59:30.000Z", NOW)).toBe("30 seconds ago");
+    expect(formatAgo("2026-10-11T11:56:00.000Z", NOW)).toBe("4 minutes ago");
+    expect(formatAgo("2026-10-11T09:00:00.000Z", NOW)).toBe("3 hours ago");
+    expect(formatAgo("2026-10-09T12:00:00.000Z", NOW)).toBe("2 days ago");
+  });
+
+  test("something that is not a date comes back as it went in", () => {
+    expect(formatAgo("never", NOW)).toBe("never");
   });
 });
 

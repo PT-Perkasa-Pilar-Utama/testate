@@ -11,6 +11,7 @@ import { hasRole } from "@/lib/session.ts";
 import { FILTER_OP_LABEL } from "@/lib/labels.ts";
 import { FILTER_OPS, PAGE_SIZES, filterNeedsValue } from "./grid.presenter.ts";
 import type { Filter, FilterOp, GridPresenter } from "./grid.presenter.ts";
+import { LastChangeNote } from "../project/last-change.view.tsx";
 
 const OP_OPTIONS = FILTER_OPS.map((op) => ({ value: op, label: FILTER_OP_LABEL[op] }));
 
@@ -115,6 +116,7 @@ function WriteSessionControls(props: { presenter: GridPresenter }): JSX.Element 
           void (on ? props.presenter.editing.start() : props.presenter.editing.end())
         }
       />
+      <LastChangeNote slug={props.presenter.slug()} active={session() === null} />
     </div>
   );
 }

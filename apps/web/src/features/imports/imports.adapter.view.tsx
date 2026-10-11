@@ -24,6 +24,7 @@ import ColumnPanel from "./imports.normalizer.panel.tsx";
 import { createImportPresenter } from "./imports.adapter.presenter.ts";
 import type { ImportPresenter } from "./imports.adapter.presenter.ts";
 import { humanMessage } from "@/lib/api-error.ts";
+import { LastChangeBanner } from "../project/last-change.view.tsx";
 
 /** The file to import, with the shape this table takes beside it (story 149). */
 function SourceRow(props: { presenter: ImportPresenter; table: string }): JSX.Element {
@@ -212,6 +213,7 @@ export default function AdapterImportsView(props: { slug: string; id: string }):
                   </Show>
                   <PreviewRows presenter={presenter} />
                 </Show>
+                <LastChangeBanner slug={props.slug} active={true} />
                 <Show when={presenter.error()}>
                   {(message) => <Banner variant="error">{message()}</Banner>}
                 </Show>
