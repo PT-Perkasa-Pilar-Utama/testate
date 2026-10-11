@@ -47,6 +47,8 @@ export function createPoller(deps: PollerDeps): Poller {
     await deps.sources.release(adapterIds);
     const report = { projects: projectIds.length, polled: 0, values: 0, unavailable: 0, failed: 0 };
     const failures: { project_id: string; reason: string }[] = [];
+    // ponytail: every project at once. Fine for tens of projects; cap it with a lane count, as
+    // `adapterLanes` caps jobs, once an instance holds hundreds.
     await Promise.all(
       projectIds.map(async (id) => {
         try {
