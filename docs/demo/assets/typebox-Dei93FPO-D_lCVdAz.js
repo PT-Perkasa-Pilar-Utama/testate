@@ -1,0 +1,1 @@
+function e(){return e=>JSON.parse(JSON.stringify(e.Type()))}export{e as default};

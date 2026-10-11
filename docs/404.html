@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Not found · Testate</title>
+    <meta name="robots" content="noindex" />
+    <script>
+      // GitHub Pages has no fallback for a single-page app: a link into the demo lands here, and
+      // goes back to the demo's own page with the route it asked for (apps/web/demo/main.ts).
+      (function () {
+        var base = "/testate/demo/";
+        var path = location.pathname;
+        if (path.indexOf(base) === 0 && path !== base) {
+          location.replace(base + "?route=" + encodeURIComponent(path + location.search + location.hash));
+        }
+      })();
+    </script>
+    <style>
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #05070a; color: #eef2f5; font: 16px/1.5 system-ui, sans-serif; }
+      a { color: #7dd3c0; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p>This page does not exist. <a href="/testate/">Back to Testate</a></p>
+    </main>
+  </body>
+</html>

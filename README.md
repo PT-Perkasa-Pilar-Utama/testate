@@ -40,6 +40,8 @@ flowchart LR
 
 Nothing gets added to your application. Testate is a separate service that talks to the databases directly.
 
+**[Try it in your browser](https://pt-perkasa-pilar-utama.github.io/testate/demo/)**: the real app on sample data, running in the page. Nothing leaves the tab.
+
 ![The states tab: a timeline of states with HEAD marked, kind, size and author](docs/assets/screens/states.png)
 
 ## Getting started

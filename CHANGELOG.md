@@ -101,6 +101,10 @@ Write mode switch say who else last changed the project's data, and when: "tina 
 before-refund 4 minutes ago". It is a warning, not a lock. API:
 `GET /projects/{slug}/last-change`.
 
+**A demo in your browser.** The real app and API run in the page on sample data, at
+`https://pt-perkasa-pilar-utama.github.io/testate/demo/`: take a state, break the data, check it out,
+read the logs. Nothing leaves the tab, and a reload starts over.
+
 **The table diagram draws the whole schema.** It used to draw only the first table above 40.
 Each foreign key now runs from its own column to the column it references, and boxes fit their
 widest line.

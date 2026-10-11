@@ -1,0 +1,1 @@
+export{i as navigate}from"./router-CYi32PpN.js";
