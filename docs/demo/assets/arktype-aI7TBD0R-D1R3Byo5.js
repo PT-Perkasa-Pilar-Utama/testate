@@ -1,1 +1,0 @@
-function e(){return(e,t)=>e.toJsonSchema(t)}export{e as default};

@@ -1,1 +1,0 @@
-import{n as e}from"./index-CLddUTqr-j2FTByTr.js";import"./dist-BZgSmAXZ.js";import{t}from"./convert-CQe36hes.js";function n(){return async(n,r)=>t(await e(n,r.options),r)}export{n as t};
