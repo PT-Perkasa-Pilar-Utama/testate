@@ -1,9 +1,10 @@
 import * as v from "valibot";
-import type { JsonObject, Project, ProjectDefaults } from "@testate/shared";
+import type { JsonObject, LastChange, Project, ProjectDefaults } from "@testate/shared";
 import {
   adapterKindSchema,
   idSchema,
   jobSchema,
+  lastChangeSchema,
   projectDefaultsSchema,
   projectSchema,
   quotaSchema,
@@ -97,6 +98,9 @@ export const projectsModel = {
     apiClient.get("/projects/defaults", { schema: projectDefaultsSchema }),
   update: (slug: string, body: JsonObject): Promise<Project> =>
     apiClient.patch(path(slug), { schema: projectSchema, body }),
+  /** The newest change to the project's data by someone other than the caller (#60). */
+  lastChange: (slug: string): Promise<LastChange> =>
+    apiClient.get(`${path(slug)}/last-change`, { schema: lastChangeSchema }),
   deletionPlan: (slug: string): Promise<DeletionPlan> =>
     apiClient.get(`${path(slug)}/deletion-plan`, { schema: deletionPlanSchema }),
   deleteProject: (slug: string, body: JsonObject): Promise<Job> =>

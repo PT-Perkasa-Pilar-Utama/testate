@@ -10,6 +10,7 @@ import { checkoutsModel } from "./checkouts.model.ts";
 export type PreflightAdapter = Preflight["adapters"][number];
 
 export type PreflightPresenter = {
+  slug: () => string;
   target: () => State | null;
   preflight: () => Preflight | null;
   force: () => boolean;
@@ -113,6 +114,7 @@ export function createPreflightPresenter(
     setError(null);
   };
   return {
+    slug,
     target,
     preflight,
     force,

@@ -10,6 +10,7 @@ import { Cell, Head, Row, Table } from "@/components/table.tsx";
 import { engineLabel } from "@/lib/labels.ts";
 import { driftSummary, strategyLine } from "./preflight.presenter.ts";
 import type { PreflightAdapter, PreflightPresenter } from "./preflight.presenter.ts";
+import { LastChangeBanner } from "../project/last-change.view.tsx";
 
 function AdapterRow(props: { adapter: PreflightAdapter; force: boolean }): JSX.Element {
   const drift = (): string => driftSummary(props.adapter.drift);
@@ -82,6 +83,10 @@ export default function PreflightDialog(props: { presenter: PreflightPresenter }
       size="lg"
     >
       <form class="grid gap-4" onSubmit={onSubmit}>
+        <LastChangeBanner
+          slug={props.presenter.slug()}
+          active={props.presenter.target() !== null}
+        />
         <Show when={props.presenter.preflight()} fallback={<p>Checking schemas...</p>}>
           {(preflight) => (
             <>

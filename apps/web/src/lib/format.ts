@@ -27,6 +27,28 @@ export function formatWhen(iso: string): string {
   return PARTS.format(at).replace(", ", " ");
 }
 
+const AGO = new Intl.RelativeTimeFormat("en-GB", { numeric: "auto" });
+const STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ["second", 60],
+  ["minute", 60],
+  ["hour", 24],
+  ["day", 30],
+  ["month", 12],
+  ["year", Number.POSITIVE_INFINITY],
+];
+
+/** "4 minutes ago", "yesterday": how long since `iso`, for a person judging whether it is recent. */
+export function formatAgo(iso: string, now: Date = new Date()): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return iso;
+  let value = Math.round((at.getTime() - now.getTime()) / 1000);
+  for (const [unit, size] of STEPS) {
+    if (Math.abs(value) < size) return AGO.format(value, unit);
+    value = Math.round(value / size);
+  }
+  return formatWhen(iso);
+}
+
 /** An ISO instant as a `datetime-local` value in this browser's zone, to the second. */
 export function toLocalInput(iso: string): string {
   const at = new Date(iso);
