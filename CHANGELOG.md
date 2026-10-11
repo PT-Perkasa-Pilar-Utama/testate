@@ -9,6 +9,9 @@ and two change a URL or a name.
 
 ### Before you upgrade
 
+[Upgrade from 1.x](docs/MIGRATING.md) walks both ways forward: a newer image, or the binary in
+place of the container.
+
 - **The first boot deletes old rows.** The daily retention sweep now runs the settings sweep,
   which never ran in production before. The first boot after the upgrade deletes stashes past
   `stash_keep`, audit rows past `audit_days`, audit payloads past `audit_payload_days`, query

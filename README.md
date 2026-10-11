@@ -116,7 +116,7 @@ Testate resets databases one at a time, and only the ones you add. Read [the lim
 
 ## Docs
 
-[Install](docs/INSTALL.md) · [Connecting a database](docs/CONNECTING.md) · [Deployment plan](docs/DEPLOYMENT_PLAN.md) · [Limits](docs/LIMITS.md) · [CI/CD](docs/CI_CD.md) · [Agent access](docs/AGENT_ACCESS.md) · [Key rotation](docs/KEY_ROTATION.md) · [Tester guide](docs/user-guide/tester-guide-en/README.md) · [Changelog](CHANGELOG.md) · [PRD](docs/PRD.md) · [Technical specs](docs/technical-specs/_index.md) · [API specs](docs/api-specs/_index.md) · [Security standards](docs/SECURITY_STANDARDS.md) · [Security](SECURITY.md)
+[Install](docs/INSTALL.md) · [Upgrade from 1.x](docs/MIGRATING.md) · [Connecting a database](docs/CONNECTING.md) · [Deployment plan](docs/DEPLOYMENT_PLAN.md) · [Limits](docs/LIMITS.md) · [CI/CD](docs/CI_CD.md) · [Agent access](docs/AGENT_ACCESS.md) · [Key rotation](docs/KEY_ROTATION.md) · [Tester guide](docs/user-guide/tester-guide-en/README.md) · [Changelog](CHANGELOG.md) · [PRD](docs/PRD.md) · [Technical specs](docs/technical-specs/_index.md) · [API specs](docs/api-specs/_index.md) · [Security standards](docs/SECURITY_STANDARDS.md) · [Security](SECURITY.md)
 
 ## Contributing
 
