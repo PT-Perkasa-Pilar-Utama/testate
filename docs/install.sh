@@ -137,7 +137,7 @@ main() {
   path_hint "$dir"
   say ""
   say "Next: testate setup, then testate service install."
-  say "More: https://github.com/$REPO#one-binary-no-docker"
+  say "More: https://github.com/$REPO/blob/main/docs/INSTALL.md"
 }
 
 # Everything runs from here, so a download cut short runs nothing.

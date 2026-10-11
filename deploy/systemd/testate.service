@@ -1,4 +1,4 @@
-# Testate as a systemd service. Install (README, "Run it as a service"):
+# Testate as a systemd service. Install (docs/INSTALL.md, "Other ways to run it"):
 #
 #   sudo install -m 755 ~/.local/bin/testate /usr/local/bin/testate
 #   sudo install -d -m 700 /etc/testate
