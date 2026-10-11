@@ -40,6 +40,8 @@ import type { LogsHandlers } from "./logs/logs.handler.ts";
 import { createLogsRouter } from "./logs/logs.router.ts";
 import type { IngestHandlers } from "./ingest/ingest.handler.ts";
 import { createIngestRouter } from "./ingest/ingest.router.ts";
+import type { ReadingsHandlers } from "./readings/readings.handler.ts";
+import { createReadingsRouter } from "./readings/readings.router.ts";
 import { createStorageRouter } from "./storage/storage.router.ts";
 import type { ToolsHandlers } from "./tools/tools.handler.ts";
 import { createToolsRouter } from "./tools/tools.router.ts";
@@ -65,6 +67,7 @@ export type V1Deps = {
   storage: StorageHandlers;
   logs: LogsHandlers;
   ingest: IngestHandlers;
+  readings: ReadingsHandlers;
   jobs: JobsHandlers;
   audit: AuditHandlers;
   settings: SettingsHandlers;
@@ -90,6 +93,7 @@ export function createV1(deps: V1Deps): Hono {
   v1.route("/", createStorageRouter(deps.storage));
   v1.route("/", createLogsRouter(deps.logs));
   v1.route("/", createIngestRouter(deps.ingest));
+  v1.route("/", createReadingsRouter(deps.readings));
   v1.route("/", createJobsRouter(deps.jobs));
   v1.route("/", createAuditRouter(deps.audit));
   v1.route("/", createSettingsRouter(deps.settings));
