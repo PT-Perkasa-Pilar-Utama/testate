@@ -3,8 +3,8 @@
 ## 2.0.0 (unreleased)
 
 Testate becomes one binary you install with one line, gains a fourth tier for logs, and scopes
-each viewer and tester to the projects someone chose. Upgrading runs four migrations on boot
-(0009 to 0012). Read "Before you upgrade" first: four changes break a script or delete data,
+each viewer and tester to the projects someone chose. Upgrading runs five migrations on boot
+(0009 to 0013). Read "Before you upgrade" first: four changes break a script or delete data,
 and two change a URL or a name.
 
 ### Before you upgrade
@@ -29,7 +29,7 @@ and two change a URL or a name.
 
 Migration 0011 rebuilds the `adapters` table for the Logs tier. It runs in one transaction with
 foreign keys held and rolls back whole on failure; boot keeps a copy of the database from before
-the migration.
+the migration. Migration 0013 adds the `resource_readings` table.
 
 ### New
 
@@ -88,6 +88,19 @@ on an adapter; `POST /api/v1/ingest/{id}`; `POST .../ingest-token/rotation` to r
 `POST .../logs/clear` (admin). New error `INGEST_FULL` (507). New setting
 `limits.ingest_requests_per_minute` (600). The probe result gains `capabilities.serverLogs`.
 
+**Resource readings.** A Readings tab on the project page takes one point-in-time reading of the
+hosts and database servers behind the project. It reads an SFTP host's load, CPUs, memory, swap,
+uptime and disk from four fixed `/proc` files and `statvfs`, and runs no command there. It also
+reads each database server's counters (Postgres, MySQL, MariaDB, MongoDB). Pick two readings to
+compare them. A value the login may not read names the grant that opens it. Readings are kept
+for `retention.job_history_days`. API: `POST` and `GET /projects/{slug}/readings`, and
+`GET .../readings/{id}`.
+
+**A warning before you overwrite someone's data.** The checkout dialog, the import page and the
+Write mode switch say who else last changed the project's data, and when: "tina checked out
+before-refund 4 minutes ago". It is a warning, not a lock. API:
+`GET /projects/{slug}/last-change`.
+
 **The table diagram draws the whole schema.** It used to draw only the first table above 40.
 Each foreign key now runs from its own column to the column it references, and boxes fit their
 widest line.
@@ -116,6 +129,8 @@ widest line.
 - HEAD refreshes after a checkout even when you leave the States tab before it ends.
 - The log file being written is never deleted by its own retention sweep.
 - "New database" no longer picks the Inspect project by default.
+- Calls made together on one SFTP connection no longer each open their own SSH session and
+  leave all but one open.
 - The compose MinIO comes from `pgsty`: `minio/minio` left Docker Hub.
 - Dependencies past advisories: hono 4.13.12, brace-expansion 5.0.12, seroval, source-map-js,
   and in the pm2 smoke lockfile js-yaml 4.3.2, chokidar 4 and basic-ftp 6.2.2.
