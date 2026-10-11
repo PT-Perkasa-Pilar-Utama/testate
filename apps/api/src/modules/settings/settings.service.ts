@@ -62,6 +62,7 @@ export const SETTINGS_DEFAULTS: Settings = {
     audit_days: 365,
     audit_payload_days: 30,
     import_run_days: 30,
+    monitor_days: 7,
   },
   quota: { default_bytes: 10737418240, instance_ceiling_bytes: null },
   limits: {
@@ -80,6 +81,7 @@ export const SETTINGS_DEFAULTS: Settings = {
     failed_logins_per_minute: 20,
     write_session_idle_minutes: 30,
     job_concurrency: 2,
+    monitor_interval_seconds: 30,
   },
   netguard: {
     deny: ["127.0.0.0/8", "::1/128"],

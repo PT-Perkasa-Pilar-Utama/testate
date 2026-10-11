@@ -35,6 +35,7 @@ const NAV: readonly {
   { label: "Databases", path: "/databases", role: "viewer", icon: "database" },
   { label: "Storage", path: "/storage", role: "viewer", icon: "hard-drive" },
   { label: "Logs", path: "/logs", role: "viewer", icon: "file-text" },
+  { label: "Monitor", path: "/monitor", role: "viewer", icon: "gauge" },
   { label: "Jobs", path: "/jobs", role: "viewer", icon: "activity" },
   { label: "Tools", path: "/tools", role: "viewer", icon: "wrench" },
   { label: "Audit", path: "/audit", role: "admin", icon: "scroll-text" },

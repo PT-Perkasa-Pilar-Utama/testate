@@ -14,7 +14,6 @@ import {
   bootstrapAdmin,
   createJobsRuntime,
   createNetguard,
-  createRetention,
   preMigrationCopy,
   ensureDirs,
   migrateOrRefuse,
@@ -36,6 +35,7 @@ import {
 import { createLogsHandlers } from "./modules/logs/logs.handler.ts";
 import { createIngestHandlers } from "./modules/ingest/ingest.handler.ts";
 import { createReadingsHandlers } from "./modules/readings/readings.handler.ts";
+import { createTimers } from "./wiring.timers.ts";
 import { apiPrefix, loadConfig, logDir } from "./lib/config/index.ts";
 import { openMetadataDb } from "./lib/db/index.ts";
 import { requireReader } from "./lib/http/auth.ts";
@@ -177,7 +177,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   });
   const storage = createStorageService(storageDeps(wiring, projectsRepo, audit, now));
   const logs = logsService(wiring, projectsRepo);
-  const readings = readingsService(db, wiring, projectsRepo, now);
+  const { readings, sources } = readingsService(db, wiring, projectsRepo, now);
   const shared = { projects: projectsRepo, audit, now };
   const ingest = ingestService(db, wiring, { ...shared, settings });
   const adapters = adaptersService(db, wiring, { ...shared, ring, netguard, jobs, ingest });
@@ -296,23 +296,16 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   bootEvent.emit();
   ready = true;
 
-  const retention = createRetention(logger, {
-    sweepJobs: () => jobs.sweep,
-    historyDays: async () => (await settings.get()).retention.job_history_days,
-    expireDiffs: () => core.diffs.expire(),
-    settings: () => settings.runRetention(),
-    ingest: () => ingest.sweep(),
-    readings: (days) => readings.sweep(days),
-  });
+  const timers = createTimers({ logger, jobs, settings, core, ingest, readings, sources, now });
   return {
     fetch: app.fetch,
     port: config.PORT,
     start: () => {
       dispatcher.start();
-      retention.start();
+      timers.start();
     },
     close: async () => {
-      retention.stop();
+      await timers.stop();
       const survivors = await dispatcher.drain(30_000);
       const event = logger.create("shutdown");
       event.add("op", { name: "shutdown", jobs_interrupted: survivors.length });

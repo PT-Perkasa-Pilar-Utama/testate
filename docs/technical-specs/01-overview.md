@@ -93,7 +93,7 @@ In scope: relation view, FK lookups, typed insert and edit forms with functions,
 
 ### 1.2.18 Out of scope
 
-Firebase and Firestore; SQLite as a target; snapshot or restore through the application's REST API; schema migrations of the target; Postgres large-object content; MongoDB import and MongoDB write forms (the Document tier is view, state, diff, extract); branches and merges between states; single sign-on, LDAP, email; multi-tenant hosting; metrics endpoints, time series, graphs over time, alerts, dashboards and tracing, for which the answer is Prometheus and Grafana (logs are in scope through the Logs tier, 25, and point-in-time resource readings through 26); internationalized UI. See `../PRD.md` §6.
+Firebase and Firestore; SQLite as a target; snapshot or restore through the application's REST API; schema migrations of the target; Postgres large-object content; MongoDB import and MongoDB write forms (the Document tier is view, state, diff, extract); branches and merges between states; single sign-on, LDAP, email; multi-tenant hosting; metrics endpoints, alerts and thresholds, saved or custom dashboards, Docker container stats, Prometheus queries and tracing, for which the answer is Prometheus and Grafana (logs are in scope through the Logs tier, 25; resource readings and the monitor's polled samples and graphs through 26); internationalized UI. See `../PRD.md` §6.
 
 ## 1.3 User base
 

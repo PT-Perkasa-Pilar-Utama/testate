@@ -33,6 +33,10 @@
      Text on it is the ground colour; white on teal fails AA. */
   --color-accent: #7dd3c0;
   --color-accent-hover: #9ae3d3;
+  /* Chart lines (#101): validated as a categorical pair against this surface, so the accent
+   * itself, too light and too grey for a line, is not one of them. */
+  --color-series-1: #14a88a;
+  --color-series-2: #9085e9;
   --color-on-accent: #05070a;
 
   /* Status. Green is the logo's own, amber is the homepage's dirty row, red is GitHub's danger. */
@@ -111,6 +115,8 @@
 
     --color-accent: #0f766e;
     --color-accent-hover: #0d5f59;
+    --color-series-1: #0d9488;
+    --color-series-2: #6250d6;
     --color-on-accent: #ffffff;
 
     --color-success: #15803d;
@@ -152,6 +158,8 @@
 
   --color-accent: #0f766e;
   --color-accent-hover: #0d5f59;
+  --color-series-1: #0d9488;
+  --color-series-2: #6250d6;
   --color-on-accent: #ffffff;
 
   --color-success: #15803d;

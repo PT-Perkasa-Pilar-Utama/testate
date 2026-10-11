@@ -40,6 +40,7 @@ import { createReadingsRepository } from "./modules/readings/readings.repository
 import { createReadingsService } from "./modules/readings/readings.service.ts";
 import type { ReadingsService } from "./modules/readings/readings.service.ts";
 import { readingSources } from "./modules/readings/readings.sources.ts";
+import type { ReadingSources } from "./modules/readings/readings.sources.ts";
 
 /** Settings are built before the jobs runtime; these closures resolve the service at call time. */
 export function lazyJobs(get: () => JobsService): SettingsDeps["jobs"] {
@@ -262,18 +263,30 @@ export function opsDeps(
   };
 }
 
-/** Resource readings (#38): database adapters through their engines, SFTP logins through files. */
+/**
+ * Resource readings (#38): database adapters through their engines, SFTP logins through files.
+ * The sources come back too, so the monitor's poller can close the logins it keeps (#101).
+ */
+export type ReadingsModule = { readings: ReadingsService; sources: ReadingSources };
+
 export function readingsService(
   db: MetadataDb,
   wiring: EngineWiring,
   projects: ProjectsRepository,
   now: () => Date
-): ReadingsService {
-  return createReadingsService({
+): ReadingsModule {
+  const sources = readingSources({
+    engines: wiring.engines,
+    ring: wiring.ring,
+    files: wiring.files,
+  });
+  const readings = createReadingsService({
     repo: createReadingsRepository(db),
     projects,
     adapters: wiring.adapters,
-    ...readingSources({ engines: wiring.engines, ring: wiring.ring, files: wiring.files }),
+    readServer: sources.readServer,
+    readHost: sources.readHost,
     now,
   });
+  return { readings, sources };
 }

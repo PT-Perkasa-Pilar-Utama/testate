@@ -27,6 +27,7 @@ const LABELS = {
   "retention.audit_days": "Audit log (days)",
   "retention.audit_payload_days": "Audit request and response bodies (days)",
   "retention.import_run_days": "Import run history (days)",
+  "retention.monitor_days": "Monitor samples (days)",
   "quota.default_bytes": "Default project quota (bytes)",
   "quota.instance_ceiling_bytes": "Instance quota ceiling (bytes)",
   "limits.query_rows_default": "Default query row limit",
@@ -41,6 +42,7 @@ const LABELS = {
   "limits.failed_logins_per_minute": "Failed logins per minute, per address",
   "limits.write_session_idle_minutes": "Write session idle timeout (minutes)",
   "limits.job_concurrency": "Concurrent jobs",
+  "limits.monitor_interval_seconds": "Monitor interval (seconds, 0 turns it off)",
 } as const;
 
 /** `row.key` is built at runtime as `${section}.${name}`, so it is a plain string, not one of

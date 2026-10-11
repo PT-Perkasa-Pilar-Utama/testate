@@ -298,16 +298,18 @@ One active token per `ingest` adapter (0012, #75; 25 §25.7). Not an `api_tokens
 | job_id | TEXT | no | | FK jobs | |
 | expires_at | TEXT | no | | | twenty-four hours |
 
-### RESOURCE_READINGS (UI label: "Readings")
+### RESOURCE_READINGS (UI label: "Monitor")
 
-One resource reading across a project (0013, #38; 26). Swept after `retention.job_history_days`.
+One resource reading across a project (0013, #38; 0014, #101; 26). Manual rows are swept after `retention.job_history_days`, polled rows after `retention.monitor_days`.
 
 | column | type | nullable | default | key | notes |
 | --- | --- | --- | --- | --- | --- |
 | id | TEXT | no | | PK | |
 | project_id | TEXT | no | | FK projects CASCADE | indexed with `taken_at` |
-| actor_kind | TEXT | no | | | `user` or `token` |
-| actor_id, actor_label | TEXT | no | | | copied, as an audit row copies them, so a reading outlives its actor |
+| source | TEXT | no | `manual` | | `manual` or `poll`; indexed with `taken_at` for the sweep |
+| actor_kind | TEXT | no | | | `user`, `token` or `system` (the poller) |
+| actor_id | TEXT | yes | | | null exactly when `actor_kind` is `system` |
+| actor_label | TEXT | no | | | copied, as an audit row copies it, so a reading outlives its actor |
 | body | TEXT | no | | | JSON: per adapter, its values and what was unavailable (26 §26.2) |
 | taken_at | TEXT | no | | | |
 
@@ -392,7 +394,7 @@ One resource reading across a project (0013, #38; 26). Swept after `retention.jo
 | updated_by | TEXT | yes | | | |
 | updated_at | TEXT | no | | | |
 
-Keys and defaults: `store.driver` (`local`), `store.s3` (JSON, keys sealed), `retention.stash_keep` (5), `retention.diff_days` (7), `retention.query_history_days` (90), `retention.job_history_days` (90), `retention.audit_days` (365), `retention.import_run_days` (30), `quota.default_bytes` (10 GiB), `quota.instance_ceiling_bytes` (NULL = free space), `limits.query_rows_default` (500), `limits.query_rows_max` (5000), `limits.query_bytes` (10 MiB), `limits.query_timeout_ms` (30000), `limits.query_timeout_max_ms` (300000), `limits.upload_mb` (from env), `limits.token_requests_per_minute` (600), `limits.write_session_idle_minutes` (30), `netguard.deny` (JSON list, default `["127.0.0.0/8", "::1/128"]`), `log.sample_rate_by_route` (JSON).
+Keys and defaults: `store.driver` (`local`), `store.s3` (JSON, keys sealed), `retention.stash_keep` (5), `retention.diff_days` (7), `retention.query_history_days` (90), `retention.job_history_days` (90), `retention.audit_days` (365), `retention.import_run_days` (30), `retention.monitor_days` (7), `quota.default_bytes` (10 GiB), `quota.instance_ceiling_bytes` (NULL = free space), `limits.query_rows_default` (500), `limits.query_rows_max` (5000), `limits.query_bytes` (10 MiB), `limits.query_timeout_ms` (30000), `limits.query_timeout_max_ms` (300000), `limits.upload_mb` (from env), `limits.token_requests_per_minute` (600), `limits.write_session_idle_minutes` (30), `limits.monitor_interval_seconds` (30; 0 pauses the monitor), `netguard.deny` (JSON list, default `["127.0.0.0/8", "::1/128"]`), `log.sample_rate_by_route` (JSON).
 
 ### SCHEMA_MIGRATIONS
 

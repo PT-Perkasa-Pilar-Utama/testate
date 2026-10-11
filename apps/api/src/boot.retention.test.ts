@@ -46,7 +46,7 @@ describe("the daily retention", () => {
         ran.push("ingest");
         return 0;
       },
-      readings: (days) => {
+      readings: async (days) => {
         ran.push(`readings ${days}`);
         return 0;
       },

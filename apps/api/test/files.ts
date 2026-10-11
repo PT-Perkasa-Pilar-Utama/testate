@@ -5,6 +5,7 @@ import { createMemorySource } from "../src/lib/files/index.ts";
 import type { MemoryTree } from "../src/lib/files/index.ts";
 import type { OpenFileSource } from "../src/lib/files/open.ts";
 import { AppError } from "../src/lib/http/index.ts";
+import type { Statvfs } from "../src/lib/resources/host.ts";
 import type { FilesResolver } from "../src/modules/adapters/adapters.files.ts";
 
 export const SFTP: AdapterDraft = {
@@ -19,7 +20,8 @@ export const SFTP: AdapterDraft = {
 /** Storage engines over memory trees; SFTP presents `sftpKey` so host-key trust has a path. */
 export function memoryOpen(
   trees: Map<string, MemoryTree>,
-  sftpKey: { current: string }
+  sftpKey: { current: string },
+  disk: Statvfs = { f_frsize: 4096, f_blocks: 1000, f_bavail: 250 }
 ): OpenFileSource {
   return (engine, config, _secrets, verifyHostKey) => {
     const name = v.parse(v.string(), engine === "s3" ? config["bucket"] : config["host"]);
@@ -49,13 +51,19 @@ export function memoryOpen(
       move: (from, to) => guard(() => source.move(from, to)),
       makeDirectory: (path) => guard(() => source.makeDirectory(path)),
       removeDirectory: (path) => guard(() => source.removeDirectory(path)),
-      // The fake host's `/proc` sits in the tree at `proc/...`, beside the adapter's files (#38).
+      // The fake host's `/proc` sits in the tree at `proc/...`, and pm2's pid files at
+      // `.pm2/pids`, beside the adapter's files (#38, #101).
       host: {
         text: (path) =>
           guard(async () =>
-            new TextDecoder().decode(await source.readRange(path.slice(1), 0, 65536))
+            new TextDecoder().decode(await source.readRange(path.replace(/^\//, ""), 0, 65536))
           ),
-        statvfs: () => guard(async () => ({ f_frsize: 4096, f_blocks: 1000, f_bavail: 250 })),
+        statvfs: () => guard(async () => disk),
+        names: (dir) =>
+          guard(async () => {
+            const page = await source.list(dir, { limit: 1000 }).catch(() => null);
+            return (page?.data ?? []).filter((e) => e.kind === "file").map((e) => e.name);
+          }),
       },
       close: () => source.close(),
     };

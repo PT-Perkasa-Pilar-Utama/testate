@@ -5,6 +5,7 @@ export const ROUTE_NAMES = [
   "databases",
   "storage",
   "logs",
+  "monitor",
   "login",
   "projects",
   "project",
@@ -53,6 +54,8 @@ export const ROUTES: readonly RouteDef<RouteName>[] = [
   { name: "databases", pattern: "/databases", role: "viewer" },
   { name: "storage", pattern: "/storage", role: "viewer" },
   { name: "logs", pattern: "/logs", role: "viewer" },
+  // The hosts and servers behind every project, sampled over time (#101).
+  { name: "monitor", pattern: "/monitor", role: "viewer" },
   { name: "jobs", pattern: "/jobs", role: "viewer" },
   { name: "account", pattern: "/account", role: "viewer" },
   { name: "audit", pattern: "/audit", role: "admin" },

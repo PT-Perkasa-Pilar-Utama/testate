@@ -82,14 +82,6 @@ function pm2Lines(now: Date, lines: [number, string][]): string {
     .concat("\n");
 }
 
-const PROC = {
-  "proc/loadavg": "0.42 0.37 0.31 2/311 48213\n",
-  "proc/meminfo":
-    "MemTotal:        8152340 kB\nMemFree:          921472 kB\nMemAvailable:    5034212 kB\nSwapTotal:       2097148 kB\nSwapFree:        2097148 kB\n",
-  "proc/uptime": "1209631.40 4511820.11\n",
-  "proc/stat": "cpu  1 2 3 4\ncpu0 1 2 3 4\ncpu1 1 2 3 4\ncpu2 1 2 3 4\ncpu3 1 2 3 4\n",
-};
-
 function appHost(now: Date): MemoryTree {
   const out = pm2Lines(now, [
     [52, "GET /api/orders 200 41ms"],
@@ -110,7 +102,6 @@ function appHost(now: Date): MemoryTree {
     [".pm2/logs/shop-api-out.log", file(out, now)],
     [".pm2/logs/shop-api-error.log", file(error, now)],
   ]);
-  for (const [path, text] of Object.entries(PROC)) tree.set(path, file(text, now));
   return tree;
 }
 
@@ -122,7 +113,6 @@ function filesHost(now: Date): MemoryTree {
     ["imports/customers.csv", file(CUSTOMERS_CSV, now)],
     ["exports/orders-2026-10.csv", file("id,status\n1,paid\n2,shipped\n", now)],
   ]);
-  for (const [path, text] of Object.entries(PROC)) tree.set(path, file(text, now));
   return tree;
 }
 
