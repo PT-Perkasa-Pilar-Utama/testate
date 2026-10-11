@@ -181,7 +181,7 @@ function untrustedAware(source: FileSource, untrusted: () => boolean): FileSourc
       throw cause;
     }
   };
-  return {
+  const wrapped: FileSource = {
     list: (path, query) => guard(() => source.list(path, query)),
     stat: (path) => guard(() => source.stat(path)),
     read: (path) => guard(() => source.read(path)),
@@ -193,6 +193,13 @@ function untrustedAware(source: FileSource, untrusted: () => boolean): FileSourc
     removeDirectory: (path) => guard(() => source.removeDirectory(path)),
     close: () => source.close(),
   };
+  const host = source.host;
+  if (host !== undefined)
+    wrapped.host = {
+      text: (path) => guard(() => host.text(path)),
+      statvfs: (path) => guard(() => host.statvfs(path)),
+    };
+  return wrapped;
 }
 
 /** Probes a storage target by listing its root (10 §10.3); any host key passes because no row exists yet. */

@@ -282,6 +282,13 @@ export function createFakeEngine(opts: FakeEngineOptions): DbEngine {
     },
     listRunningQueries: async () => [],
     readServerLog: (_conn, source, page) => fakeServerLog(source, page),
+    readResources: async () => ({
+      values: [
+        { key: "connections", value: 3, unit: "count" },
+        { key: "database_size", value: 8_192_000, unit: "bytes" },
+      ],
+      unavailable: [{ key: "active_connections", reason: "needs the pg_read_all_stats role" }],
+    }),
     cancelQuery: async () => undefined,
     terminateSessions: async (_conn, ids) => ({
       terminated: ids.filter((id) => !id.startsWith("dead-")),

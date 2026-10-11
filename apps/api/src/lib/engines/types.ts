@@ -14,6 +14,7 @@ import type {
 } from "@testate/shared";
 
 import type { ServerKey } from "../logs/server.ts";
+import type { ResourceRead } from "../resources/read.ts";
 
 export type { Capabilities, Introspection, ProbeResult, RestoreStrategy, SchemaDrift, TableRef };
 
@@ -281,6 +282,8 @@ export type DbEngine = {
     source: ServerLogSource,
     page: ServerLogPage
   ): Promise<ServerLogRead>;
+  /** Server counters for a resource reading (#38); a counter the login may not read is unavailable. */
+  readResources(conn: ConnectionRef): Promise<ResourceRead>;
   /** Ends the sessions that blocked a checkout (09 §9.5); needs `canTerminateSessions` from the probe. */
   terminateSessions(conn: ConnectionRef, sessionIds: string[]): Promise<TerminateResult>;
   decodeRow(row: RowText): DisplayRow;

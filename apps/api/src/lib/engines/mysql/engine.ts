@@ -21,6 +21,7 @@ import { cancelQuery, listRunningQueries, runQuery, terminateSessions } from "./
 import { snapshot, swallow } from "./reader.ts";
 import { checkout, resetCounters } from "./restore.ts";
 import { pageRows } from "./rows.ts";
+import { readResources } from "./resources.ts";
 import { readServerLog } from "./serverlog.ts";
 import { importRows, writeRows } from "./write.ts";
 
@@ -142,6 +143,10 @@ export function createMysqlEngine(netguard: Netguard): DbEngine {
     async listRunningQueries(conn) {
       const sql = await pools.acquire(conn);
       return guarded("list queries", () => listRunningQueries(sql));
+    },
+    async readResources(conn) {
+      const sql = await pools.acquire(conn);
+      return guarded("resources", () => readResources(sql));
     },
     async readServerLog(conn, source, page) {
       const sql = await pools.acquire(conn);

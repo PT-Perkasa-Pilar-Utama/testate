@@ -27,3 +27,4 @@ export * from "./schemas/audit.ts";
 export * from "./schemas/settings.ts";
 export * from "./schemas/tools.ts";
 export * from "./schemas/agent.ts";
+export * from "./schemas/readings.ts";
