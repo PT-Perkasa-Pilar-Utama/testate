@@ -21,6 +21,24 @@ Sebagian proyek terhubung ke penyimpanan file, misalnya S3, SFTP, atau FTP. Klik
 
 Penyimpanan file tidak pernah masuk ke state. Checkout tidak mengubah file Anda.
 
+## Monitor
+
+Testate membaca server di balik proyek setiap 30 detik: server database, dan mesin yang menyimpan file dan aplikasi. Hasilnya ditampilkan sebagai grafik. Gunakan grafik ini saat tes gagal dan Anda ingin tahu apakah penyebabnya mesin, misalnya disk penuh, CPU sibuk, atau aplikasi yang restart.
+
+Buka proyek, lalu klik tab **Monitor**.
+
+<!-- 30-monitor.png diambil dari demo di browser: server SFTP di dev stack tidak punya file host untuk digrafikkan. scripts/guide-screens.ts tidak membuatnya. -->
+![Monitor](../images/30-monitor.png)
+
+| No. | Apa ini | Yang Anda lakukan |
+| --- | --- | --- |
+| 1 | **Monitor** | Grafik server proyek ini. |
+| 2 | Rentang waktu | Pilih seberapa jauh ke belakang: 15 menit sampai 7 hari. |
+| 3 | **Sample now** | Baca server sekali lagi, sekarang. Testate juga membacanya sendiri. |
+| 4 | Grafik | Arahkan kursor untuk melihat nilai pada waktu itu. |
+
+Grafik terputus di saat Testate tidak bisa membaca server. Baris di bawah nama server menyebutkan apa yang tidak terbaca, dan alasannya. **Monitor** di menu samping menampilkan semua server di semua proyek Anda, dengan nilai terbaru.
+
 ## Jobs dan Tools
 
 ### Jobs

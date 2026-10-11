@@ -21,6 +21,24 @@ Some projects connect a file store, for example S3, SFTP, or FTP. Click **Storag
 
 A file store never goes into a state. A checkout does not change your files.
 
+## Monitor
+
+Testate reads the servers behind a project every 30 seconds: the database server, and the machines that hold the files and the app. It draws what it reads as graphs. Use them when a test fails and you want to know if the machine was the cause, for example a full disk, a busy CPU, or an app that restarted.
+
+Open a project and click the **Monitor** tab.
+
+<!-- 30-monitor.png comes from the browser demo: the dev stack's SFTP server has no host files to graph. scripts/guide-screens.ts does not make it. -->
+![Monitor](../images/30-monitor.png)
+
+| No. | What it is | What you do |
+| --- | --- | --- |
+| 1 | **Monitor** | The graphs of this project's servers. |
+| 2 | Time window | Pick how far back to look: 15 minutes to 7 days. |
+| 3 | **Sample now** | Read the servers once more, now. Testate also reads them by itself. |
+| 4 | Graph | Point at it to see the value at that time. |
+
+A graph has a gap where Testate could not read the server. The line under a server's name says what it could not read, and why. **Monitor** in the side menu lists every server in all your projects, with the newest values.
+
 ## Jobs and tools
 
 ### Jobs
