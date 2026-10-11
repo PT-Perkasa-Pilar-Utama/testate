@@ -45,6 +45,7 @@ import { createStatesRepository } from "../../../api/src/modules/states/states.r
 import type { EngineWiring } from "../../../api/src/wiring.ts";
 import type { LiveNetguard } from "../../../api/src/boot.ts";
 import { memoryOpen } from "../../../api/test/files.ts";
+import { DISK } from "./host-clock.ts";
 
 /** Every host the demo's adapters name ends in this; anything else is refused before a connect. */
 export const DEMO_DOMAIN = ".demo.internal";
@@ -101,7 +102,7 @@ export function demoWiring(
   const hostKeys = createHostKeysRepository(db);
   const now = (): Date => new Date();
   const sftpKey = { current: "SHA256:demo-sftp-host-key" };
-  const open = memoryOpen(world.trees, sftpKey);
+  const open = memoryOpen(world.trees, sftpKey, DISK);
   const remote = { repo: adapters, hostKeys, ring, netguard, now };
   return {
     netguard,

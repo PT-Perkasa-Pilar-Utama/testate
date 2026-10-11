@@ -77,6 +77,7 @@ apart on what a checkout does.
 16. As an admin, I want to set a storage quota per project and an instance-wide storage ceiling, so that neither one project nor the sum of projects fills the disk.
 164. As a QA engineer, I want to see who last changed a project's data, and when, before I check out, import or start writing, so that I do not overwrite a colleague's work without asking first.
 165. As a QA engineer, I want to take a reading of the hosts and database servers behind a project before and after a test run, and compare the two, so that I can tell a failure the machine caused from one the data caused.
+166. As a QA engineer or an operator, I want Testate to sample the hosts, the pm2 apps and the database servers behind each project on an interval and draw them as graphs over time, so that I can see what the machine and the app process were doing when a test failed without installing a monitoring stack.
 
 ### Database adapters
 
@@ -492,7 +493,7 @@ A good test checks external behavior: given inputs and a state, assert outputs a
 - Branches, merges, and cherry-picks between states. There is no merge for data.
 - Single sign-on, LDAP, and email delivery.
 - Multi-tenant hosting. One Testate serves one organization.
-- Metrics endpoints, time series, graphs over time, alerts, dashboards, and tracing. The answer for those is Prometheus and Grafana. A point-in-time resource reading is in scope (story 165).
+- Metrics endpoints, alerts and thresholds, saved or custom dashboards, Docker container stats, Prometheus queries, and tracing. The answer for those is Prometheus and Grafana. Resource readings, the monitor's polling, its samples and its graphs are in scope (stories 165 and 166).
 - Internationalized UI.
 
 ## 7. Further Notes

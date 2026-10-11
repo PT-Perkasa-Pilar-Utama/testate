@@ -2,7 +2,13 @@ import { describe, expect, it } from "bun:test";
 import { readingSchema } from "@testate/shared";
 
 import { expectContract } from "../../../test/contract.ts";
-import { PG, S3, createAdaptersHarness, createSettled } from "../../../test/adapters.ts";
+import {
+  PG,
+  PROJECT_ID,
+  S3,
+  createAdaptersHarness,
+  createSettled,
+} from "../../../test/adapters.ts";
 import type { AdaptersHarness } from "../../../test/adapters.ts";
 import { SFTP } from "../../../test/files.ts";
 import type { MemoryFile } from "../../lib/files/memory.ts";
@@ -21,7 +27,7 @@ function readingsOf(h: AdaptersHarness): ReadingsService {
     repo: createReadingsRepository(h.db),
     projects: h.projectsRepo,
     adapters: h.repo,
-    ...readingSources({ engines: h.engines, ring: h.ring, files: h.files }),
+    ...readingSources({ engines: h.engines, ring: h.ring, files: h.files, pause: async () => {} }),
     now: h.now,
   });
 }
@@ -50,6 +56,7 @@ describe("resource readings (#38)", () => {
       {
         id: "01991f00-0000-7000-8000-0000000000d1",
         taken_at: "2026-10-11T09:00:00.000Z",
+        source: "manual",
         actor: { kind: "user", label: "tina" },
         adapters: [
           {
@@ -63,7 +70,7 @@ describe("resource readings (#38)", () => {
         ],
       },
       (clone) => {
-        clone["adapters"] = [{ source: "cluster" }];
+        clone["source"] = "cron";
       }
     );
   });
@@ -79,12 +86,17 @@ describe("resource readings (#38)", () => {
     const host = reading.adapters[0];
     expect(host?.values.find((item) => item.key === "load_1m")?.value).toBe(0.5);
     expect(host?.values.find((item) => item.key === "disk_free")?.value).toBe(250 * 4096);
-    // The fake host has no /proc/meminfo: those four values say why, the rest stand.
+    // The fake host has no /proc/meminfo or /proc/net/dev, and a /proc/stat too short for a CPU
+    // %: those values say why, the rest stand.
     expect(host?.unavailable.map((item) => item.key)).toEqual([
       "memory_total",
       "memory_available",
       "swap_total",
       "swap_free",
+      "cpu_percent",
+      "cpu_iowait",
+      "net_rx",
+      "net_tx",
     ]);
     expect(stats.adapters).toBe(2);
   });
@@ -110,12 +122,18 @@ describe("resource readings (#38)", () => {
     expect(second.actor.label).toBe(h.admin.label);
   });
 
-  it("sweeps readings older than the job history", async () => {
+  it("sweeps manual and polled readings each by their own age", async () => {
     const { h, readings } = await shop();
     await readings.take(h.qa, "shop");
+    await readings.poll(PROJECT_ID);
     h.advance(31 * 86_400_000);
     await readings.take(h.qa, "shop");
-    expect(readings.sweep(30)).toBe(1);
+    expect(readings.sweep("manual", 30)).toBe(1);
+    expect((await readings.list("shop", 10)).rows.map((row) => row.source)).toEqual([
+      "manual",
+      "poll",
+    ]);
+    expect(readings.sweep("poll", 30)).toBe(1);
     expect((await readings.list("shop", 10)).rows.length).toBe(1);
   });
 

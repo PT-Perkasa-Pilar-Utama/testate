@@ -5,7 +5,8 @@ import SftpClient from "ssh2-sftp-client";
 import * as v from "valibot";
 
 import { AppError } from "../http/index.ts";
-import { HOST_FILES } from "../resources/host.ts";
+import { PM2_PIDS } from "../resources/apps.ts";
+import { isHostFile } from "../resources/host.ts";
 import type { HostIo, Statvfs } from "../resources/host.ts";
 import {
   alreadyThere,
@@ -254,13 +255,13 @@ const statvfsAnswer = v.object({
 type Channel = { client: SftpClient; wrapper: SFTPWrapper };
 
 /**
- * The host behind the login (#38): only the files in HOST_FILES, by absolute path, whatever the
- * root; and the disk the root sits on, through the OpenSSH `statvfs` extension.
+ * The host behind the login (#38, #101): only the files `isHostFile` admits, whatever the root;
+ * the disk the root sits on, through the OpenSSH `statvfs` extension; and pm2's pid files.
  */
 function hostOf(rootPath: string, channel: () => Promise<Channel>): HostIo {
   return {
     async text(path) {
-      if (!HOST_FILES.some((file) => file === path))
+      if (!isHostFile(path))
         throw new AppError("VALIDATION_ERROR", `${path} is not a host file Testate reads`);
       const { client } = await channel();
       const parts: Uint8Array[] = [];
@@ -271,6 +272,12 @@ function hostOf(rootPath: string, channel: () => Promise<Channel>): HostIo {
         if (size > HOST_TEXT_MAX) break;
       }
       return Buffer.concat(parts).subarray(0, HOST_TEXT_MAX).toString("utf8");
+    },
+    async names(dir) {
+      if (dir !== PM2_PIDS) throw new AppError("VALIDATION_ERROR", `${dir} is not a host folder`);
+      const { client } = await channel();
+      if ((await client.exists(dir)) !== "d") return [];
+      return (await client.list(dir)).filter((entry) => entry.type === "-").map((e) => e.name);
     },
     async statvfs(path) {
       const { wrapper } = await channel();

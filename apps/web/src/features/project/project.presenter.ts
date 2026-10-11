@@ -21,7 +21,7 @@ import type { DeletionPlan, Overview } from "../projects/projects.model.ts";
 export const PROJECT_TABS = [
   { id: "states", label: "States" },
   { id: "activity", label: "Activity" },
-  { id: "readings", label: "Readings" },
+  { id: "monitor", label: "Monitor" },
 ] as const;
 export type ProjectTab = (typeof PROJECT_TABS)[number]["id"];
 
@@ -40,6 +40,8 @@ const MOVED = new Map<string, ProjectTab>([
   ["checkouts", "activity"],
   ["diffs", "activity"],
   ["imports", "activity"],
+  // Readings became the monitor's graphs (#101).
+  ["readings", "monitor"],
 ]);
 
 /**

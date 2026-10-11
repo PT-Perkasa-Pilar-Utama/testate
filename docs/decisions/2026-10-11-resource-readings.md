@@ -4,6 +4,9 @@ Date: 2026-10-11
 
 Every question below was decided by the advisor at the user's request.
 
+Q8, Q10 and Q13 are superseded by the monitor (#101, [2026-10-11-monitor.md](2026-10-11-monitor.md)):
+Testate now polls, keeps samples and draws graphs, and reads CPU % from two reads.
+
 ## What was measured first
 
 | Check                                                    | Result                                                                                                                                                                            |

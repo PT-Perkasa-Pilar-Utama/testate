@@ -1,11 +1,12 @@
+import { readingSeriesQuerySchema } from "@testate/shared";
 import * as v from "valibot";
 
 import { currentActor } from "../../lib/http/auth.ts";
 import { ok, okPage, param, parseQuery } from "../../lib/http/index.ts";
 import type { Handler } from "../../lib/http/index.ts";
-import type { ReadingsService } from "./readings.service.ts";
+import type { ReadingsService, SeriesQuery } from "./readings.service.ts";
 
-export type ReadingsHandlers = { take: Handler; list: Handler; get: Handler };
+export type ReadingsHandlers = { take: Handler; list: Handler; get: Handler; series: Handler };
 
 const LIMIT_DEFAULT = 20;
 
@@ -35,5 +36,19 @@ export function createReadingsHandlers(service: ReadingsService): ReadingsHandle
       return okPage(c, page.rows, page.nextCursor, limit);
     },
     get: async (c) => ok(c, await service.get(param(c, "slug"), param(c, "id"))),
+    series: async (c) => {
+      const query = parseQuery(c, readingSeriesQuerySchema);
+      const window: SeriesQuery = {};
+      const [from, to, step] = [query.from?.[0], query.to?.[0], query.step?.[0]];
+      if (from !== undefined) window.from = from;
+      if (to !== undefined) window.to = to;
+      if (step !== undefined) window.step = step;
+      const series = await service.series(param(c, "slug"), window);
+      c.get("event").add("op", {
+        series_lines: series.lines.length,
+        series_step_seconds: series.step_seconds,
+      });
+      return ok(c, series);
+    },
   };
 }

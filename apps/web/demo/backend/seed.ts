@@ -1,7 +1,8 @@
 /**
  * What a visitor finds on arrival (#demo): three accounts, a Shop project with a database, a file
  * store and an app's logs, two states, a diff, a checkout and a reading. Everything goes through
- * the services, the same calls a person's clicks make.
+ * the services, the same calls a person's clicks make, except the monitor's day of history,
+ * which no click could write.
  */
 import type { Actor, AdapterDraft } from "@testate/shared";
 
@@ -9,6 +10,7 @@ import type { FakeDatabase } from "../../../api/src/lib/engines/fake/engine.ts";
 import type { RequestMeta } from "../../../api/src/lib/http/auth.ts";
 import { ADMIN } from "./boot.ts";
 import type { DemoBackend } from "./boot.ts";
+import { history } from "./host-clock.ts";
 import { APP_HOST, DB_HOST, FILES_HOST } from "./world.ts";
 
 export const ACCOUNTS = [
@@ -127,5 +129,12 @@ export async function seedDemo(backend: DemoBackend, shop: FakeDatabase): Promis
     META
   );
   await services.jobs.wait(null, checkout.job.id, WAIT_SECONDS);
-  await services.readings.take(admin, project.slug);
+  const { reading } = await services.readings.take(admin, project.slug);
+  // The day before the visit, from the same curve the live files follow (#101).
+  const adapters = reading.adapters.map(({ values: _values, unavailable: _gaps, ...adapter }) => ({
+    ...adapter,
+    scale: adapter.name === "uploads" ? 0.4 : 1,
+    app: adapter.name === "shop-api-logs",
+  }));
+  for (const row of history(project.id, adapters, Date.now())) backend.readingsRepo.insert(row);
 }

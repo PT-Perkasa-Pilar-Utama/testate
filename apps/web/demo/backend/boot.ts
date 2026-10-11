@@ -8,12 +8,7 @@ import "../../../api/src/lib/http/context.ts";
 
 import { Hono } from "hono";
 
-import {
-  createJobsRuntime,
-  createRetention,
-  migrateOrRefuse,
-  sweepSealed,
-} from "../../../api/src/boot.ts";
+import { createJobsRuntime, migrateOrRefuse, sweepSealed } from "../../../api/src/boot.ts";
 import { apiPrefix, loadConfig } from "../../../api/src/lib/config/index.ts";
 import { openMetadataDb } from "../../../api/src/lib/db/index.ts";
 import {
@@ -70,6 +65,9 @@ import {
   resetHandler,
   storageDeps,
 } from "../../../api/src/wiring.store.ts";
+import { createTimers } from "../../../api/src/wiring.timers.ts";
+import { createReadingsRepository } from "../../../api/src/modules/readings/readings.repository.ts";
+import type { ReadingsRepository } from "../../../api/src/modules/readings/readings.repository.ts";
 import { demoNetguard, demoWiring } from "./wiring.ts";
 import type { DemoWorld } from "./wiring.ts";
 import { MIGRATIONS_DIR } from "./migrations.ts";
@@ -82,6 +80,8 @@ export type DemoBackend = {
   usersRepo: ReturnType<typeof createUsersRepository>;
   hash: (plain: string) => Promise<string>;
   services: DemoServices;
+  /** The seed writes the day before the visit straight into it (#101). */
+  readingsRepo: ReadingsRepository;
 };
 
 export type DemoServices = {
@@ -91,7 +91,7 @@ export type DemoServices = {
   states: ReturnType<typeof createStateServices>["states"];
   checkouts: ReturnType<typeof createStateServices>["checkouts"];
   diffs: ReturnType<typeof createStateServices>["diffs"];
-  readings: ReturnType<typeof readingsService>;
+  readings: ReturnType<typeof readingsService>["readings"];
   jobs: ReturnType<typeof createJobsRuntime>["jobs"];
 };
 
@@ -176,7 +176,7 @@ export async function bootDemo(world: DemoWorld): Promise<DemoBackend> {
   });
   const storage = createStorageService(storageDeps(wiring, projectsRepo, audit, now));
   const logs = logsService(wiring, projectsRepo);
-  const readings = readingsService(db, wiring, projectsRepo, now);
+  const { readings, sources } = readingsService(db, wiring, projectsRepo, now);
   const shared = { projects: projectsRepo, audit, now };
   const ingest = ingestService(db, wiring, { ...shared, settings });
   const adapters = adaptersService(db, wiring, { ...shared, ring, netguard, jobs, ingest });
@@ -272,17 +272,12 @@ export async function bootDemo(world: DemoWorld): Promise<DemoBackend> {
   app.route(prefix, createV1(handlers));
 
   dispatcher.start();
-  createRetention(logger, {
-    sweepJobs: () => jobs.sweep,
-    historyDays: async () => (await settings.get()).retention.job_history_days,
-    expireDiffs: () => core.diffs.expire(),
-    settings: () => settings.runRetention(),
-    ingest: () => ingest.sweep(),
-    readings: (days) => readings.sweep(days),
-  });
+  // The poller runs here too, so the monitor's graphs move while a visitor watches (#101).
+  createTimers({ logger, jobs, settings, core, ingest, readings, sources, now }).start();
 
   return {
     fetch: async (request) => app.fetch(request),
+    readingsRepo: createReadingsRepository(db),
     usersRepo,
     hash: (plain) => password.hash(plain),
     services: {

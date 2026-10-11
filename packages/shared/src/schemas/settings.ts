@@ -30,6 +30,8 @@ export const settingsSchema = v.object({
     /** The request and response bodies behind audit rows; the rows outlive them. */
     audit_payload_days: positiveInt,
     import_run_days: positiveInt,
+    /** Samples the monitor polled (#101); a reading taken by hand keeps the job history. */
+    monitor_days: positiveInt,
   }),
   quota: v.object({
     default_bytes: nonNegativeInt,
@@ -49,6 +51,8 @@ export const settingsSchema = v.object({
     failed_logins_per_minute: positiveInt,
     write_session_idle_minutes: positiveInt,
     job_concurrency: positiveInt,
+    /** How often the monitor reads every project (#101); 0 turns polling off. */
+    monitor_interval_seconds: nonNegativeInt,
   }),
   netguard: v.object({
     deny: v.array(v.string()),

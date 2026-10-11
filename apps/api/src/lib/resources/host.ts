@@ -1,23 +1,46 @@
 /**
  * A host's load, memory, uptime and disk over SFTP (#38, Q4 and Q10 of
- * docs/decisions/2026-10-11-resource-readings.md). Four fixed `/proc` files and `statvfs`; no
- * command runs on the host. Every line parses here, and a line that does not is unavailable.
+ * docs/decisions/2026-10-11-resource-readings.md), and its CPU %, network and pm2 apps (#101).
+ * Fixed `/proc` files, pm2's pid files and `statvfs`; no command runs on the host. Every line
+ * parses here, and a line that does not is unavailable.
  */
 import * as v from "valibot";
 
-import { merge, readParts, valueOr } from "./read.ts";
+import { appsOf, appTicksOf, readApps } from "./apps.ts";
+import type { App, AppTicks, PM2_PIDS } from "./apps.ts";
+import { cpuPercentOf, cpuTicksOf, netBytesOf, netRatesOf, secondsBetween } from "./rates.ts";
+import type { CpuTicks, NetBytes } from "./rates.ts";
+import { merge, readParts, reasonOf, valueOr } from "./read.ts";
 import type { ResourceRead } from "./read.ts";
 
 export type Statvfs = { f_frsize: number; f_blocks: number; f_bavail: number };
 
-/** The two things the host reader asks of an SFTP login. */
+/** What the host reader asks of an SFTP login. */
 export type HostIo = {
+  /** One file that `isHostFile` admits. */
   text(path: string): Promise<string>;
   statvfs(path: string): Promise<Statvfs>;
+  /** The file names in PM2_PIDS, or none when it does not exist. */
+  names(dir: typeof PM2_PIDS): Promise<string[]>;
 };
 
-/** The only files a reading opens, whatever the adapter's root path (Q4). */
-export const HOST_FILES = ["/proc/loadavg", "/proc/meminfo", "/proc/uptime", "/proc/stat"] as const;
+/** The fixed files a reading opens, whatever the adapter's root path (Q4). */
+export const HOST_FILES = [
+  "/proc/loadavg",
+  "/proc/meminfo",
+  "/proc/uptime",
+  "/proc/stat",
+  "/proc/net/dev",
+] as const;
+
+/** The fixed files, a process's `stat` and `status`, and pm2's pid files; nothing else. */
+export function isHostFile(path: string): boolean {
+  return (
+    HOST_FILES.some((file) => file === path) ||
+    /^\/proc\/\d{1,9}\/(stat|status)$/.test(path) ||
+    /^\.pm2\/pids\/[A-Za-z0-9._-]{1,200}\.pid$/.test(path)
+  );
+}
 
 const number = v.pipe(v.string(), v.transform(Number), v.number(), v.finite());
 
@@ -96,7 +119,78 @@ export function diskOf(stats: Statvfs): ResourceRead {
   ]);
 }
 
-export function readHost(io: HostIo, rootPath: string): Promise<ResourceRead> {
+/** The counters read twice, a second apart. */
+type Counters = {
+  cpu: CpuTicks | null;
+  net: NetBytes | null;
+  apps: AppTicks;
+  uptime: number | null;
+};
+
+async function textOrNull(io: HostIo, path: string): Promise<string | null> {
+  try {
+    return await io.text(path);
+  } catch {
+    return null;
+  }
+}
+
+async function countersOf(io: HostIo, apps: App[]): Promise<Counters> {
+  const [stat, net, ticks, uptime] = await Promise.all([
+    textOrNull(io, "/proc/stat"),
+    textOrNull(io, "/proc/net/dev"),
+    appTicksOf(io, apps),
+    textOrNull(io, "/proc/uptime"),
+  ]);
+  const seconds = uptime === null ? [] : uptimeOf(uptime).values;
+  return {
+    cpu: stat === null ? null : cpuTicksOf(stat),
+    net: net === null ? null : netBytesOf(net),
+    apps: ticks,
+    uptime: seconds[0]?.value ?? null,
+  };
+}
+
+/** Waits between the two reads; tests pass one that does not. */
+export type Pause = () => Promise<void>;
+const ONE_SECOND: Pause = () => Bun.sleep(1000);
+
+async function readRates(io: HostIo, pause: Pause): Promise<ResourceRead> {
+  const apps = await appsOf(io).catch((cause: unknown) => {
+    throw new Error(`pm2's pid files: ${reasonOf(cause)}`);
+  });
+  const first = await countersOf(io, apps);
+  await pause();
+  const second = await countersOf(io, apps);
+  const seconds =
+    first.cpu !== null && second.cpu !== null ? secondsBetween(first.cpu, second.cpu) : 0;
+  return merge([
+    cpuPercentOf(first.cpu, second.cpu),
+    netRatesOf(first.net, second.net, seconds),
+    await readApps(io, apps, {
+      first: first.apps,
+      second: second.apps,
+      seconds,
+      uptime: second.uptime,
+    }),
+  ]);
+}
+
+export async function readHost(
+  io: HostIo,
+  rootPath: string,
+  pause: Pause = ONE_SECOND
+): Promise<ResourceRead> {
+  const [fixed, rates] = await Promise.all([
+    readFixed(io, rootPath),
+    readParts([
+      { keys: ["cpu_percent", "cpu_iowait", "net_rx", "net_tx"], read: () => readRates(io, pause) },
+    ]),
+  ]);
+  return merge([fixed, rates]);
+}
+
+function readFixed(io: HostIo, rootPath: string): Promise<ResourceRead> {
   return readParts([
     {
       keys: ["load_1m", "load_5m", "load_15m"],

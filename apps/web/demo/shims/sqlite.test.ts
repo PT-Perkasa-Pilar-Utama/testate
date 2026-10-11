@@ -11,7 +11,7 @@ test("the API's migrations, a repository and a rollback run on the sql.js shim",
   db.exec("PRAGMA foreign_keys = ON");
   // SAFETY: the API types its database as bun:sqlite; the shim implements the surface the repositories use.
   const report = migrate(db as never);
-  expect(report.applied.length).toBe(13);
+  expect(report.applied.length).toBe(14);
   const users = db.query(
     "INSERT INTO users (id, username, display_name, password_hash, role, must_change_password, created_at, updated_at) VALUES (?1, 'admin', 'Admin', 'x', 'admin', 0, ?2, ?2)"
   );

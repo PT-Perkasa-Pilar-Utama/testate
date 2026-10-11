@@ -198,6 +198,7 @@ function untrustedAware(source: FileSource, untrusted: () => boolean): FileSourc
     wrapped.host = {
       text: (path) => guard(() => host.text(path)),
       statvfs: (path) => guard(() => host.statvfs(path)),
+      names: (dir) => guard(() => host.names(dir)),
     };
   return wrapped;
 }

@@ -208,8 +208,8 @@ export type RetentionTasks = {
   settings: () => Promise<RetentionReport>;
   /** Pushed logs past each ingest adapter's retention, and deleted adapters' folders (I5). */
   ingest: () => Promise<number>;
-  /** Resource readings past the job history (#38, Q9). */
-  readings: (days: number) => number;
+  /** Manual readings past the job history (#38, Q9); polled ones past the monitor days (#101). */
+  readings: (historyDays: number) => Promise<number>;
 };
 
 /** Step 9 and the daily timer: every retention the settings name (16 §16.1), once a day. */
@@ -218,7 +218,7 @@ export function createRetention(logger: Logger, tasks: RetentionTasks): Retentio
   const run = async (): Promise<void> => {
     const days = await tasks.historyDays();
     const swept = tasks.sweepJobs()(days);
-    const readings = tasks.readings(days);
+    const readings = await tasks.readings(days);
     const diffs = await tasks.expireDiffs();
     const settings = await tasks.settings();
     const ingest_files = await tasks.ingest();

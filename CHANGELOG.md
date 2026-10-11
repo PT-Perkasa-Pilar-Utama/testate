@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### New
+
+- **Monitor.** Testate samples the hosts, the pm2 apps and the database servers behind every
+  project every 30 seconds and draws them as graphs over 15 minutes to 7 days: CPU and I/O wait,
+  load, memory and disk used, network throughput, each pm2 app's CPU, memory and uptime, and each
+  database server's connections, size and rates. The project tab Readings is now Monitor, and a
+  Monitor menu lists every host and server you can see. Two settings: Monitor interval (0 turns
+  polling off) and Monitor samples (days, default 7). No command runs on a host; Testate reads
+  `/proc` and pm2's pid files over SFTP, and keeps one SSH login per host open between samples.
+- `GET /projects/{slug}/readings/series` answers the samples bucketed into min, mean and max.
+
+### Changed
+
+- **A reading has a `source`** (`manual` or `poll`), and a polled one's actor is
+  `{ "kind": "system" }`. Upgrading runs migration 0014.
+- The two-reading compare is gone; `?tab=readings` opens the Monitor tab.
+
 ## 2.0.0
 
 Testate becomes one binary you install with one line, gains a fourth tier for logs, and scopes

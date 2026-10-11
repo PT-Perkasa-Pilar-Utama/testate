@@ -17,6 +17,7 @@ import StorageView from "@/features/storage/storage.view.tsx";
 import HomeView from "@/features/home/home.view.tsx";
 import StoresView from "@/features/storage/stores.view.tsx";
 import LogsView from "@/features/logs/logs.view.tsx";
+import MonitorOverviewView from "@/features/monitor/monitor.overview.view.tsx";
 import DatabasesView from "@/features/databases/databases.view.tsx";
 import AccountView from "@/features/account/account.view.tsx";
 import AuditView from "@/features/audit/audit.view.tsx";
@@ -103,6 +104,9 @@ function Page(props: { match: RouteMatch | null }): JSX.Element {
       </Match>
       <Match when={name() === "logs"}>
         <LogsView />
+      </Match>
+      <Match when={name() === "monitor"}>
+        <MonitorOverviewView />
       </Match>
       <Match when={name() === "jobs"}>
         <JobsView />
