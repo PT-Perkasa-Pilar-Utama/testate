@@ -108,7 +108,7 @@ Reads run in a read-only transaction, column policies mask values before the age
 
 Every engine here is real and driven over its own protocol. The database tiers also get a **Server logs** tab. S3-compatible means Amazon, Cloudflare R2, Google Cloud Storage, Backblaze B2, MinIO and anything else that speaks the protocol.
 
-Also in the box: a data grid with filters, keyset paging and write mode; a read-only SQL console with saved queries; CSV and XLSX import with a dry run; fixture extraction as SQL or JSON; three roles (Administrator, Tester, Guest); an audit log of every write.
+Also in the box: a data grid with filters, keyset paging and write mode; a read-only SQL console with saved queries; CSV and XLSX import with a dry run; fixture extraction as SQL or JSON; resource readings of the hosts and database servers, two at a time side by side; three roles (Administrator, Tester, Guest); an audit log of every write.
 
 Testate resets databases one at a time, and only the ones you add. Read [the limits](docs/LIMITS.md) before you install it.
 
