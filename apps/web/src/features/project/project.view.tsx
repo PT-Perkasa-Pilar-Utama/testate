@@ -12,6 +12,7 @@ import Tabs from "@/components/tabs.tsx";
 import { hasRole } from "@/lib/session.ts";
 import EmptyState from "@/components/empty-state.tsx";
 import { navigate } from "@/lib/router.ts";
+import ReadingsView from "../readings/readings.view.tsx";
 import ActivityView from "./activity.view.tsx";
 import ConnectionCounts from "./project.counts.view.tsx";
 import InspectProject from "./inspect.view.tsx";
@@ -209,6 +210,9 @@ function RegularProject(props: { presenter: ProjectPresenter; slug: string }): J
         </Match>
         <Match when={presenter.tab() === "activity"}>
           <ActivityView slug={props.slug} onChanged={() => presenter.overview.refresh()} />
+        </Match>
+        <Match when={presenter.tab() === "readings"}>
+          <ReadingsView slug={props.slug} />
         </Match>
       </Switch>
       <EditDialog presenter={presenter} />
