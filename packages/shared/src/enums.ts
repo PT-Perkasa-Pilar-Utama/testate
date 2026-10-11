@@ -8,6 +8,22 @@ export const TOKEN_KINDS = ["standard", "agent"] as const;
 export const tokenKindSchema = v.picklist(TOKEN_KINDS);
 export type TokenKind = v.InferOutput<typeof tokenKindSchema>;
 
+/**
+ * The audit actions that change a project's live data, which the "someone else changed this"
+ * warning reads (#60, docs/decisions/2026-10-11-tester-collisions.md Q3).
+ */
+export const DATA_CHANGE_ACTIONS = [
+  "checkout.created",
+  "import.run",
+  "write_session.started",
+  "file.uploaded",
+  "file.renamed",
+  "file.copied",
+  "file.deleted",
+] as const;
+export const dataChangeActionSchema = v.picklist(DATA_CHANGE_ACTIONS);
+export type DataChangeAction = v.InferOutput<typeof dataChangeActionSchema>;
+
 /** `logs`: the Logs tier, read-only by construction (#37). */
 export const ADAPTER_KINDS = ["database", "storage", "logs"] as const;
 export const adapterKindSchema = v.picklist(ADAPTER_KINDS);

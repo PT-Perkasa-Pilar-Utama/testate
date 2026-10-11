@@ -1,4 +1,6 @@
-import type { Actor, AuditPayload, AuditRow, JsonObject } from "@testate/shared";
+import type { Actor, AuditPayload, AuditRow, JsonObject, LastChange } from "@testate/shared";
+import { lastChangeSchema } from "@testate/shared";
+import * as v from "valibot";
 
 import { exportCell } from "../../lib/csv.ts";
 import type { RequestMeta } from "../../lib/http/auth.ts";
@@ -75,6 +77,8 @@ export type AuditService = {
     id: string,
     scope: Pick<AuditListQuery, "scope" | "includeInstance">
   ): Promise<AuditPayload | null>;
+  /** What someone other than `actor` last did to the project's live data (#60). */
+  lastChange(projectId: string, actor: Actor): Promise<LastChange>;
 };
 
 export type AuditDeps = { repo: AuditRepository; payloads?: PayloadStore; now?: () => Date };
@@ -161,6 +165,20 @@ export function createAuditService(deps: AuditDeps): AuditService {
       if (row.request_id === null) return NO_PAYLOAD;
       const kept = deps.payloads?.get(row.request_id) ?? null;
       return kept === null ? { ...NO_PAYLOAD, state: "expired" } : { state: "kept", ...kept };
+    },
+    async lastChange(projectId, actor) {
+      const row = deps.repo.lastChange(projectId, actor.id);
+      if (row === null) return { last_change: null };
+      // The query only returns the data-change actions and a user or token row; parse, not cast.
+      return v.parse(lastChangeSchema, {
+        last_change: {
+          action: row.action,
+          actor: { kind: row.actor.kind, label: row.actor.label },
+          target_label: row.target_label,
+          adapter_name: row.adapter?.name ?? null,
+          at: row.created_at,
+        },
+      });
     },
     async exportCsv(query) {
       const lines = [CSV_COLUMNS.join(",")];

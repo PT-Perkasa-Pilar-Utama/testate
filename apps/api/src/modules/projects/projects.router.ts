@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import {
   headSchema,
   jobSchema,
+  lastChangeSchema,
   projectDefaultsSchema,
   projectSchema,
   quotaSchema,
@@ -51,6 +52,12 @@ export function createProjectsRouter(h: ProjectsHandlers): Hono {
     requireRole("viewer"),
     describe("projects", "HEAD", headSchema),
     h.head
+  );
+  router.get(
+    "/projects/:slug/last-change",
+    requireRole("viewer"),
+    describe("projects", "The last data change by someone else", lastChangeSchema),
+    h.lastChange
   );
   router.get(
     "/projects/:slug/quota",

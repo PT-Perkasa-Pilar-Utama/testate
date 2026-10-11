@@ -23,6 +23,7 @@ export const MATRIX: [string, string, Role][] = [
   ["POST", `${P}/readings`, "qa"],
   ["GET", `${P}/readings`, "viewer"],
   ["GET", `${P}/readings/r1`, "viewer"],
+  ["GET", `${P}/last-change`, "viewer"],
   ["POST", `${P}/deletion`, "admin"],
   ["GET", `${P}/deletion-plan`, "admin"],
   ["GET", `${P}/adapters`, "viewer"],

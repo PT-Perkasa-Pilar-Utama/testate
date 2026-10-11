@@ -1,5 +1,14 @@
 import type * as v from "valibot";
-import type { Actor, Head, Job, Project, ProjectDefaults, Quota, Settings } from "@testate/shared";
+import type {
+  Actor,
+  Head,
+  Job,
+  LastChange,
+  Project,
+  ProjectDefaults,
+  Quota,
+  Settings,
+} from "@testate/shared";
 import { RESERVED_SLUGS, freeSlug, projectSlug } from "@testate/shared";
 import type { createProjectSchema } from "@testate/shared";
 
@@ -53,6 +62,7 @@ export type ProjectsService = {
   get(actor: Actor, slug: string): Promise<ProjectOverview>;
   update(actor: Actor, slug: string, patch: ProjectPatch, meta: RequestMeta): Promise<Project>;
   head(slug: string): Promise<Head>;
+  lastChange(actor: Actor, slug: string): Promise<LastChange>;
   quota(slug: string): Promise<Quota>;
   deletionPlan(slug: string): Promise<DeletionPlan>;
   deleteProject(actor: Actor, slug: string, input: DeletionInput, meta: RequestMeta): Promise<Job>;
@@ -191,6 +201,9 @@ export function createProjectsService(deps: ProjectsDeps): ProjectsService {
     },
     async head(slug) {
       return find(slug).head;
+    },
+    async lastChange(actor, slug) {
+      return deps.audit.lastChange(find(slug).id, actor);
     },
     async quota(slug) {
       const project = find(slug);
