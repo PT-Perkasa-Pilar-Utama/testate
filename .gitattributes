@@ -1,0 +1,2 @@
+# The browser-only demo, built by `bun run build:demo` and served by Pages: not reviewed line by line.
+docs/demo/** linguist-generated=true -diff
