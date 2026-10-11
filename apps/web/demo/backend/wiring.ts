@@ -30,8 +30,9 @@ import { createLokiResolver } from "../../../api/src/modules/adapters/adapters.l
 import {
   createEngineProbe,
   createScaffoldFileProbe,
-  createScaffoldProbe,
 } from "../../../api/src/modules/adapters/adapters.probe.ts";
+import type { ProbeFn } from "../../../api/src/modules/adapters/adapters.probe.ts";
+import { AppError } from "../../../api/src/lib/http/index.ts";
 import { createAdaptersRepository } from "../../../api/src/modules/adapters/adapters.repository.ts";
 import { createShellResolver } from "../../../api/src/modules/adapters/adapters.shell.ts";
 import { createCheckoutsRepository } from "../../../api/src/modules/checkouts/checkouts.repository.ts";
@@ -49,11 +50,16 @@ import { memoryOpen } from "../../../api/test/files.ts";
 export const DEMO_DOMAIN = ".demo.internal";
 const DEMO_ADDRESS = "10.0.0.5";
 
+/** The netguard refusal names the deny list in Settings, which cannot help here; this says why. */
 export function demoNetguard(): LiveNetguard {
   return {
     async check(input: Check): Promise<Verdict> {
       if (input.host.endsWith(DEMO_DOMAIN)) return { allowed: true, addresses: [DEMO_ADDRESS] };
-      return { allowed: false, reason: "policy", matched: input.host };
+      throw new AppError(
+        "HOST_BLOCKED",
+        `The demo reaches only its own sample servers, not ${input.host}. Install Testate to connect yours.`,
+        { reason: "demo", matched: input.host }
+      );
     },
     setDeny: () => undefined,
   };
@@ -71,6 +77,15 @@ function demoEngines(databases: Map<string, FakeDatabase>): EngineRegistry {
     },
   };
 }
+
+/** The probe for any engine but the fake: a sentence, not a test that passes and a job that fails. */
+const refuseEngine: ProbeFn = async (engine) => {
+  throw new AppError(
+    "ENGINE_UNSUPPORTED",
+    `${engine} needs a real Testate server; the demo's sample database is PostgreSQL.`,
+    { reason: "demo" }
+  );
+};
 
 export type DemoWorld = { databases: Map<string, FakeDatabase>; trees: Map<string, MemoryTree> };
 
@@ -92,7 +107,7 @@ export function demoWiring(
     netguard,
     engines,
     adapterLanes: 2,
-    probe: createEngineProbe(engines, createScaffoldProbe()),
+    probe: createEngineProbe(engines, refuseEngine),
     fileProbe: createFileProbe(
       open,
       createScaffoldFileProbe(),

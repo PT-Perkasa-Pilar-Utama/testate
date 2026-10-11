@@ -32,6 +32,9 @@ export default defineConfig({
   base: "/testate/demo/",
   plugins: [scanTheSpa, solidPlugin(), tailwindcss()],
   resolve: {
+    // `hono` is pinned in apps/api and, for the demo's root, apps/web: keep the two at one version
+    // so the routers and the app share one copy.
+    dedupe: ["hono"],
     alias: [
       { find: "@demo/backend", replacement: here("./demo/backend/entry.ts") },
       { find: "@", replacement: here("./src") },
