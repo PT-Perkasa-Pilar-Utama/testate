@@ -6,7 +6,7 @@
     <title>Testate · Git for your test database</title>
     <meta
       name="description"
-      content="Snapshot the databases behind a system under test, break them, put them back in seconds, and see exactly what changed. Self-hosted, one container, MIT."
+      content="Snapshot the databases behind a system under test, break them, put them back in seconds, and see exactly what changed. Read its logs beside its data. Self-hosted, one binary, MIT."
     />
     <meta name="theme-color" content="#05070a" />
     <meta property="og:title" content="Testate · Git for your test database" />
@@ -33,12 +33,12 @@
         "@type": "SoftwareApplication",
         "name": "Testate",
         "applicationCategory": "DeveloperApplication",
-        "operatingSystem": "Docker",
+        "operatingSystem": "Linux, macOS, Windows",
         "softwareVersion": "1.2.0",
         "license": "https://opensource.org/licenses/MIT",
         "url": "https://pt-perkasa-pilar-utama.github.io/testate/",
         "codeRepository": "https://github.com/PT-Perkasa-Pilar-Utama/testate",
-        "description": "Git for your test database. Snapshot the databases behind a system under test, restore them on demand, diff them, import fixtures, and let an AI agent inspect them read-only.",
+        "description": "Git for your test database. Snapshot the databases behind a system under test, restore them on demand, diff them, read their logs, and let an AI agent inspect them read-only.",
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
         "publisher": { "@type": "Organization", "name": "PT. Perkasa Pilar Utama" }
       }
@@ -64,6 +64,7 @@
         <span>Test<span class="ate">ate</span></span>
       </a>
       <nav aria-label="Sections">
+        <a href="#get">Get it</a>
         <a href="#sits">Where it sits</a>
         <a href="#loop">Loop</a>
         <a href="#does">What it does</a>
@@ -76,6 +77,7 @@
     </header>
 
     <ol class="rail" aria-label="Page sections">
+      <li><a href="#get">Get it</a></li>
       <li><a href="#sits">Where</a></li>
       <li><a href="#loop">Loop</a></li>
       <li><a href="#does">Does</a></li>
@@ -115,7 +117,7 @@
               <strong>Break them. Put them back in seconds,</strong> and see exactly what changed.
             </p>
             <div class="actions fade" style="animation-delay: 420ms">
-              <a class="btn" href="#start">Run it in a minute</a>
+              <a class="btn" href="#get">Install in one line</a>
               <a class="btn ghost" href="https://github.com/PT-Perkasa-Pilar-Utama/testate">Read the source</a>
             </div>
             <div class="hud fade" style="animation-delay: 600ms" aria-live="off">
@@ -127,6 +129,66 @@
         <div class="scroll-cue" aria-hidden="true"><i></i>scroll</div>
       </section>
 
+      <section class="band" id="get">
+        <div class="wrap">
+          <div class="get">
+            <div class="points reveal">
+              <ul class="dash">
+                <li>
+                  Databases, files and logs behind one dashboard: PostgreSQL, MySQL, MariaDB,
+                  MongoDB, any S3, SFTP, FTP, and six kinds of log source
+                  <a href="#engines">(every engine &rarr;)</a>
+                </li>
+                <li>Snapshots, credentials and logs stay on your own server. No account, no telemetry.</li>
+                <li>One binary for Linux, macOS and Windows, with a setup and a service built in</li>
+              </ul>
+              <div class="actions">
+                <a class="btn" href="https://github.com/PT-Perkasa-Pilar-Utama/testate#readme">Read the docs</a>
+                <a class="btn ghost" href="https://github.com/PT-Perkasa-Pilar-Utama/testate">View the source</a>
+              </div>
+            </div>
+            <div class="getit reveal" style="--d: 120ms">
+              <h2>Get it</h2>
+              <p class="label">Install the binary on Linux or macOS, then run <code>testate setup</code></p>
+              <div class="cmd" data-cmd="curl -fsSL https://pt-perkasa-pilar-utama.github.io/testate/install.sh | sh">
+                <pre><span class="ps">$</span> curl -fsSL https://pt-perkasa-pilar-utama.github.io/testate/install.sh | sh</pre>
+                <button class="copy" type="button">copy</button>
+              </div>
+              <p class="label">Or run the container</p>
+              <div
+                class="cmd"
+                data-cmd='docker run -d --name testate -p 7378:7378 -v testate-data:/data \
+  -e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
+  -e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
+  ghcr.io/pt-perkasa-pilar-utama/testate:1.2.0'
+              >
+                <pre><span class="ps">$</span> docker run -d --name testate -p 7378:7378 \
+    -v testate-data:/data \
+    -e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
+    -e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
+    ghcr.io/pt-perkasa-pilar-utama/testate:1.2.0</pre>
+                <button class="copy" type="button">copy</button>
+              </div>
+              <p class="label">Or connect your agent, with an agent token from the dashboard</p>
+              <div
+                class="cmd"
+                data-cmd='claude mcp add --transport http testate https://testate.example.internal/api/v1/mcp --header "Authorization: Bearer tst_YOUR_TOKEN"'
+              >
+                <pre><span class="ps">$</span> claude mcp add --transport http testate \
+    https://testate.example.internal/api/v1/mcp \
+    --header "Authorization: Bearer tst_YOUR_TOKEN"</pre>
+                <button class="copy" type="button">copy</button>
+              </div>
+              <p class="label muted">
+                Windows: <code>testate_windows_amd64.zip</code> from the
+                <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate/releases">releases</a>.
+                Every download is signed and carries build provenance.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="band" id="sits">
         <div class="parallax num" data-speed="40" aria-hidden="true">01</div>
         <div class="wrap">
@@ -134,16 +196,16 @@
             <p class="eyebrow">Where it sits</p>
             <h2>Beside the system it tests. Never inside it.</h2>
             <p>
-              Your test server already has the app and its databases. Testate docks next to them as
-              one container, and everyone who needs a clean database comes in through it.
+              Your test server already has the app, its databases and its logs. Testate docks next to
+              them as one binary, and everyone who needs a clean database comes in through it.
             </p>
           </div>
           <div class="reveal placement-wrap" style="--d: 120ms">
             <!-- placement -->
 <svg class="placement" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-labelledby="pt pd">
-<title id="pt">Where Testate sits</title><desc id="pd">Your test server holds your app and its databases. Testate docks beside them as one container, takes snapshots and puts them back, and testers, developers, CI/CD, DevOps and AI agents come in through it.</desc>
+<title id="pt">Where Testate sits</title><desc id="pd">Your test server holds your app and its databases. Testate docks beside them as one binary, takes snapshots and puts them back, and testers, developers, CI/CD, DevOps and AI agents come in through it.</desc>
 <style>@media (prefers-reduced-motion: reduce){.placement-pulse{display:none}}</style><defs><filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="28"/></filter></defs>
-<g opacity="0"><animate attributeName="opacity" values="0;1;1;1" keyTimes="0.0000;0.0008;0.9538;1.0000" dur="13s" fill="freeze"/><g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.0154;0.0769;1.0000" dur="13s" fill="freeze"/><rect x="440" y="110" width="1110" height="790" rx="26" fill="rgba(238,242,245,0.025)" stroke="rgba(238,242,245,0.28)" stroke-width="1.5" stroke-dasharray="10 8"/><rect x="462" y="94" width="470" height="32" fill="#05070a"/><text x="476" y="118" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="21" fill="#7dd3c0" letter-spacing="2.4">YOUR TEST SERVER · DEV, SIT OR UAT</text><rect x="1120" y="180" width="380" height="140" rx="18" fill="#0b1017" stroke="rgba(238,242,245,0.28)" stroke-width="1.5"/><text x="1310" y="240" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="34" fill="#eef2f5" text-anchor="middle" font-weight="650" letter-spacing="-0.6">Your app</text><text x="1310" y="282" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="22" fill="#8b96a3" text-anchor="middle">the system under test</text><rect x="1120" y="560" width="380" height="260" rx="18" fill="#0b1017" stroke="rgba(238,242,245,0.28)" stroke-width="1.5"/><text x="1310" y="624" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="34" fill="#eef2f5" text-anchor="middle" font-weight="650" letter-spacing="-0.6">Its databases</text><text x="1310" y="676" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="22" fill="#8b96a3" text-anchor="middle">PostgreSQL · MySQL · MariaDB</text><text x="1310" y="716" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="22" fill="#8b96a3" text-anchor="middle">MongoDB · any S3 · SFTP · FTP</text><text x="1310" y="776" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20" fill="#566270" text-anchor="middle" font-style="italic">reset by hand, until now</text><line x1="1310" y1="320" x2="1310" y2="544" stroke="rgba(238,242,245,0.28)" stroke-width="2"/><polygon points="1310,560 1301,544 1319,544" fill="rgba(238,242,245,0.28)"/><text x="1328" y="446" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20" fill="#8b96a3">reads and writes</text></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.1077;0.1308;1.0000" dur="13s" fill="freeze"/><text x="500" y="300" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="20" fill="#7dd3c0">$ docker run ghcr.io/pt-perkasa-pilar-utama/testate</text></g><g transform="translate(-1200 0)"><animateTransform attributeName="transform" type="translate" values="-1200 0;-1200 0;0 0;0 0" keyTimes="0.0000;0.1462;0.2231;1.0000" dur="13s" fill="freeze" calcMode="spline" keySplines="0 0 1 1;0.16 1 0.3 1;0 0 1 1"/><rect x="500" y="330" width="420" height="460" rx="20" fill="#10b981" opacity="0.08" filter="url(#glow)"/><rect x="500" y="330" width="420" height="460" rx="18" fill="#0b1017" stroke="#10b981" stroke-width="1.5"/><g transform="translate(540 366) scale(0.5)"><g fill="none" stroke="#7dd3c0" stroke-width="9" stroke-linecap="round"><line x1="44" y1="104" x2="44" y2="30"/><path d="M44 66 C44 48 84 60 84 42"/></g><circle cx="44" cy="104" r="11" fill="#7dd3c0"/><circle cx="84" cy="42" r="11" fill="#7dd3c0"/><circle cx="44" cy="30" r="15" fill="#10b981"/><circle cx="44" cy="30" r="6" fill="#0b1017"/></g><text x="614" y="412" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="36" fill="#eef2f5" font-weight="650" letter-spacing="-0.8">Test<tspan fill="#10b981">ate</tspan></text><line x1="540" y1="446" x2="880" y2="446" stroke="rgba(238,242,245,0.16)" stroke-width="1.5"/><circle cx="552" cy="484" r="5" fill="#7dd3c0"/><text x="574" y="492" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="26" fill="#eef2f5">snapshot</text><circle cx="552" cy="534" r="5" fill="#7dd3c0"/><text x="574" y="542" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="26" fill="#eef2f5">check out</text><circle cx="552" cy="584" r="5" fill="#7dd3c0"/><text x="574" y="592" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="26" fill="#eef2f5">diff</text><circle cx="552" cy="634" r="5" fill="#7dd3c0"/><text x="574" y="642" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="26" fill="#eef2f5">import fixtures</text><circle cx="552" cy="684" r="5" fill="#7dd3c0"/><text x="574" y="692" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="26" fill="#eef2f5">MCP for agents</text><text x="540" y="742" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="18" fill="#7dd3c0">1 container · 1 volume</text><text x="540" y="772" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="19" fill="#8b96a3">Beside the app. Nothing installs inside it.</text></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.2462;0.2615;1.0000" dur="13s" fill="freeze"/><line x1="1120" y1="610" x2="944" y2="610" stroke="#8dd6ff" stroke-width="2.5" stroke-dasharray="176" stroke-dashoffset="176"><animate attributeName="stroke-dashoffset" values="176;176;0;0" keyTimes="0.0000;0.2462;0.2846;1.0000" dur="13s" fill="freeze"/></line><polygon points="936,610 952,601 952,619" fill="#8dd6ff" opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.2808;0.2923;1.0000" dur="13s" fill="freeze"/></polygon><text x="1030" y="592" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="19" fill="#8dd6ff" text-anchor="middle">snapshot</text><line x1="920" y1="740" x2="1104" y2="740" stroke="#10b981" stroke-width="2.5" stroke-dasharray="184" stroke-dashoffset="184"><animate attributeName="stroke-dashoffset" values="184;184;0;0" keyTimes="0.0000;0.2692;0.3077;1.0000" dur="13s" fill="freeze"/></line><polygon points="1112,740 1096,731 1096,749" fill="#10b981" opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.3038;0.3154;1.0000" dur="13s" fill="freeze"/></polygon><text x="1030" y="770" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="19" fill="#10b981" text-anchor="middle">put it back</text><circle class="placement-pulse" r="6" fill="#8dd6ff" opacity="0"><animateMotion path="M1120,610 L944,610" begin="4.4s" dur="1.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1" keyTimes="0;1"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" begin="4.4s" dur="1.6s" repeatCount="indefinite"/></circle><circle class="placement-pulse" r="6" fill="#10b981" opacity="0"><animateMotion path="M920,740 L1104,740" begin="5.2s" dur="1.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1" keyTimes="0;1"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" begin="5.2s" dur="1.6s" repeatCount="indefinite"/></circle></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.3231;0.3500;1.0000" dur="13s" fill="freeze"/><rect x="60" y="352" width="330" height="76" rx="18" fill="#0b1017" stroke="rgba(238,242,245,0.28)" stroke-width="1.5"/><text x="88" y="388" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" fill="#eef2f5" font-weight="600" letter-spacing="-0.4">Testers</text><text x="88" y="414" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" fill="#8b96a3">the dashboard</text><line x1="390" y1="390" x2="500" y2="390" stroke="rgba(238,242,245,0.28)" stroke-width="2" stroke-dasharray="110" stroke-dashoffset="110"><animate attributeName="stroke-dashoffset" values="110;110;0;0" keyTimes="0.0000;0.3385;0.3692;1.0000" dur="13s" fill="freeze"/></line><circle class="placement-pulse" r="6" fill="#7dd3c0" opacity="0"><animateMotion path="M390,390 L500,390" begin="5s" dur="1.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1" keyTimes="0;1"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" begin="5s" dur="1.4s" repeatCount="indefinite"/></circle></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.3577;0.3846;1.0000" dur="13s" fill="freeze"/><rect x="60" y="442" width="330" height="76" rx="18" fill="#0b1017" stroke="rgba(238,242,245,0.28)" stroke-width="1.5"/><text x="88" y="478" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" fill="#eef2f5" font-weight="600" letter-spacing="-0.4">Developers</text><text x="88" y="504" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" fill="#8b96a3">the grid and the console</text><line x1="390" y1="480" x2="500" y2="480" stroke="rgba(238,242,245,0.28)" stroke-width="2" stroke-dasharray="110" stroke-dashoffset="110"><animate attributeName="stroke-dashoffset" values="110;110;0;0" keyTimes="0.0000;0.3731;0.4038;1.0000" dur="13s" fill="freeze"/></line><circle class="placement-pulse" r="6" fill="#7dd3c0" opacity="0"><animateMotion path="M390,480 L500,480" begin="5.58s" dur="1.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1" keyTimes="0;1"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" begin="5.58s" dur="1.4s" repeatCount="indefinite"/></circle></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.3923;0.4192;1.0000" dur="13s" fill="freeze"/><rect x="60" y="532" width="330" height="76" rx="18" fill="#0b1017" stroke="rgba(238,242,245,0.28)" stroke-width="1.5"/><text x="88" y="568" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" fill="#eef2f5" font-weight="600" letter-spacing="-0.4">CI/CD</text><text x="88" y="594" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" fill="#8b96a3">one call before the run</text><line x1="390" y1="570" x2="500" y2="570" stroke="rgba(238,242,245,0.28)" stroke-width="2" stroke-dasharray="110" stroke-dashoffset="110"><animate attributeName="stroke-dashoffset" values="110;110;0;0" keyTimes="0.0000;0.4077;0.4385;1.0000" dur="13s" fill="freeze"/></line><circle class="placement-pulse" r="6" fill="#7dd3c0" opacity="0"><animateMotion path="M390,570 L500,570" begin="6.16s" dur="1.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1" keyTimes="0;1"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" begin="6.16s" dur="1.4s" repeatCount="indefinite"/></circle></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.4269;0.4538;1.0000" dur="13s" fill="freeze"/><rect x="60" y="622" width="330" height="76" rx="18" fill="#0b1017" stroke="rgba(238,242,245,0.28)" stroke-width="1.5"/><text x="88" y="658" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" fill="#eef2f5" font-weight="600" letter-spacing="-0.4">DevOps</text><text x="88" y="684" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" fill="#8b96a3">compose, a volume, a proxy</text><line x1="390" y1="660" x2="500" y2="660" stroke="rgba(238,242,245,0.28)" stroke-width="2" stroke-dasharray="110" stroke-dashoffset="110"><animate attributeName="stroke-dashoffset" values="110;110;0;0" keyTimes="0.0000;0.4423;0.4731;1.0000" dur="13s" fill="freeze"/></line><circle class="placement-pulse" r="6" fill="#7dd3c0" opacity="0"><animateMotion path="M390,660 L500,660" begin="6.74s" dur="1.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1" keyTimes="0;1"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" begin="6.74s" dur="1.4s" repeatCount="indefinite"/></circle></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.4615;0.4885;1.0000" dur="13s" fill="freeze"/><rect x="60" y="712" width="330" height="76" rx="18" fill="#0b1017" stroke="rgba(238,242,245,0.28)" stroke-width="1.5"/><text x="88" y="748" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" fill="#eef2f5" font-weight="600" letter-spacing="-0.4">AI agents</text><text x="88" y="774" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" fill="#8b96a3">MCP, read-only by default</text><line x1="390" y1="750" x2="500" y2="750" stroke="rgba(238,242,245,0.28)" stroke-width="2" stroke-dasharray="110" stroke-dashoffset="110"><animate attributeName="stroke-dashoffset" values="110;110;0;0" keyTimes="0.0000;0.4769;0.5077;1.0000" dur="13s" fill="freeze"/></line><circle class="placement-pulse" r="6" fill="#7dd3c0" opacity="0"><animateMotion path="M390,750 L500,750" begin="7.32s" dur="1.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1" keyTimes="0;1"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" begin="7.32s" dur="1.4s" repeatCount="indefinite"/></circle></g></g>
+<g opacity="0"><animate attributeName="opacity" values="0;1;1;1" keyTimes="0.0000;0.0008;0.9538;1.0000" dur="13s" fill="freeze"/><g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.0154;0.0769;1.0000" dur="13s" fill="freeze"/><rect x="440" y="110" width="1110" height="790" rx="26" fill="rgba(238,242,245,0.025)" stroke="rgba(238,242,245,0.28)" stroke-width="1.5" stroke-dasharray="10 8"/><rect x="462" y="94" width="470" height="32" fill="#05070a"/><text x="476" y="118" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="21" fill="#7dd3c0" letter-spacing="2.4">YOUR TEST SERVER · DEV, SIT OR UAT</text><rect x="1120" y="180" width="380" height="140" rx="18" fill="#0b1017" stroke="rgba(238,242,245,0.28)" stroke-width="1.5"/><text x="1310" y="240" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="34" fill="#eef2f5" text-anchor="middle" font-weight="650" letter-spacing="-0.6">Your app</text><text x="1310" y="282" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="22" fill="#8b96a3" text-anchor="middle">the system under test</text><rect x="1120" y="560" width="380" height="260" rx="18" fill="#0b1017" stroke="rgba(238,242,245,0.28)" stroke-width="1.5"/><text x="1310" y="624" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="34" fill="#eef2f5" text-anchor="middle" font-weight="650" letter-spacing="-0.6">Its data and logs</text><text x="1310" y="676" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="22" fill="#8b96a3" text-anchor="middle">PostgreSQL · MySQL · MariaDB</text><text x="1310" y="716" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="22" fill="#8b96a3" text-anchor="middle">MongoDB · any S3 · SFTP · FTP</text><text x="1310" y="756" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="22" fill="#8b96a3" text-anchor="middle">journald · Docker · Loki · Elastic</text><text x="1310" y="798" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20" fill="#566270" text-anchor="middle" font-style="italic">reset by hand, until now</text><line x1="1310" y1="320" x2="1310" y2="544" stroke="rgba(238,242,245,0.28)" stroke-width="2"/><polygon points="1310,560 1301,544 1319,544" fill="rgba(238,242,245,0.28)"/><text x="1328" y="446" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="20" fill="#8b96a3">reads and writes</text></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.1077;0.1308;1.0000" dur="13s" fill="freeze"/><text x="500" y="300" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="20" fill="#7dd3c0">$ testate setup &amp;&amp; testate service install</text></g><g transform="translate(-1200 0)"><animateTransform attributeName="transform" type="translate" values="-1200 0;-1200 0;0 0;0 0" keyTimes="0.0000;0.1462;0.2231;1.0000" dur="13s" fill="freeze" calcMode="spline" keySplines="0 0 1 1;0.16 1 0.3 1;0 0 1 1"/><rect x="500" y="330" width="420" height="460" rx="20" fill="#10b981" opacity="0.08" filter="url(#glow)"/><rect x="500" y="330" width="420" height="460" rx="18" fill="#0b1017" stroke="#10b981" stroke-width="1.5"/><g transform="translate(540 366) scale(0.5)"><g fill="none" stroke="#7dd3c0" stroke-width="9" stroke-linecap="round"><line x1="44" y1="104" x2="44" y2="30"/><path d="M44 66 C44 48 84 60 84 42"/></g><circle cx="44" cy="104" r="11" fill="#7dd3c0"/><circle cx="84" cy="42" r="11" fill="#7dd3c0"/><circle cx="44" cy="30" r="15" fill="#10b981"/><circle cx="44" cy="30" r="6" fill="#0b1017"/></g><text x="614" y="412" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="36" fill="#eef2f5" font-weight="650" letter-spacing="-0.8">Test<tspan fill="#10b981">ate</tspan></text><line x1="540" y1="446" x2="880" y2="446" stroke="rgba(238,242,245,0.16)" stroke-width="1.5"/><circle cx="552" cy="480" r="5" fill="#7dd3c0"/><text x="574" y="488" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="26" fill="#eef2f5">snapshot</text><circle cx="552" cy="522" r="5" fill="#7dd3c0"/><text x="574" y="530" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="26" fill="#eef2f5">check out</text><circle cx="552" cy="564" r="5" fill="#7dd3c0"/><text x="574" y="572" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="26" fill="#eef2f5">diff</text><circle cx="552" cy="606" r="5" fill="#7dd3c0"/><text x="574" y="614" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="26" fill="#eef2f5">read logs</text><circle cx="552" cy="648" r="5" fill="#7dd3c0"/><text x="574" y="656" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="26" fill="#eef2f5">take readings</text><circle cx="552" cy="690" r="5" fill="#7dd3c0"/><text x="574" y="698" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="26" fill="#eef2f5">MCP for agents</text><text x="540" y="742" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="18" fill="#7dd3c0">1 binary · 1 data folder</text><text x="540" y="772" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="19" fill="#8b96a3">Beside the app. Nothing installs inside it.</text></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.2462;0.2615;1.0000" dur="13s" fill="freeze"/><line x1="1120" y1="610" x2="944" y2="610" stroke="#8dd6ff" stroke-width="2.5" stroke-dasharray="176" stroke-dashoffset="176"><animate attributeName="stroke-dashoffset" values="176;176;0;0" keyTimes="0.0000;0.2462;0.2846;1.0000" dur="13s" fill="freeze"/></line><polygon points="936,610 952,601 952,619" fill="#8dd6ff" opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.2808;0.2923;1.0000" dur="13s" fill="freeze"/></polygon><text x="1030" y="592" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="19" fill="#8dd6ff" text-anchor="middle">snapshot</text><line x1="920" y1="740" x2="1104" y2="740" stroke="#10b981" stroke-width="2.5" stroke-dasharray="184" stroke-dashoffset="184"><animate attributeName="stroke-dashoffset" values="184;184;0;0" keyTimes="0.0000;0.2692;0.3077;1.0000" dur="13s" fill="freeze"/></line><polygon points="1112,740 1096,731 1096,749" fill="#10b981" opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.3038;0.3154;1.0000" dur="13s" fill="freeze"/></polygon><text x="1030" y="770" font-family="'Mona Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="19" fill="#10b981" text-anchor="middle">put it back</text><circle class="placement-pulse" r="6" fill="#8dd6ff" opacity="0"><animateMotion path="M1120,610 L944,610" begin="4.4s" dur="1.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1" keyTimes="0;1"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" begin="4.4s" dur="1.6s" repeatCount="indefinite"/></circle><circle class="placement-pulse" r="6" fill="#10b981" opacity="0"><animateMotion path="M920,740 L1104,740" begin="5.2s" dur="1.6s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1" keyTimes="0;1"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" begin="5.2s" dur="1.6s" repeatCount="indefinite"/></circle></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.3231;0.3500;1.0000" dur="13s" fill="freeze"/><rect x="60" y="352" width="330" height="76" rx="18" fill="#0b1017" stroke="rgba(238,242,245,0.28)" stroke-width="1.5"/><text x="88" y="388" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" fill="#eef2f5" font-weight="600" letter-spacing="-0.4">Testers</text><text x="88" y="414" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" fill="#8b96a3">the dashboard</text><line x1="390" y1="390" x2="500" y2="390" stroke="rgba(238,242,245,0.28)" stroke-width="2" stroke-dasharray="110" stroke-dashoffset="110"><animate attributeName="stroke-dashoffset" values="110;110;0;0" keyTimes="0.0000;0.3385;0.3692;1.0000" dur="13s" fill="freeze"/></line><circle class="placement-pulse" r="6" fill="#7dd3c0" opacity="0"><animateMotion path="M390,390 L500,390" begin="5s" dur="1.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1" keyTimes="0;1"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" begin="5s" dur="1.4s" repeatCount="indefinite"/></circle></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.3577;0.3846;1.0000" dur="13s" fill="freeze"/><rect x="60" y="442" width="330" height="76" rx="18" fill="#0b1017" stroke="rgba(238,242,245,0.28)" stroke-width="1.5"/><text x="88" y="478" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" fill="#eef2f5" font-weight="600" letter-spacing="-0.4">Developers</text><text x="88" y="504" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" fill="#8b96a3">the grid and the console</text><line x1="390" y1="480" x2="500" y2="480" stroke="rgba(238,242,245,0.28)" stroke-width="2" stroke-dasharray="110" stroke-dashoffset="110"><animate attributeName="stroke-dashoffset" values="110;110;0;0" keyTimes="0.0000;0.3731;0.4038;1.0000" dur="13s" fill="freeze"/></line><circle class="placement-pulse" r="6" fill="#7dd3c0" opacity="0"><animateMotion path="M390,480 L500,480" begin="5.58s" dur="1.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1" keyTimes="0;1"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" begin="5.58s" dur="1.4s" repeatCount="indefinite"/></circle></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.3923;0.4192;1.0000" dur="13s" fill="freeze"/><rect x="60" y="532" width="330" height="76" rx="18" fill="#0b1017" stroke="rgba(238,242,245,0.28)" stroke-width="1.5"/><text x="88" y="568" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" fill="#eef2f5" font-weight="600" letter-spacing="-0.4">CI/CD</text><text x="88" y="594" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" fill="#8b96a3">one call before the run</text><line x1="390" y1="570" x2="500" y2="570" stroke="rgba(238,242,245,0.28)" stroke-width="2" stroke-dasharray="110" stroke-dashoffset="110"><animate attributeName="stroke-dashoffset" values="110;110;0;0" keyTimes="0.0000;0.4077;0.4385;1.0000" dur="13s" fill="freeze"/></line><circle class="placement-pulse" r="6" fill="#7dd3c0" opacity="0"><animateMotion path="M390,570 L500,570" begin="6.16s" dur="1.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1" keyTimes="0;1"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" begin="6.16s" dur="1.4s" repeatCount="indefinite"/></circle></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.4269;0.4538;1.0000" dur="13s" fill="freeze"/><rect x="60" y="622" width="330" height="76" rx="18" fill="#0b1017" stroke="rgba(238,242,245,0.28)" stroke-width="1.5"/><text x="88" y="658" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" fill="#eef2f5" font-weight="600" letter-spacing="-0.4">DevOps</text><text x="88" y="684" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" fill="#8b96a3">one binary, a service, a proxy</text><line x1="390" y1="660" x2="500" y2="660" stroke="rgba(238,242,245,0.28)" stroke-width="2" stroke-dasharray="110" stroke-dashoffset="110"><animate attributeName="stroke-dashoffset" values="110;110;0;0" keyTimes="0.0000;0.4423;0.4731;1.0000" dur="13s" fill="freeze"/></line><circle class="placement-pulse" r="6" fill="#7dd3c0" opacity="0"><animateMotion path="M390,660 L500,660" begin="6.74s" dur="1.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1" keyTimes="0;1"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" begin="6.74s" dur="1.4s" repeatCount="indefinite"/></circle></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0.0000;0.4615;0.4885;1.0000" dur="13s" fill="freeze"/><rect x="60" y="712" width="330" height="76" rx="18" fill="#0b1017" stroke="rgba(238,242,245,0.28)" stroke-width="1.5"/><text x="88" y="748" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" fill="#eef2f5" font-weight="600" letter-spacing="-0.4">AI agents</text><text x="88" y="774" font-family="'Mona Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" fill="#8b96a3">MCP, read-only by default</text><line x1="390" y1="750" x2="500" y2="750" stroke="rgba(238,242,245,0.28)" stroke-width="2" stroke-dasharray="110" stroke-dashoffset="110"><animate attributeName="stroke-dashoffset" values="110;110;0;0" keyTimes="0.0000;0.4769;0.5077;1.0000" dur="13s" fill="freeze"/></line><circle class="placement-pulse" r="6" fill="#7dd3c0" opacity="0"><animateMotion path="M390,750 L500,750" begin="7.32s" dur="1.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1" keyTimes="0;1"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" begin="7.32s" dur="1.4s" repeatCount="indefinite"/></circle></g></g>
 </svg>
 <!-- /placement -->
           </div>
@@ -281,6 +343,22 @@
               </p>
             </div>
             <div class="card reveal" style="--d: 400ms">
+              <span class="k">logs</span>
+              <h3>Logs beside the data</h3>
+              <p>
+                Read the app's log files, its journal, its containers, Loki or Elasticsearch next to the
+                database. Filter, follow, download. Secrets are masked for viewers and agents.
+              </p>
+            </div>
+            <div class="card reveal" style="--d: 480ms">
+              <span class="k">readings</span>
+              <h3>Readings</h3>
+              <p>
+                One point-in-time reading of host load, memory and disk, and the database servers'
+                counters. Take one before a run and one after, and compare.
+              </p>
+            </div>
+            <div class="card reveal" style="--d: 560ms">
               <span class="k">api</span>
               <h3>Pipelines</h3>
               <p>
@@ -298,41 +376,53 @@
           <div class="head reveal">
             <p class="eyebrow">Engines</p>
             <h2>Every one of these is real, not a stand-in.</h2>
-            <p>Each engine has a contract suite that runs against the actual server.</p>
+            <p>
+              Each speaks its own protocol to the real server. A tier is a menu in the dashboard, across
+              every project.
+            </p>
           </div>
           <div class="tiers">
             <div class="tier reveal" style="--d: 0ms">
-              <div class="name"><h3>Tabular</h3><span class="k">tier 3</span></div>
+              <div class="name"><h3>Tabular</h3><span class="k">Databases</span></div>
               <div class="engines"><span>PostgreSQL</span><span>MySQL</span><span>MariaDB</span></div>
               <div class="ops">view · snapshot · checkout · diff<br />extract · edit · import</div>
             </div>
             <div class="tier reveal" style="--d: 100ms">
-              <div class="name"><h3>Document</h3><span class="k">tier 2</span></div>
+              <div class="name"><h3>Document</h3><span class="k">Databases</span></div>
               <div class="engines"><span>MongoDB</span></div>
               <div class="ops">view · snapshot · checkout · diff<br />extract</div>
             </div>
             <div class="tier reveal" style="--d: 200ms">
-              <div class="name"><h3>Files</h3><span class="k">tier 1</span></div>
+              <div class="name"><h3>Files</h3><span class="k">Storage</span></div>
               <div class="engines"><span>Object storage</span><span>SFTP</span><span>FTP</span></div>
               <div class="ops">view · preview · download · insert<br />rename · delete · batch</div>
+            </div>
+            <div class="tier reveal" style="--d: 300ms">
+              <div class="name"><h3>Logs</h3><span class="k">Logs</span></div>
+              <div class="engines">
+                <span>Log files</span><span>Pushed lines</span><span>systemd journal</span><span>Docker</span
+                ><span>Grafana Loki</span><span>Elasticsearch</span>
+              </div>
+              <div class="ops">read · filter · follow · download<br />masked for viewers and agents</div>
             </div>
           </div>
           <p class="tiers-note reveal">
             Object storage is anything S3-compatible: Amazon S3, Cloudflare R2, Google Cloud Storage, Backblaze B2 and
-            MinIO: one adapter, any endpoint.
+            MinIO: one adapter, any endpoint. Log files come over SFTP or S3; Elasticsearch includes OpenSearch. Database
+            adapters also read their server's own logs.
           </p>
           <div class="stats">
             <div class="stat reveal" style="--d: 0ms">
-              <span class="n">147<b>/147</b></span>
-              <span class="l">user stories exercised end to end in a browser</span>
+              <span class="n">13</span>
+              <span class="l">engines across four tiers</span>
             </div>
             <div class="stat reveal" style="--d: 100ms">
-              <span class="n">1</span>
-              <span class="l">image, one volume, amd64 and arm64</span>
+              <span class="n">5</span>
+              <span class="l">platforms with their own binary, plus the image</span>
             </div>
             <div class="stat reveal" style="--d: 200ms">
-              <span class="n">7</span>
-              <span class="l">engines and file stores, each with a contract suite</span>
+              <span class="n">0</span>
+              <span class="l">commands run on your hosts: logs and readings only read</span>
             </div>
           </div>
         </div>
@@ -347,7 +437,7 @@
               <h2>An agent can look. Only a tester token can touch.</h2>
               <p>
                 Testate speaks MCP. Point Claude or any MCP client at the endpoint with an agent token and
-                it reads schemas, pages rows, runs read-only queries and extracts fixtures.
+                it reads schemas, pages rows, runs read-only queries, extracts fixtures and reads logs.
                 <strong>A Guest token has no write path at all.</strong> Queries run inside a read-only
                 transaction, and column policies mask values before the agent sees them.
               </p>
@@ -403,8 +493,13 @@
               <p class="eyebrow">Start</p>
               <h2>Running in about a minute.</h2>
               <p>
-                <strong>Run the container.</strong> One volume holds the snapshots, the metadata and the
-                logs. The container filesystem is otherwise read-only.
+                <strong>Install and set up.</strong> The script puts <code>testate</code> in
+                <code>~/.local/bin</code> and checks the download. <code>testate setup</code> asks for a
+                port and the first admin's password, and writes a new sealing key. Keep that file.
+              </p>
+              <p>
+                <strong>Keep it running.</strong> <code>testate service install</code> makes a user service
+                that starts at boot. <code>testate update</code> fetches the next release when you ask.
               </p>
               <p>
                 <strong>Sign in.</strong> Open <code>localhost:7378</code> as <code>admin</code>. Testate
@@ -419,18 +514,18 @@
             <div
               class="terminal reveal"
               style="--d: 120ms"
-              data-cmd='docker run -d --name testate -p 7378:7378 -v testate-data:/data \
-  -e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \
-  -e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \
-  ghcr.io/pt-perkasa-pilar-utama/testate:1.2.0'
+              data-cmd="curl -fsSL https://pt-perkasa-pilar-utama.github.io/testate/install.sh | sh
+testate setup
+testate service install"
             >
               <div class="bar" aria-hidden="true"><i></i><i></i><i></i></div>
               <button class="copy" type="button">copy</button>
-              <div class="p">docker run -d --name testate \</div>
-              <div class="c">-p 7378:7378 -v testate-data:/data \</div>
-              <div class="c">-e TESTATE_SECRETS_ACTIVE_KEY="$(openssl rand -base64 32)" \</div>
-              <div class="c">-e TESTATE_ADMIN_PASSWORD=change-me-now-1234 \</div>
-              <div class="c">ghcr.io/pt-perkasa-pilar-utama/testate:1.2.0</div>
+              <div class="p">curl -fsSL https://pt-perkasa-pilar-utama.github.io/testate/install.sh | sh</div>
+              <div class="o">Installed testate 1.2.0 to /home/you/.local/bin/testate</div>
+              <div class="p">testate setup</div>
+              <div class="o">Wrote /home/you/.config/testate/testate.env (mode 600)</div>
+              <div class="p">testate service install</div>
+              <div class="o">Installed: /home/you/.config/systemd/user/testate.service</div>
               <div class="o">&nbsp;</div>
               <div class="p">curl -s -o /dev/null -w '%{http_code}\n' \</div>
               <div class="c">localhost:7378/api/v1/health/live</div>
@@ -487,7 +582,7 @@
         <nav aria-label="Links">
           <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate">Source</a>
           <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate/blob/main/CHANGELOG.md">Changelog</a>
-          <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate#3-connecting-to-a-database">Docs</a>
+          <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate/blob/main/docs/CONNECTING.md">Docs</a>
           <a href="https://github.com/PT-Perkasa-Pilar-Utama/testate/blob/main/docs/AGENT_ACCESS.md">Agents</a>
         </nav>
       </div>
