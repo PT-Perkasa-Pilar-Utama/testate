@@ -41,7 +41,7 @@ const SLOTS: Slot[] = [
     pattern: VERSION_CONSTANT,
     render: (version: string) => `export const VERSION = "${version}";`,
   },
-  // What a person reads: the README's install command and status line, the verify commands in
+  // What a person reads: the README's container command, the verify commands in
   // docs/INSTALL.md, the homepage's eyebrow, structured data and install command, and the
   // banner's eyebrow. These drifted for a release once because only the manifests were written.
   {
@@ -61,11 +61,6 @@ const SLOTS: Slot[] = [
     pattern: /docker\.io\/snowfluke\/testate:([^\s"'`]+)/,
     render: (version: string) => `docker.io/snowfluke/testate:${version}`,
     all: true,
-  },
-  {
-    file: "README.md",
-    pattern: /\bVersion (\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\./,
-    render: (version: string) => `Version ${version}.`,
   },
   {
     file: "docs/CONNECTING.md",
