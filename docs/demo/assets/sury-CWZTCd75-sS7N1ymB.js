@@ -1,1 +1,0 @@
-import{t as e}from"./preload-helper-yOukCRaE.js";import{t}from"./index-CLddUTqr-j2FTByTr.js";async function n(){try{let{toJSONSchema:t}=await e(async()=>{let{toJSONSchema:e}=await import(`./standard-json-t-LNckA6.js`);return{toJSONSchema:e}},[]);return t}catch{throw new t(`sury`)}}export{n as default};

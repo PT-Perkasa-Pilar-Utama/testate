@@ -39,3 +39,6 @@ slim.report.json
 # compiled binaries (scripts/binary/build-binaries.ts)
 .bin-build
 .claude/worktrees/
+
+# the browser demo, built by `bun run build:demo` and deployed by .github/workflows/pages.yml
+docs/demo/

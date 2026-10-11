@@ -1,1 +1,0 @@
-throw Error(`Could not resolve "effect" imported by "@standard-community/standard-json". Is it installed?`);
