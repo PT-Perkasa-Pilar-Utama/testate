@@ -75,6 +75,9 @@ Gate the step on `status`, not the HTTP code. AI agents connect over MCP with a 
 | Files    | S3-compatible storage, SFTP, FTP                               | browse, upload, rename, delete          |
 | Logs     | Log files, pushed lines, journald, Docker, Loki, Elasticsearch | read, filter, follow, masked            |
 
+Every SFTP host and database server also gets graphs under **Monitor**: CPU, memory, disk,
+network and each pm2 app, sampled every 30 seconds. Nothing is installed on the host.
+
 Testate resets only the databases you add, one at a time. Read [the limits](docs/LIMITS.md)
 before you install it.
 
