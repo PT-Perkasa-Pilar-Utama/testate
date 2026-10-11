@@ -41,7 +41,7 @@ Legend: `OK` implemented and tested · `WIP` in progress · `TODO` not started �
 | [01-conventions.md](01-conventions.md) | Transport, envelope, status and error codes, pagination, jobs and `wait`, idempotency, sealed fields, roles |
 | [02-authentication.md](02-authentication.md) | Login, sessions, password, API tokens |
 | [03-users.md](03-users.md) | User management |
-| [04-projects.md](04-projects.md) | Projects, HEAD, quota, deletion plan and delete |
+| [04-projects.md](04-projects.md) | Projects, HEAD, last change, quota, deletion plan and delete |
 | [05-adapters.md](05-adapters.md) | Adapters of every kind, test, retest, mode, deletion |
 | [06-data.md](06-data.md) | Schema, rows, table export, lookups, write sessions, row edits, queries, saved queries, history, policies, fixtures |
 | [07-imports.md](07-imports.md) | Uploads, preview, normalizers, runs, rejected rows, sample files |
