@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/core-C0q3x-fo.js","assets/rolldown-runtime-Dd_uD5pT.js"])))=>i.map(i=>d[i]);
+import{t as e}from"./preload-helper-yOukCRaE.js";import{t}from"./index-CLddUTqr-j2FTByTr.js";var n=new t(`zod v4`);async function r(){return async(r,i)=>{let a;if(`_zod`in r)try{a=(await e(()=>import(`./core-C0q3x-fo.js`),__vite__mapDeps([0,1]))).toJSONSchema}catch{throw n}else try{a=(await e(()=>import(`./standard-json-DjDyBi7h.js`),[])).zodToJsonSchema}catch{throw new t(`zod-to-json-schema`)}return a(r,i)}}export{r as default};
