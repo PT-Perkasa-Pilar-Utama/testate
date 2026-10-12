@@ -12,6 +12,7 @@ import {
 import { hostSuggestionSchema } from "@testate/shared";
 import type { HostSuggestion } from "@testate/shared";
 import { apiClient } from "@/lib/api-client.ts";
+import { hasRole } from "@/lib/session.ts";
 
 export type ProbeOutcome = v.InferOutput<typeof probeOutcomeSchema>;
 export type CreatedAdapter = v.InferOutput<typeof createAdapterResponseSchema>;
@@ -22,9 +23,13 @@ const base = (slug: string): string => `/projects/${encodeURIComponent(slug)}/ad
 const one = (slug: string, id: string): string => `${base(slug)}/${encodeURIComponent(id)}`;
 
 export const adaptersModel = {
-  /** Hosts the API can reach from where it runs; the browser cannot work these out itself. */
-  hosts: (): Promise<HostSuggestion[]> =>
-    apiClient.get("/adapter-hosts", { schema: v.array(hostSuggestionSchema) }),
+  /**
+   * Hosts the API can reach from where it runs; the browser cannot work these out itself. The
+   * route is qa and up, and the connection presenters load it on any adapter page, so a viewer
+   * gets none rather than a 403 that took the whole log adapter screen down.
+   */
+  hosts: async (): Promise<HostSuggestion[]> =>
+    hasRole("qa") ? apiClient.get("/adapter-hosts", { schema: v.array(hostSuggestionSchema) }) : [],
   /** Databases only: a file store lives on its own screen. */
   list: (slug: string): Promise<Adapter[]> =>
     apiClient.get(base(slug), { schema: v.array(adapterSchema), query: { kind: "database" } }),
