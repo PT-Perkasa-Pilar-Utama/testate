@@ -29,8 +29,11 @@ test.describe("jobs", () => {
     await expect(page.locator("main tbody tr").first()).toBeVisible();
     const finished = page.locator("main tbody tr", { hasText: "succeeded" }).first();
     await expect(finished).toBeVisible();
-    // A snapshot, a checkout, an import: whichever ran first, the row says which kind it was.
-    await expect(finished).toContainText(/snapshot|checkout|import|diff/i);
+    // Whichever job finished last, its first cell names the kind (JOB_KIND_LABEL in the SPA). Other
+    // specs delete adapters and projects, so the newest is not always a snapshot or a checkout.
+    await expect(finished.getByRole("cell").first()).toHaveText(
+      /^(Snapshot|Checkout|Import|Comparison|Delete a state|Delete an adapter|Delete a project|Import archive|Storage migration|Backup)$/
+    );
     // The one deterministic half of cancel: a job that already succeeded cannot be stopped, so the
     // control must not be there to press.
     await expect(finished.getByRole("button", { name: "Cancel" })).toHaveCount(0);

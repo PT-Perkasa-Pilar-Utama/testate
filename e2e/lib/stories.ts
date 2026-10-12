@@ -68,6 +68,10 @@ export type CoverageReport = {
   markdown: string;
   counts: Record<CoverageStatus, number>;
   unknownTags: number[];
+  /** Stories no `@story-N` tag proves, by id. */
+  uncovered: number[];
+  /** Ids two stories share: one tag would mark both covered. */
+  duplicates: number[];
   total: number;
 };
 
@@ -75,13 +79,16 @@ export function coverageReport(): CoverageReport {
   const stories = prdStories();
   const tags = taggedStories();
   const ids = new Set(stories.map((story) => story.id));
+  const duplicates = [...ids].filter((id) => stories.filter((story) => story.id === id).length > 1);
   const unknownTags = [...tags.keys()].filter((id) => !ids.has(id));
   const counts = { covered: 0, uncovered: 0, "no-screen": 0, api: 0 };
+  const uncovered: number[] = [];
   const rows = stories.map((story) => {
     const specs = tags.get(story.id);
     const layer = specs === undefined ? layerOf(story.id) : "covered";
     const status: CoverageStatus = layer === "ui" ? "uncovered" : layer;
     counts[status] += 1;
+    if (status === "uncovered") uncovered.push(story.id);
     const files = specs === undefined ? "" : [...specs].join(", ");
     return `| ${story.id} | ${story.section} | ${story.actor} | ${story.title} | ${status} | ${files} |`;
   });
@@ -95,5 +102,5 @@ export function coverageReport(): CoverageReport {
     ...rows,
     "",
   ].join("\n");
-  return { markdown, counts, unknownTags, total: stories.length };
+  return { markdown, counts, unknownTags, uncovered, duplicates, total: stories.length };
 }
