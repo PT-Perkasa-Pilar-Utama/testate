@@ -185,11 +185,11 @@ apart on what a checkout does.
 
 ### Logs
 
-151. As a QA engineer, I want to add a log adapter from the Logs screen, one SFTP server or S3 bucket holding named sources that each have a file pattern and a format, always read-only, so that the application's logs sit beside its data.
-152. As a viewer, I want to read one source newest first, filtered by level, text, and a window of up to 7 days, with older pages on demand, so that I find the line that explains a failure.
-153. As a viewer, I want to follow a source as new lines arrive, so that I can watch a test run live.
-154. As a viewer, I want each checkout and job to link to the logs written during it, so that I go from a failed run to its logs in one click.
-155. As a viewer, I want secrets in log lines masked by built-in patterns and the source's own, and to download what I see as JSON lines, while testers see raw lines, so that a log never leaks a token.
+167. As a QA engineer, I want to add a log adapter from the Logs screen, one SFTP server or S3 bucket holding named sources that each have a file pattern and a format, always read-only, so that the application's logs sit beside its data.
+168. As a viewer, I want to read one source newest first, filtered by level, text, and a window of up to 7 days, with older pages on demand, so that I find the line that explains a failure.
+169. As a viewer, I want to follow a source as new lines arrive, so that I can watch a test run live.
+170. As a viewer, I want each checkout and job to link to the logs written during it, so that I go from a failed run to its logs in one click.
+171. As a viewer, I want secrets in log lines masked by built-in patterns and the source's own, and to download what I see as JSON lines, while testers see raw lines, so that a log never leaks a token.
 156. As an agent, I want to read a log source over MCP, always masked, so that I can explain a failure from the logs without a person copying them.
 159. As a QA engineer, I want to read a database's recent statements and server log on its adapter page, with the grant shown for what I cannot read yet, so that I see what the database did during a test without a shell on its host.
 157. As an integrator, I want my app to push its own logs to a Testate log adapter with a token that can do nothing else, so that logs from a system Testate cannot reach still sit beside its data.
