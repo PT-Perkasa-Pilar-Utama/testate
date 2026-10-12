@@ -13,7 +13,15 @@ import {
   waitForIdle,
   waitForJob,
 } from "./lib/api.ts";
+import {
+  customersNormalizer,
+  importFromStorage,
+  putCustomersCsv,
+  removeStorageFile,
+} from "./lib/imports.ts";
 import { callTool } from "./lib/mcp.ts";
+import { runSql } from "./lib/sql.ts";
+import type { RowCount } from "./lib/sql.ts";
 
 const STAMP = Date.now().toString(36);
 
@@ -190,5 +198,43 @@ test.describe("state and job contract stories", () => {
     await admin.delete(`tokens/${tester.record.id}`);
     await admin.delete(`tokens/${viewer.record.id}`);
     await admin.dispose();
+  });
+
+  // The screen takes an uploaded file only since 2026-09-03; the storage source stays for
+  // automation, so this story is proven where automation meets it. Here, after `states`, because
+  // an import changes the demo data the checkouts there restore.
+  test("@story-51 imports a file straight from a storage adapter", async () => {
+    test.setTimeout(180_000);
+    const qa = await apiContext("qa");
+    const postgres = await demoAdapter({ engine: "postgres" });
+    const storage = await demoAdapter({ kind: "storage" });
+    await waitForIdle(qa, postgres.id);
+    const normalizerId = await customersNormalizer(qa, postgres.id, `storage-${STAMP}`);
+    // A file of its own: the seeded CSV's customers are already in the table after the states
+    // phase, so rows from it would prove nothing about the file being read.
+    const path = `e2e/storage-import-${STAMP}.csv`;
+    const emails = [`storage-${STAMP}-1@e2e.test`, `storage-${STAMP}-2@e2e.test`];
+    putCustomersCsv(path, emails);
+    const imported = await importFromStorage(qa, {
+      adapterId: postgres.id,
+      normalizerId,
+      storageId: storage.id,
+      path,
+    });
+    removeStorageFile(path);
+    expect(imported.status).toBe("succeeded");
+    expect(imported.source).toStrictEqual({ kind: "storage", ref: path });
+    expect([
+      imported.report.inserted,
+      imported.report.updated,
+      imported.report.failed,
+    ]).toStrictEqual([2, 0, 0]);
+    const quoted = emails.map((email) => `'${email}'`).join(", ");
+    const [landed] = runSql<RowCount[]>("shop", [
+      `SELECT count(*)::int AS n FROM contract.customers WHERE email IN (${quoted}) AND balance = 7.25`,
+    ]);
+    expect(landed?.n).toBe(2);
+    await qa.delete(`projects/demo/adapters/${postgres.id}/normalizers/${normalizerId}`);
+    await qa.dispose();
   });
 });

@@ -39,7 +39,7 @@ starts its ephemeral range at 49152, which is why this only ever failed in CI.
 | `coverage`  | `e2e/coverage.e2e.ts`                                            | Every `@story-N` tag names a PRD story; writes `.e2e/coverage.md`     |
 | `routes`    | `e2e/routes.e2e.ts`                                              | Each screen renders or refuses per role; sidebar matches the role     |
 | `api`       | `e2e/api.e2e.ts`, `agent.e2e.ts`                                 | Contract, token, and MCP stories over `request`; no browser           |
-| `flows`     | `e2e/flows.e2e.ts`, `stories`, `gaps`, `admin`, `jobs`, `viewer`, `stores` | One test per user story the dashboard can act on                      |
+| `flows`     | `e2e/flows.e2e.ts`, `stories`, `gaps`, `admin`, `jobs`, `viewer`, `stores`, `logs`, `log-engines`, `inspect`, `monitor` | One test per user story the dashboard can act on |
 | `tables`    | `e2e/tables.e2e.ts`                                              | Sorting and searching, before any spec adds accounts the counts would not expect |
 | `states`    | `e2e/states.e2e.ts`, `states-viewer`                             | Snapshot, checkout, and diff stories; serial, alone, after flows      |
 | `state-api` | `e2e/state-api.e2e.ts`                                           | State and job stories with no control of their own; holds the adapters |
@@ -113,7 +113,8 @@ the browser projects starve the crawl. Rules that keep it honest:
 
 Put `@story-N` in the test title. `.e2e/coverage.md` lists each PRD story as `covered`,
 `no-screen`, `api`, or `uncovered`. `e2e/coverage.e2e.ts` pins the story count, so a story added
-to `docs/PRD.md` fails the run until the count moves with it, and both exception lists in
+to `docs/PRD.md` fails the run until the count moves with it. It also fails on an uncovered story
+and on two stories under one number; a new story takes the number after the highest. Both exception lists in
 `e2e/lib/stories.ts` are empty. Add an id back only when a story truly cannot be exercised. A tag
 belongs on the test that proves the story: a story tagged on a test that merely passes through
 its screen is coverage on paper.

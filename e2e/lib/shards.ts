@@ -18,7 +18,8 @@ export const PROJECTS: ProjectSpec[] = [
   { name: "tables", testMatch: /tables\.e2e\.ts/, dependencies: ["routes"] },
   {
     name: "flows",
-    testMatch: /(flows|stories|gaps|admin|jobs|viewer|stores)\.e2e\.ts/,
+    testMatch:
+      /(flows|stories|gaps|admin|jobs|viewer|stores|logs|log-engines|inspect|monitor)\.e2e\.ts/,
     dependencies: ["routes"],
   },
   // Checkouts restore the demo databases; nothing else may edit them meanwhile.
