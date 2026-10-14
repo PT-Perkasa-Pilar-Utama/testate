@@ -14,9 +14,9 @@
     "@codemirror/commands": "6.11.1",
     "@codemirror/lang-json": "6.0.2",
     "@codemirror/lang-sql": "6.10.0",
-    "@codemirror/language": "6.12.4",
+    "@codemirror/language": "6.13.1",
     "@codemirror/state": "6.7.6",
-    "@codemirror/view": "6.43.13",
+    "@codemirror/view": "6.43.14",
     "@formisch/solid": "1.1.0",
     "@lezer/highlight": "1.2.5",
     "@solidjs/web": "2.0.0-rc.6",
@@ -34,6 +34,6 @@
     "hono": "4.13.13",
     "sql.js": "1.14.2",
     "tailwindcss": "4.3.3",
-    "vite": "8.3.3"
+    "vite": "8.3.4"
   }
 }
