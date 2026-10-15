@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@noble/hashes": "2.4.0",
-    "@solidjs/vite-plugin": "3.0.0-next.34",
+    "@solidjs/vite-plugin": "3.0.0-next.49",
     "@tailwindcss/vite": "4.3.3",
     "@types/sql.js": "1.4.11",
     "buffer": "6.0.3",
