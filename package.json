@@ -56,12 +56,10 @@
     "typescript": "7.0.2"
   },
   "overrides": {
-    "solid-js": "2.0.0-rc.6",
-    "@solidjs/signals": "2.0.0-rc.6",
-    "@solidjs/babel-plugin": "2.0.0-rc.3",
-    "@solidjs/compiler": "2.0.0-rc.3",
-    "seroval": "1.6.7",
-    "seroval-plugins": "1.6.7",
+    "solid-js": "2.0.0-rc.15",
+    "@solidjs/signals": "2.0.0-rc.15",
+    "@solidjs/babel-plugin": "2.0.0-rc.15",
+    "@solidjs/compiler": "2.0.0-rc.15",
     "source-map-js": "1.2.2"
   },
   "patchedDependencies": {

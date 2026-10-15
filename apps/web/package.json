@@ -19,15 +19,15 @@
     "@codemirror/view": "6.43.14",
     "@formisch/solid": "1.1.0",
     "@lezer/highlight": "1.2.5",
-    "@solidjs/web": "2.0.0-rc.6",
+    "@solidjs/web": "2.0.0-rc.15",
     "@testate/shared": "workspace:*",
     "elkjs": "0.12.0",
-    "solid-js": "2.0.0-rc.6",
+    "solid-js": "2.0.0-rc.15",
     "valibot": "1.5.0"
   },
   "devDependencies": {
     "@noble/hashes": "2.4.0",
-    "@solidjs/vite-plugin": "3.0.0-next.34",
+    "@solidjs/vite-plugin": "3.0.0-next.50",
     "@tailwindcss/vite": "4.3.3",
     "@types/sql.js": "1.4.11",
     "buffer": "6.0.3",
