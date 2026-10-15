@@ -160,7 +160,8 @@ export function createImportPresenter(
   };
   /** Matches the file's columns to a table's, and forgets the report and the saved pick. */
   const matchTo = (table: string, found: TableSchema | undefined): void => {
-    const staticFileColumns = preview()?.columns ?? [];
+    // Untracked: the `rejected` loader reaches here after its awaits, and wants this value once.
+    const staticFileColumns = untrack(preview)?.columns ?? [];
     setNormalizerId("");
     setReport(null);
     setDraftSignal((current) => ({

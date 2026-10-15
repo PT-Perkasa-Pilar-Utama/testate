@@ -62,7 +62,11 @@ export function createAdapterPresenter(slug: () => string, id: () => string): Ad
   const jobs = createJobFollower();
   const adapter = createRefreshable(() => adaptersModel.get(slug(), id()));
   const detail = createRefreshable(() => loadDetail(slug(), adapter.value()));
-  const inspect = createRefreshable(async () => (await projectsModel.inspect())?.slug === slug());
+  // `slug()` before the await: Solid tracks only the reads that happen before the first await.
+  const inspect = createRefreshable(async () => {
+    const current = slug();
+    return (await projectsModel.inspect())?.slug === current;
+  });
   const [plan, setPlan] = createSignal<AdapterDeletionPlan | null>(null);
   const [editing, setEditing] = createSignal(false);
   const [values, setValues] = createSignal<Values>({});
