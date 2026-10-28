@@ -17,7 +17,7 @@ Every choice below was confirmed in the architecture grill on 2026-08-28. Versio
 | --- | --- | --- |
 | HTTP framework | Hono 4.13.5 (verified) | Small, Bun-native adapter, middleware model fits the wide-event and auth chain |
 | Validation | valibot 1.4.2 (verified) at every trust boundary; types via `InferOutput` | Tree-shakable, standard-schema compliant, shared with the SPA through `@testate/shared` |
-| OpenAPI | `hono-openapi` 1.3.1 + `@hono/standard-validator` 0.2.x + `@valibot/to-json-schema` 1.7.1 (verified), Scalar UI via `@scalar/hono-api-reference` (pinned at scaffold) | valibot rules out `@hono/zod-openapi`; the standard-schema bridge generates the document from the same schemas the handlers validate with |
+| OpenAPI | `hono-openapi` 1.3.1 + `@hono/standard-validator` 0.2.x + `@valibot/to-json-schema` 1.7.1 (verified), Scalar UI from jsdelivr, written by `lib/openapi.ts` (the `@scalar/hono-api-reference` package was dropped in 2.0.1: it pulled in zod) | valibot rules out `@hono/zod-openapi`; the standard-schema bridge generates the document from the same schemas the handlers validate with |
 | Metadata database | SQLite through `Bun.SQL` (`sqlite://`), WAL, `busy_timeout` 5000 ms | Zero external service; one process; about 26 tables of simple queries |
 | Data access | Hand-written SQL in repositories, rows parsed with valibot | No ORM; Drizzle would add a second query language and a build step for nothing |
 | Migrations | Numbered `.sql` files, in-house runner at boot, `schema_migrations` ledger | Files resolved relative to `import.meta.dir`, connection from the environment; see 06 §6.9 |
