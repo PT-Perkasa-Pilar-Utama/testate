@@ -7,7 +7,6 @@
 import "./lib/http/context.ts";
 
 import { join } from "node:path";
-import { Scalar } from "@scalar/hono-api-reference";
 import { Hono } from "hono";
 
 import {
@@ -41,7 +40,7 @@ import { openMetadataDb } from "./lib/db/index.ts";
 import { requireReader } from "./lib/http/auth.ts";
 import { errorResponse, hardeningFor, installHardening, notFound } from "./lib/http/index.ts";
 import { createLogger } from "./lib/logger/index.ts";
-import { mountOpenApi } from "./lib/openapi.ts";
+import { mountApiReference, mountOpenApi } from "./lib/openapi.ts";
 import { createPasswordHasher } from "./lib/password/index.ts";
 import { loadKeyRing } from "./lib/sealed/index.ts";
 import { createAdaptersHandlers } from "./modules/adapters/adapters.handler.ts";
@@ -271,7 +270,7 @@ export async function boot(env: Readonly<Record<string, string | undefined>>): P
   v1.use("/openapi.json", reader);
   v1.use("/docs", reader);
   mountOpenApi(v1, VERSION);
-  v1.get("/docs", Scalar({ url: `${prefix}/openapi.json` }));
+  mountApiReference(v1, `${prefix}/openapi.json`);
   app.route(prefix, v1);
   if (web !== null) mountSpa(app, config.TESTATE_BASE_PATH, prefix, web.dir);
 

@@ -57,3 +57,33 @@ export function mountOpenApi(app: Hono, version: string): void {
     })
   );
 }
+
+// Scalar's own Hono package renders this same page, but it drags in zod for its config types.
+const REFERENCE_BUNDLE = "https://cdn.jsdelivr.net/npm/@scalar/api-reference/esm.js";
+
+/** The API reference page: Scalar's bundle from jsdelivr, pointed at the document. */
+export function apiReferencePage(documentUrl: string): string {
+  // A base path comes from the env; `<` escaped so it can never close the inline script.
+  const config = JSON.stringify({ url: documentUrl }).replaceAll("<", "\\u003c");
+  return `<!doctype html>
+<html>
+  <head>
+    <title>Testate API</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      import { createApiReference } from "${REFERENCE_BUNDLE}";
+      createApiReference("#app", ${config});
+    </script>
+  </body>
+</html>`;
+}
+
+/** Mounts `/docs`, the reference for the document `mountOpenApi` serves at `documentUrl`. */
+export function mountApiReference(app: Hono, documentUrl: string): void {
+  const page = apiReferencePage(documentUrl);
+  app.get("/docs", (c) => c.html(page));
+}
